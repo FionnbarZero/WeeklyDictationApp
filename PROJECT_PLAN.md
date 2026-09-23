@@ -51,35 +51,40 @@ Valid imports activate automatically and do not require routine word-by-word app
 
 ## Weekly assignment rules
 
-- A child joining during the year starts with the current week and the previous week.
-- Older sets remain archived for future mastery features.
-- Current and previous sets are practiced together in one randomized session.
-- There is no combined session score.
-- Every result remains associated with its original weekly set.
+- Every weekly focus is a permanent dataset identified by its learned date range, such as `8/31–9/4`.
+- During that date range, the dataset is in Acquisition with a 20-second timer.
+- During the following week, the same dataset moves to Test Review with a 10-second timer.
+- Older datasets remain archived and keep their original date ranges and history.
+- Dataset IDs must be stable and must not be replaced by labels such as current or previous.
+- Warmup is required before every Acquisition or Test Review session.
+
+Warmup selection includes all words from the previous week's Acquisition dataset now in Test Review, every complete dataset with an error in the previous seven days, and approximately 25% additional eligible isolated words. The additional count is `ceil(25% × the assembled A+B set)`; if A+B is empty but valid historical words exist, one eligible fallback word is selected so warmup is not empty. A word is reviewed only after a right/wrong result is recorded.
 
 ## Practice flow
 
-For every term:
+For every warmup, Acquisition, or Test Review term:
 
 1. Speak the Mandarin term aloud.
 2. Offer a Replay button.
 3. The child writes the answer on paper.
-4. Run a 20-second timer.
-5. Reveal the answer only after Show Answer or timer expiration.
+4. Run the phase timer: 5 seconds for Warmup, 20 seconds for Acquisition, or 10 seconds for Test Review.
+5. Reveal the answer only during the review portion after the full dictation set is complete.
 6. The child selects I got it right or I got it wrong.
-7. Record the result and move to the next randomized term.
+7. Record the result and move to the next interstitial or review word.
 
-Every current-week and previous-week term should be practiced each day. If the child leaves before finishing, discard the entire session. Its attempts do not affect official scores, and the child must restart.
+The word/context/repeated-word audio sequence uses one-second pauses. Warmup uses the same sequence at approximately 1.5 times the normal speech rate, capped to a safe browser-supported rate. If the child leaves, refreshes, or otherwise abandons the session, erase all temporary warmup and primary results and do not create scores.
 
 ## Scoring and history
 
-The first primary metric is percentage correct. Report separately by weekly set: current-week percentage, previous-week percentage, daily percentage, weekly percentage, and progress graphs for each child and each weekly set.
+The primary metric is percentage correct. Create a score only after every word in the relevant dataset has been reviewed for that session. Warmup scores are tracked independently by source dataset and are created only when every word from that source dataset was included; isolated warmup selections do not create a dataset score. Show a separate history graph for every permanent weekly dataset, ordered newest first, with each point labeled by phase and date.
 
-Preserve detailed completed-attempt records containing child ID, weekly set ID, term ID, session ID, date and time, correct/incorrect result, answer-reveal method, session status, and application version. The data must support future word-level accuracy, daily versus weekly averages, rolling averages, and new graph types.
+Preserve detailed records containing child ID, stable dataset ID and date range, word ID, grade, lifecycle phase, unique session ID, local session date, correct/incorrect result, error history, warmup-session history, complete-source-dataset status, scoring status, answer-reveal method, and application version. Duplicate session IDs must never create duplicate scores.
 
 ## Audio
 
-Use a consistent Mainland Mandarin China voice, such as a Google Cloud Text-to-Speech cmn-CN voice. Generate and cache audio when a new term is imported; Replay uses the stored file.
+Use a consistent Mainland Mandarin China voice. The preferred Google Cloud Text-to-Speech voice is `cmn-CN-Wavenet-C`. Use `en-GB-Neural2-F` for English instructions such as the final review reminder. Generate and cache audio when a new term is imported; Replay uses the stored file.
+
+The dictation audio should preserve the approved sequence: word at the current speech rate, a 1-second pause, the context sentence, a 1-second pause, the word, a 1-second pause, and the word again. Warmup multiplies the current rate by approximately 1.5. The review instruction should be available as both visible text and English audio. The current browser speech synthesis is only a temporary prototype fallback; production audio must use the cached Google Cloud files.
 
 The default process is automatic. Later, administrator settings may allow a hidden pronunciation correction for rare or polyphonic characters. Pinyin may be stored internally for pronunciation correction but must not appear in the child interface.
 
@@ -105,7 +110,7 @@ Secrets, OAuth refresh tokens, and service credentials must never be committed t
 
 ### Stage 1 — Prototype
 
-Build the practice experience with sample vocabulary, sample child profiles, current and previous sets, randomization, audio, Replay, timer, Show Answer, right/wrong controls, separate set scores, and basic graphs.
+Build the practice experience with sample permanent date-range datasets, required warmup, Acquisition and Test Review lifecycle phases, randomized words, audio, Replay, phase timers, interstitials, right/wrong review controls, dataset-level scores, legacy migration, and separate graphs.
 
 ### Stage 2 — Accounts and data
 
@@ -133,7 +138,7 @@ Test multiple families, multiple grades, new midyear students, school-year trans
 
 ## Deferred features
 
-The first version will not include mastery or warm-up sessions, ten-word mastered rotations, sentence-writing activities, camera-based handwriting grading, or automated weekly emails. The detailed history model should support these features later without losing past data.
+The first version will not include ten-word mastered rotations, sentence-writing activities, camera-based handwriting grading, or automated weekly emails. The detailed history model should support these features later without losing past data.
 
 ## Safety rules
 
@@ -143,3 +148,31 @@ The first version will not include mastery or warm-up sessions, ten-word mastere
 - Do not delete historical weekly sets or completed attempts.
 - Do not store private credentials in GitHub.
 - Keep parent settings separate from child practice screens.
+
+## Next session handoff — Stage 2 clarification questions
+
+Stage 1 prototype work is complete and has been manually tested successfully. The repository is currently a React/Vite prototype using localStorage persistence. Firebase authentication, Firestore persistence, and account management have not yet been implemented.
+
+Before beginning Stage 2, resolve these questions:
+
+1. Should Stage 2 implement a fully working Firebase integration now, or only prepare the Firebase structure until a Firebase project and configuration are provided?
+
+2. Who should be trusted to create official scores? Firestore client rules cannot reliably verify that every dataset word was completed. Should scores be client-created with documented limitations, or created through a trusted Firebase backend/Cloud Function?
+
+3. Since Google Slides and administrator tooling are deferred, how should shared datasets be populated: bundled sample datasets, Firestore seed data, or both?
+
+4. Should production require authentication before practice, or should the existing local sample mode remain available as a clearly labeled development/demo mode?
+
+5. For incomplete cloud sessions, should the app permanently delete the session and attempts, or retain an `abandoned` session record while deleting temporary attempts and excluding it from scoring?
+
+6. Because browser cleanup is not guaranteed during a crash or forced close, should startup automatically abandon and clean up stale `in_progress` sessions?
+
+7. Should lifecycle and session dates use `America/Los_Angeles`, matching the project plan, while Firebase timestamps remain stored in UTC?
+
+8. Should datasets be selected by the child’s grade and current school year? If no matching dataset exists, should the app use bundled sample data, show an empty state, or use the most recent dataset?
+
+9. Should parent email verification be required before the parent can access the app?
+
+10. During migration, should the parent import only data for the selected child, or should the app support mapping and importing multiple existing local sample profiles?
+
+Recommended priority: resolve questions 1–6 before implementation. Questions 7–10 may use documented defaults if no separate decision is needed.
