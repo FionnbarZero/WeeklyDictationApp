@@ -1,6 +1,6 @@
 # Weekly Dictation
 
-React/Vite prototype for a Mandarin dictation practice app. Stage 2 keeps the existing child-friendly practice flow while adding authenticated parent families, multiple child profiles, Firestore-backed sessions/scores, grade-aware datasets, and a configurable 5th-grade Google Slides importer.
+React/Vite prototype for a Mandarin dictation practice app. Stage 2 keeps the existing child-friendly practice flow while adding authenticated parent families, multiple child profiles, Firestore-backed sessions/scores, grade-aware datasets, and a configurable Grade 2 Google Slides importer.
 
 ## Run locally
 
@@ -38,7 +38,7 @@ The repository does not currently include Firebase Emulator configuration. Secur
 
 ## Google Slides importer
 
-The configured source is the 5th-grade 2026–27 deck in `src/config.ts`. The deck-specific parser profile is in `src/slidesImporter.ts`; the observed structure and page IDs are documented in [`docs/grade5-deck-structure.md`](./docs/grade5-deck-structure.md).
+The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The deck-specific parser profile is in `src/slidesImporter.ts`; the observed structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports.
 
 When a current weekly dataset is missing, incomplete, or intentionally contains no vocabulary targets for a writing-workshop period, the child is offered a warmup-only mastery session whenever eligible older targets exist. This path never invents a primary dataset or primary score; it records warmup results and preserves source-dataset warmup scores.
 
@@ -48,9 +48,15 @@ For local parser testing:
 npm run import:slides -- path/to/presentation.json
 ```
 
-The command is idempotent when existing dataset IDs are supplied, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. `src/importerService.ts` provides the persistence/logging adapter for a trusted importer environment.
+The command is idempotent when existing dataset IDs are supplied, imports every valid weekly slide as its own dataset, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. The command is dry-run by default:
 
-The Google Drive connector was unavailable in the implementation environment because requests required approval while the approval policy was `never`. The deck was inspected read-only through the signed-in Slides browser view; the deck itself was not modified. No production Google API credentials are stored in this repository.
+```bash
+npm run import:slides -- path/to/google-slides-presentation.json
+```
+
+After reviewing the printed dataset IDs, slide IDs, date ranges, and word counts, a trusted local environment may write validated Grade 2 data with `--write --confirm-write`, using `FIREBASE_PROJECT_ID` and `FIRESTORE_ACCESS_TOKEN`. The importer refuses writes without both variables, never creates or stores service-account keys, and refuses the inactive Grade 5 profile on the write path. `src/importerService.ts` provides the reusable validation/persistence adapter for trusted environments.
+
+The deck was inspected read-only through the approved Google Drive/Slides connection; the deck itself was not modified. No production Google API credentials are stored in this repository.
 
 ## Current limitations
 
@@ -59,7 +65,7 @@ The Google Drive connector was unavailable in the implementation environment bec
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets and follows Warmup → complete without Acquisition/Test Review or a zero-word score.
 - If no current primary dataset is available, the app offers Mastery Warmup from eligible prior targets; if no prior targets exist, it shows a clear setup state instead of fabricating words.
-- Only the Grade 5 configuration is active for automatic dataset filtering. Kindergarten through Grade 4 are represented in the grade model for future expansion, not configured as production decks.
+- Grade 2 is the only active deck configuration. Grade 5 remains registered but inactive and without newly imported datasets; Kindergarten and Grades 1, 3, and 4 remain supported by the grade model without deck configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 
 ## Checks

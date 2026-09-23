@@ -10,6 +10,9 @@ export type Word = {
   datasetId: string
   grade?: string
   sourceSlideId?: string
+  language?: 'mandarin' | 'english'
+  tier?: 'tier-1' | 'tier-2' | 'tier-3'
+  activityType?: 'dictation' | 'reading' | 'spelling'
   audio?: { storagePath?: string; voice?: string; generatedAt?: string }
 }
 
@@ -272,7 +275,12 @@ export function sortDatasetsNewestFirst(datasets: Dataset[]) {
 }
 
 export function filterDatasetsForChild(datasets: Dataset[], grade: string, schoolYear: string) {
-  return sortDatasetsNewestFirst(datasets.filter((dataset) => dataset.grade === grade && dataset.schoolYear === schoolYear && dataset.importStatus !== 'error'))
+  const schoolYearKey = (value: string) => {
+    const years = [...value.matchAll(/20\d{2}/g)].map((match) => Number(match[0]))
+    return years.length >= 2 ? `${years[0]}-${String(years[1]).slice(-2)}` : years.length === 1 ? `${years[0]}-${String(years[0] + 1).slice(-2)}` : value
+  }
+  const requestedYear = schoolYearKey(schoolYear)
+  return sortDatasetsNewestFirst(datasets.filter((dataset) => dataset.grade === grade && schoolYearKey(dataset.schoolYear) === requestedYear && dataset.importStatus !== 'error'))
 }
 
 export function nextGrade(grade: string) {

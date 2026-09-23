@@ -20,34 +20,41 @@ A browser-based Mandarin dictation practice app for children in Chinese immersio
 
 There is one Weekly Focus Google Slides deck per grade per school year. Every child in a grade uses the same deck.
 
+The approved target configuration for the next implementation is:
+
 | School year | Grade | Weekly Focus deck | Status |
 |---|---|---|---|
-| 2026–27 | Kindergarten | Kindergarten deck | Active |
-| 2026–27 | Grade 2 | Grade 2 deck | Active |
-| 2027–28 | Kindergarten | Future Kindergarten deck | Future |
+| 2026–2027 | Grade 2 | Grade 2 deck | Active test deck |
+| 2026–2027 | Grade 5 | Grade 5 deck | Configured, inactive, no new datasets |
 
-The administrator configures grade-to-deck mappings once. Future school years can be added and activated later. Parents only choose a child’s grade; the grade determines the deck automatically. Deck links or IDs are stored rather than copying the entire presentation.
+The administrator configures a data-driven grade registry containing the internal grade key, display name, school year, deck ID, parser profile, and active status. Future grades and school years can be added by configuration rather than by creating new grade-specific practice logic. For this phase, Grade 2 is the active test deck; Grade 5 remains available in the grade dropdown but has no newly imported datasets. Kindergarten, Grades 1, 3, and 4 are not added or activated by this phase. Parents only choose a child’s grade; the grade and school year determine the deck automatically. Deck links or IDs are stored rather than copying the entire presentation.
+
+Firestore is the authoritative web storage for imported weekly targets. The browser does not read Google Slides directly. Because no production backend importer is currently deployed, use a local, explicitly invoked trusted importer command for this task if necessary. It may write only validated Grade 2 data to Firestore. Do not create or commit service-account keys, private keys, OAuth refresh tokens, or other secrets. If the importer cannot authenticate safely, stop before writing and report the required setup. Code deployment and GitHub pushes remain separate actions and require explicit authorization.
 
 ## Automatic Google Slides import
 
-The administrator’s Google account is authorized once with read-only access to the grade-level decks. Parents do not need Google Slides access or Google authorization.
+The administrator’s Google account is authorized once with read-only access to the grade-level decks. Parents do not need Google Slides access or Google authorization. The importer must inspect the deck through the approved read-only connector before creating records. If the connector cannot access the deck, the importer must report the exact permission error, stop, and never fabricate slide structure or write guessed targets.
+
+Before any Firestore write, show a dry-run summary of the datasets, slide IDs, date ranges, and word counts that will be written, then proceed only with data validated against the inspected deck structure.
 
 Every Monday at 3:00 p.m. California time, using the timezone America/Los_Angeles, the importer checks each active grade deck.
 
 The importer must:
 
 1. Read the assigned deck.
-2. Find the Mandarin Tier 1 and Tier 2 vocabulary sections or clearly identified equivalents.
-3. Extract vocabulary from the appropriate table column.
-4. Find the English spelling list in the ELA section when one is present.
-5. Split comma-separated entries into separate terms while preserving part-of-speech labels for English words.
+2. Inspect every slide currently present in the deck.
+3. Find the Mandarin Tier 1 vocabulary section or clearly identified equivalent for the initial weekly practice path.
+4. Extract vocabulary from the appropriate table column.
+5. Split comma-separated entries into separate Mandarin terms.
 6. Treat each Mandarin term, including multi-character terms, as one item.
-7. Treat each English spelling word as one dictation item.
-8. Read the Monday–Friday target date range shown on the page.
-9. Store the target date range, school year, grade, deck ID, page ID, and import time.
+7. Read the Monday–Friday target date range shown on the page.
+8. Store the target date range, school year, grade, deck ID, page ID, and import time.
+9. Preserve explicit writing-workshop weeks as zero-word placeholders for Warmup-only practice; skip malformed slides without replacing valid datasets.
 10. Prevent duplicate imports.
-11. Generate missing canonical audio for new Mandarin and English terms.
+11. Generate missing canonical Mandarin audio for new terms.
 12. Record an import log.
+
+Tier 2 extraction and English spelling-list extraction are planned extensions. The shared data model should support them, but the initial Grade 2 connection focuses on Tier 1 plus Warmup, Acquisition, and Test Review.
 
 Valid imports activate automatically and do not require routine word-by-word approval. The app should show a non-blocking import summary for later inspection. If extraction fails or the expected structure is missing, the new set must not replace the previous valid set. The administrator should receive a clear error and be able to correct the set later.
 
@@ -60,7 +67,15 @@ Valid imports activate automatically and do not require routine word-by-word app
 - Dataset IDs must be stable and must not be replaced by labels such as current or previous.
 - Warmup is required before every Acquisition or Test Review session.
 
+Use `2026–2027` as the display school-year value. Use the normalized ASCII token `2026-27` only inside deterministic IDs. Each dataset receives a deterministic internal ID formed as `grade__school-year__week-start__week-end`, such as `grade-2__2026-27__2026-09-07__2026-09-11`. The date components use normalized ISO dates even when the slide uses a shorter date format. The ID prevents duplicate imports, separates the same week across grades or school years, and links datasets to words, attempts, scores, and history. It is an internal Firestore key and is not displayed to children; user-facing screens show the date range instead.
+
 Warmup selection includes all words from the previous week's Acquisition dataset now in Test Review, every complete dataset with an error in the previous seven days, and approximately 25% additional eligible isolated words. The additional count is `ceil(25% × the assembled A+B set)`; if A+B is empty but valid historical words exist, one eligible fallback word is selected so warmup is not empty. A word is reviewed only after a right/wrong result is recorded.
+
+Dataset selection filters by the child’s grade and school year before applying lifecycle dates. If a configured grade has no datasets, the child sees the existing empty-state or warmup fallback behavior. Existing historical Grade 5 records must not be deleted while Grade 5 remains empty for new imports.
+
+## Vocabulary metadata and future activity types
+
+The dataset model should support future extensions without requiring a new grade-specific architecture. Vocabulary records should be able to carry `language` (`mandarin` or `english`), `tier` (`tier-1`, `tier-2`, or `tier-3`), and `activityType` (`dictation`, `reading`, or `spelling`). The initial Grade 2 import uses Mandarin Tier 1 dictation records. Tier 2 reading and English spelling are implemented in later stages.
 
 ## Practice flow
 
@@ -143,7 +158,7 @@ Add school-year setup, grade-to-deck mappings, active/inactive status, and admin
 
 ### Stage 4 — Google Slides integration
 
-Add one-time administrator authorization, a manual Sync Now operation, Monday–Friday date recognition, Tier 1/Tier 2 extraction, English spelling-list extraction, comma parsing, import summaries, and failure handling.
+Add one-time administrator authorization, a manual Sync Now operation, Monday–Friday date recognition, all-valid-slide Grade 2 Tier 1 extraction, deterministic dataset IDs, Firestore writes through a trusted importer, comma parsing, dry-run summaries, duplicate prevention, writing-workshop placeholders, and failure handling. Tier 2 and English spelling extraction remain later extensions built on the shared metadata model.
 
 ### Stage 5 — Audio service
 
@@ -160,6 +175,10 @@ Test multiple families, multiple grades, new midyear students, school-year trans
 ### Stage 8 — Tier 2 reading and English spelling
 
 Add Tier 2 extraction and the separate four-second reading flow. Request microphone permission from a clear user action, record each response with `MediaRecorder`, upload clips immediately to private family-scoped storage, and persist recording metadata in Firestore. Add canonical-audio playback, child-recording playback, same-row self-assessment, reading review, and reading history without mixing reading results into dictation scores. Add English spelling-list extraction, English audio prompts, English dictation, independent English review, and independent English scores. Test permission denial, unsupported recording formats, interrupted uploads, refreshes, abandoned sessions, replay controls, and cross-device review.
+
+## Next approved implementation — Grade 2 active test deck
+
+The next implementation configures the supplied 2026–27 Grade 2 Weekly Focus deck as the active test deck. It imports Grade 2 Tier 1 targets into Firestore and preserves the existing Warmup, Acquisition, and Test Review behavior. Grade 5 remains in the grade registry and child dropdown but receives no new dataset imports; existing Grade 5 history is preserved. The work must not edit either Google Slides deck, deploy the application, or push to GitHub without separate authorization. If the read-only connector cannot access the Grade 2 deck, deck-specific implementation stops with the exact permission error.
 
 ## Deferred features
 
@@ -187,10 +206,10 @@ Implemented:
 
 - Email/password sign-up, sign-in, sign-out, password reset, persistent signed-in sessions, loading state, and readable authentication errors.
 - One private family per parent, multiple active/inactive children, child switching, nickname editing, grade editing, reactivation, and non-destructive inactivity.
-- Grade model for Kindergarten through Grade 5, with Grade 5 as the only active deck configuration.
+- Grade model for Kindergarten through Grade 5, with Grade 2 as the only active deck configuration and Grade 5 registered but inactive.
 - August 1 America/Los_Angeles grade-promotion suggestion with parent confirmation; historical datasets retain their original grade and school year.
 - Grade/school-year dataset filtering, stable date-range dataset identities, cloud sessions, temporary attempts, completed attempts, dataset-level scores, and cross-device stale-session cleanup.
-- Idempotent, configurable Google Slides parser and local import command for the supplied Grade 5 deck. Import failures do not replace prior valid datasets.
+- Idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck. Every valid weekly slide is preserved as its own dataset; import failures do not replace prior valid datasets.
 - Explicit writing-workshop outcomes are distinguishable from import errors and use a Warmup-only completion path without creating a zero-word primary score.
 - Missing-current-week fallback: eligible prior mastery targets remain available through a warmup-only session when a weekly import is missing, malformed, or a writing-workshop period has no vocabulary targets. No primary dataset or primary score is fabricated.
 - Firestore ownership rules in `firestore.rules`.
@@ -199,7 +218,7 @@ Required setup and limitations:
 
 - Copy `.env.example` to `.env.local` and provide a Firebase web API key and project ID. Deploy the Firestore rules in a Firebase project.
 - The importer has a reusable persistence adapter and local command, but a Cloud Run service and Monday Cloud Scheduler have not been deployed. Automatic production scheduling remains deferred.
-- The source deck was inspected read-only. Its actual structure and observed page IDs are in `docs/grade5-deck-structure.md`. The Drive connector was blocked by the environment's approval policy, so the signed-in Slides browser was used as a read-only fallback.
+- The active Grade 2 source deck was inspected read-only. Its actual structure and observed page IDs are in `docs/grade2-deck-structure.md`. Its current ID is `10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`.
 
 These questions were written before Stage 2 implementation and are retained only as historical context. The implementation above records the decisions used in this repository.
 

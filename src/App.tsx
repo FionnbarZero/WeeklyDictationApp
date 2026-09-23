@@ -18,7 +18,7 @@ type Child = ChildProfile & { name: string; color: string; initials: string }
 
 const demoChildren: Child[] = [
   { id: 'maya', name: 'Maya', nickname: 'Maya', grade: 'Kindergarten', schoolYear: '2026–27', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'coral', initials: 'M' },
-  { id: 'eli', name: 'Eli', nickname: 'Eli', grade: 'Grade 2', schoolYear: '2026–27', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'blue', initials: 'E' },
+  { id: 'eli', name: 'Eli', nickname: 'Eli', grade: 'Grade 2', schoolYear: '2026–2027', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'blue', initials: 'E' },
 ]
 
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
