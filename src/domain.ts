@@ -8,6 +8,9 @@ export type Word = {
   text: string
   sentence: string
   datasetId: string
+  grade?: string
+  sourceSlideId?: string
+  audio?: { storagePath?: string; voice?: string; generatedAt?: string }
 }
 
 export type Dataset = {
@@ -19,6 +22,12 @@ export type Dataset = {
   schoolYear: string
   description: string
   words: Word[]
+  sourceDeckId?: string
+  sourceSlideId?: string
+  importStatus?: 'valid' | 'writing-workshop' | 'error'
+  isWritingWorkshop?: boolean
+  importedAt?: string
+  lifecycle?: { firstAvailableAt?: string; archivedAt?: string }
 }
 
 export type WordResult = {
@@ -58,6 +67,7 @@ export type WarmupSessionRecord = {
   childId: string
   sessionId: string
   sessionDate: string
+  completedAt?: string
   wordIds: string[]
   datasetIds: string[]
   completeDatasetIds: string[]
@@ -116,6 +126,8 @@ export type PracticeSession = {
   startedAt: string
   warmupAnswers: SessionAnswer[]
   primaryAnswers: SessionAnswer[]
+  warmupOnly?: boolean
+  cloudSessionId?: string
 }
 
 export type WarmupSelection = {
@@ -133,6 +145,7 @@ export const WARMUP_ADDITIONAL_FRACTION = 0.25
 export const AUDIO_PAUSE_MS = 1000
 export const NORMAL_WORD_RATE = 0.25
 export const NORMAL_SENTENCE_RATE = 0.55
+export const GRADE_ORDER = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 
 export type AudioPart = { text: string; rate: number }
 
@@ -216,8 +229,10 @@ export const sampleDatasets: Dataset[] = [
   },
 ]
 
-export function localDateKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+export function localDateKey(date = new Date(), timeZone = 'America/Los_Angeles') {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
 
 export function parseDateKey(value: string) {
@@ -256,6 +271,21 @@ export function sortDatasetsNewestFirst(datasets: Dataset[]) {
   return [...datasets].sort((a, b) => b.startDate.localeCompare(a.startDate))
 }
 
+export function filterDatasetsForChild(datasets: Dataset[], grade: string, schoolYear: string) {
+  return sortDatasetsNewestFirst(datasets.filter((dataset) => dataset.grade === grade && dataset.schoolYear === schoolYear && dataset.importStatus !== 'error'))
+}
+
+export function nextGrade(grade: string) {
+  const index = GRADE_ORDER.indexOf(grade as typeof GRADE_ORDER[number])
+  return index >= 0 && index < GRADE_ORDER.length - 1 ? GRADE_ORDER[index + 1] : null
+}
+
+export function shouldSuggestGradePromotion(child: { grade: string; gradeEffectiveDate?: string }, date = new Date(), timeZone = 'America/Los_Angeles') {
+  const today = localDateKey(date, timeZone)
+  const augustFirst = `${today.slice(0, 4)}-08-01`
+  return today >= augustFirst && Boolean(nextGrade(child.grade)) && (child.gradeEffectiveDate || '') < augustFirst
+}
+
 function resultDate(result: WordResult) {
   return parseDateKey(result.sessionDate)
 }
@@ -280,7 +310,10 @@ export function buildWarmupSelection(options: { datasets: Dataset[]; results: Wo
   const categoryB = uniqueWords([...errorDatasetIds].flatMap((id) => datasetsById.get(id)?.words || []))
   const base = uniqueWords([...categoryA, ...categoryB])
   const baseIds = new Set(base.map((word) => word.id))
-  const recentWarmups = options.warmupSessions.filter((session) => session.childId === options.childId && session.complete).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate)).slice(0, 3)
+  const recentWarmups = options.warmupSessions
+    .filter((session) => session.childId === options.childId && session.complete)
+    .sort((a, b) => (b.completedAt || b.sessionDate).localeCompare(a.completedAt || a.sessionDate) || b.id.localeCompare(a.id))
+    .slice(0, 3)
   const recentWarmupIds = new Set(recentWarmups.map((session) => session.id))
   const warmupErrors = new Set(options.results.filter((result) => result.childId === options.childId && result.phase === 'warmup' && !result.correct && result.warmupSessionId && recentWarmupIds.has(result.warmupSessionId)).map((result) => result.wordId))
   const candidates = options.datasets.flatMap((dataset) => dataset.words).filter((word) => !baseIds.has(word.id) && !warmupErrors.has(word.id)).sort((a, b) => {
@@ -346,14 +379,17 @@ export function loadState(rawState: string | null, legacyRaw?: string | null): A
 }
 
 export function latestScore(scores: DatasetScore[], childId: string, datasetId: string) {
-  return scores.filter((score) => score.childId === childId && score.datasetId === datasetId).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate))[0] || null
+  return scores
+    .map((score, index) => ({ score, index }))
+    .filter(({ score }) => score.childId === childId && score.datasetId === datasetId)
+    .sort((a, b) => b.score.sessionDate.localeCompare(a.score.sessionDate) || b.index - a.index)[0]?.score || null
 }
 
 export function commitCompletedSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
-  if (state.completedSessions.some((item) => item.id === session.id)) return state
+  const warmupSessionId = `${session.id}-warmup`
+  if (state.completedSessions.some((item) => item.id === session.id) || state.warmupSessions.some((item) => item.id === warmupSessionId)) return state
   if (session.warmupAnswers.length !== session.warmupQueue.length || session.primaryAnswers.length !== session.primaryQueue.length) return state
   const sessionDate = localDateKey(now)
-  const warmupSessionId = `${session.id}-warmup`
   const warmupCompleteDatasetIds = new Set(session.warmupQueue.map((word) => word.datasetId).filter((datasetId) => {
     const dataset = state.datasets.find((item) => item.id === datasetId)
     const answers = session.warmupAnswers.filter((answer) => answer.word.datasetId === datasetId)
@@ -370,7 +406,7 @@ export function commitCompletedSession(state: AppState, session: PracticeSession
   const newResults = [...warmupResults, ...primaryResults]
   const scores: DatasetScore[] = []
   const primaryDataset = state.datasets.find((dataset) => dataset.id === session.primaryDatasetId)
-  if (primaryDataset && session.primaryAnswers.length === primaryDataset.words.length && new Set(session.primaryAnswers.map((answer) => answer.word.id)).size === primaryDataset.words.length) {
+  if (primaryDataset && primaryDataset.words.length > 0 && session.primaryAnswers.length === primaryDataset.words.length && new Set(session.primaryAnswers.map((answer) => answer.word.id)).size === primaryDataset.words.length) {
     scores.push(makeScore(session, primaryDataset, session.primaryAnswers, session.primaryPhase, sessionDate))
   }
   const warmupDatasetIds = [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))]
@@ -380,13 +416,13 @@ export function commitCompletedSession(state: AppState, session: PracticeSession
     if (dataset && answers.length === dataset.words.length && new Set(answers.map((answer) => answer.word.id)).size === dataset.words.length) scores.push(makeScore(session, dataset, answers, 'warmup', sessionDate, warmupSessionId))
   })
   const safeScores = scores.filter((score) => !state.scores.some((existing) => existing.id === score.id))
-  const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [...warmupCompleteDatasetIds], complete: true }
+  const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [...warmupCompleteDatasetIds], complete: true }
   return {
     ...state,
     results: [...state.results, ...newResults],
     scores: [...state.scores, ...safeScores],
     warmupSessions: [...state.warmupSessions, warmupRecord],
-    completedSessions: [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }],
+    completedSessions: session.warmupOnly ? state.completedSessions : [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }],
   }
 }
 

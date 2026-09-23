@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function ownsFamily(familyId) {
+      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId == familyId;
+    }
+    function childExists(familyId, childId) {
+      return ownsFamily(familyId)
+        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId));
+    }
+    function ownsActiveChild(familyId, childId) {
+      return childExists(familyId, childId)
+        && get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)).data.active == true;
+    }
+
+    match /users/{parentId} {
+      allow read: if signedIn() && request.auth.uid == parentId;
+      allow create: if signedIn() && request.auth.uid == parentId
+        && request.resource.data.familyId == 'family-' + parentId
+        && request.resource.data.role == 'parent';
+      allow update: if signedIn() && request.auth.uid == parentId
+        && request.resource.data.familyId == resource.data.familyId
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    match /families/{familyId} {
+      allow read: if ownsFamily(familyId);
+      allow create: if signedIn() && familyId == 'family-' + request.auth.uid
+        && request.resource.data.ownerParentId == request.auth.uid;
+      allow update: if ownsFamily(familyId)
+        && request.resource.data.ownerParentId == resource.data.ownerParentId;
+      allow delete: if false;
+
+      match /children/{childId} {
+        allow read: if ownsFamily(familyId);
+        allow create: if ownsFamily(familyId)
+          && request.resource.data.active == true
+          && request.resource.data.id == childId
+          && request.resource.data.keys().hasAll(['id', 'nickname', 'grade', 'schoolYear', 'active', 'gradeEffectiveDate']);
+        allow update: if ownsFamily(familyId)
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if false;
+
+      match /sessions/{sessionId} {
+          allow read: if childExists(familyId, childId);
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.childId == childId
+            && request.resource.data.familyId == familyId;
+          allow delete: if false;
+
+          match /attempts/{attemptId} {
+            allow read: if childExists(familyId, childId);
+            allow create, update: if ownsActiveChild(familyId, childId)
+              && request.resource.data.sessionId == sessionId
+              && request.resource.data.wordId is string;
+            allow delete: if false;
+          }
+        }
+
+        match /scores/{scoreId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && request.resource.data.childId == childId
+            && request.resource.data.sessionId is string;
+          allow update, delete: if false;
+        }
+      }
+    }
+
+    match /datasets/{datasetId} {
+      allow read: if signedIn();
+      allow write: if false;
+      match /words/{wordId} {
+        allow read: if signedIn();
+        allow write: if false;
+      }
+    }
+
+    match /importLogs/{logId} {
+      allow read, write: if false;
+    }
+  }
+}

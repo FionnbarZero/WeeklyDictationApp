@@ -8,8 +8,11 @@ import {
   createInitialState,
   createSessionId,
   datasetLifecycle,
+  filterDatasetsForChild,
   localDateKey,
   loadState,
+  latestScore,
+  shouldSuggestGradePromotion,
   sampleDatasets,
   sortDatasetsNewestFirst,
   timerSecondsFor,
@@ -105,6 +108,21 @@ test('complete sessions create primary and full-dataset warmup scores once', () 
   assert.equal(duplicateCommit.results.length, committed.results.length)
 })
 
+test('warmup-only sessions preserve mastery results without creating a primary score', () => {
+  const state = createInitialState()
+  const session: PracticeSession = {
+    id: createSessionId(), childId: 'maya', grade: 'Kindergarten', primaryDatasetId: '', primaryPhase: 'acquisition', segment: 'warmup', stage: 'review', warmupOnly: true,
+    queue: priorDataset.words, warmupQueue: priorDataset.words, primaryQueue: [], index: priorDataset.words.length - 1, startedAt: '2026-09-22T12:00:00.000Z',
+    warmupAnswers: priorDataset.words.map((word) => ({ word, correct: true, revealMethod: 'timer' })), primaryAnswers: [],
+  }
+  const committed = commitCompletedSession(state, session, new Date(2026, 8, 22))
+  assert.equal(committed.results.length, priorDataset.words.length)
+  assert.equal(committed.scores.length, 1)
+  assert.equal(committed.scores[0].phase, 'warmup')
+  assert.equal(committed.completedSessions.length, 0)
+  assert.equal(commitCompletedSession(committed, session, new Date(2026, 8, 22)), committed)
+})
+
 test('partial sessions create no results or graph points', () => {
   const state = createInitialState()
   const session = completeSession(state)
@@ -147,4 +165,23 @@ test('local date keys use the local calendar rather than UTC slicing', () => {
 test('session IDs are unique', () => {
   const ids = new Set(Array.from({ length: 20 }, () => createSessionId()))
   assert.equal(ids.size, 20)
+})
+
+test('latest score prefers the most recently recorded score on the same date', () => {
+  const scores = [
+    { id: 'older', childId: 'maya', datasetId: currentDataset.id, datasetDateRange: currentDataset.dateRange, phase: 'acquisition' as const, sessionId: 'session-older', sessionDate: '2026-09-18', percent: 20, correct: 1, wordCount: 5 },
+    { id: 'newer', childId: 'maya', datasetId: currentDataset.id, datasetDateRange: currentDataset.dateRange, phase: 'acquisition' as const, sessionId: 'session-newer', sessionDate: '2026-09-18', percent: 80, correct: 4, wordCount: 5 },
+  ]
+  assert.equal(latestScore(scores, 'maya', currentDataset.id)?.id, 'newer')
+})
+
+test('dataset filtering respects grade and school year without relabeling history', () => {
+  const gradeFive = { ...currentDataset, id: 'g5', grade: 'Grade 5', schoolYear: '2026–27', words: currentDataset.words.map((word) => ({ ...word, datasetId: 'g5' })) }
+  assert.deepEqual(filterDatasetsForChild([...sampleDatasets, gradeFive], 'Grade 5', '2026–27').map((dataset) => dataset.id), ['g5'])
+  assert.equal(currentDataset.grade, 'Kindergarten')
+})
+
+test('grade promotion is suggested after August 1 in the configured timezone', () => {
+  assert.equal(shouldSuggestGradePromotion({ grade: 'Grade 4', gradeEffectiveDate: '2025-08-01' }, new Date('2026-08-01T08:00:00.000Z'), 'America/Los_Angeles'), true)
+  assert.equal(shouldSuggestGradePromotion({ grade: 'Grade 4', gradeEffectiveDate: '2026-08-01' }, new Date('2026-08-02T08:00:00.000Z'), 'America/Los_Angeles'), false)
 })

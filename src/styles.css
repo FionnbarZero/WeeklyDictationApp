@@ -50,3 +50,25 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .dataset-graph { margin-top: 18px; }
 .dataset-graph:first-of-type { margin-top: 0; }
 .empty-graph { margin: 27px 0 3px; color: var(--muted); font-size: 12px; }
+/* Stage 2 account and family controls */
+.auth-shell{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--cream,#fffaf2)}
+.auth-card{width:min(100%,460px);padding:38px;border-radius:28px;background:#fff;box-shadow:0 22px 70px rgba(73,52,31,.12);text-align:center}
+.auth-brand{display:inline-flex;margin-bottom:28px}
+.auth-card h1{margin:8px 0 12px;font-size:clamp(2rem,5vw,3rem)}
+.auth-copy{color:#766d68;line-height:1.6;margin-bottom:24px}
+.auth-card form{display:grid;gap:14px;text-align:left}
+.auth-card label{display:grid;gap:7px;font-weight:700;color:#574e4a}
+.auth-card input,.auth-card select,.add-child-form input,.add-child-form select{width:100%;border:1px solid #e5dcd3;border-radius:12px;padding:12px 13px;font:inherit;background:#fff}
+.auth-submit{width:100%;justify-content:center;margin-top:4px}
+.auth-links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:20px}
+.auth-links button,.profile-actions button{border:0;background:transparent;color:#6557bd;font:inherit;cursor:pointer}
+.error-banner{margin:12px auto;padding:12px 14px;border-radius:12px;background:#fff0ed;color:#a24236;font-size:.92rem}
+.success-banner{margin:12px auto;padding:12px 14px;border-radius:12px;background:#edf9ef;color:#31734b;font-size:.92rem}
+.profile-card{position:relative}
+.profile-select{width:100%;display:grid;place-items:center;gap:6px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:0}
+.profile-select:disabled{cursor:default;opacity:.6}
+.profile-actions{display:flex;justify-content:center;gap:10px;margin-top:10px;font-size:.76rem}
+.profile-card.inactive{opacity:.75}
+.add-child-form{display:grid;gap:10px;margin-top:22px;padding-top:20px;border-top:1px solid #eee5dc;text-align:left}
+.add-child-form h3{margin:0 0 2px}
+.promotion-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:12px 15px;border-radius:12px;background:#fff4cf;color:#6d5722;font-size:12px}.promotion-banner button{padding:7px 10px;border-radius:8px;background:#f4d071;color:#57451e;font-size:11px;font-weight:700}

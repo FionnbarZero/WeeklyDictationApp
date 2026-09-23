@@ -37,15 +37,17 @@ Every Monday at 3:00 p.m. California time, using the timezone America/Los_Angele
 The importer must:
 
 1. Read the assigned deck.
-2. Find the section labeled Tier 1 Words or the clearly identified equivalent.
-3. Extract vocabulary from the table’s second column.
-4. Split comma-separated entries into separate terms.
-5. Treat each term, including multi-character terms, as one scored item.
-6. Read the Monday–Friday target date range shown on the page.
-7. Store the target date range, school year, grade, deck ID, page ID, and import time.
-8. Prevent duplicate imports.
-9. Generate missing audio for new terms.
-10. Record an import log.
+2. Find the Mandarin Tier 1 and Tier 2 vocabulary sections or clearly identified equivalents.
+3. Extract vocabulary from the appropriate table column.
+4. Find the English spelling list in the ELA section when one is present.
+5. Split comma-separated entries into separate terms while preserving part-of-speech labels for English words.
+6. Treat each Mandarin term, including multi-character terms, as one item.
+7. Treat each English spelling word as one dictation item.
+8. Read the Monday–Friday target date range shown on the page.
+9. Store the target date range, school year, grade, deck ID, page ID, and import time.
+10. Prevent duplicate imports.
+11. Generate missing canonical audio for new Mandarin and English terms.
+12. Record an import log.
 
 Valid imports activate automatically and do not require routine word-by-word approval. The app should show a non-blocking import summary for later inspection. If extraction fails or the expected structure is missing, the new set must not replace the previous valid set. The administrator should receive a clear error and be able to correct the set later.
 
@@ -74,17 +76,35 @@ For every warmup, Acquisition, or Test Review term:
 
 The word/context/repeated-word audio sequence uses one-second pauses. Warmup uses the same sequence at approximately 1.5 times the normal speech rate, capped to a safe browser-supported rate. If the child leaves, refreshes, or otherwise abandons the session, erase all temporary warmup and primary results and do not create scores.
 
+After the Tier 1 dictation is complete, the session continues with a separate Tier 2 character-reading section:
+
+1. Show an interstitial frame explaining that the child should read each character or word aloud.
+2. Present each Tier 2 term individually between interstitial frames.
+3. Play the canonical Mandarin pronunciation through a separate audio button.
+4. After microphone permission has been granted, automatically record the child’s response for exactly 4 seconds.
+5. Save each recording immediately and associate it with the corresponding Tier 2 term and session.
+6. Allow the child to replay their own recording and mark the response right or wrong.
+7. Show a reading review page with the Mandarin term, canonical-audio control, child-recording control, and self-assessment on the same row.
+
+The 4-second timer applies only to the Tier 2 reading section. Existing warmup, Acquisition, and Test Review dictation timers remain unchanged unless separately configured.
+
+Following Tier 2 reading, begin a separate English spelling dictation section using the words imported from the ELA spelling list. English spelling results must be reviewed and scored independently from Mandarin dictation and Mandarin reading.
+
 ## Scoring and history
 
 The primary metric is percentage correct. Create a score only after every word in the relevant dataset has been reviewed for that session. Warmup scores are tracked independently by source dataset and are created only when every word from that source dataset was included; isolated warmup selections do not create a dataset score. Show a separate history graph for every permanent weekly dataset, ordered newest first, with each point labeled by phase and date.
 
 Preserve detailed records containing child ID, stable dataset ID and date range, word ID, grade, lifecycle phase, unique session ID, local session date, correct/incorrect result, error history, warmup-session history, complete-source-dataset status, scoring status, answer-reveal method, and application version. Duplicate session IDs must never create duplicate scores.
 
+Reading records must additionally preserve the child ID, Tier 2 word ID, session ID, recording storage path, recording format and duration, recording upload status, canonical-audio reference, self-assessed right/wrong result, and timestamps. Reading results are not included in dictation percentage scores. The English spelling section has its own answer records and score.
+
 ## Audio
 
 Use a consistent Mainland Mandarin China voice. The preferred Google Cloud Text-to-Speech voice is `cmn-CN-Wavenet-C`. Use `en-GB-Neural2-F` for English instructions such as the final review reminder. Generate and cache audio when a new term is imported; Replay uses the stored file.
 
 The dictation audio should preserve the approved sequence: word at the current speech rate, a 1-second pause, the context sentence, a 1-second pause, the word, a 1-second pause, and the word again. Warmup multiplies the current rate by approximately 1.5. The review instruction should be available as both visible text and English audio. The current browser speech synthesis is only a temporary prototype fallback; production audio must use the cached Google Cloud files.
+
+For Tier 2 reading, canonical Mandarin audio is played before the child’s response is recorded. The browser microphone uses `MediaRecorder` for the four-second clip. Recordings must be uploaded to private Firebase Storage or Google Cloud Storage, with only metadata and the storage path kept in Firestore. The child can replay the stored response from the reading review page. If recording permission is denied or an upload fails, the app must provide a clear fallback and must not silently mark the response as correct.
 
 The default process is automatic. Later, administrator settings may allow a hidden pronunciation correction for rare or polyphonic characters. Pinyin may be stored internally for pronunciation correction but must not appear in the child interface.
 
@@ -98,6 +118,7 @@ Only the administrator manages school years, grade-to-deck mappings, active scho
 - Hosting: GitHub Pages
 - Parent authentication: Firebase Authentication with email and password
 - Application data: Cloud Firestore
+- Child-response recordings: Firebase Storage or Google Cloud Storage with private, family-scoped access
 - Scheduled importer: Google Cloud Scheduler
 - Import and audio backend: Google Cloud Run
 - Slides access: Google Slides API with read-only authorization
@@ -122,11 +143,11 @@ Add school-year setup, grade-to-deck mappings, active/inactive status, and admin
 
 ### Stage 4 — Google Slides integration
 
-Add one-time administrator authorization, a manual Sync Now operation, Monday–Friday date recognition, Tier 1 extraction, comma parsing, import summaries, and failure handling.
+Add one-time administrator authorization, a manual Sync Now operation, Monday–Friday date recognition, Tier 1/Tier 2 extraction, English spelling-list extraction, comma parsing, import summaries, and failure handling.
 
 ### Stage 5 — Audio service
 
-Add cached Mandarin audio, Replay, and later pronunciation corrections.
+Add cached Mandarin and English audio, Replay, Tier 2 canonical-audio playback, and later pronunciation corrections.
 
 ### Stage 6 — Automatic operation
 
@@ -135,6 +156,10 @@ Deploy the importer to Cloud Run and schedule it with Cloud Scheduler every Mond
 ### Stage 7 — Public testing
 
 Test multiple families, multiple grades, new midyear students, school-year transitions, archived profiles, cross-device parent sessions, and future weekly email reports.
+
+### Stage 8 — Tier 2 reading and English spelling
+
+Add Tier 2 extraction and the separate four-second reading flow. Request microphone permission from a clear user action, record each response with `MediaRecorder`, upload clips immediately to private family-scoped storage, and persist recording metadata in Firestore. Add canonical-audio playback, child-recording playback, same-row self-assessment, reading review, and reading history without mixing reading results into dictation scores. Add English spelling-list extraction, English audio prompts, English dictation, independent English review, and independent English scores. Test permission denial, unsupported recording formats, interrupted uploads, refreshes, abandoned sessions, replay controls, and cross-device review.
 
 ## Deferred features
 
@@ -148,12 +173,35 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Do not delete historical weekly sets or completed attempts.
 - Do not store private credentials in GitHub.
 - Keep parent settings separate from child practice screens.
+- Never record a child before microphone permission and a clear reading-session action have been provided.
+- Treat child voice recordings as private personal data; restrict access to the authorized family and define retention/deletion behavior before production.
+- Do not use automatic speech recognition as the official pronunciation score without a separately validated feature; the child’s explicit self-assessment is the initial reading result.
 
-## Next session handoff — Stage 2 clarification questions
+## Historical Stage 2 clarification questions (superseded)
 
-Stage 1 prototype work is complete and has been manually tested successfully. The repository is currently a React/Vite prototype using localStorage persistence. Firebase authentication, Firestore persistence, and account management have not yet been implemented.
+## Stage 2 implementation status — 2026-09-22
 
-Before beginning Stage 2, resolve these questions:
+Stage 2 is implemented in the repository as a Firebase REST-backed browser flow with safe configuration placeholders. The existing warmup, Acquisition, Test Review, timers, audio sequence, review, scoring, graphs, and child-friendly presentation remain in place.
+
+Implemented:
+
+- Email/password sign-up, sign-in, sign-out, password reset, persistent signed-in sessions, loading state, and readable authentication errors.
+- One private family per parent, multiple active/inactive children, child switching, nickname editing, grade editing, reactivation, and non-destructive inactivity.
+- Grade model for Kindergarten through Grade 5, with Grade 5 as the only active deck configuration.
+- August 1 America/Los_Angeles grade-promotion suggestion with parent confirmation; historical datasets retain their original grade and school year.
+- Grade/school-year dataset filtering, stable date-range dataset identities, cloud sessions, temporary attempts, completed attempts, dataset-level scores, and cross-device stale-session cleanup.
+- Idempotent, configurable Google Slides parser and local import command for the supplied Grade 5 deck. Import failures do not replace prior valid datasets.
+- Explicit writing-workshop outcomes are distinguishable from import errors and use a Warmup-only completion path without creating a zero-word primary score.
+- Missing-current-week fallback: eligible prior mastery targets remain available through a warmup-only session when a weekly import is missing, malformed, or a writing-workshop period has no vocabulary targets. No primary dataset or primary score is fabricated.
+- Firestore ownership rules in `firestore.rules`.
+
+Required setup and limitations:
+
+- Copy `.env.example` to `.env.local` and provide a Firebase web API key and project ID. Deploy the Firestore rules in a Firebase project.
+- The importer has a reusable persistence adapter and local command, but a Cloud Run service and Monday Cloud Scheduler have not been deployed. Automatic production scheduling remains deferred.
+- The source deck was inspected read-only. Its actual structure and observed page IDs are in `docs/grade5-deck-structure.md`. The Drive connector was blocked by the environment's approval policy, so the signed-in Slides browser was used as a read-only fallback.
+
+These questions were written before Stage 2 implementation and are retained only as historical context. The implementation above records the decisions used in this repository.
 
 1. Should Stage 2 implement a fully working Firebase integration now, or only prepare the Firebase structure until a Firebase project and configuration are provided?
 
