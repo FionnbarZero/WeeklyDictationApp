@@ -3,8 +3,26 @@ export const DEFAULT_TIME_ZONE = 'America/Los_Angeles'
 export const SUPPORTED_GRADES = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 export type SupportedGrade = typeof SUPPORTED_GRADES[number]
 
+export type GradeTimerConfig = {
+  warmup: number
+  acquisition: number
+  testReview: number
+}
+
+export const GRADE_TIMERS: Record<SupportedGrade, GradeTimerConfig> = {
+  Kindergarten: { warmup: 5, acquisition: 20, testReview: 10 },
+  'Grade 1': { warmup: 5, acquisition: 20, testReview: 10 },
+  'Grade 2': { warmup: 10, acquisition: 20, testReview: 10 },
+  'Grade 3': { warmup: 5, acquisition: 20, testReview: 10 },
+  'Grade 4': { warmup: 5, acquisition: 20, testReview: 10 },
+  'Grade 5': { warmup: 5, acquisition: 20, testReview: 10 },
+}
+
+export const TIMER_DEFAULT_GRADE: SupportedGrade = 'Kindergarten'
+
 export const DEFAULT_GRADE = 'Grade 2' as SupportedGrade
 export const DEFAULT_SCHOOL_YEAR = '2026–2027'
+export const PRIMARY_LIFECYCLE_WARMUP_TRIALS = 6
 export const GRADE2_DECK_ID = '10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4'
 export const GRADE5_DECK_ID = '1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI'
 export const ACTIVE_DECK_ID = GRADE2_DECK_ID

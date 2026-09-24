@@ -66,10 +66,23 @@ Valid imports activate automatically and do not require routine word-by-word app
 - Older datasets remain archived and keep their original date ranges and history.
 - Dataset IDs must be stable and must not be replaced by labels such as current or previous.
 - Warmup is required before every Acquisition or Test Review session.
+- Acquisition and Test Review may both be active in the same calendar week. They are separate, visible practice choices, and each starts its own required Warmup before its primary phase.
 
 Use `2026–2027` as the display school-year value. Use the normalized ASCII token `2026-27` only inside deterministic IDs. Each dataset receives a deterministic internal ID formed as `grade__school-year__week-start__week-end`, such as `grade-2__2026-27__2026-09-07__2026-09-11`. The date components use normalized ISO dates even when the slide uses a shorter date format. The ID prevents duplicate imports, separates the same week across grades or school years, and links datasets to words, attempts, scores, and history. It is an internal Firestore key and is not displayed to children; user-facing screens show the date range instead.
 
-Warmup selection includes all words from the previous week's Acquisition dataset now in Test Review, every complete dataset with an error in the previous seven days, and approximately 25% additional eligible isolated words. The additional count is `ceil(25% × the assembled A+B set)`; if A+B is empty but valid historical words exist, one eligible fallback word is selected so warmup is not empty. A word is reviewed only after a right/wrong result is recorded.
+Warmup is a practice segment, not a replacement weekly dataset identity or lifecycle label. It uses persistent per-child/per-word state while every source dataset retains its canonical date range and history. Only archived datasets are eligible to supply Warmup words. Active Acquisition, active Test Review, future, writing-workshop, and malformed datasets are excluded even when a persisted word state is marked Recent Review or Errored Word. A dataset enters Recent Review only after its Test Review week ends and it becomes archived; older eligible words seed Random Rotation, and incorrect responses within eligible archived datasets take priority as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. Each standalone warmup targets 16 words, while the required Warmup preceding Acquisition or Test Review currently targets 6 words. Both use 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas, filling missing slots with eligible unique words and repeating only Random Rotation words when the eligible pool is smaller than the target size. Random Rotation is a per-child shuffle bag and its attempts feed a separate monthly accuracy history.
+
+### Acquisition teaching sequence
+
+Every Acquisition trial uses the same child-facing cycle: timed writing prompt, reveal/review frame, Yes/No response, then the next writing prompt without an extra transition screen. Show/copy prompts visibly show the word; all other writing prompts hide it. True-BM words use the approved pool `一、二、三、四、五、六、七、八、九、十、大、小、人、水`. Their Yes/No responses and all show/copy responses are discarded. Hidden current-target trials and earned-BM trials are recorded and scored.
+
+Introduction presents two different true-BM words for 5 seconds each, one 10-second show/say/copy target trial, then one 10-second hidden target trial. A correct hidden response starts Expanded Trials; an incorrect response starts Correction.
+
+Expanded Trials use the exact 10-position sequence `target, BM, target, BM, BM, target, BM, BM, BM, target`. The hidden-target timer starts at 10 seconds for the Introduction attempt and decreases by one second after each hidden current-target attempt to a 5-second minimum. Every BM opportunity independently chooses 50% true BM and 50% earned BM; while the earned pool is empty it uses true BM. True and earned pools use shuffle-bag rotation, exhaust available members before reuse, and prevent consecutive BM-word repetition. Completing every required target trial promotes that current-week target into the earned-BM pool and starts Introduction for the next target.
+
+Correction presents three 10-second show/say/copy trials, one 10-second hidden trial, a new 5-second true-BM trial, and a final 10-second hidden trial. The final hidden response determines success. An incorrect final response repeats Correction; three consecutive scored errors restart that word from Introduction; any correct scored response resets its consecutive-error count. Successful Correction for a current target restarts Expanded Trials at step 1 and resets its timer progression, so that first target receives 10 seconds. Successful Correction for an earned-BM word returns it to the earned pool and resumes the interrupted target at the next exact sequence step.
+
+The Acquisition score is trial-based. Every hidden current-target attempt and earned-BM attempt contributes; true-BM and show/copy trials never contribute. Acquisition must not collapse repeated trials into one final answer per vocabulary word.
 
 Dataset selection filters by the child’s grade and school year before applying lifecycle dates. If a configured grade has no datasets, the child sees the existing empty-state or warmup fallback behavior. Existing historical Grade 5 records must not be deleted while Grade 5 remains empty for new imports.
 
@@ -84,12 +97,12 @@ For every warmup, Acquisition, or Test Review term:
 1. Speak the Mandarin term aloud.
 2. Offer a Replay button.
 3. The child writes the answer on paper.
-4. Run the phase timer: 5 seconds for Warmup, 20 seconds for Acquisition, or 10 seconds for Test Review.
+4. Run the phase timer: Grade 2 uses 10 seconds for Warmup, 20 seconds for Acquisition, and 10 seconds for Test Review; other configured grades use their configured timer values.
 5. Reveal the answer only during the review portion after the full dictation set is complete.
 6. The child selects I got it right or I got it wrong.
 7. Record the result and move to the next interstitial or review word.
 
-The word/context/repeated-word audio sequence uses one-second pauses. Warmup uses the same sequence at approximately 1.5 times the normal speech rate, capped to a safe browser-supported rate. If the child leaves, refreshes, or otherwise abandons the session, erase all temporary warmup and primary results and do not create scores.
+The word/context/repeated-word audio sequence uses one-second pauses. Warmup uses the same sequence at approximately 1.5 times the normal speech rate, capped to a safe browser-supported rate. If the child leaves, refreshes, or otherwise abandons an incomplete session, discard that session's temporary Warmup and primary answers and do not create results, scores, adaptive-state updates, or a completed-session record. Previously completed sessions remain intact.
 
 After the Tier 1 dictation is complete, the session continues with a separate Tier 2 character-reading section:
 
@@ -107,7 +120,7 @@ Following Tier 2 reading, begin a separate English spelling dictation section us
 
 ## Scoring and history
 
-The primary metric is percentage correct. Create a score only after every word in the relevant dataset has been reviewed for that session. Warmup scores are tracked independently by source dataset and are created only when every word from that source dataset was included; isolated warmup selections do not create a dataset score. Show a separate history graph for every permanent weekly dataset, ordered newest first, with each point labeled by phase and date.
+The primary metric is percentage correct. Create a primary dataset score only after every word in the relevant dataset has been reviewed for that session. Warmup does not create per-dataset scores; its Random Rotation attempts feed the separate monthly Random Rotation line graph. Show a separate history graph for every permanent weekly dataset, ordered newest first, with each point labeled by phase and date.
 
 Preserve detailed records containing child ID, stable dataset ID and date range, word ID, grade, lifecycle phase, unique session ID, local session date, correct/incorrect result, error history, warmup-session history, complete-source-dataset status, scoring status, answer-reveal method, and application version. Duplicate session IDs must never create duplicate scores.
 
@@ -117,7 +130,7 @@ Reading records must additionally preserve the child ID, Tier 2 word ID, session
 
 Use a consistent Mainland Mandarin China voice. The preferred Google Cloud Text-to-Speech voice is `cmn-CN-Wavenet-C`. Use `en-GB-Neural2-F` for English instructions such as the final review reminder. Generate and cache audio when a new term is imported; Replay uses the stored file.
 
-The dictation audio should preserve the approved sequence: word at the current speech rate, a 1-second pause, the context sentence, a 1-second pause, the word, a 1-second pause, and the word again. Warmup multiplies the current rate by approximately 1.5. The review instruction should be available as both visible text and English audio. The current browser speech synthesis is only a temporary prototype fallback; production audio must use the cached Google Cloud files.
+When an approved `word.sentence` exists, dictation audio should preserve the sequence: word at the current speech rate, a 1-second pause, the approved context sentence, a 1-second pause, the word, a 1-second pause, and the word again. If no approved sentence exists, omit that audio step rather than inferring or generating context from Sentence Frames, examples, slide prose, or unrelated writing content. Warmup multiplies the current rate by approximately 1.5. The review instruction should be available as both visible text and English audio. The current browser speech synthesis is only a temporary prototype fallback; production audio must use the cached Google Cloud files.
 
 For Tier 2 reading, canonical Mandarin audio is played before the child’s response is recorded. The browser microphone uses `MediaRecorder` for the four-second clip. Recordings must be uploaded to private Firebase Storage or Google Cloud Storage, with only metadata and the storage path kept in Firestore. The child can replay the stored response from the reading review page. If recording permission is denied or an upload fails, the app must provide a clear fallback and must not silently mark the response as correct.
 
@@ -220,7 +233,7 @@ Required setup and limitations:
 - The importer has a reusable persistence adapter and local command, but a Cloud Run service and Monday Cloud Scheduler have not been deployed. Automatic production scheduling remains deferred.
 - The active Grade 2 source deck was inspected read-only. Its actual structure and observed page IDs are in `docs/grade2-deck-structure.md`. Its current ID is `10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`.
 
-These questions were written before Stage 2 implementation and are retained only as historical context. The implementation above records the decisions used in this repository.
+These questions were written before Stage 2 implementation and are retained only as historical context. The implementation above records the decisions used in this repository. Incomplete sessions are retained only as abandoned cloud audit records when applicable; their temporary attempts are excluded from local results, adaptive state, completed sessions, and official scores.
 
 1. Should Stage 2 implement a fully working Firebase integration now, or only prepare the Firebase structure until a Firebase project and configuration are provided?
 

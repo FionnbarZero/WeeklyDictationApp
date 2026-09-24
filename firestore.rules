@@ -14,6 +14,39 @@ service cloud.firestore {
       return childExists(familyId, childId)
         && get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)).data.active == true;
     }
+    function validSessionStatus() {
+      return request.resource.data.status in ['in_progress', 'completed', 'abandoned'];
+    }
+    function validAttempt(familyId, childId, sessionId) {
+      return request.resource.data.sessionId is string
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.wordId is string
+        && request.resource.data.sourceDatasetId is string
+        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId))
+        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
+        && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && request.resource.data.correct is bool
+        && request.resource.data.reviewedAt is string
+        && request.resource.data.completionStatus in ['temporary', 'complete'];
+    }
+    function validScore(familyId, childId) {
+      return request.resource.data.childId is string
+        && request.resource.data.childId == childId
+        && request.resource.data.datasetId is string
+        && request.resource.data.sessionId is string
+        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId))
+        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+        && request.resource.data.sessionDate is string
+        && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && request.resource.data.percent is number
+        && request.resource.data.percent >= 0
+        && request.resource.data.percent <= 100
+        && request.resource.data.correct is number
+        && request.resource.data.wordCount is number
+        && request.resource.data.wordCount > 0
+        && request.resource.data.correct >= 0
+        && request.resource.data.correct <= request.resource.data.wordCount;
+    }
 
     match /users/{parentId} {
       allow read: if signedIn() && request.auth.uid == parentId;
@@ -49,14 +82,15 @@ service cloud.firestore {
           allow read: if childExists(familyId, childId);
           allow create, update: if ownsActiveChild(familyId, childId)
             && request.resource.data.childId == childId
-            && request.resource.data.familyId == familyId;
+            && request.resource.data.familyId == familyId
+            && validSessionStatus()
+            && request.resource.data.primaryPhase in ['acquisition', 'test-review'];
           allow delete: if false;
 
           match /attempts/{attemptId} {
             allow read: if childExists(familyId, childId);
             allow create, update: if ownsActiveChild(familyId, childId)
-              && request.resource.data.sessionId == sessionId
-              && request.resource.data.wordId is string;
+              && validAttempt(familyId, childId, sessionId);
             allow delete: if false;
           }
         }
@@ -64,9 +98,20 @@ service cloud.firestore {
         match /scores/{scoreId} {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
-            && request.resource.data.childId == childId
-            && request.resource.data.sessionId is string;
+            && validScore(familyId, childId);
           allow update, delete: if false;
+        }
+
+        match /warmupState/{stateId} {
+          allow read: if childExists(familyId, childId);
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && stateId == 'current'
+            && request.resource.data.childId == childId
+            && request.resource.data.rotationCycleId is number
+            && request.resource.data.childWordStates is list
+            && request.resource.data.monthlyRotationScores is list
+            && request.resource.data.updatedAt is string;
+          allow delete: if false;
         }
       }
     }
