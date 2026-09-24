@@ -1,13 +1,14 @@
-import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config'
-import { getIdToken, type AuthUser } from './firebaseClient'
-import type { Dataset, DatasetScore, Word, WordResult } from './domain'
+import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config.ts'
+import { getIdToken, type AuthUser } from './firebaseClient.ts'
+import { deriveChildWordStates, type ChildWordState, type Dataset, type DatasetScore, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
+import { isCanonicalDataset } from './slidesImporter.ts'
 
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
 export type FamilyRecord = { id: string; ownerParentId: string; createdAt: string; updatedAt: string }
 export type ChildProfile = { id: string; nickname: string; grade: string; schoolYear: string; active: boolean; gradeEffectiveDate: string; createdAt: string; updatedAt: string }
 export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; warmupOnly?: boolean; status: 'in_progress' | 'completed' | 'abandoned'; warmupStatus: 'in_progress' | 'completed' | 'not_started'; applicationVersion: string }
 export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete' }
-export type ImportLog = { id: string; datasetId?: string; sourceDeckId: string; sourceSlideId?: string; status: 'imported' | 'duplicate' | 'writing-workshop' | 'error'; message: string; createdAt: string }
+export type CloudAdaptiveState = { childId: string; childWordStates: ChildWordState[]; monthlyRotationScores: MonthlyRotationScore[]; rotationCycleId: number; updatedAt: string }
 
 type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue>; createTime?: string; updateTime?: string }
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
@@ -55,7 +56,17 @@ async function getDoc<T>(path: string) {
   }
 }
 async function putDoc(path: string, value: Record<string, unknown>) { await firestoreRequest(path, { method: 'PATCH', body: JSON.stringify(encodeFields(value)) }) }
-async function listDocs<T>(path: string) { const response = await firestoreRequest<{ documents?: FirestoreDocument[] }>(`${path}?pageSize=300`); return (response.documents || []).map((document) => ({ id: document.name?.split('/').pop() || '', ...decodeDocument<T>(document) })) as Array<T & { id: string }> }
+async function listDocs<T>(path: string) {
+  const documents: FirestoreDocument[] = []
+  let pageToken = ''
+  do {
+    const query = new URLSearchParams({ pageSize: '300' }); if (pageToken) query.set('pageToken', pageToken)
+    const response = await firestoreRequest<{ documents?: FirestoreDocument[]; nextPageToken?: string }>(`${path}?${query}`)
+    documents.push(...(response.documents || []))
+    pageToken = response.nextPageToken || ''
+  } while (pageToken)
+  return documents.map((document) => ({ id: document.name?.split('/').pop() || '', ...decodeDocument<T>(document) })) as Array<T & { id: string }>
+}
 
 export async function ensureParentFamily(user: AuthUser): Promise<{ parent: ParentRecord; family: FamilyRecord }> {
   const now = new Date().toISOString(); const familyId = `family-${user.uid}`
@@ -72,12 +83,14 @@ export async function updateChild(familyId: string, childId: string, patch: Part
 
 export async function listDatasets() { return listDocs<Dataset>(docPath(['datasets'])) }
 export async function listDatasetWords(datasetId: string) { return listDocs<Word>(docPath(['datasets', datasetId, 'words'])) }
-export async function saveDataset(dataset: Dataset) { await putDoc(docPath(['datasets', dataset.id]), dataset); await Promise.all(dataset.words.map((word) => putDoc(docPath(['datasets', dataset.id, 'words', word.id]), word))) }
-export async function writeImportLog(log: ImportLog) { await putDoc(docPath(['importLogs', log.id]), log) }
+// Shared dataset and import-log writes are intentionally server-only. The browser
+// client may read shared datasets, but never exposes those write operations.
 
 export async function listSessions(familyId: string, childId: string) { return listDocs<CloudSession>(docPath(['families', familyId, 'children', childId, 'sessions'])) }
 export async function listAttempts(familyId: string, childId: string, sessionId: string) { return listDocs<CloudAttempt>(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts'])) }
 export async function listScores(familyId: string, childId: string) { return listDocs<DatasetScore>(docPath(['families', familyId, 'children', childId, 'scores'])) }
+export async function getCloudAdaptiveState(familyId: string, childId: string) { return getDoc<CloudAdaptiveState>(docPath(['families', familyId, 'children', childId, 'warmupState', 'current'])) }
+export async function saveCloudAdaptiveState(familyId: string, childId: string, state: CloudAdaptiveState) { await putDoc(docPath(['families', familyId, 'children', childId, 'warmupState', 'current']), state) }
 export async function abandonSession(familyId: string, childId: string, session: CloudSession) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'abandoned', completedAt: new Date().toISOString() }); const attempts = await listAttempts(familyId, childId, session.id); await Promise.all(attempts.filter((attempt) => attempt.completionStatus === 'temporary').map((attempt) => deleteDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id])))) }
 export async function deleteDoc(path: string) { await firestoreRequest(path, { method: 'DELETE' }) }
 
@@ -86,15 +99,29 @@ export async function updateCloudSession(familyId: string, childId: string, sess
 export async function saveCloudAttempt(familyId: string, childId: string, sessionId: string, attempt: CloudAttempt) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts', attempt.id]), attempt) }
 export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'completed', warmupStatus: 'completed', completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
 
-export function cloudDataToAppState(datasets: Dataset[], scores: DatasetScore[], sessions: CloudSession[], attempts: CloudAttempt[], childId: string) {
-  const results: WordResult[] = attempts.map((attempt) => ({ id: attempt.id, childId, datasetId: attempt.sourceDatasetId, datasetDateRange: datasets.find((dataset) => dataset.id === attempt.sourceDatasetId)?.dateRange || 'Unknown date range', wordId: attempt.wordId, grade: datasets.find((dataset) => dataset.id === attempt.sourceDatasetId)?.grade || 'Grade 2', phase: attempt.phase, sessionId: attempt.sessionId, sessionDate: attempt.reviewedAt.slice(0, 10), completedAt: attempt.reviewedAt, correct: attempt.correct, revealMethod: 'timer', scored: attempt.completionStatus === 'complete', completeSourceDatasetReviewed: attempt.completionStatus === 'complete' }))
+export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, adaptiveState?: CloudAdaptiveState | null) {
+  const seenDatasetIds = new Set<string>()
+  const datasets = rawDatasets.filter((dataset) => isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true))
+  const datasetsById = new Map(datasets.map((dataset) => [dataset.id, dataset]))
+  const sessions = rawSessions.filter((session) => session.childId === childId)
+  const sessionIds = new Set(sessions.map((session) => session.id))
+  const attempts = rawAttempts.filter((attempt) => sessionIds.has(attempt.sessionId) && datasetsById.has(attempt.sourceDatasetId) && datasetsById.get(attempt.sourceDatasetId)!.words.some((word) => word.id === attempt.wordId) && (attempt.completionStatus === 'complete' || attempt.completionStatus === 'temporary'))
+  const results: WordResult[] = attempts.map((attempt) => ({ id: attempt.id, childId, datasetId: attempt.sourceDatasetId, datasetDateRange: datasetsById.get(attempt.sourceDatasetId)!.dateRange, wordId: attempt.wordId, grade: datasetsById.get(attempt.sourceDatasetId)!.grade, phase: attempt.phase, sessionId: attempt.sessionId, sessionDate: attempt.reviewedAt.slice(0, 10), completedAt: attempt.reviewedAt, correct: attempt.correct, revealMethod: 'timer', scored: attempt.completionStatus === 'complete', completeSourceDatasetReviewed: attempt.completionStatus === 'complete' }))
+  const scores = rawScores.filter((score) => score.childId === childId && datasetsById.has(score.datasetId) && Number.isFinite(score.percent) && score.percent >= 0 && score.percent <= 100)
   const warmupSessions = sessions.map((session) => {
     const warmup = attempts.filter((attempt) => attempt.sessionId === session.id && attempt.phase === 'warmup' && attempt.completionStatus === 'complete')
     const datasetIds = [...new Set(warmup.map((attempt) => attempt.sourceDatasetId))]
     const completeDatasetIds = datasetIds.filter((datasetId) => warmup.filter((attempt) => attempt.sourceDatasetId === datasetId).length === (datasets.find((dataset) => dataset.id === datasetId)?.words.length || 0))
     return { id: `${session.id}-warmup`, childId, sessionId: session.id, sessionDate: session.localDate, completedAt: warmup.length ? warmup[ warmup.length - 1 ].reviewedAt : undefined, wordIds: warmup.map((attempt) => attempt.wordId), datasetIds, completeDatasetIds, complete: Boolean(warmup.length) }
   }).filter((session) => session.complete)
-  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => session.status === 'completed' && !session.warmupOnly).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryPhase: session.primaryPhase, complete: true as const })), legacyRecords: [] }
+  const validWordIds = new Set(datasets.flatMap((dataset) => dataset.words.map((word) => word.id)))
+  const trustedStates = adaptiveState?.childId === childId && Array.isArray(adaptiveState.childWordStates) && adaptiveState.childWordStates.every((state) => state.childId === childId && validWordIds.has(state.wordId) && datasetsById.has(state.datasetId) && Number.isInteger(state.correctStreak) && state.correctStreak >= 0) ? adaptiveState.childWordStates : null
+  const trustedMonthlyScores = adaptiveState?.childId === childId && Array.isArray(adaptiveState.monthlyRotationScores) && adaptiveState.monthlyRotationScores.every((score) => score.childId === childId && Number.isFinite(score.correct) && Number.isFinite(score.total) && Number.isFinite(score.percent)) ? adaptiveState.monthlyRotationScores : null
+  const trustedCycle = adaptiveState?.childId === childId && Number.isInteger(adaptiveState.rotationCycleId) && adaptiveState.rotationCycleId > 0 ? adaptiveState.rotationCycleId : 1
+  const childWordStates = trustedStates || deriveChildWordStates({ datasets, results, childId })
+  const monthlyRotationScores = trustedMonthlyScores || []
+  const rotationCycles = { [childId]: trustedCycle }
+  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => session.status === 'completed' && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryPhase: session.primaryPhase, complete: true as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles }
 }
 
 export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress'): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> { const now = new Date(); return { id, childId, sessionDate: now.toISOString(), localDate: new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIME_ZONE }).format(now), startedAt: now.toISOString(), primaryPhase, datasetId, warmupOnly: false, warmupStatus } }

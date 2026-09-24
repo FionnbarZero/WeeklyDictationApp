@@ -1,4 +1,4 @@
-import { firebaseConfig, firebaseConfigReady } from './config'
+import { firebaseConfig, firebaseConfigReady } from './config.ts'
 
 type StoredAuth = {
   idToken: string

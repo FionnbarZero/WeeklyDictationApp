@@ -1,3 +1,6 @@
+import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
+import { GRADE_TIMERS, TIMER_DEFAULT_GRADE, type SupportedGrade } from './config.ts'
+
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
 export type DatasetLifecycle = LifecyclePhase | 'future' | 'archived'
@@ -86,6 +89,33 @@ export type CompletedSession = {
   complete: boolean
 }
 
+export type WarmupCategory = 'acquisition' | 'recent-review' | 'errored-word' | 'random-rotation'
+
+export type ChildWordState = {
+  id: string
+  childId: string
+  wordId: string
+  datasetId: string
+  category: WarmupCategory
+  correctStreak: number
+  lastReviewedAt?: string
+  lastIncorrectAt?: string
+  randomCycleId?: number
+  randomCycleReviewed?: boolean
+}
+
+export type MonthlyRotationScore = {
+  id: string
+  childId: string
+  month: string
+  correct: number
+  total: number
+  percent: number
+  status: 'open' | 'finalized'
+  updatedAt: string
+  finalizedAt?: string
+}
+
 export type LegacyRecord = {
   id: string
   childId: string
@@ -106,12 +136,64 @@ export type AppState = {
   warmupSessions: WarmupSessionRecord[]
   completedSessions: CompletedSession[]
   legacyRecords: LegacyRecord[]
+  childWordStates: ChildWordState[]
+  monthlyRotationScores: MonthlyRotationScore[]
+  rotationCycles: Record<string, number>
 }
 
 export type SessionAnswer = {
   word: Word
   correct: boolean
   revealMethod: RevealMethod
+}
+
+export type AcquisitionPhase = 'introduction' | 'expanded-trials' | 'correction'
+export type AcquisitionPromptKind = 'true-bm' | 'earned-bm' | 'show-copy' | 'target'
+
+export type AcquisitionTimerConfig = {
+  trueBmSeconds: number
+  earnedBmSeconds: number
+  introductionShowCopySeconds: number
+  introductionHiddenTargetSeconds: number
+  expandedStartSeconds: number
+  expandedMinimumSeconds: number
+  expandedDecrementSeconds: number
+  correctionShowCopySeconds: number
+  correctionHiddenSeconds: number
+}
+
+export type AcquisitionPrompt = {
+  id: string
+  kind: AcquisitionPromptKind
+  phase: AcquisitionPhase
+  word: Word
+  targetWordId?: string
+  scored: boolean
+  timerSeconds: number
+  revealed: boolean
+}
+
+export type AcquisitionFlow = {
+  datasetId: string
+  targetIndex: number
+  currentTarget: Word | null
+  phase: AcquisitionPhase
+  step: number
+  trialNumber: number
+  expandedTargetAttempts: number
+  earnedBmPool: Word[]
+  trueBmBag: Word[]
+  earnedBmBag: Word[]
+  lastBmWordId?: string
+  consecutiveErrors: Record<string, number>
+  correctionRole?: 'current-target' | 'earned-bm'
+  resumeAfterEarnedBm?: { step: number; expandedTargetAttempts: number; currentTarget: Word }
+  prompt: AcquisitionPrompt | null
+  complete: boolean
+}
+
+export function shouldRecordAcquisitionAnswer(prompt: Pick<AcquisitionPrompt, 'scored'>) {
+  return prompt.scored
 }
 
 export type PracticeSession = {
@@ -129,26 +211,69 @@ export type PracticeSession = {
   startedAt: string
   warmupAnswers: SessionAnswer[]
   primaryAnswers: SessionAnswer[]
+  warmupCategoryByWordId: Record<string, WarmupCategory>
+  warmupRandomRotationWordIds: string[]
+  warmupRotationCycleId: number
+  acquisition?: AcquisitionFlow
+  warmupSkipped?: boolean
+  testReviewSkipped?: boolean
   warmupOnly?: boolean
   cloudSessionId?: string
 }
 
+export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'acquisition' | 'queue' | 'index'>) {
+  return session.segment === 'primary' && session.acquisition?.prompt ? session.acquisition.prompt.word : session.queue[session.index]
+}
+
 export type WarmupSelection = {
   words: Word[]
-  categoryAWordIds: string[]
-  categoryBWordIds: string[]
-  categoryCWordIds: string[]
-  additionalCount: number
-  roundingRule: 'ceil'
+  randomRotationWordIds: string[]
+  recentReviewWordIds: string[]
+  erroredWordIds: string[]
+  rotationCycleId: number
 }
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
 export const LEGACY_ATTEMPTS_KEY = 'weekly-dictation-attempts'
-export const WARMUP_ADDITIONAL_FRACTION = 0.25
+export const WARMUP_TARGET_SIZE = 16
+export const RECENT_REVIEW_PROMOTION_STREAK = 2
+export const ERRORED_WORD_PROMOTION_STREAK = 3
 export const AUDIO_PAUSE_MS = 1000
 export const NORMAL_WORD_RATE = 0.25
 export const NORMAL_SENTENCE_RATE = 0.55
 export const GRADE_ORDER = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
+
+export const ACQUISITION_TIMER_DEFAULTS: AcquisitionTimerConfig = {
+  trueBmSeconds: 5,
+  earnedBmSeconds: 5,
+  introductionShowCopySeconds: 10,
+  introductionHiddenTargetSeconds: 10,
+  expandedStartSeconds: 10,
+  expandedMinimumSeconds: 5,
+  expandedDecrementSeconds: 1,
+  correctionShowCopySeconds: 10,
+  correctionHiddenSeconds: 10,
+}
+
+export const ACQUISITION_TIMER_CONFIG: Record<string, AcquisitionTimerConfig> = Object.fromEntries(
+  GRADE_ORDER.map((grade) => [grade, { ...ACQUISITION_TIMER_DEFAULTS }]),
+)
+
+export function acquisitionTimerConfigFor(grade: string) {
+  return ACQUISITION_TIMER_CONFIG[grade] || ACQUISITION_TIMER_DEFAULTS
+}
+
+const TRUE_BM_TEXTS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '大', '小', '人', '水']
+
+export const TRUE_BM_WORDS: Word[] = TRUE_BM_TEXTS.map((text, index) => ({
+  id: `true-bm-${index + 1}`,
+  text,
+  sentence: '',
+  datasetId: '__true-bm__',
+  language: 'mandarin',
+  tier: 'tier-1',
+  activityType: 'dictation',
+}))
 
 export type AudioPart = { text: string; rate: number }
 
@@ -156,81 +281,24 @@ export function audioPartsForWord(word: Word, warmup = false): AudioPart[] {
   const multiplier = warmup ? 1.5 : 1
   const wordRate = Math.min(1, NORMAL_WORD_RATE * multiplier)
   const sentenceRate = Math.min(1, NORMAL_SENTENCE_RATE * multiplier)
-  return [{ text: word.text, rate: wordRate }, { text: word.sentence, rate: sentenceRate }, { text: word.text, rate: wordRate }, { text: word.text, rate: wordRate }]
+  return [{ text: word.text, rate: wordRate }, ...(word.sentence.trim() ? [{ text: word.sentence, rate: sentenceRate }] : []), { text: word.text, rate: wordRate }, { text: word.text, rate: wordRate }]
 }
 
-export function timerSecondsFor(segment: 'warmup' | 'primary', primaryPhase: PrimaryPhase) {
-  return segment === 'warmup' ? 5 : primaryPhase === 'test-review' ? 10 : 20
+export function timerSecondsFor(grade: string | null | undefined, segment: string | null | undefined, primaryPhase: string | null | undefined) {
+  const selectedGrade = isSupportedGrade(grade) ? grade : TIMER_DEFAULT_GRADE
+  const selectedSegment = segment === 'warmup' ? 'warmup' : 'primary'
+  const selectedPhase = primaryPhase === 'test-review' ? 'test-review' : 'acquisition'
+  const timer = GRADE_TIMERS[selectedGrade]
+  return selectedSegment === 'warmup' ? timer.warmup : selectedPhase === 'test-review' ? timer.testReview : timer.acquisition
 }
 
 export function createSessionId() {
   return `session-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`
 }
 
-export const sampleDatasets: Dataset[] = [
-  {
-    id: '2026-08-10__2026-08-14', dateRange: '8/10–8/14', startDate: '2026-08-10', endDate: '2026-08-14', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Foundations from this date range',
-    words: [
-      { id: '2026-08-10__2026-08-14-1', text: '太阳', sentence: '太阳从东方升起。', datasetId: '2026-08-10__2026-08-14' },
-      { id: '2026-08-10__2026-08-14-2', text: '花', sentence: '花园里有很多花。', datasetId: '2026-08-10__2026-08-14' },
-      { id: '2026-08-10__2026-08-14-3', text: '水', sentence: '请给我一杯水。', datasetId: '2026-08-10__2026-08-14' },
-      { id: '2026-08-10__2026-08-14-4', text: '家', sentence: '我喜欢我的家。', datasetId: '2026-08-10__2026-08-14' },
-      { id: '2026-08-10__2026-08-14-5', text: '书', sentence: '这本书很有趣。', datasetId: '2026-08-10__2026-08-14' },
-    ],
-  },
-  {
-    id: '2026-08-17__2026-08-21', dateRange: '8/17–8/21', startDate: '2026-08-17', endDate: '2026-08-21', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Foundations from this date range',
-    words: [
-      { id: '2026-08-17__2026-08-21-1', text: '苹果', sentence: '我喜欢吃苹果。', datasetId: '2026-08-17__2026-08-21' },
-      { id: '2026-08-17__2026-08-21-2', text: '香蕉', sentence: '香蕉是黄色的。', datasetId: '2026-08-17__2026-08-21' },
-      { id: '2026-08-17__2026-08-21-3', text: '牛奶', sentence: '早上我喝牛奶。', datasetId: '2026-08-17__2026-08-21' },
-      { id: '2026-08-17__2026-08-21-4', text: '面包', sentence: '面包在桌子上。', datasetId: '2026-08-17__2026-08-21' },
-    ],
-  },
-  {
-    id: '2026-08-24__2026-08-28', dateRange: '8/24–8/28', startDate: '2026-08-24', endDate: '2026-08-28', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Foundations from this date range',
-    words: [
-      { id: '2026-08-24__2026-08-28-1', text: '红色', sentence: '我喜欢红色的花。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-2', text: '蓝色', sentence: '天空是蓝色的。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-3', text: '黄色', sentence: '小鸭子是黄色的。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-4', text: '绿色', sentence: '树叶是绿色的。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-5', text: '大', sentence: '这只狗很大。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-6', text: '小', sentence: '这只猫很小。', datasetId: '2026-08-24__2026-08-28' },
-      { id: '2026-08-24__2026-08-28-7', text: '新', sentence: '这是我的新书。', datasetId: '2026-08-24__2026-08-28' },
-    ],
-  },
-  {
-    id: '2026-08-31__2026-09-04', dateRange: '8/31–9/4', startDate: '2026-08-31', endDate: '2026-09-04', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Foundations from this date range',
-    words: [
-      { id: '2026-08-31__2026-09-04-1', text: '月亮', sentence: '晚上可以看见月亮。', datasetId: '2026-08-31__2026-09-04' },
-      { id: '2026-08-31__2026-09-04-2', text: '小鸟', sentence: '小鸟在树上唱歌。', datasetId: '2026-08-31__2026-09-04' },
-      { id: '2026-08-31__2026-09-04-3', text: '回家', sentence: '放学以后我们回家。', datasetId: '2026-08-31__2026-09-04' },
-      { id: '2026-08-31__2026-09-04-4', text: '天气', sentence: '今天的天气很好。', datasetId: '2026-08-31__2026-09-04' },
-    ],
-  },
-  {
-    id: '2026-09-07__2026-09-11', dateRange: '9/7–9/11', startDate: '2026-09-07', endDate: '2026-09-11', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Review words from this date range',
-    words: [
-      { id: '2026-09-07__2026-09-11-1', text: '星期五', sentence: '星期五我们回家。', datasetId: '2026-09-07__2026-09-11' },
-      { id: '2026-09-07__2026-09-11-2', text: '同学', sentence: '我的同学很友好。', datasetId: '2026-09-07__2026-09-11' },
-      { id: '2026-09-07__2026-09-11-3', text: '看见', sentence: '我看见一只小猫。', datasetId: '2026-09-07__2026-09-11' },
-      { id: '2026-09-07__2026-09-11-4', text: '喜欢', sentence: '我喜欢吃苹果。', datasetId: '2026-09-07__2026-09-11' },
-      { id: '2026-09-07__2026-09-11-5', text: '什么', sentence: '你叫什么名字？', datasetId: '2026-09-07__2026-09-11' },
-      { id: '2026-09-07__2026-09-11-6', text: '高兴', sentence: '我今天很高兴。', datasetId: '2026-09-07__2026-09-11' },
-    ],
-  },
-  {
-    id: '2026-09-14__2026-09-18', dateRange: '9/14–9/18', startDate: '2026-09-14', endDate: '2026-09-18', grade: 'Kindergarten', schoolYear: '2026–27', description: 'Words learned during this date range',
-    words: [
-      { id: '2026-09-14__2026-09-18-1', text: '星期一', sentence: '今天是星期一。', datasetId: '2026-09-14__2026-09-18' },
-      { id: '2026-09-14__2026-09-18-2', text: '学校', sentence: '我们每天去学校。', datasetId: '2026-09-14__2026-09-18' },
-      { id: '2026-09-14__2026-09-18-3', text: '老师', sentence: '老师在教室里。', datasetId: '2026-09-14__2026-09-18' },
-      { id: '2026-09-14__2026-09-18-4', text: '朋友', sentence: '我有一个好朋友。', datasetId: '2026-09-14__2026-09-18' },
-      { id: '2026-09-14__2026-09-18-5', text: '早上', sentence: '早上好！', datasetId: '2026-09-14__2026-09-18' },
-      { id: '2026-09-14__2026-09-18-6', text: '一起', sentence: '我们一起学习。', datasetId: '2026-09-14__2026-09-18' },
-    ],
-  },
-]
+function isSupportedGrade(value: unknown): value is SupportedGrade {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(GRADE_TIMERS, value)
+}
 
 export function localDateKey(date = new Date(), timeZone = 'America/Los_Angeles') {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
@@ -262,12 +330,11 @@ export function datasetLifecycle(dataset: Dataset, date = new Date()): DatasetLi
   return localDateKey(date) < dataset.startDate ? 'future' : 'archived'
 }
 
-export function getPrimaryDataset(datasets: Dataset[], date = new Date()) {
-  const candidates = datasets
-    .map((dataset) => ({ dataset, phase: datasetLifecycle(dataset, date) }))
-    .filter((item): item is { dataset: Dataset; phase: 'acquisition' | 'test-review' } => item.phase === 'acquisition' || item.phase === 'test-review')
-    .sort((a, b) => b.dataset.startDate.localeCompare(a.dataset.startDate))
-  return candidates[0] || null
+export function getActiveLifecycleDatasets(datasets: Dataset[], date = new Date()) {
+  const newest = (phase: 'acquisition' | 'test-review') => datasets
+    .filter((dataset) => isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, date) === phase)
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))[0] || null
+  return { acquisition: newest('acquisition'), testReview: newest('test-review') }
 }
 
 export function sortDatasetsNewestFirst(datasets: Dataset[]) {
@@ -280,7 +347,7 @@ export function filterDatasetsForChild(datasets: Dataset[], grade: string, schoo
     return years.length >= 2 ? `${years[0]}-${String(years[1]).slice(-2)}` : years.length === 1 ? `${years[0]}-${String(years[0] + 1).slice(-2)}` : value
   }
   const requestedYear = schoolYearKey(schoolYear)
-  return sortDatasetsNewestFirst(datasets.filter((dataset) => dataset.grade === grade && schoolYearKey(dataset.schoolYear) === requestedYear && dataset.importStatus !== 'error'))
+  return sortDatasetsNewestFirst(datasets.filter((dataset) => isCanonicalDataset(dataset) && dataset.grade === grade && schoolYearKey(dataset.schoolYear) === requestedYear))
 }
 
 export function nextGrade(grade: string) {
@@ -294,10 +361,6 @@ export function shouldSuggestGradePromotion(child: { grade: string; gradeEffecti
   return today >= augustFirst && Boolean(nextGrade(child.grade)) && (child.gradeEffectiveDate || '') < augustFirst
 }
 
-function resultDate(result: WordResult) {
-  return parseDateKey(result.sessionDate)
-}
-
 function uniqueWords(words: Word[]) {
   const seen = new Set<string>()
   return words.filter((word) => {
@@ -307,38 +370,349 @@ function uniqueWords(words: Word[]) {
   })
 }
 
-export function buildWarmupSelection(options: { datasets: Dataset[]; results: WordResult[]; warmupSessions: WarmupSessionRecord[]; childId: string; today?: Date }): WarmupSelection {
-  const today = options.today || new Date()
-  const cutoff = addDays(today, -6)
-  const datasetsById = new Map(options.datasets.map((dataset) => [dataset.id, dataset]))
-  const previousAcquisition = options.datasets.filter((dataset) => datasetLifecycle(dataset, today) === 'test-review')
-  const categoryA = uniqueWords(previousAcquisition.flatMap((dataset) => dataset.words))
-  const recentErrors = options.results.filter((result) => result.childId === options.childId && !result.correct && resultDate(result) >= cutoff && resultDate(result) <= today)
-  const errorDatasetIds = new Set(recentErrors.map((result) => result.datasetId))
-  const categoryB = uniqueWords([...errorDatasetIds].flatMap((id) => datasetsById.get(id)?.words || []))
-  const base = uniqueWords([...categoryA, ...categoryB])
-  const baseIds = new Set(base.map((word) => word.id))
-  const recentWarmups = options.warmupSessions
-    .filter((session) => session.childId === options.childId && session.complete)
-    .sort((a, b) => (b.completedAt || b.sessionDate).localeCompare(a.completedAt || a.sessionDate) || b.id.localeCompare(a.id))
-    .slice(0, 3)
-  const recentWarmupIds = new Set(recentWarmups.map((session) => session.id))
-  const warmupErrors = new Set(options.results.filter((result) => result.childId === options.childId && result.phase === 'warmup' && !result.correct && result.warmupSessionId && recentWarmupIds.has(result.warmupSessionId)).map((result) => result.wordId))
-  const candidates = options.datasets.flatMap((dataset) => dataset.words).filter((word) => !baseIds.has(word.id) && !warmupErrors.has(word.id)).sort((a, b) => {
-    const aDataset = datasetsById.get(a.datasetId)
-    const bDataset = datasetsById.get(b.datasetId)
-    return (bDataset?.startDate || '').localeCompare(aDataset?.startDate || '') || a.id.localeCompare(b.id)
-  })
-  const additionalCount = base.length > 0 ? Math.ceil(base.length * WARMUP_ADDITIONAL_FRACTION) : candidates.length > 0 ? 1 : 0
-  const categoryC = candidates.slice(0, additionalCount)
-  return {
-    words: uniqueWords([...base, ...categoryC]),
-    categoryAWordIds: categoryA.map((word) => word.id),
-    categoryBWordIds: categoryB.map((word) => word.id),
-    categoryCWordIds: categoryC.map((word) => word.id),
-    additionalCount,
-    roundingRule: 'ceil',
+function datasetSeedCategory(dataset: Dataset, today: Date): WarmupCategory {
+  const lifecycle = datasetLifecycle(dataset, today)
+  if (lifecycle !== 'archived') return 'acquisition'
+  const end = parseDateKey(dataset.endDate)
+  return dateIsBetween(today, addDays(end, 8), addDays(end, 14)) ? 'recent-review' : 'random-rotation'
+}
+
+function archivedWarmupStart(dataset: Dataset) {
+  return localDateKey(addDays(parseDateKey(dataset.endDate), 8))
+}
+
+function wordStateId(childId: string, wordId: string) {
+  return `${childId}::${wordId}`
+}
+
+function stateForWord(word: Word, childId: string, dataset: Dataset | undefined, today: Date, rotationCycleId: number): ChildWordState {
+  const category = dataset ? datasetSeedCategory(dataset, today) : 'random-rotation'
+  return { id: wordStateId(childId, word.id), childId, wordId: word.id, datasetId: word.datasetId, category, correctStreak: 0, ...(category === 'random-rotation' ? { randomCycleId: rotationCycleId, randomCycleReviewed: false } : {}) }
+}
+
+function applyWordResponse(state: ChildWordState, correct: boolean, reviewedAt: string, rotationCycleId: number): ChildWordState {
+  if (!correct) return { ...state, category: 'errored-word', correctStreak: 0, lastReviewedAt: reviewedAt, lastIncorrectAt: reviewedAt, randomCycleReviewed: state.category === 'random-rotation' ? true : state.randomCycleReviewed }
+  if (state.category === 'recent-review' || state.category === 'errored-word') {
+    const correctStreak = state.correctStreak + 1
+    const promotionThreshold = state.category === 'recent-review' ? RECENT_REVIEW_PROMOTION_STREAK : ERRORED_WORD_PROMOTION_STREAK
+    if (correctStreak >= promotionThreshold) return { ...state, category: 'random-rotation', correctStreak: 0, lastReviewedAt: reviewedAt, randomCycleId: rotationCycleId + 1, randomCycleReviewed: false }
+    return { ...state, correctStreak, lastReviewedAt: reviewedAt }
   }
+  if (state.category === 'random-rotation') return { ...state, correctStreak: 0, lastReviewedAt: reviewedAt, randomCycleId: rotationCycleId, randomCycleReviewed: true }
+  return { ...state, correctStreak: 0, lastReviewedAt: reviewedAt }
+}
+
+function orderedResultsForWord(results: WordResult[], childId: string, wordId: string) {
+  return results.filter((result) => result.childId === childId && result.wordId === wordId).sort((a, b) => a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id))
+}
+
+export function deriveChildWordStates(options: { datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number }): ChildWordState[] {
+  const today = options.today || new Date()
+  const cycle = options.rotationCycleId || 1
+  const datasetsById = new Map(options.datasets.map((dataset) => [dataset.id, dataset]))
+  const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
+  return uniqueWords(options.datasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
+    const existing = existingByWordId.get(word.id)
+    if (existing) {
+      const dataset = datasetsById.get(word.datasetId)
+      const seed = dataset ? datasetSeedCategory(dataset, today) : 'random-rotation'
+      if (seed === 'acquisition' && existing.category !== 'acquisition') return { ...existing, category: 'acquisition', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
+      if (seed === 'recent-review' && dataset && (!existing.lastReviewedAt || existing.lastReviewedAt.slice(0, 10) < archivedWarmupStart(dataset))) return { ...existing, category: 'recent-review', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
+      if (existing.category === 'acquisition' && seed !== 'acquisition') return { ...existing, category: seed, correctStreak: 0, randomCycleId: seed === 'random-rotation' ? cycle : undefined, randomCycleReviewed: seed === 'random-rotation' ? false : undefined }
+      return existing
+    }
+    let state = stateForWord(word, options.childId, datasetsById.get(word.datasetId), today, cycle)
+    for (const result of orderedResultsForWord(options.results, options.childId, word.id)) state = applyWordResponse(state, result.correct, result.completedAt, cycle)
+    return state
+  })
+}
+
+function shuffleWords<T>(words: T[], random = Math.random) {
+  const output = [...words]
+  for (let index = output.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1))
+    ;[output[index], output[swapIndex]] = [output[swapIndex], output[index]]
+  }
+  return output
+}
+
+function takeWords(words: Word[], count: number, random = Math.random) {
+  return shuffleWords(words, random).slice(0, Math.max(0, count))
+}
+
+export function buildWarmupSelection(options: { datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number }): WarmupSelection {
+  const today = options.today || new Date()
+  const targetSize = options.targetSize ?? WARMUP_TARGET_SIZE
+  const random = options.random || Math.random
+  const states = deriveChildWordStates({ datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId })
+  const eligibleDatasets = options.datasets.filter((dataset) => isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, today) === 'archived')
+  const eligibleDatasetIds = new Set(eligibleDatasets.map((dataset) => dataset.id))
+  const eligibleStates = states.filter((state) => eligibleDatasetIds.has(state.datasetId))
+  const wordsById = new Map(uniqueWords(eligibleDatasets.flatMap((dataset) => dataset.words)).map((word) => [word.id, word]))
+  const currentCycle = options.rotationCycleId || 1
+  const rotationStates = eligibleStates.filter((state) => state.category === 'random-rotation' && (state.randomCycleId || currentCycle) <= currentCycle)
+  const allRotationReviewed = rotationStates.length > 0 && rotationStates.every((state) => state.randomCycleId === currentCycle && state.randomCycleReviewed)
+  const rotationCycleId = allRotationReviewed ? currentCycle + 1 : currentCycle
+  const effectiveRotationStates = allRotationReviewed ? eligibleStates.filter((state) => state.category === 'random-rotation') : rotationStates
+  const unreviewedRotationStates = effectiveRotationStates.filter((state) => state.randomCycleId !== rotationCycleId || !state.randomCycleReviewed)
+  const rotationPool = shuffleWords(unreviewedRotationStates.map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
+  const recentPool = shuffleWords(eligibleStates.filter((state) => state.category === 'recent-review').map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
+  const erroredPool = shuffleWords(eligibleStates.filter((state) => state.category === 'errored-word').map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
+  const selectedRotation = takeWords(rotationPool, Math.ceil(targetSize * 0.5), random)
+  const selectedRecent = takeWords(recentPool, Math.ceil(targetSize * 0.25), random)
+  const selectedErrored = takeWords(erroredPool, targetSize - Math.ceil(targetSize * 0.5) - Math.ceil(targetSize * 0.25), random)
+  const selected = [...selectedRotation, ...selectedRecent, ...selectedErrored]
+  const selectedIds = new Set(selected.map((word) => word.id))
+  const fillUnique = (pool: Word[]) => { for (const word of pool) { if (selected.length >= targetSize || selectedIds.has(word.id)) continue; selected.push(word); selectedIds.add(word.id) } }
+  fillUnique(rotationPool); fillUnique(erroredPool); fillUnique(recentPool)
+  if (selected.length < targetSize && rotationPool.length > 0) { let repeatIndex = 0; while (selected.length < targetSize) { selected.push(rotationPool[repeatIndex % rotationPool.length]); repeatIndex += 1 } }
+  const selectedUnique = uniqueWords(selected)
+  const rotationIds = selected.filter((word) => rotationPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
+  const recentIds = selected.filter((word) => recentPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
+  const erroredIds = selected.filter((word) => erroredPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
+  return { words: selected.length < targetSize && rotationPool.length === 0 ? selectedUnique : selected, randomRotationWordIds: rotationIds, recentReviewWordIds: recentIds, erroredWordIds: erroredIds, rotationCycleId }
+}
+
+export function createPracticeSessionForTarget(options: {
+  id: string
+  childId: string
+  grade: string
+  target: { dataset: Dataset; phase: PrimaryPhase } | null
+  warmup: WarmupSelection
+  startedAt: string
+  cloudSessionId?: string
+  random?: () => number
+}): PracticeSession {
+  const random = options.random || Math.random
+  const target = options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop ? options.target : null
+  const primaryDatasetId = target?.dataset.id || options.warmup.words[0]?.datasetId || 'warmup-only'
+  const warmupCategoryByWordId = Object.fromEntries(options.warmup.words.map((word) => [
+    word.id,
+    options.warmup.randomRotationWordIds.includes(word.id) ? 'random-rotation' : options.warmup.erroredWordIds.includes(word.id) ? 'errored-word' : 'recent-review',
+  ])) as PracticeSession['warmupCategoryByWordId']
+  return {
+    id: options.id,
+    childId: options.childId,
+    grade: options.grade,
+    primaryDatasetId,
+    primaryPhase: target?.phase || 'acquisition',
+    segment: 'warmup',
+    stage: 'warmup-intro',
+    queue: shuffleWords(options.warmup.words, random),
+    warmupQueue: options.warmup.words,
+    primaryQueue: target?.dataset.words || [],
+    index: 0,
+    startedAt: options.startedAt,
+    warmupAnswers: [],
+    primaryAnswers: [],
+    warmupCategoryByWordId,
+    warmupRandomRotationWordIds: options.warmup.randomRotationWordIds,
+    warmupRotationCycleId: options.warmup.rotationCycleId,
+    acquisition: target?.phase === 'acquisition' ? startAcquisitionFlow(target.dataset, options.grade, random) : undefined,
+    warmupOnly: !target,
+    cloudSessionId: options.cloudSessionId,
+  }
+}
+
+const INTRODUCTION_SEQUENCE = ['true-bm', 'true-bm', 'show-copy', 'target'] as const
+const EXPANDED_SEQUENCE = ['target', 'bm', 'target', 'bm', 'bm', 'target', 'bm', 'bm', 'bm', 'target'] as const
+const CORRECTION_SEQUENCE = ['show-copy', 'show-copy', 'show-copy', 'target', 'true-bm', 'target'] as const
+
+function shuffledBag(words: Word[], random: () => number) {
+  return shuffleWords(words, random)
+}
+
+function drawFromBag(words: Word[], bag: Word[], lastBmWordId: string | undefined, random: () => number) {
+  const eligibleIds = new Set(words.map((word) => word.id))
+  let nextBag = bag.filter((word) => eligibleIds.has(word.id))
+  if (nextBag.length === 0) nextBag = shuffledBag(words, random)
+  if (nextBag.length > 1 && nextBag[0].id === lastBmWordId) {
+    const alternativeIndex = nextBag.findIndex((word) => word.id !== lastBmWordId)
+    if (alternativeIndex > 0) [nextBag[0], nextBag[alternativeIndex]] = [nextBag[alternativeIndex], nextBag[0]]
+  }
+  const [word, ...remaining] = nextBag
+  return { word, bag: remaining }
+}
+
+function bagCanAvoidRepeat(words: Word[], bag: Word[], lastBmWordId: string | undefined) {
+  const eligibleIds = new Set(words.map((word) => word.id))
+  const activeBag = bag.filter((word) => eligibleIds.has(word.id))
+  const candidates = activeBag.length > 0 ? activeBag : words
+  return candidates.some((word) => word.id !== lastBmWordId)
+}
+
+function acquisitionPromptTimer(grade: string, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
+  const config = acquisitionTimerConfigFor(grade)
+  if (kind === 'true-bm') return config.trueBmSeconds
+  if (kind === 'earned-bm') return config.earnedBmSeconds
+  if (kind === 'show-copy') return phase === 'correction' ? config.correctionShowCopySeconds : config.introductionShowCopySeconds
+  if (phase === 'introduction') return config.introductionHiddenTargetSeconds
+  if (phase === 'correction') return config.correctionHiddenSeconds
+  return Math.max(config.expandedMinimumSeconds, config.expandedStartSeconds - expandedTargetAttempts * config.expandedDecrementSeconds)
+}
+
+function makeAcquisitionPrompt(flow: AcquisitionFlow, grade: string, kind: AcquisitionPromptKind, word: Word, targetWordId?: string): AcquisitionFlow {
+  const trialNumber = flow.trialNumber + 1
+  return {
+    ...flow,
+    trialNumber,
+    prompt: {
+      id: `${flow.datasetId}-${flow.targetIndex}-${flow.phase}-${flow.step}-${trialNumber}-${kind}-${word.id}`,
+      kind,
+      phase: flow.phase,
+      word,
+      targetWordId,
+      scored: kind === 'target' || kind === 'earned-bm',
+      timerSeconds: acquisitionPromptTimer(grade, flow.phase, kind, flow.expandedTargetAttempts),
+      revealed: false,
+    },
+  }
+}
+
+function trueBmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
+  const drawn = drawFromBag(TRUE_BM_WORDS, flow.trueBmBag, flow.lastBmWordId, random)
+  return makeAcquisitionPrompt({ ...flow, trueBmBag: drawn.bag, lastBmWordId: drawn.word.id }, grade, 'true-bm', drawn.word)
+}
+
+function bmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
+  const preferEarned = flow.earnedBmPool.length > 0 && random() >= 0.5
+  const earnedCanAvoidRepeat = bagCanAvoidRepeat(flow.earnedBmPool, flow.earnedBmBag, flow.lastBmWordId)
+  if (preferEarned && earnedCanAvoidRepeat) {
+    const drawn = drawFromBag(flow.earnedBmPool, flow.earnedBmBag, flow.lastBmWordId, random)
+    return makeAcquisitionPrompt({
+      ...flow,
+      earnedBmBag: drawn.bag,
+      lastBmWordId: drawn.word.id,
+      resumeAfterEarnedBm: { step: flow.step + 1, expandedTargetAttempts: flow.expandedTargetAttempts, currentTarget: flow.currentTarget! },
+    }, grade, 'earned-bm', drawn.word, drawn.word.id)
+  }
+  return trueBmPrompt(flow, grade, random)
+}
+
+function coreAcquisitionPrompt(flow: AcquisitionFlow, grade: string, random: () => number): AcquisitionFlow {
+  if (!flow.currentTarget) return { ...flow, prompt: null, complete: true }
+  const token = flow.phase === 'introduction' ? INTRODUCTION_SEQUENCE[flow.step] : flow.phase === 'expanded-trials' ? EXPANDED_SEQUENCE[flow.step] : CORRECTION_SEQUENCE[flow.step]
+  if (!token) return flow
+  if (token === 'true-bm') return trueBmPrompt(flow, grade, random)
+  if (token === 'bm') return bmPrompt(flow, grade, random)
+  if (token === 'show-copy') return makeAcquisitionPrompt(flow, grade, 'show-copy', flow.currentTarget, flow.currentTarget.id)
+  return makeAcquisitionPrompt(flow, grade, 'target', flow.currentTarget, flow.currentTarget.id)
+}
+
+export function startAcquisitionFlow(dataset: Dataset, grade = dataset.grade, random = Math.random): AcquisitionFlow {
+  const currentTarget = dataset.words[0] || null
+  return coreAcquisitionPrompt({
+    datasetId: dataset.id,
+    targetIndex: 0,
+    currentTarget,
+    phase: 'introduction',
+    step: 0,
+    trialNumber: 0,
+    expandedTargetAttempts: 0,
+    earnedBmPool: [],
+    trueBmBag: [],
+    earnedBmBag: [],
+    consecutiveErrors: {},
+    prompt: null,
+    complete: !currentTarget,
+  }, grade, random)
+}
+
+function withEarnedWord(flow: AcquisitionFlow, word: Word) {
+  return flow.earnedBmPool.some((candidate) => candidate.id === word.id) ? flow : { ...flow, earnedBmPool: [...flow.earnedBmPool, word] }
+}
+
+function withoutEarnedWord(flow: AcquisitionFlow, wordId: string) {
+  return { ...flow, earnedBmPool: flow.earnedBmPool.filter((word) => word.id !== wordId), earnedBmBag: flow.earnedBmBag.filter((word) => word.id !== wordId) }
+}
+
+function resumeInterruptedTarget(flow: AcquisitionFlow, grade: string, random: () => number) {
+  const resume = flow.resumeAfterEarnedBm
+  if (!resume) return flow
+  return coreAcquisitionPrompt({
+    ...flow,
+    currentTarget: resume.currentTarget,
+    phase: 'expanded-trials',
+    step: resume.step,
+    expandedTargetAttempts: resume.expandedTargetAttempts,
+    correctionRole: undefined,
+    resumeAfterEarnedBm: undefined,
+    prompt: null,
+  }, grade, random)
+}
+
+function advanceToNextTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
+  const nextIndex = flow.targetIndex + 1
+  if (nextIndex >= dataset.words.length) return { ...flow, currentTarget: null, prompt: null, complete: true }
+  return coreAcquisitionPrompt({ ...flow, targetIndex: nextIndex, currentTarget: dataset.words[nextIndex], phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumeAfterEarnedBm: undefined, prompt: null, complete: false }, grade, random)
+}
+
+function completeCurrentTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
+  const target = flow.currentTarget
+  if (!target) return { ...flow, prompt: null, complete: true }
+  const earned = withEarnedWord(flow, target)
+  return flow.resumeAfterEarnedBm ? resumeInterruptedTarget(earned, grade, random) : advanceToNextTarget(earned, dataset, grade, random)
+}
+
+function errorsAfter(flow: AcquisitionFlow, wordId: string, correct: boolean) {
+  return { ...flow.consecutiveErrors, [wordId]: correct ? 0 : (flow.consecutiveErrors[wordId] || 0) + 1 }
+}
+
+function restartIntroduction(flow: AcquisitionFlow, word: Word, grade: string, random: () => number) {
+  return coreAcquisitionPrompt({ ...withoutEarnedWord(flow, word.id), currentTarget: word, phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, prompt: null }, grade, random)
+}
+
+function enterCorrection(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-bm', grade: string, random: () => number) {
+  return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, prompt: null }, grade, random)
+}
+
+export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
+  if (!flow.prompt) return flow
+  return { ...flow, prompt: { ...flow.prompt, revealed: true } }
+}
+
+export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, random = Math.random): AcquisitionFlow {
+  const prompt = flow.prompt
+  if (!prompt || !prompt.revealed) return flow
+
+  if (!prompt.scored) return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, grade, random)
+
+  const consecutiveErrors = errorsAfter(flow, prompt.word.id, correct)
+  const updated = { ...flow, consecutiveErrors }
+
+  if (prompt.kind === 'earned-bm') {
+    if (correct) return resumeInterruptedTarget(updated, grade, random)
+    if (consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, grade, random)
+    return enterCorrection(updated, prompt.word, 'earned-bm', grade, random)
+  }
+
+  if (!correct && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, grade, random)
+
+  if (flow.phase === 'introduction') {
+    return correct
+      ? coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 1, prompt: null }, grade, random)
+      : enterCorrection({ ...updated, expandedTargetAttempts: 1 }, prompt.word, 'current-target', grade, random)
+  }
+
+  if (flow.phase === 'expanded-trials') {
+    const expandedTargetAttempts = flow.expandedTargetAttempts + 1
+    if (!correct) return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, 'current-target', grade, random)
+    const nextStep = flow.step + 1
+    return nextStep >= EXPANDED_SEQUENCE.length
+      ? completeCurrentTarget({ ...updated, expandedTargetAttempts, prompt: null }, dataset, grade, random)
+      : coreAcquisitionPrompt({ ...updated, step: nextStep, expandedTargetAttempts, prompt: null }, grade, random)
+  }
+
+  if (flow.step === 3) {
+    return coreAcquisitionPrompt({ ...updated, step: 4, prompt: null }, grade, random)
+  }
+
+  if (correct) {
+    if (flow.correctionRole === 'earned-bm') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), grade, random)
+    return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, prompt: null }, grade, random)
+  }
+
+  return coreAcquisitionPrompt({ ...updated, step: 0, prompt: null }, grade, random)
 }
 
 function normalizeLegacyAttempt(value: unknown): LegacyRecord | null {
@@ -351,15 +725,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-export function createInitialState(legacyRaw?: string | null): AppState {
+function canonicalDatasets(datasets: Dataset[]) {
+  const seen = new Set<string>()
+  return datasets.filter((dataset) => {
+    if (!isCanonicalDataset(dataset) || seen.has(dataset.id)) return false
+    seen.add(dataset.id)
+    return true
+  })
+}
+
+function discardIncompleteWarmupData(state: AppState) {
+  const incomplete = state.warmupSessions.filter((session) => !session.complete)
+  if (incomplete.length === 0) return state
+  const sessionIds = new Set(incomplete.map((session) => session.sessionId))
+  const warmupIds = new Set(incomplete.map((session) => session.id))
+  return {
+    ...state,
+    results: state.results.filter((result) => !sessionIds.has(result.sessionId) && (!result.warmupSessionId || !warmupIds.has(result.warmupSessionId))),
+    warmupSessions: state.warmupSessions.filter((session) => session.complete),
+  }
+}
+
+export type LocalHydrationResult = { state: AppState; batch: ImportBatchOutcome }
+
+export function hydrateLocalState(state: AppState, presentation: PresentationLike, profile: ParserProfile = grade2DeckProfile): LocalHydrationResult {
+  const batch = validateAndClassifyPresentation(presentation, state.datasets.map((dataset) => dataset.id), profile)
+  const datasets = canonicalDatasets([...batch.datasets, ...state.datasets])
+  return { state: { ...state, datasets }, batch }
+}
+
+export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string | null = [], legacyRaw?: string | null): AppState {
+  const importedDatasets = Array.isArray(importedDatasetsOrLegacy) ? importedDatasetsOrLegacy : []
+  const legacyInput = Array.isArray(importedDatasetsOrLegacy) ? legacyRaw : importedDatasetsOrLegacy || legacyRaw
   let legacyRecords: LegacyRecord[] = []
   try {
-    const parsed: unknown = legacyRaw ? JSON.parse(legacyRaw) : []
+    const parsed: unknown = legacyInput ? JSON.parse(legacyInput) : []
     legacyRecords = Array.isArray(parsed) ? parsed.map(normalizeLegacyAttempt).filter((item): item is LegacyRecord => Boolean(item)) : []
   } catch {
     legacyRecords = []
   }
-  return { version: 2, datasets: sampleDatasets, results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords }
+  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {} }
 }
 
 export function isAppState(value: unknown): value is AppState {
@@ -367,23 +772,26 @@ export function isAppState(value: unknown): value is AppState {
   const datasetsValid = value.datasets.every((dataset) => isRecord(dataset) && typeof dataset.id === 'string' && typeof dataset.dateRange === 'string' && typeof dataset.startDate === 'string' && typeof dataset.endDate === 'string' && typeof dataset.grade === 'string' && Array.isArray(dataset.words) && dataset.words.every((word) => isRecord(word) && typeof word.id === 'string' && typeof word.text === 'string' && typeof word.sentence === 'string' && word.datasetId === dataset.id))
   const resultsValid = value.results.every((result) => isRecord(result) && typeof result.id === 'string' && typeof result.childId === 'string' && typeof result.datasetId === 'string' && typeof result.wordId === 'string' && typeof result.sessionId === 'string' && typeof result.sessionDate === 'string' && (result.phase === 'warmup' || result.phase === 'acquisition' || result.phase === 'test-review') && typeof result.correct === 'boolean' && typeof result.completeSourceDatasetReviewed === 'boolean')
   const scoresValid = value.scores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.datasetId === 'string' && typeof score.sessionId === 'string' && typeof score.sessionDate === 'string' && typeof score.percent === 'number')
-  const warmupsValid = value.warmupSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && Array.isArray(session.wordIds) && Array.isArray(session.datasetIds) && Array.isArray(session.completeDatasetIds) && session.complete === true)
+  const warmupsValid = value.warmupSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && Array.isArray(session.wordIds) && Array.isArray(session.datasetIds) && Array.isArray(session.completeDatasetIds) && typeof session.complete === 'boolean')
   const sessionsValid = value.completedSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && typeof session.primaryDatasetId === 'string' && session.complete === true)
   const legacyValid = value.legacyRecords.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.legacySet === 'string' && record.note === 'legacy-date-range-unknown')
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid
+  const statesValid = !('childWordStates' in value) || (Array.isArray(value.childWordStates) && value.childWordStates.every((state) => isRecord(state) && typeof state.id === 'string' && typeof state.childId === 'string' && typeof state.wordId === 'string' && typeof state.datasetId === 'string' && ['acquisition', 'recent-review', 'errored-word', 'random-rotation'].includes(String(state.category)) && typeof state.correctStreak === 'number'))
+  const monthlyValid = !('monthlyRotationScores' in value) || (Array.isArray(value.monthlyRotationScores) && value.monthlyRotationScores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.month === 'string' && typeof score.correct === 'number' && typeof score.total === 'number' && typeof score.percent === 'number' && (score.status === 'open' || score.status === 'finalized') && typeof score.updatedAt === 'string'))
+  const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid
 }
 
-export function loadState(rawState: string | null, legacyRaw?: string | null): AppState {
+export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
   try {
     const parsed: unknown = rawState ? JSON.parse(rawState) : null
     if (isAppState(parsed)) {
-      const knownIds = new Set(parsed.datasets.map((dataset) => dataset.id))
-      return { ...parsed, datasets: [...parsed.datasets, ...sampleDatasets.filter((dataset) => !knownIds.has(dataset.id))] }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {} }
+      return discardIncompleteWarmupData(normalized)
     }
   } catch {
-    // Fall through to a safe sample-data state.
+    // Fall through to an empty state with any explicitly supplied importer data.
   }
-  return createInitialState(legacyRaw)
+  return createInitialState(importedDatasets, legacyRaw)
 }
 
 export function latestScore(scores: DatasetScore[], childId: string, datasetId: string) {
@@ -393,45 +801,87 @@ export function latestScore(scores: DatasetScore[], childId: string, datasetId: 
     .sort((a, b) => b.score.sessionDate.localeCompare(a.score.sessionDate) || b.index - a.index)[0]?.score || null
 }
 
-export function commitCompletedSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
+export function rotationMonth(date: Date, timeZone = 'America/Los_Angeles') {
+  return localDateKey(date, timeZone).slice(0, 7)
+}
+
+export function finalizeMonthlyRotationScores(scores: MonthlyRotationScore[], now = new Date()) {
+  const currentMonth = rotationMonth(now)
+  return scores.map((score) => score.month < currentMonth && score.status !== 'finalized' ? { ...score, status: 'finalized' as const, finalizedAt: score.finalizedAt || now.toISOString(), updatedAt: now.toISOString() } : score)
+}
+
+function updateMonthlyRotationScores(scores: MonthlyRotationScore[], childId: string, month: string, answers: SessionAnswer[], updatedAt: string) {
+  if (answers.length === 0) return scores
+  const existing = scores.find((score) => score.childId === childId && score.month === month)
+  const correct = answers.filter((answer) => answer.correct).length
+  const next = existing ? { ...existing, correct: existing.correct + correct, total: existing.total + answers.length, percent: Math.round(((existing.correct + correct) / (existing.total + answers.length)) * 100), status: existing.status === 'finalized' ? 'finalized' as const : 'open' as const, updatedAt } : { id: `${childId}-random-rotation-${month}`, childId, month, correct, total: answers.length, percent: Math.round((correct / answers.length) * 100), status: 'open' as const, updatedAt }
+  return existing ? scores.map((score) => score.id === existing.id ? next : score) : [...scores, next]
+}
+
+function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
+  const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
+  let states = deriveChildWordStates({ datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
+  for (const answer of [...session.warmupAnswers, ...session.primaryAnswers]) {
+    const current = states.find((item) => item.wordId === answer.word.id)
+    if (!current) continue
+    const next = applyWordResponse(current, answer.correct, now.toISOString(), rotationCycleId)
+    states = states.map((item) => item.id === next.id ? next : item)
+  }
+  return { states, rotationCycleId }
+}
+
+function commitSessionAttempts(state: AppState, session: PracticeSession, now: Date, complete: boolean): AppState {
   const warmupSessionId = `${session.id}-warmup`
   if (state.completedSessions.some((item) => item.id === session.id) || state.warmupSessions.some((item) => item.id === warmupSessionId)) return state
-  if (session.warmupAnswers.length !== session.warmupQueue.length || session.primaryAnswers.length !== session.primaryQueue.length) return state
   const sessionDate = localDateKey(now)
-  const warmupCompleteDatasetIds = new Set(session.warmupQueue.map((word) => word.datasetId).filter((datasetId) => {
-    const dataset = state.datasets.find((item) => item.id === datasetId)
-    const answers = session.warmupAnswers.filter((answer) => answer.word.datasetId === datasetId)
-    return Boolean(dataset && answers.length === dataset.words.length && new Set(answers.map((answer) => answer.word.id)).size === dataset.words.length)
-  }))
   const warmupResults: WordResult[] = session.warmupAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
-    return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: warmupCompleteDatasetIds.has(answer.word.datasetId), warmupSessionId }
+    return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
   })
-  const primaryResults: WordResult[] = session.primaryAnswers.map((answer, index) => {
+  const primaryResults: WordResult[] = complete ? session.primaryAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: true }
-  })
-  const newResults = [...warmupResults, ...primaryResults]
-  const scores: DatasetScore[] = []
+  }) : []
   const primaryDataset = state.datasets.find((dataset) => dataset.id === session.primaryDatasetId)
-  if (primaryDataset && primaryDataset.words.length > 0 && session.primaryAnswers.length === primaryDataset.words.length && new Set(session.primaryAnswers.map((answer) => answer.word.id)).size === primaryDataset.words.length) {
-    scores.push(makeScore(session, primaryDataset, session.primaryAnswers, session.primaryPhase, sessionDate))
+  const scores: DatasetScore[] = []
+  if (complete && primaryDataset && primaryDataset.words.length > 0) {
+    if (session.primaryPhase === 'acquisition' && session.acquisition?.complete && session.primaryAnswers.length > 0) {
+      scores.push(makeScore(session, primaryDataset, session.primaryAnswers, session.primaryPhase, sessionDate))
+    } else {
+      const latestPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
+      if (latestPrimaryAnswers.length === primaryDataset.words.length && primaryDataset.words.every((word) => latestPrimaryAnswers.some((answer) => answer.word.id === word.id))) scores.push(makeScore(session, primaryDataset, latestPrimaryAnswers, session.primaryPhase, sessionDate))
+    }
   }
-  const warmupDatasetIds = [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))]
-  warmupDatasetIds.forEach((datasetId) => {
-    const dataset = state.datasets.find((item) => item.id === datasetId)
-    const answers = session.warmupAnswers.filter((answer) => answer.word.datasetId === datasetId)
-    if (dataset && answers.length === dataset.words.length && new Set(answers.map((answer) => answer.word.id)).size === dataset.words.length) scores.push(makeScore(session, dataset, answers, 'warmup', sessionDate, warmupSessionId))
-  })
   const safeScores = scores.filter((score) => !state.scores.some((existing) => existing.id === score.id))
-  const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [...warmupCompleteDatasetIds], complete: true }
-  return {
-    ...state,
-    results: [...state.results, ...newResults],
-    scores: [...state.scores, ...safeScores],
-    warmupSessions: [...state.warmupSessions, warmupRecord],
-    completedSessions: session.warmupOnly ? state.completedSessions : [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }],
-  }
+  const warmupDatasetIds = [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))]
+  const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [], complete }
+  const rotationAnswers = session.warmupAnswers.filter((answer) => (session.warmupRandomRotationWordIds || []).includes(answer.word.id))
+  const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
+  const monthlyRotationScores = updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
+  const materialized = materializeStateForCommit(state, session, now)
+  const priorStates = state.childWordStates.filter((item) => item.childId !== session.childId)
+  return { ...state, results: [...state.results, ...warmupResults, ...primaryResults], scores: [...state.scores, ...safeScores], warmupSessions: [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
+}
+
+function latestAnswerPerWord(answers: SessionAnswer[]) {
+  const latest = new Map<string, SessionAnswer>()
+  for (const answer of answers) latest.set(answer.word.id, answer)
+  return [...latest.values()]
+}
+
+export function commitCompletedSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
+  const scoredPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
+  const primaryWordIds = new Set(session.primaryQueue.map((word) => word.id))
+  const primaryComplete = session.primaryPhase === 'acquisition' && session.acquisition
+    ? session.acquisition.complete
+    : scoredPrimaryAnswers.length === primaryWordIds.size && [...primaryWordIds].every((wordId) => scoredPrimaryAnswers.some((answer) => answer.word.id === wordId))
+  if (session.warmupAnswers.length !== session.warmupQueue.length || !primaryComplete) return state
+  return commitSessionAttempts(state, session, now, true)
+}
+
+export function commitPartialSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
+  void session; void now
+  return state
 }
 
 function makeScore(session: PracticeSession, dataset: Dataset, answers: SessionAnswer[], phase: LifecyclePhase, sessionDate: string, warmupSessionId?: string): DatasetScore {

@@ -10,7 +10,7 @@ The Drive connector read was blocked in this environment with `MCP tool call req
 - The week heading is near the top and uses `Week N (M/D-D)` when a date range is available. The newest slide is `Week 6 (9/14-18)`.
 - Each slide contains subject sections. The Mandarin section is followed by ELA, Math, and Science/Social Studies sections.
 - On complete weekly slides, Tier 1 is inline in the Mandarin section as `Tier 1：term、term、term`. Terms are separated with the Chinese enumeration comma `、`; multi-character terms remain one target.
-- Mandarin context is written as prose in the Mandarin section. The importer preserves the Mandarin prose available before the tier labels as the word context sentence; it does not fabricate a word-specific sentence when none is present.
+- Mandarin prose outside the Tier 1 list is not word-specific context. The importer leaves `Word.sentence` empty until a separately authorized sentence-generation step supplies a verified short context sentence.
 - Tier 2 and Tier 3 follow Tier 1 and are not imported.
 - Week 2 has no complete Mandarin Tier 1 list in the visible content, and Week 1 contains placeholders (`Content`, `Vocabulary`, `Sentence Frame`). Both are rejected as incomplete rather than silently treated as a workshop.
 - No explicit writing-workshop marker was observed in the six slides. The parser recognizes explicit markers such as `Writing Project`, `Biography`, `Writers' workshop`, `Sample writing`, `No Dictation`, and `Homework instructions`; absent a marker, an incomplete slide is an import error.
