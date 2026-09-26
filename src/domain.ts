@@ -7,7 +7,7 @@ import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
 export type DatasetLifecycle = LifecyclePhase | 'future' | 'archived'
-export type RevealMethod = 'show_answer' | 'timer'
+export type RevealMethod = 'show_answer' | 'timer' | 'skip_timer'
 
 export type Word = {
   id: string
@@ -90,6 +90,20 @@ export type CompletedSession = {
   primaryDatasetId: string
   primaryPhase: PrimaryPhase
   complete: boolean
+  outcome?: 'completed' | 'skipped'
+}
+
+export type DistractorTargetObservation = {
+  id: string
+  childId: string
+  sessionId: string
+  datasetId: string
+  wordId: string
+  text: string
+  poolType: 'established' | 'earned'
+  correct: boolean
+  revealMethod: RevealMethod
+  reviewedAt: string
 }
 
 export type WarmupCategory = 'acquisition' | 'recent-review' | 'errored-word' | 'random-rotation'
@@ -142,6 +156,8 @@ export type AppState = {
   childWordStates: ChildWordState[]
   monthlyRotationScores: MonthlyRotationScore[]
   rotationCycles: Record<string, number>
+  acquisitionProgressions: AcquisitionProgressRecord[]
+  distractorTargetObservations: DistractorTargetObservation[]
   datasetImportReferences?: Array<Exclude<ExistingDatasetReference, string>>
 }
 
@@ -149,14 +165,18 @@ export type SessionAnswer = {
   word: Word
   correct: boolean
   revealMethod: RevealMethod
+  acquisitionKind?: AcquisitionPromptKind
+  promptId?: string
+  countsTowardWeeklyScore?: boolean
+  dtPoolType?: 'established' | 'earned'
 }
 
 export type AcquisitionPhase = 'introduction' | 'expanded-trials' | 'correction'
-export type AcquisitionPromptKind = 'true-bm' | 'earned-bm' | 'show-copy' | 'target'
+export type AcquisitionPromptKind = 'established-dt' | 'earned-dt' | 'show-copy' | 'target'
 
 export type AcquisitionTimerConfig = {
-  trueBmSeconds: number
-  earnedBmSeconds: number
+  establishedDtSeconds: number
+  earnedDtSeconds: number
   introductionShowCopySeconds: number
   introductionHiddenTargetSeconds: number
   expandedStartSeconds: number
@@ -173,31 +193,44 @@ export type AcquisitionPrompt = {
   word: Word
   targetWordId?: string
   scored: boolean
+  countsTowardWeeklyScore: boolean
+  dtPoolType?: 'established' | 'earned'
   timerSeconds: number
   revealed: boolean
 }
 
 export type AcquisitionFlow = {
   datasetId: string
+  mode: 'teaching' | 'dt-practice'
   targetIndex: number
   currentTarget: Word | null
   phase: AcquisitionPhase
   step: number
   trialNumber: number
   expandedTargetAttempts: number
-  earnedBmPool: Word[]
-  trueBmBag: Word[]
-  earnedBmBag: Word[]
-  lastBmWordId?: string
+  earnedDtPool: Word[]
+  establishedDtBag: Word[]
+  earnedDtBag: Word[]
+  lastDtWordId?: string
   consecutiveErrors: Record<string, number>
-  correctionRole?: 'current-target' | 'earned-bm'
-  resumeAfterEarnedBm?: { step: number; expandedTargetAttempts: number; currentTarget: Word }
+  correctionRole?: 'current-target' | 'earned-dt'
+  resumePosition?: { phase: 'expanded-trials'; step: number; expandedTargetAttempts: number; currentTarget: Word; targetIndex: number }
   prompt: AcquisitionPrompt | null
+  teachingComplete: boolean
   complete: boolean
 }
 
-export function shouldRecordAcquisitionAnswer(prompt: Pick<AcquisitionPrompt, 'scored'>) {
-  return prompt.scored
+export type AcquisitionProgressRecord = {
+  id: string
+  childId: string
+  datasetId: string
+  grade: string
+  flow: AcquisitionFlow
+  updatedAt: string
+}
+
+export function shouldRecordAcquisitionAnswer(prompt: Pick<AcquisitionPrompt, 'kind'>) {
+  return prompt.kind !== 'show-copy'
 }
 
 export type PracticeSession = {
@@ -219,6 +252,7 @@ export type PracticeSession = {
   warmupRandomRotationWordIds: string[]
   warmupRotationCycleId: number
   acquisition?: AcquisitionFlow
+  currentRevealMethod?: RevealMethod
   warmupSkipped?: boolean
   testReviewSkipped?: boolean
   warmupOnly?: boolean
@@ -249,13 +283,13 @@ export function acquisitionTimerConfigFor(grade: string) {
   return { ...profile.acquisition.timers }
 }
 
-const TRUE_BM_TEXTS = grade2PracticeProfile.acquisition.trueBmTexts
+const ESTABLISHED_DT_TEXTS = grade2PracticeProfile.acquisition.establishedDtTexts
 
-export const TRUE_BM_WORDS: Word[] = TRUE_BM_TEXTS.map((text, index) => ({
-  id: `true-bm-${index + 1}`,
+export const ESTABLISHED_DT_WORDS: Word[] = ESTABLISHED_DT_TEXTS.map((text, index) => ({
+  id: `established-dt-${index + 1}`,
   text,
   sentence: '',
-  datasetId: '__true-bm__',
+  datasetId: '__established-dt__',
   language: 'mandarin',
   tier: 'tier-1',
   activityType: 'dictation',
@@ -275,7 +309,7 @@ export function timerSecondsFor(grade: string | null | undefined, segment: strin
   const selectedSegment = segment === 'warmup' ? 'warmup' : 'primary'
   const selectedPhase = primaryPhase === 'test-review' ? 'test-review' : 'acquisition'
   const timer = profile.timers
-  return selectedSegment === 'warmup' ? timer.warmup : selectedPhase === 'test-review' ? timer.testReview : timer.acquisition
+  return selectedSegment === 'warmup' ? timer.warmup : selectedPhase === 'test-review' ? timer.testReview : profile.acquisition.timers.introductionHiddenTargetSeconds
 }
 
 export function createSessionId() {
@@ -466,6 +500,7 @@ export function createPracticeSessionForTarget(options: {
   warmup: WarmupSelection
   startedAt: string
   cloudSessionId?: string
+  acquisitionProgress?: AcquisitionFlow
   random?: () => number
 }): PracticeSession {
   requirePracticeProfileForGrade(options.grade)
@@ -494,7 +529,7 @@ export function createPracticeSessionForTarget(options: {
     warmupCategoryByWordId,
     warmupRandomRotationWordIds: options.warmup.randomRotationWordIds,
     warmupRotationCycleId: options.warmup.rotationCycleId,
-    acquisition: target?.phase === 'acquisition' ? startAcquisitionFlow(target.dataset, options.grade, random) : undefined,
+    acquisition: target?.phase === 'acquisition' ? resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random) : undefined,
     warmupOnly: !target,
     cloudSessionId: options.cloudSessionId,
   }
@@ -504,29 +539,29 @@ function shuffledBag(words: Word[], random: () => number) {
   return shuffleWords(words, random)
 }
 
-function drawFromBag(words: Word[], bag: Word[], lastBmWordId: string | undefined, random: () => number) {
+function drawFromBag(words: Word[], bag: Word[], lastDtWordId: string | undefined, random: () => number) {
   const eligibleIds = new Set(words.map((word) => word.id))
   let nextBag = bag.filter((word) => eligibleIds.has(word.id))
   if (nextBag.length === 0) nextBag = shuffledBag(words, random)
-  if (nextBag.length > 1 && nextBag[0].id === lastBmWordId) {
-    const alternativeIndex = nextBag.findIndex((word) => word.id !== lastBmWordId)
+  if (nextBag.length > 1 && nextBag[0].id === lastDtWordId) {
+    const alternativeIndex = nextBag.findIndex((word) => word.id !== lastDtWordId)
     if (alternativeIndex > 0) [nextBag[0], nextBag[alternativeIndex]] = [nextBag[alternativeIndex], nextBag[0]]
   }
   const [word, ...remaining] = nextBag
   return { word, bag: remaining }
 }
 
-function bagCanAvoidRepeat(words: Word[], bag: Word[], lastBmWordId: string | undefined) {
+function bagCanAvoidRepeat(words: Word[], bag: Word[], lastDtWordId: string | undefined) {
   const eligibleIds = new Set(words.map((word) => word.id))
   const activeBag = bag.filter((word) => eligibleIds.has(word.id))
   const candidates = activeBag.length > 0 ? activeBag : words
-  return candidates.some((word) => word.id !== lastBmWordId)
+  return candidates.some((word) => word.id !== lastDtWordId)
 }
 
 function acquisitionPromptTimer(grade: string, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
   const config = acquisitionTimerConfigFor(grade)
-  if (kind === 'true-bm') return config.trueBmSeconds
-  if (kind === 'earned-bm') return config.earnedBmSeconds
+  if (kind === 'established-dt') return config.establishedDtSeconds
+  if (kind === 'earned-dt') return config.earnedDtSeconds
   if (kind === 'show-copy') return phase === 'correction' ? config.correctionShowCopySeconds : config.introductionShowCopySeconds
   if (phase === 'introduction') return config.introductionHiddenTargetSeconds
   if (phase === 'correction') return config.correctionHiddenSeconds
@@ -535,6 +570,8 @@ function acquisitionPromptTimer(grade: string, phase: AcquisitionPhase, kind: Ac
 
 function makeAcquisitionPrompt(flow: AcquisitionFlow, grade: string, kind: AcquisitionPromptKind, word: Word, targetWordId?: string): AcquisitionFlow {
   const trialNumber = flow.trialNumber + 1
+  const weeklyTarget = kind === 'target' && flow.correctionRole !== 'earned-dt'
+  const dtPoolType = kind === 'established-dt' ? 'established' as const : kind === 'earned-dt' || (kind === 'target' && flow.correctionRole === 'earned-dt') ? 'earned' as const : undefined
   return {
     ...flow,
     trialNumber,
@@ -544,51 +581,56 @@ function makeAcquisitionPrompt(flow: AcquisitionFlow, grade: string, kind: Acqui
       phase: flow.phase,
       word,
       targetWordId,
-      scored: kind === 'target' || kind === 'earned-bm',
+      scored: weeklyTarget,
+      countsTowardWeeklyScore: weeklyTarget,
+      dtPoolType,
       timerSeconds: acquisitionPromptTimer(grade, flow.phase, kind, flow.expandedTargetAttempts),
       revealed: false,
     },
   }
 }
 
-function trueBmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
+function establishedDtWordsFor(grade: string) {
   const profile = requirePracticeProfileForGrade(grade)
-  const profileWords = profile.acquisition.trueBmTexts.map((text, index): Word => ({
-    id: `${profile.id}-true-bm-${index + 1}`,
+  if (profile.id === grade2PracticeProfile.id) return ESTABLISHED_DT_WORDS
+  return profile.acquisition.establishedDtTexts.map((text, index): Word => ({
+    id: `${profile.id}-established-dt-${index + 1}`,
     text,
     sentence: '',
-    datasetId: `__${profile.id}-true-bm__`,
+    datasetId: `__${profile.id}-established-dt__`,
     language: 'mandarin',
     tier: 'tier-1',
     activityType: 'dictation',
   }))
-  const words = profile.id === grade2PracticeProfile.id ? TRUE_BM_WORDS : profileWords
-  const drawn = drawFromBag(words, flow.trueBmBag, flow.lastBmWordId, random)
-  return makeAcquisitionPrompt({ ...flow, trueBmBag: drawn.bag, lastBmWordId: drawn.word.id }, grade, 'true-bm', drawn.word)
 }
 
-function bmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const preferEarned = flow.earnedBmPool.length > 0 && random() >= 0.5
-  const earnedCanAvoidRepeat = bagCanAvoidRepeat(flow.earnedBmPool, flow.earnedBmBag, flow.lastBmWordId)
+function establishedDtPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
+  const words = establishedDtWordsFor(grade)
+  const drawn = drawFromBag(words, flow.establishedDtBag, flow.lastDtWordId, random)
+  return makeAcquisitionPrompt({ ...flow, establishedDtBag: drawn.bag, lastDtWordId: drawn.word.id }, grade, 'established-dt', drawn.word)
+}
+
+function dtPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
+  const preferEarned = flow.earnedDtPool.length > 0 && random() >= 0.5
+  const earnedCanAvoidRepeat = bagCanAvoidRepeat(flow.earnedDtPool, flow.earnedDtBag, flow.lastDtWordId)
   if (preferEarned && earnedCanAvoidRepeat) {
-    const drawn = drawFromBag(flow.earnedBmPool, flow.earnedBmBag, flow.lastBmWordId, random)
-    return makeAcquisitionPrompt({
-      ...flow,
-      earnedBmBag: drawn.bag,
-      lastBmWordId: drawn.word.id,
-      resumeAfterEarnedBm: { step: flow.step + 1, expandedTargetAttempts: flow.expandedTargetAttempts, currentTarget: flow.currentTarget! },
-    }, grade, 'earned-bm', drawn.word, drawn.word.id)
+    const drawn = drawFromBag(flow.earnedDtPool, flow.earnedDtBag, flow.lastDtWordId, random)
+    const resumePosition = flow.mode === 'teaching' && flow.phase === 'expanded-trials' && flow.currentTarget
+      ? { phase: 'expanded-trials' as const, step: flow.step + 1, expandedTargetAttempts: flow.expandedTargetAttempts, currentTarget: flow.currentTarget, targetIndex: flow.targetIndex }
+      : flow.resumePosition
+    return makeAcquisitionPrompt({ ...flow, earnedDtBag: drawn.bag, lastDtWordId: drawn.word.id, resumePosition }, grade, 'earned-dt', drawn.word, drawn.word.id)
   }
-  return trueBmPrompt(flow, grade, random)
+  return establishedDtPrompt(flow, grade, random)
 }
 
 function coreAcquisitionPrompt(flow: AcquisitionFlow, grade: string, random: () => number): AcquisitionFlow {
+  if (flow.mode === 'dt-practice' && !flow.currentTarget) return dtPrompt({ ...flow, complete: false }, grade, random)
   if (!flow.currentTarget) return { ...flow, prompt: null, complete: true }
   const acquisition = requirePracticeProfileForGrade(grade).acquisition
   const token = flow.phase === 'introduction' ? acquisition.introductionSequence[flow.step] : flow.phase === 'expanded-trials' ? acquisition.expandedSequence[flow.step] : acquisition.correctionSequence[flow.step]
   if (!token) return flow
-  if (token === 'true-bm') return trueBmPrompt(flow, grade, random)
-  if (token === 'bm') return bmPrompt(flow, grade, random)
+  if (token === 'established-dt') return establishedDtPrompt(flow, grade, random)
+  if (token === 'dt') return dtPrompt(flow, grade, random)
   if (token === 'show-copy') return makeAcquisitionPrompt(flow, grade, 'show-copy', flow.currentTarget, flow.currentTarget.id)
   return makeAcquisitionPrompt(flow, grade, 'target', flow.currentTarget, flow.currentTarget.id)
 }
@@ -597,67 +639,72 @@ export function startAcquisitionFlow(dataset: Dataset, grade = dataset.grade, ra
   const currentTarget = dataset.words[0] || null
   return coreAcquisitionPrompt({
     datasetId: dataset.id,
+    mode: 'teaching',
     targetIndex: 0,
     currentTarget,
     phase: 'introduction',
     step: 0,
     trialNumber: 0,
     expandedTargetAttempts: 0,
-    earnedBmPool: [],
-    trueBmBag: [],
-    earnedBmBag: [],
+    earnedDtPool: [],
+    establishedDtBag: [],
+    earnedDtBag: [],
     consecutiveErrors: {},
     prompt: null,
+    teachingComplete: !currentTarget,
     complete: !currentTarget,
   }, grade, random)
 }
 
+export function resumeAcquisitionFlow(saved: AcquisitionFlow | undefined, dataset: Dataset, grade = dataset.grade, random = Math.random) {
+  if (!saved || saved.datasetId !== dataset.id) return startAcquisitionFlow(dataset, grade, random)
+  if (saved.complete || saved.teachingComplete) return coreAcquisitionPrompt({ ...saved, mode: 'dt-practice', currentTarget: null, prompt: null, teachingComplete: true, complete: false, correctionRole: undefined, resumePosition: undefined }, grade, random)
+  return saved
+}
+
 function withEarnedWord(flow: AcquisitionFlow, word: Word) {
-  return flow.earnedBmPool.some((candidate) => candidate.id === word.id) ? flow : { ...flow, earnedBmPool: [...flow.earnedBmPool, word] }
+  return flow.earnedDtPool.some((candidate) => candidate.id === word.id) ? flow : { ...flow, earnedDtPool: [...flow.earnedDtPool, word] }
 }
 
 function withoutEarnedWord(flow: AcquisitionFlow, wordId: string) {
-  return { ...flow, earnedBmPool: flow.earnedBmPool.filter((word) => word.id !== wordId), earnedBmBag: flow.earnedBmBag.filter((word) => word.id !== wordId) }
+  return { ...flow, earnedDtPool: flow.earnedDtPool.filter((word) => word.id !== wordId), earnedDtBag: flow.earnedDtBag.filter((word) => word.id !== wordId) }
 }
 
 function resumeInterruptedTarget(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const resume = flow.resumeAfterEarnedBm
-  if (!resume) return flow
-  return coreAcquisitionPrompt({
-    ...flow,
-    currentTarget: resume.currentTarget,
-    phase: 'expanded-trials',
-    step: resume.step,
-    expandedTargetAttempts: resume.expandedTargetAttempts,
-    correctionRole: undefined,
-    resumeAfterEarnedBm: undefined,
-    prompt: null,
-  }, grade, random)
+  const resume = flow.resumePosition
+  if (!resume) return coreAcquisitionPrompt({ ...flow, mode: 'dt-practice', currentTarget: null, correctionRole: undefined, prompt: null, complete: false }, grade, random)
+  return coreAcquisitionPrompt({ ...flow, mode: 'teaching', targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, phase: resume.phase, step: resume.step, expandedTargetAttempts: resume.expandedTargetAttempts, correctionRole: undefined, resumePosition: undefined, prompt: null }, grade, random)
 }
 
 function advanceToNextTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
   const nextIndex = flow.targetIndex + 1
-  if (nextIndex >= dataset.words.length) return { ...flow, currentTarget: null, prompt: null, complete: true }
-  return coreAcquisitionPrompt({ ...flow, targetIndex: nextIndex, currentTarget: dataset.words[nextIndex], phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumeAfterEarnedBm: undefined, prompt: null, complete: false }, grade, random)
+  if (nextIndex >= dataset.words.length) return { ...flow, currentTarget: null, prompt: null, teachingComplete: true, complete: true, correctionRole: undefined, resumePosition: undefined }
+  return coreAcquisitionPrompt({ ...flow, targetIndex: nextIndex, currentTarget: dataset.words[nextIndex], phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumePosition: undefined, prompt: null, complete: false }, grade, random)
 }
 
 function completeCurrentTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
   const target = flow.currentTarget
   if (!target) return { ...flow, prompt: null, complete: true }
   const earned = withEarnedWord(flow, target)
-  return flow.resumeAfterEarnedBm ? resumeInterruptedTarget(earned, grade, random) : advanceToNextTarget(earned, dataset, grade, random)
+  return flow.correctionRole === 'earned-dt' ? resumeInterruptedTarget(earned, grade, random) : advanceToNextTarget(earned, dataset, grade, random)
 }
 
 function errorsAfter(flow: AcquisitionFlow, wordId: string, correct: boolean) {
   return { ...flow.consecutiveErrors, [wordId]: correct ? 0 : (flow.consecutiveErrors[wordId] || 0) + 1 }
 }
 
-function restartIntroduction(flow: AcquisitionFlow, word: Word, grade: string, random: () => number) {
-  return coreAcquisitionPrompt({ ...withoutEarnedWord(flow, word.id), currentTarget: word, phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, prompt: null }, grade, random)
+function restartIntroduction(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-dt', grade: string, random: () => number) {
+  const restarted = role === 'earned-dt' ? withoutEarnedWord(flow, word.id) : flow
+  return coreAcquisitionPrompt({ ...restarted, currentTarget: word, phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: role, prompt: null }, grade, random)
 }
 
-function enterCorrection(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-bm', grade: string, random: () => number) {
-  return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, prompt: null }, grade, random)
+function enterCorrection(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-dt', resumePosition: AcquisitionFlow['resumePosition'], grade: string, random: () => number) {
+  return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, resumePosition, prompt: null }, grade, random)
+}
+
+function advanceUnscoredOrEstablishedDt(flow: AcquisitionFlow, grade: string, random: () => number) {
+  if (flow.mode === 'dt-practice') return coreAcquisitionPrompt({ ...flow, prompt: null }, grade, random)
+  return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, grade, random)
 }
 
 export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
@@ -668,44 +715,47 @@ export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
 export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, random = Math.random): AcquisitionFlow {
   const prompt = flow.prompt
   if (!prompt || !prompt.revealed) return flow
-
-  if (!prompt.scored) return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, grade, random)
+  if (prompt.kind === 'show-copy' || prompt.kind === 'established-dt') return advanceUnscoredOrEstablishedDt(flow, grade, random)
 
   const consecutiveErrors = errorsAfter(flow, prompt.word.id, correct)
   const updated = { ...flow, consecutiveErrors }
 
-  if (prompt.kind === 'earned-bm') {
-    if (correct) return resumeInterruptedTarget(updated, grade, random)
-    if (consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, grade, random)
-    return enterCorrection(updated, prompt.word, 'earned-bm', grade, random)
+  if (prompt.kind === 'earned-dt') {
+    if (correct) return flow.mode === 'dt-practice' ? coreAcquisitionPrompt({ ...updated, prompt: null }, grade, random) : resumeInterruptedTarget(updated, grade, random)
+    if (consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, 'earned-dt', grade, random)
+    return enterCorrection(updated, prompt.word, 'earned-dt', flow.resumePosition, grade, random)
   }
 
-  if (!correct && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, grade, random)
+  if (!correct && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', grade, random)
 
   if (flow.phase === 'introduction') {
-    return correct
-      ? coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 1, prompt: null }, grade, random)
-      : enterCorrection({ ...updated, expandedTargetAttempts: 1 }, prompt.word, 'current-target', grade, random)
+    if (correct) return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, prompt: null }, grade, random)
+    const resumePosition = { phase: 'expanded-trials' as const, step: 0, expandedTargetAttempts: 0, currentTarget: prompt.word, targetIndex: flow.targetIndex }
+    return enterCorrection(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', resumePosition, grade, random)
   }
 
   if (flow.phase === 'expanded-trials') {
     const expandedTargetAttempts = flow.expandedTargetAttempts + 1
-    if (!correct) return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, 'current-target', grade, random)
     const nextStep = flow.step + 1
+    if (!correct) {
+      const resumePosition = { phase: 'expanded-trials' as const, step: nextStep, expandedTargetAttempts, currentTarget: prompt.word, targetIndex: flow.targetIndex }
+      return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', resumePosition, grade, random)
+    }
     return nextStep >= requirePracticeProfileForGrade(grade).acquisition.expandedSequence.length
       ? completeCurrentTarget({ ...updated, expandedTargetAttempts, prompt: null }, dataset, grade, random)
       : coreAcquisitionPrompt({ ...updated, step: nextStep, expandedTargetAttempts, prompt: null }, grade, random)
   }
 
-  if (flow.step === 3) {
-    return coreAcquisitionPrompt({ ...updated, step: 4, prompt: null }, grade, random)
-  }
-
+  const finalCorrectionStep = requirePracticeProfileForGrade(grade).acquisition.correctionSequence.length - 1
+  if (flow.step < finalCorrectionStep) return coreAcquisitionPrompt({ ...updated, step: flow.step + 1, prompt: null }, grade, random)
   if (correct) {
-    if (flow.correctionRole === 'earned-bm') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), grade, random)
-    return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, prompt: null }, grade, random)
+    if (flow.correctionRole === 'earned-dt') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), grade, random)
+    const resume = updated.resumePosition
+    if (resume && resume.step >= requirePracticeProfileForGrade(grade).acquisition.expandedSequence.length) {
+      return completeCurrentTarget({ ...updated, targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, correctionRole: undefined, resumePosition: undefined, prompt: null }, dataset, grade, random)
+    }
+    return resumeInterruptedTarget(updated, grade, random)
   }
-
   return coreAcquisitionPrompt({ ...updated, step: 0, prompt: null }, grade, random)
 }
 
@@ -779,7 +829,7 @@ export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string 
   } catch {
     legacyRecords = []
   }
-  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {} }
+  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], distractorTargetObservations: [] }
 }
 
 export function isAppState(value: unknown): value is AppState {
@@ -794,14 +844,16 @@ export function isAppState(value: unknown): value is AppState {
   const monthlyValid = !('monthlyRotationScores' in value) || (Array.isArray(value.monthlyRotationScores) && value.monthlyRotationScores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.month === 'string' && typeof score.correct === 'number' && typeof score.total === 'number' && typeof score.percent === 'number' && (score.status === 'open' || score.status === 'finalized') && typeof score.updatedAt === 'string'))
   const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
   const datasetReferencesValid = !('datasetImportReferences' in value) || (Array.isArray(value.datasetImportReferences) && value.datasetImportReferences.every((reference) => isRecord(reference) && typeof reference.datasetId === 'string' && (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') && (!('candidateStatus' in reference) || ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) && (!('instructionalRole' in reference) || ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(String(reference.instructionalRole)))))
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid
+  const progressionsValid = !('acquisitionProgressions' in value) || (Array.isArray(value.acquisitionProgressions) && value.acquisitionProgressions.every((progression) => isRecord(progression) && typeof progression.id === 'string' && typeof progression.childId === 'string' && typeof progression.datasetId === 'string' && typeof progression.grade === 'string' && isRecord(progression.flow) && typeof progression.updatedAt === 'string'))
+  const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && dtObservationsValid
 }
 
 export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
   try {
     const parsed: unknown = rawState ? JSON.parse(rawState) : null
     if (isAppState(parsed)) {
-      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {} }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], distractorTargetObservations: Array.isArray(parsed.distractorTargetObservations) ? parsed.distractorTargetObservations : [] }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {
@@ -838,13 +890,73 @@ function materializeStateForCommit(state: AppState, session: PracticeSession, no
   const profile = requirePracticeProfileForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
   let states = deriveChildWordStates({ grade: session.grade, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
-  for (const answer of [...session.warmupAnswers, ...session.primaryAnswers]) {
+  for (const answer of [...session.warmupAnswers, ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false)]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
     const next = applyWordResponse(current, answer.correct, now.toISOString(), rotationCycleId, profile.lifecycle)
     states = states.map((item) => item.id === next.id ? next : item)
   }
   return { states, rotationCycleId }
+}
+
+function acquisitionProgressId(childId: string, datasetId: string) {
+  return `${childId}::${datasetId}::tier-1-writing`
+}
+
+export function acquisitionProgressFor(state: AppState, childId: string, datasetId: string) {
+  return state.acquisitionProgressions.find((progression) => progression.childId === childId && progression.datasetId === datasetId) || null
+}
+
+export function checkpointAcquisitionSession(state: AppState, session: PracticeSession, answer?: SessionAnswer, now = new Date()): AppState {
+  if (!session.acquisition || session.primaryPhase !== 'acquisition') return state
+  const progression: AcquisitionProgressRecord = {
+    id: acquisitionProgressId(session.childId, session.primaryDatasetId),
+    childId: session.childId,
+    datasetId: session.primaryDatasetId,
+    grade: session.grade,
+    flow: session.acquisition.prompt ? { ...session.acquisition, prompt: { ...session.acquisition.prompt, revealed: false } } : session.acquisition,
+    updatedAt: now.toISOString(),
+  }
+  const acquisitionProgressions = state.acquisitionProgressions.some((item) => item.id === progression.id)
+    ? state.acquisitionProgressions.map((item) => item.id === progression.id ? progression : item)
+    : [...state.acquisitionProgressions, progression]
+  let results = state.results
+  if (answer?.promptId && answer.countsTowardWeeklyScore && !results.some((result) => result.id === `${session.id}-acquisition-${answer.promptId}`)) {
+    const dataset = state.datasets.find((item) => item.id === session.primaryDatasetId)
+    results = [...results, {
+      id: `${session.id}-acquisition-${answer.promptId}`,
+      childId: session.childId,
+      datasetId: session.primaryDatasetId,
+      datasetDateRange: dataset?.dateRange || 'Unknown date range',
+      wordId: answer.word.id,
+      grade: session.grade,
+      phase: 'acquisition',
+      sessionId: session.id,
+      sessionDate: localDateKey(now),
+      completedAt: now.toISOString(),
+      correct: answer.correct,
+      revealMethod: answer.revealMethod,
+      scored: true,
+      completeSourceDatasetReviewed: Boolean(session.acquisition.complete),
+    }]
+  }
+  let distractorTargetObservations = state.distractorTargetObservations
+  const collectDtObservations = requirePracticeProfileForGrade(session.grade).acquisition.dtObservationMode === 'collect'
+  if (collectDtObservations && answer?.promptId && answer.dtPoolType && !distractorTargetObservations.some((observation) => observation.id === `${session.id}-dt-${answer.promptId}`)) {
+    distractorTargetObservations = [...distractorTargetObservations, {
+      id: `${session.id}-dt-${answer.promptId}`,
+      childId: session.childId,
+      sessionId: session.id,
+      datasetId: session.primaryDatasetId,
+      wordId: answer.word.id,
+      text: answer.word.text,
+      poolType: answer.dtPoolType,
+      correct: answer.correct,
+      revealMethod: answer.revealMethod,
+      reviewedAt: now.toISOString(),
+    }]
+  }
+  return { ...state, acquisitionProgressions, results, distractorTargetObservations }
 }
 
 function commitSessionAttempts(state: AppState, session: PracticeSession, now: Date, complete: boolean): AppState {
@@ -855,15 +967,16 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
   })
-  const primaryResults: WordResult[] = complete ? session.primaryAnswers.map((answer, index) => {
+  const scoredPrimaryAnswers = session.primaryPhase === 'acquisition' ? session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore !== false) : session.primaryAnswers
+  const primaryResults: WordResult[] = complete ? scoredPrimaryAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: true }
   }) : []
   const primaryDataset = state.datasets.find((dataset) => dataset.id === session.primaryDatasetId)
   const scores: DatasetScore[] = []
   if (complete && primaryDataset && primaryDataset.words.length > 0) {
-    if (session.primaryPhase === 'acquisition' && session.acquisition?.complete && session.primaryAnswers.length > 0) {
-      scores.push(makeScore(session, primaryDataset, session.primaryAnswers, session.primaryPhase, sessionDate))
+    if (session.primaryPhase === 'acquisition' && session.acquisition?.complete && scoredPrimaryAnswers.length > 0) {
+      scores.push(makeScore(session, primaryDataset, scoredPrimaryAnswers, session.primaryPhase, sessionDate))
     } else {
       const latestPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
       if (latestPrimaryAnswers.length === primaryDataset.words.length && primaryDataset.words.every((word) => latestPrimaryAnswers.some((answer) => answer.word.id === word.id))) scores.push(makeScore(session, primaryDataset, latestPrimaryAnswers, session.primaryPhase, sessionDate))
@@ -882,7 +995,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const datasetGrade = datasetGradeById.get(item.datasetId)
     return !datasetGrade || datasetGrade !== session.grade
   })
-  return { ...state, results: [...state.results, ...warmupResults, ...primaryResults], scores: [...state.scores, ...safeScores], warmupSessions: [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
+  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
 }
 
 function latestAnswerPerWord(answers: SessionAnswer[]) {
@@ -897,13 +1010,48 @@ export function commitCompletedSession(state: AppState, session: PracticeSession
   const primaryComplete = session.primaryPhase === 'acquisition' && session.acquisition
     ? session.acquisition.complete
     : scoredPrimaryAnswers.length === primaryWordIds.size && [...primaryWordIds].every((wordId) => scoredPrimaryAnswers.some((answer) => answer.word.id === wordId))
-  if (session.warmupAnswers.length !== session.warmupQueue.length || !primaryComplete) return state
+  if ((!session.warmupSkipped && session.warmupAnswers.length !== session.warmupQueue.length) || !primaryComplete) return state
   return commitSessionAttempts(state, session, now, true)
 }
 
 export function commitPartialSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
-  void session; void now
-  return state
+  if (session.primaryPhase !== 'acquisition' || !session.acquisition) return state
+  let next = checkpointAcquisitionSession(state, session, undefined, now)
+  const targetAnswers = session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore)
+  if (targetAnswers.length > 0) {
+    const dataset = next.datasets.find((item) => item.id === session.primaryDatasetId)
+    if (dataset && !next.scores.some((score) => score.id === `${session.id}-acquisition-${dataset.id}`)) {
+      next = { ...next, scores: [...next.scores, makeScore(session, dataset, targetAnswers, 'acquisition', localDateKey(now))] }
+    }
+  }
+  if (!session.warmupSkipped && session.warmupAnswers.length > 0 && !next.warmupSessions.some((record) => record.sessionId === session.id)) {
+    const complete = session.warmupAnswers.length === session.warmupQueue.length
+    const warmupSessionId = `${session.id}-warmup`
+    const warmupResults: WordResult[] = session.warmupAnswers.map((answer, index) => {
+      const dataset = next.datasets.find((item) => item.id === answer.word.datasetId)
+      return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate: localDateKey(now), completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
+    })
+    next = { ...next, results: [...next.results, ...warmupResults.filter((result) => !next.results.some((existing) => existing.id === result.id))], warmupSessions: [...next.warmupSessions, { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate: localDateKey(now), completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))], completeDatasetIds: [], complete }] }
+    const materialized = materializeStateForCommit(next, session, now)
+    const datasetGradeById = new Map(next.datasets.map((dataset) => [dataset.id, dataset.grade]))
+    const priorStates = next.childWordStates.filter((item) => {
+      if (item.childId !== session.childId) return true
+      const datasetGrade = datasetGradeById.get(item.datasetId)
+      return !datasetGrade || datasetGrade !== session.grade
+    })
+    const rotationAnswers = session.warmupAnswers.filter((answer) => session.warmupRandomRotationWordIds.includes(answer.word.id))
+    const monthlyRotationScores = updateMonthlyRotationScores(finalizeMonthlyRotationScores(next.monthlyRotationScores, now), session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
+    next = { ...next, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...next.rotationCycles, [session.childId]: materialized.rotationCycleId } }
+  }
+  if (!next.completedSessions.some((record) => record.id === session.id)) {
+    next = { ...next, completedSessions: [...next.completedSessions, { id: session.id, childId: session.childId, sessionDate: localDateKey(now), primaryDatasetId: session.primaryDatasetId, primaryPhase: 'acquisition', complete: true, outcome: 'completed' }] }
+  }
+  return next
+}
+
+export function commitSkippedTestReview(state: AppState, session: PracticeSession, now = new Date()) {
+  if (session.primaryPhase !== 'test-review') return state
+  return commitSessionAttempts(state, { ...session, primaryAnswers: [], testReviewSkipped: true }, now, true)
 }
 
 function makeScore(session: PracticeSession, dataset: Dataset, answers: SessionAnswer[], phase: LifecyclePhase, sessionDate: string, warmupSessionId?: string): DatasetScore {

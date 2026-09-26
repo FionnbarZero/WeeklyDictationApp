@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { cloudAdaptiveStateForSave, cloudDataToAppState, type CloudAttempt, type CloudSession } from '../src/firestoreClient.ts'
+import { startAcquisitionFlow } from '../src/domain.ts'
 import { grade2DeckProfile, grade5DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
 
 const dataset = importWeeklyDatasets({
@@ -34,6 +35,16 @@ test('cloud hydration drops attempts that point outside canonical datasets or se
   const invalid: CloudAttempt = { ...valid, id: 'invalid', wordId: 'old-word', sourceDatasetId: '2026-09-21__2026-09-25' }
   const state = cloudDataToAppState([dataset], [], [session], [valid, invalid], 'maya', 'Grade 2')
   assert.deepEqual(state.results.map((result) => result.id), ['valid'])
+})
+
+test('cloud hydration restores owned Acquisition progression and DT observations', () => {
+  const flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  const progression = { id: `maya::${dataset.id}::tier-1-writing`, childId: 'maya', datasetId: dataset.id, grade: 'Grade 2', flow, updatedAt: '2026-09-23T12:01:00.000Z' }
+  const observation = { id: 'dt-observation', childId: 'maya', sessionId: 'session', datasetId: dataset.id, wordId: flow.prompt!.word.id, text: flow.prompt!.word.text, poolType: 'established' as const, correct: true, revealMethod: 'timer' as const, reviewedAt: '2026-09-23T12:01:00.000Z' }
+  const foreignObservation = { ...observation, id: 'foreign', childId: 'other-child' }
+  const state = cloudDataToAppState([dataset], [], [], [], 'maya', 'Grade 2', null, [progression], [observation, foreignObservation])
+  assert.equal(state.acquisitionProgressions[0].flow.prompt?.id, flow.prompt?.id)
+  assert.deepEqual(state.distractorTargetObservations, [observation])
 })
 
 test('mixed-grade cloud adaptive state survives Grade 2 hydration', () => {

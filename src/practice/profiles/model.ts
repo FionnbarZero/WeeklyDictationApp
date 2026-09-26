@@ -1,4 +1,4 @@
-export type AcquisitionSequenceToken = 'true-bm' | 'bm' | 'show-copy' | 'target'
+export type AcquisitionSequenceToken = 'established-dt' | 'dt' | 'show-copy' | 'target'
 
 export type WritingPracticeProfile = {
   readonly id: string
@@ -12,13 +12,12 @@ export type WritingPracticeProfile = {
   }
   readonly timers: {
     readonly warmup: number
-    readonly acquisition: number
     readonly testReview: number
   }
   readonly acquisition: {
     readonly timers: {
-      readonly trueBmSeconds: number
-      readonly earnedBmSeconds: number
+      readonly establishedDtSeconds: number
+      readonly earnedDtSeconds: number
       readonly introductionShowCopySeconds: number
       readonly introductionHiddenTargetSeconds: number
       readonly expandedStartSeconds: number
@@ -27,7 +26,8 @@ export type WritingPracticeProfile = {
       readonly correctionShowCopySeconds: number
       readonly correctionHiddenSeconds: number
     }
-    readonly trueBmTexts: readonly string[]
+    readonly dtObservationMode: 'collect' | 'discard'
+    readonly establishedDtTexts: readonly string[]
     readonly introductionSequence: readonly AcquisitionSequenceToken[]
     readonly expandedSequence: readonly AcquisitionSequenceToken[]
     readonly correctionSequence: readonly AcquisitionSequenceToken[]

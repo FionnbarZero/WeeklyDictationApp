@@ -56,24 +56,34 @@ test('an unsupported grade shows an explicit setup state while preserving histor
 
 test('Acquisition UI reveals every trial and visibly distinguishes only show-and-copy prompts', () => {
   const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
-  assert.match(source, /return \{ \.\.\.current, acquisition: revealAcquisitionPrompt\(current\.acquisition\), stage: 'review' \}/)
+  assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\), currentRevealMethod: revealMethod, stage: 'review'/)
   assert.match(source, /session\.segment === 'primary' \? session\.acquisition\?\.prompt : undefined/)
   assert.match(source, /wordIsVisibleDuringWriting\(acquisitionPrompt\?\.kind\)/)
   assert.match(source, /className="copy-target"/)
   assert.match(source, /Look, listen, and/)
   assert.match(source, /practicePosition\(session\)/)
-  assert.match(source, /<PromptCountdown key=\{stageKey\} durationSeconds=\{timerSeconds\} onComplete=\{onDictationComplete\}/)
-  assert.match(source, /setSession\(\{ \.\.\.current, acquisition: nextFlow, primaryAnswers, stage: 'dictation'/)
+  assert.match(source, /<PromptCountdown key=\{stageKey\} durationSeconds=\{timerSeconds\} onComplete=\{\(\) => onDictationComplete\('timer'\)\}/)
+  assert.match(source, /const nextSession: PracticeSession = \{ \.\.\.current, acquisition: nextFlow, primaryAnswers/)
   assert.match(source, /className="replay-button" onClick=\{onReplay\}/)
   assert.doesNotMatch(source, /setInterval\(\(\) => setSeconds/)
 })
 
-test('header navigation abandons an active cloud practice session through the normal exit path', () => {
+test('practice UI exposes the approved skip, resume, and Done for today controls', () => {
+  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  assert.match(source, />Skip Warmup</)
+  assert.match(source, />Skip Test Review</)
+  assert.match(source, />Skip Timer</)
+  assert.match(source, />Done for today/)
+  assert.match(source, />Learn \{resumeAcquisitionDataset\.dateRange\} words/)
+  assert.match(source, /Choose your activity\. Warmup is offered first and may be skipped\./)
+})
+
+test('header navigation preserves Acquisition as partial and abandons provisional Test Review', () => {
   const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
   assert.match(source, /const leavePractice = \(nextView: View\) =>/)
   assert.match(source, /const exitPractice = \(\) => leavePractice\('home'\)/)
   assert.match(source, /if \(view === 'practice' && nextView !== 'practice'\) \{ leavePractice\(nextView\); return \}/)
-  assert.match(source, /void abandonSession\(/)
+  assert.match(source, /current\.primaryPhase === 'acquisition' \? updateCloudSession[\s\S]*status: 'partial'[\s\S]*: abandonSession/)
 })
 
 test('local hydration performs no network or Firestore writes', () => {

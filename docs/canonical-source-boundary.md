@@ -47,7 +47,7 @@ The refactor must preserve:
 - deck and slide provenance;
 - writing-workshop, malformed, duplicate, and import-log outcomes;
 - empty approved context rather than inferred slide prose;
-- existing Grade 2 lifecycle timers, BM vocabulary, and Acquisition sequences;
+- existing Grade 2 lifecycle timers, DT vocabulary, and Acquisition sequences;
 - the `importWeeklyDatasets`, `parseSlide`, and related compatibility APIs.
 
 `tests/canonicalSource.test.ts` freezes the observed Grade 2 fixture output and separately verifies workshop, malformed, and duplicate behavior. It ignores only the volatile `importedAt` timestamp.

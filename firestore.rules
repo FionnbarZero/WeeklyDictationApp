@@ -15,7 +15,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)).data.active == true;
     }
     function validSessionStatus() {
-      return request.resource.data.status in ['in_progress', 'completed', 'abandoned'];
+      return request.resource.data.status in ['in_progress', 'partial', 'completed', 'skipped', 'abandoned'];
     }
     function validAttempt(familyId, childId, sessionId) {
       return request.resource.data.sessionId is string
@@ -91,7 +91,8 @@ service cloud.firestore {
             allow read: if childExists(familyId, childId);
             allow create, update: if ownsActiveChild(familyId, childId)
               && validAttempt(familyId, childId, sessionId);
-            allow delete: if false;
+            allow delete: if ownsActiveChild(familyId, childId)
+              && resource.data.completionStatus == 'temporary';
           }
         }
 
@@ -111,6 +112,37 @@ service cloud.firestore {
             && request.resource.data.childWordStates is list
             && request.resource.data.monthlyRotationScores is list
             && request.resource.data.updatedAt is string;
+          allow delete: if false;
+        }
+
+        match /acquisitionProgressions/{progressionId} {
+          allow read: if childExists(familyId, childId);
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.id == progressionId
+            && request.resource.data.childId == childId
+            && request.resource.data.datasetId is string
+            && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+            && request.resource.data.grade is string
+            && request.resource.data.flow is map
+            && request.resource.data.flow.datasetId == request.resource.data.datasetId
+            && request.resource.data.updatedAt is string;
+          allow delete: if false;
+        }
+
+        match /dtObservations/{observationId} {
+          allow read: if childExists(familyId, childId);
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.id == observationId
+            && request.resource.data.childId == childId
+            && request.resource.data.sessionId is string
+            && request.resource.data.datasetId is string
+            && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+            && request.resource.data.wordId is string
+            && request.resource.data.text is string
+            && request.resource.data.poolType in ['established', 'earned']
+            && request.resource.data.correct is bool
+            && request.resource.data.revealMethod in ['timer', 'skip_timer', 'show_answer']
+            && request.resource.data.reviewedAt is string;
           allow delete: if false;
         }
       }

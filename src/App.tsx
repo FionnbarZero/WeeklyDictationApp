@@ -5,13 +5,13 @@ import {
 } from 'lucide-react'
 import {
   APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, answerAcquisitionPrompt, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
-  datasetLifecycle, buildWarmupSelection, commitCompletedSession, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt, shouldRecordAcquisitionAnswer,
+  acquisitionProgressFor, checkpointAcquisitionSession, datasetLifecycle, buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt, shouldRecordAcquisitionAnswer,
   filterDatasetsForChild, getActiveLifecycleDatasets, latestScore, loadState, localDateKey, createSessionId, sortDatasetsNewestFirst, timerSecondsFor, shouldSuggestGradePromotion, nextGrade, type LifecyclePhase, type PrimaryPhase,
   type PracticeSession, type SessionAnswer, type Word, LEGACY_ATTEMPTS_KEY,
 } from './domain'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signOut, signUp, subscribeAuth, type AuthState } from './firebaseClient'
 import { firebaseConfigReady, firebaseSetupMessage, DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR } from './config'
-import { abandonSession, cloudAdaptiveStateForSave, cloudDataToAppState, completeCloudSession, createChild, ensureParentFamily, getCloudAdaptiveState, listAttempts, listChildren, listDatasetWords, listDatasets, listScores, listSessions, saveCloudAdaptiveState, saveCloudAttempt, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
+import { abandonSession, cloudAdaptiveStateForSave, cloudDataToAppState, completeCloudSession, createChild, ensureParentFamily, finishCloudSession, getCloudAdaptiveState, listAcquisitionProgressions, listAttempts, listChildren, listDatasetWords, listDatasets, listDistractorTargetObservations, listScores, listSessions, saveCloudAcquisitionProgress, saveCloudAdaptiveState, saveCloudAttempt, saveCloudDistractorTargetObservation, skipCloudTestReview, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
 import { hydrateLocalStateFromJson } from './localHydration'
 import { createPracticeCountdown, practicePosition, wordIsVisibleDuringWriting } from './practicePresentation'
 import { practiceProfileForGrade } from './practice/profiles/registry'
@@ -135,13 +135,13 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (!auth.user || !family || !selectedChild) return
     let cancelled = false
     setDataLoading(true)
-    void Promise.all([listDatasets(), listSessions(family.id, selectedChild.id), listScores(family.id, selectedChild.id), getCloudAdaptiveState(family.id, selectedChild.id)]).then(async ([rawDatasets, sessions, scores, adaptiveState]) => {
+    void Promise.all([listDatasets(), listSessions(family.id, selectedChild.id), listScores(family.id, selectedChild.id), getCloudAdaptiveState(family.id, selectedChild.id), listAcquisitionProgressions(family.id, selectedChild.id), listDistractorTargetObservations(family.id, selectedChild.id)]).then(async ([rawDatasets, sessions, scores, adaptiveState, progressions, dtObservations]) => {
       const datasets = await Promise.all(rawDatasets.map(async (dataset) => dataset.words?.length ? dataset : { ...dataset, words: await listDatasetWords(dataset.id) }))
       const readableSessions = sessions.filter((item) => item.status !== 'abandoned')
       const attempts = (await Promise.all(readableSessions.map((item) => listAttempts(family.id, selectedChild.id, item.id)))).flat()
-      await Promise.all(readableSessions.filter((item) => item.status === 'in_progress').map((item) => abandonSession(family.id, selectedChild.id, item)))
+      await Promise.all(readableSessions.filter((item) => item.status === 'in_progress').map((item) => item.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, item, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, item)))
       if (cancelled) return
-      setState(cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState))
+      setState(cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations))
     }).catch((error) => { if (!cancelled) setCloudError(authErrorMessage(error)) }).finally(() => { if (!cancelled) setDataLoading(false) })
     return () => { cancelled = true }
   }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade])
@@ -169,23 +169,37 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     completedSessionRef.current = null
     setCompletedSummary(null)
-    setSession(createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelection, startedAt, cloudSessionId: auth.user ? id : undefined }))
+    const acquisitionProgress = target?.phase === 'acquisition' ? acquisitionProgressFor(state, selectedChild.id, target.dataset.id)?.flow : undefined
+    setSession(createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelection, startedAt, cloudSessionId: auth.user ? id : undefined, acquisitionProgress }))
     setView('practice')
-  }, [auth.user, family, now, selectedChild, warmupSelection])
-  const leavePractice = (nextView: View) => { const current = session; if (auth.user && family && current?.cloudSessionId && selectedChild) { const cloud = cloudSessionsRef.current.get(current.cloudSessionId); if (cloud) void abandonSession(family.id, selectedChild.id, cloud).catch((error) => setCloudError(authErrorMessage(error))) }; setSession(null); setView(nextView) }
+  }, [auth.user, family, now, selectedChild, state, warmupSelection])
+  const leavePractice = (nextView: View) => { const current = session; if (auth.user && family && current?.cloudSessionId && selectedChild) { const cloud = cloudSessionsRef.current.get(current.cloudSessionId); if (cloud) { const request = current.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, cloud, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, cloud); void request.catch((error) => setCloudError(authErrorMessage(error))) } }; setSession(null); setView(nextView) }
   const exitPractice = () => leavePractice('home')
+  const primaryStartState = (current: PracticeSession): PracticeSession => current.primaryQueue.length === 0
+    ? { ...current, segment: 'primary', stage: 'complete', queue: [], index: 0 }
+    : current.acquisition?.prompt
+      ? { ...current, segment: 'primary', stage: 'dictation', queue: [current.acquisition.prompt.word], index: 0 }
+      : { ...current, segment: 'primary', stage: 'interstitial', queue: current.primaryQueue, index: 0 }
   const beginWarmup = () => { unlockSpeech(); setSession((current) => {
     if (!current || current.stage !== 'warmup-intro') return current
-    if (current.queue.length === 0) return current.primaryQueue.length === 0 ? { ...current, segment: 'primary', stage: 'complete', queue: [], index: 0 } : current.acquisition?.prompt ? { ...current, segment: 'primary', stage: 'dictation', queue: [current.acquisition.prompt.word], index: 0 } : { ...current, segment: 'primary', stage: 'interstitial', queue: current.primaryQueue, index: 0 }
+    if (current.queue.length === 0) return primaryStartState(current)
     return { ...current, stage: 'interstitial', index: 0 }
   }) }
+  const skipWarmup = () => setSession((current) => {
+    if (!current || current.stage !== 'warmup-intro' || current.warmupOnly) return current
+    if (auth.user && family && selectedChild && current.cloudSessionId) {
+      const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
+      if (cloud) void updateCloudSession(family.id, selectedChild.id, cloud, { warmupStatus: 'skipped' }).then((updated) => { cloudSessionsRef.current.set(current.cloudSessionId!, updated) }).catch((error) => setCloudError(authErrorMessage(error)))
+    }
+    return primaryStartState({ ...current, warmupSkipped: true, warmupAnswers: [] })
+  })
   const completeInterstitial = () => setSession((current) => current && current.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current)
-  const completeDictationWord = () => setSession((current) => {
+  const completeDictationWord = (revealMethod: 'timer' | 'skip_timer' = 'timer') => setSession((current) => {
     if (!current || current.stage !== 'dictation') return current
     if (current.segment === 'primary' && current.acquisition) {
       const prompt = current.acquisition.prompt
       if (!prompt) return current
-      return { ...current, acquisition: revealAcquisitionPrompt(current.acquisition), stage: 'review' }
+      return { ...current, acquisition: revealAcquisitionPrompt(current.acquisition), currentRevealMethod: revealMethod, stage: 'review' }
     }
     if (current.index < current.queue.length - 1) return { ...current, stage: 'interstitial', index: current.index + 1 }
     if (current.segment === 'warmup') return { ...current, stage: 'review', index: 0 }
@@ -212,7 +226,55 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     setCompletedSummary(finished.warmupOnly ? 'Mastery warmup complete. Your warmup results are saved.' : 'Practice complete. Your warmup and dataset results are saved.'); setSession(null); setView('home')
   }
-  const answer = (correct: boolean) => {
+  const finishAcquisitionForToday = () => {
+    const current = session
+    if (!current?.acquisition || current.primaryPhase !== 'acquisition') return
+    const completionDate = now()
+    const committed = commitPartialSession(state, current, completionDate)
+    setState(committed)
+    if (auth.user && family && selectedChild && current.cloudSessionId) {
+      const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
+      if (cloud) {
+        const weeklyAnswers = current.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore)
+        const attempts: CloudAttempt[] = [...current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const })), ...weeklyAnswers.map((answer, index) => ({ id: `${current.id}-acquisition-${answer.promptId || index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const, countsTowardWeeklyScore: true, acquisitionKind: answer.acquisitionKind }))]
+        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length === current.warmupQueue.length ? 'completed' as const : 'in_progress' as const
+        void Promise.all([
+          finishCloudSession(family.id, selectedChild.id, { ...cloud, warmupStatus }, 'completed', attempts, committed.scores.filter((score) => score.sessionId === current.id)),
+          saveCloudAdaptiveState(family.id, selectedChild.id, cloudAdaptiveStateForSave(committed, selectedChild.id, completionDate.toISOString())),
+        ]).catch((error) => setCloudError(`Acquisition could not be finalized in the cloud: ${authErrorMessage(error)}`))
+      }
+    }
+    const targetAttempts = current.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore).length
+    setCompletedSummary(targetAttempts > 0 ? `Acquisition saved with ${targetAttempts} weekly-target response${targetAttempts === 1 ? '' : 's'} scored for today.` : 'Acquisition progress and DT practice were saved. No weekly-target score was created.')
+    setSession(null)
+    setView('home')
+  }
+  const skipTestReview = () => {
+    const current = session
+    if (!current || current.primaryPhase !== 'test-review') return
+    const completionDate = now()
+    const skippedSession = { ...current, primaryAnswers: [], testReviewSkipped: true }
+    const committed = commitSkippedTestReview(state, skippedSession, completionDate)
+    setState(committed)
+    if (auth.user && family && selectedChild && current.cloudSessionId) {
+      const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
+      if (cloud) {
+        const attempts: CloudAttempt[] = current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup', correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
+        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length > 0 ? 'completed' as const : 'not_started' as const
+        void Promise.all([
+          skipCloudTestReview(family.id, selectedChild.id, { ...cloud, warmupStatus }, attempts),
+          saveCloudAdaptiveState(family.id, selectedChild.id, cloudAdaptiveStateForSave(committed, selectedChild.id, completionDate.toISOString())),
+        ]).catch((error) => setCloudError(`The skipped Test Review could not be confirmed in the cloud: ${authErrorMessage(error)}`))
+      }
+    }
+    setCompletedSummary('Test Review was skipped. Any completed Warmup results were saved; no Test Review score was created.')
+    setSession(null)
+    setView('home')
+  }
+  const answer = (correct: boolean | 'skip-warmup' | 'skip-test-review' | 'done') => {
+    if (correct === 'skip-warmup') { skipWarmup(); return }
+    if (correct === 'skip-test-review') { skipTestReview(); return }
+    if (correct === 'done') { finishAcquisitionForToday(); return }
     const current = session
     if (!current || current.stage !== 'review') return
     if (current.segment === 'primary' && current.acquisition) {
@@ -220,12 +282,22 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       const prompt = current.acquisition.prompt
       if (!dataset || !prompt || !prompt.revealed) return
       const nextFlow = answerAcquisitionPrompt(current.acquisition, dataset, current.grade, correct)
-      const primaryAnswers = shouldRecordAcquisitionAnswer(prompt) ? [...current.primaryAnswers, { word: prompt.word, correct, revealMethod: 'timer' as const }] : current.primaryAnswers
-      if (nextFlow.complete) { completedSessionRef.current = current.id; completeSession({ ...current, acquisition: nextFlow, primaryAnswers, stage: 'complete', queue: [], index: 0 }); return }
-      setSession({ ...current, acquisition: nextFlow, primaryAnswers, stage: 'dictation', queue: nextFlow.prompt ? [nextFlow.prompt.word] : [], index: 0 })
+      const response: SessionAnswer = { word: prompt.word, correct, revealMethod: current.currentRevealMethod || 'timer', acquisitionKind: prompt.kind, promptId: prompt.id, countsTowardWeeklyScore: prompt.countsTowardWeeklyScore, dtPoolType: prompt.dtPoolType }
+      const primaryAnswers = shouldRecordAcquisitionAnswer(prompt) ? [...current.primaryAnswers, response] : current.primaryAnswers
+      const nextSession: PracticeSession = { ...current, acquisition: nextFlow, primaryAnswers, currentRevealMethod: undefined, stage: nextFlow.complete ? 'complete' : 'dictation', queue: nextFlow.prompt ? [nextFlow.prompt.word] : [], index: 0 }
+      const reviewedAt = now()
+      setState((existing) => checkpointAcquisitionSession(existing, nextSession, shouldRecordAcquisitionAnswer(prompt) ? response : undefined, reviewedAt))
+      if (auth.user && family && selectedChild) {
+        const progression = { id: `${selectedChild.id}::${current.primaryDatasetId}::tier-1-writing`, childId: selectedChild.id, datasetId: current.primaryDatasetId, grade: current.grade, flow: nextFlow, updatedAt: reviewedAt.toISOString() }
+        const writes: Promise<unknown>[] = [saveCloudAcquisitionProgress(family.id, selectedChild.id, progression)]
+        if (response.dtPoolType && practiceProfileForGrade(current.grade)?.acquisition.dtObservationMode === 'collect') writes.push(saveCloudDistractorTargetObservation(family.id, selectedChild.id, { id: `${current.id}-dt-${prompt.id}`, childId: selectedChild.id, sessionId: current.id, datasetId: current.primaryDatasetId, wordId: response.word.id, text: response.word.text, poolType: response.dtPoolType, correct, revealMethod: response.revealMethod, reviewedAt: reviewedAt.toISOString() }))
+        if (response.countsTowardWeeklyScore && current.cloudSessionId) writes.push(saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-acquisition-${prompt.id}`, sessionId: current.id, wordId: response.word.id, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition', correct, reviewedAt: reviewedAt.toISOString(), completionStatus: 'complete', countsTowardWeeklyScore: true, acquisitionKind: prompt.kind }))
+        void Promise.all(writes).catch((error) => setCloudError(`Acquisition progress could not be confirmed in the cloud: ${authErrorMessage(error)}`))
+      }
+      setSession(nextSession)
       return
     }
-    const response: SessionAnswer = { word: current.queue[current.index], correct, revealMethod: 'timer' }
+    const response: SessionAnswer = { word: current.queue[current.index], correct, revealMethod: current.currentRevealMethod || 'timer' }
     const isWarmup = current.segment === 'warmup'
     const answers = isWarmup ? [...current.warmupAnswers, response] : [...current.primaryAnswers, response]
     if (auth.user && family && current.cloudSessionId && selectedChild) {
@@ -294,17 +366,17 @@ function AuthScreen() {
   return <div className="auth-shell"><div className="auth-card"><div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>weekly<span className="brand-accent">dictation</span></span></div><p className="eyebrow">Private family practice</p><h1>{mode === 'sign-up' ? 'Create your parent account' : mode === 'reset' ? 'Reset your password' : 'Welcome back'}</h1><p className="auth-copy">Sign in to keep children, sessions, and progress safely separated by family.</p><form onSubmit={submit}><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></label>{mode !== 'reset' && <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} /></label>}{error && <div className="error-banner">{error}</div>}{message && <div className="success-banner">{message}</div>}<button className="primary-button auth-submit" disabled={busy}>{busy ? 'Working…' : mode === 'reset' ? 'Send reset email' : mode === 'sign-up' ? 'Create account' : 'Sign in'}</button></form><div className="auth-links">{mode !== 'sign-in' && <button onClick={() => { setMode('sign-in'); setMessage(null); setError(null) }}>Sign in</button>}{mode !== 'sign-up' && <button onClick={() => { setMode('sign-up'); setMessage(null); setError(null) }}>Create account</button>}{mode !== 'reset' && <button onClick={() => { setMode('reset'); setMessage(null); setError(null) }}>Forgot password?</button>}</div></div></div>
 }
 
-function HomeView({ child, datasets, scores, acquisitionDataset, testReviewDataset, warmupWords, completedSummary, currentDate, onStart, onHistory, onProfiles }: { child: Child; datasets: Dataset[]; scores: DatasetScore[]; acquisitionDataset: Dataset | null; testReviewDataset: Dataset | null; warmupWords: number; completedSummary: string | null; currentDate: Date; onStart: (target: PracticeTarget) => void; onHistory: () => void; onProfiles: () => void }) {
+function HomeView({ child, datasets, scores, acquisitionDataset, testReviewDataset, resumableAcquisitionDataset = testReviewDataset, warmupWords, completedSummary, currentDate, onStart, onHistory, onProfiles }: { child: Child; datasets: Dataset[]; scores: DatasetScore[]; acquisitionDataset: Dataset | null; testReviewDataset: Dataset | null; resumableAcquisitionDataset?: Dataset | null; warmupWords: number; completedSummary: string | null; currentDate: Date; onStart: (target: PracticeTarget) => void; onHistory: () => void; onProfiles: () => void }) {
   const today = scores.filter((score) => score.childId === child.id && score.sessionDate === localDateKey(currentDate)).length
   const displayDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(currentDate)
   const orderedDatasets = sortDatasetsNewestFirst(datasets)
-  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{displayDate}</p><h1>Ready when you are, <em>{child.name}.</em></h1><p className="subhead">Choose a lifecycle. Every session begins with the required adaptive warmup.</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice complete!</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice lifecycles"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> Required first</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} mastery target${warmupWords === 1 ? '' : 's'} selected for this session.` : 'No prior mastery targets are available yet; the selected lifecycle will continue directly.'}</p></article>{acquisitionDataset && <PracticeLaneCard target={{ dataset: acquisitionDataset, phase: 'acquisition' }} onStart={onStart} />}{testReviewDataset && <PracticeLaneCard target={{ dataset: testReviewDataset, phase: 'test-review' }} onStart={onStart} />}</section><section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} currentDate={currentDate} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Scores appear only after the complete relevant dataset is reviewed.</span></div><div className="strip-arrow">→</div></section></div>
+  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{displayDate}</p><h1>Ready when you are, <em>{child.name}.</em></h1><p className="subhead">Choose your activity. Warmup is offered first and may be skipped.</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice saved.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice activities"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> Optional first activity</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} mastery target${warmupWords === 1 ? '' : 's'} selected. You may complete or skip this Warmup.` : 'No prior mastery targets are available; the selected activity will continue directly.'}</p></article>{acquisitionDataset && <PracticeLaneCard target={{ dataset: acquisitionDataset, phase: 'acquisition' }} onStart={onStart} />}{testReviewDataset && <PracticeLaneCard target={{ dataset: testReviewDataset, phase: 'test-review' }} onStart={onStart} resumeAcquisitionDataset={resumableAcquisitionDataset} />}</section><section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} currentDate={currentDate} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Test Review scores require the complete review.</span></div><div className="strip-arrow">→</div></section></div>
 }
 
-function PracticeLaneCard({ target, onStart }: { target: PracticeTarget; onStart: (target: PracticeTarget) => void }) {
+function PracticeLaneCard({ target, onStart, resumeAcquisitionDataset }: { target: PracticeTarget; onStart: (target: PracticeTarget) => void; resumeAcquisitionDataset?: Dataset | null }) {
   const label = phaseLabel(target.phase)
   const startLabel = target.phase === 'acquisition' ? 'Start Acquisition' : 'Start Test Review'
-  return <article className={`practice-lane lane-${target.phase}`}><div className="status-pill"><span className="status-dot" /> {label}</div><h2>{label}</h2><p>{target.dataset.dateRange} · {target.dataset.words.length} word{target.dataset.words.length === 1 ? '' : 's'} · begins with Warmup</p><button className="primary-button" aria-label={`${startLabel} for ${target.dataset.dateRange}`} onClick={() => onStart(target)}>{startLabel} <ArrowLeft size={17} /></button></article>
+  return <article className={`practice-lane lane-${target.phase}`}><div className="status-pill"><span className="status-dot" /> {label}</div><h2>{label}</h2><p>{target.dataset.dateRange} · {target.dataset.words.length} word{target.dataset.words.length === 1 ? '' : 's'} · Warmup offered first</p><button className="primary-button" aria-label={`${startLabel} for ${target.dataset.dateRange}`} onClick={() => onStart(target)}>{startLabel} <ArrowLeft size={17} /></button>{resumeAcquisitionDataset && <button className="replay-button" onClick={() => onStart({ dataset: resumeAcquisitionDataset, phase: 'acquisition' })}>Learn {resumeAcquisitionDataset.dateRange} words</button>}</article>
 }
 
 function UnsupportedPracticeView({ child, datasets, onHistory, onProfiles }: { child: Child; datasets: Dataset[]; onHistory: () => void; onProfiles: () => void }) {
@@ -329,22 +401,73 @@ function PromptCountdown({ durationSeconds, onComplete }: { durationSeconds: num
   return <>00:{String(seconds).padStart(2, '0')}</>
 }
 
-function PracticeView({ session, datasets, onExit, onReplay, onBeginWarmup, onInterstitialComplete, onDictationComplete, onStartReview, onAnswer }: { session: PracticeSession; datasets: Dataset[]; onExit: () => void; onReplay: () => void; onBeginWarmup: () => void; onInterstitialComplete: () => void; onDictationComplete: () => void; onStartReview: () => void; onAnswer: (correct: boolean) => void }) {
-  const term = activePracticeWord(session); const dataset = datasets.find((item) => item.id === term?.datasetId) || datasets.find((item) => item.id === session.primaryDatasetId); const isWarmup = session.segment === 'warmup'; const acquisitionPrompt = session.segment === 'primary' ? session.acquisition?.prompt : undefined; const showCopy = wordIsVisibleDuringWriting(acquisitionPrompt?.kind); const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsFor(session.grade, session.segment, session.primaryPhase); const stageKey = `${session.id}:${session.segment}:${session.stage}:${session.index}:${acquisitionPrompt?.id || ''}`
-  useEffect(() => { if (session.stage === 'warmup-intro') return; if (session.stage === 'interstitial') { const transition = window.setTimeout(onInterstitialComplete, 1500); return () => window.clearTimeout(transition) } if (session.stage === 'complete') { const stop = speakReviewInstruction(); return () => stop?.() } const stop = speakWord(term, isWarmup); return () => stop?.() }, [stageKey, session.stage, term, isWarmup, onInterstitialComplete])
+function PracticeView({ session, datasets, onExit, onReplay, onBeginWarmup, onInterstitialComplete, onDictationComplete, onStartReview, onAnswer }: {
+  session: PracticeSession
+  datasets: Dataset[]
+  onExit: () => void
+  onReplay: () => void
+  onBeginWarmup: () => void
+  onInterstitialComplete: () => void
+  onDictationComplete: (method?: 'timer' | 'skip_timer') => void
+  onStartReview: () => void
+  onAnswer: (answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') => void
+}) {
+  const term = activePracticeWord(session)
+  const dataset = datasets.find((item) => item.id === term?.datasetId) || datasets.find((item) => item.id === session.primaryDatasetId)
+  const isWarmup = session.segment === 'warmup'
+  const acquisitionPrompt = session.segment === 'primary' ? session.acquisition?.prompt : undefined
+  const showCopy = wordIsVisibleDuringWriting(acquisitionPrompt?.kind)
+  const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
+  const stageKey = `${session.id}:${session.segment}:${session.stage}:${session.index}:${acquisitionPrompt?.id || ''}`
+  useEffect(() => {
+    if (session.stage === 'warmup-intro') return
+    if (session.stage === 'interstitial') {
+      const transition = window.setTimeout(onInterstitialComplete, 1500)
+      return () => window.clearTimeout(transition)
+    }
+    if (session.stage === 'complete') {
+      if (session.primaryPhase === 'acquisition') return
+      const stop = speakReviewInstruction()
+      return () => stop?.()
+    }
+    const stop = speakWord(term, isWarmup)
+    return () => stop?.()
+  }, [stageKey, session.stage, session.primaryPhase, term, isWarmup, onInterstitialComplete])
   const position = practicePosition(session)
-  const progress = session.segment === 'warmup' ? Math.round((session.index / Math.max(session.queue.length, 1)) * 25) : session.stage === 'complete' ? 100 : session.acquisition ? 50 + Math.round((session.acquisition.targetIndex / Math.max(session.primaryQueue.length, 1)) * 50) : 50 + Math.round((session.index / Math.max(session.queue.length, 1)) * 50)
-  return <div className="practice-page"><div className="practice-top"><button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button><span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span></div><div className="practice-progress"><span style={{ width: `${progress}%` }} /></div><section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}`}>
-    {session.stage === 'warmup-intro' && <><div className="interstitial-mark"><Sparkles size={25} /></div><p className="eyebrow">Required before every session</p><h1>Warm up</h1><p className="practice-helper">Let’s get ready to warm up.</p><button className="primary-button" onClick={onBeginWarmup}>Begin warmup <ArrowLeft size={17} /></button></>}
-    {session.stage === 'interstitial' && <><div className="interstitial-mark"><Volume2 size={25} /></div><p className="eyebrow">{isWarmup ? 'Warm up' : phaseLabel(session.primaryPhase)}</p><h1>{isWarmup ? `Warmup word ${session.index + 1}` : `Word ${session.index + 1}`}</h1><p className="practice-helper">Listen carefully, then write what you hear.</p>{term && <button className="replay-button" onClick={onReplay}><Volume2 size={16} /> Play word audio</button>}</>}
-    {session.stage === 'complete' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Dictation finished · {dataset?.dateRange}</p><h1>Test complete</h1><p className="review-instruction">{REVIEW_INSTRUCTION}</p><button className="primary-button review-start-button" onClick={onStartReview}>Start review <ArrowLeft size={17} /></button><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay instructions</button></>}
-    {session.stage === 'dictation' && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : phaseLabel(session.primaryPhase)} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} onComplete={onDictationComplete} /></span></div><div className="speaker-orb"><div className="orb-ring" /><Volume2 size={32} strokeWidth={1.7} /></div>{showCopy ? <><h1>Look, listen, and<br /><span>copy this word.</span></h1><div className="copy-target">{term.text}</div><p className="practice-helper">Copy the word onto your paper before the timer ends.</p></> : <><h1>Listen, then write<br /><span>what you hear.</span></h1><p className="practice-helper">Write the word on paper. Review your answer when the timer ends.</p></>}<button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay sequence</button><p className="dictation-status">The review frame appears when the timer ends.</p></>}
-    {session.stage === 'review' && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup review' : `${phaseLabel(session.primaryPhase)} review`} · {dataset?.dateRange}</span><span className="review-label">Check your paper</span></div><div className="review-heading"><p className="answer-label">The word was</p><div className="answer-word">{term.text}</div></div><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<div className="answer-actions"><button className="wrong-button" onClick={() => onAnswer(false)}><X size={17} /> I got it wrong</button><button className="right-button" onClick={() => onAnswer(true)}><Check size={17} /> I got it right</button></div><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>}
-  </section><p className="practice-footnote"><Headphones size={14} /> Mandarin audio plays automatically · You can replay it anytime</p></div>
+  const progress = session.segment === 'warmup'
+    ? Math.round((session.index / Math.max(session.queue.length, 1)) * 25)
+    : session.stage === 'complete' ? 100
+      : session.acquisition ? 50 + Math.round((session.acquisition.targetIndex / Math.max(session.primaryQueue.length, 1)) * 50)
+        : 50 + Math.round((session.index / Math.max(session.queue.length, 1)) * 50)
+  const promptLabel = acquisitionPrompt?.kind === 'established-dt' ? 'Established DT' : acquisitionPrompt?.kind === 'earned-dt' || acquisitionPrompt?.dtPoolType === 'earned' ? 'Earned DT' : phaseLabel(session.primaryPhase)
+  return <div className="practice-page">
+    <div className="practice-top">
+      <button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button>
+      <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>
+      {session.primaryPhase === 'acquisition' && session.segment === 'primary' && <button className="replay-button" onClick={() => onAnswer('done')}>Done for today</button>}
+      {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Skip Test Review</button>}
+    </div>
+    <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+    <section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}`}>
+      {session.stage === 'warmup-intro' && <><div className="interstitial-mark"><Sparkles size={25} /></div><p className="eyebrow">Optional before this activity</p><h1>Warm up</h1><p className="practice-helper">Warm up first, or continue directly to the activity.</p><button className="primary-button" onClick={onBeginWarmup}>Begin Warmup <ArrowLeft size={17} /></button>{!session.warmupOnly && <button className="replay-button" onClick={() => onAnswer('skip-warmup')}>Skip Warmup</button>}</>}
+      {session.stage === 'interstitial' && <><div className="interstitial-mark"><Volume2 size={25} /></div><p className="eyebrow">{isWarmup ? 'Warm up' : phaseLabel(session.primaryPhase)}</p><h1>{isWarmup ? `Warmup word ${session.index + 1}` : `Word ${session.index + 1}`}</h1><p className="practice-helper">Listen carefully, then write what you hear.</p>{term && <button className="replay-button" onClick={onReplay}><Volume2 size={16} /> Play word audio</button>}</>}
+      {session.stage === 'complete' && session.primaryPhase === 'acquisition' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Teaching sequence complete · {dataset?.dateRange}</p><h1>All targets are now Earned DTs</h1><p className="review-instruction">Return anytime for ongoing Established and Earned DT practice.</p><button className="primary-button review-start-button" onClick={() => onAnswer('done')}>Done for today <ArrowLeft size={17} /></button></>}
+      {session.stage === 'complete' && session.primaryPhase === 'test-review' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Dictation finished · {dataset?.dateRange}</p><h1>Test complete</h1><p className="review-instruction">{REVIEW_INSTRUCTION}</p><button className="primary-button review-start-button" onClick={onStartReview}>Start review <ArrowLeft size={17} /></button><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay instructions</button></>}
+      {session.stage === 'dictation' && term && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : promptLabel} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} onComplete={() => onDictationComplete('timer')} /></span></div><div className="speaker-orb"><div className="orb-ring" /><Volume2 size={32} strokeWidth={1.7} /></div>{showCopy ? <><h1>Look, listen, and<br /><span>copy this word.</span></h1><div className="copy-target">{term.text}</div><p className="practice-helper">Copy the word onto your paper before the timer ends.</p></> : <><h1>Listen, then write<br /><span>what you hear.</span></h1><p className="practice-helper">Write the word on paper. Review your answer when the timer ends.</p></>}<button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay sequence</button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button><p className="dictation-status">The review frame appears when the timer ends or is skipped.</p></>}
+      {session.stage === 'review' && term && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup review' : `${promptLabel} review`} · {dataset?.dateRange}</span><span className="review-label">Check your paper</span></div><div className="review-heading"><p className="answer-label">The word was</p><div className="answer-word">{term.text}</div></div><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<div className="answer-actions"><button className="wrong-button" onClick={() => onAnswer(false)}><X size={17} /> I got it wrong</button><button className="right-button" onClick={() => onAnswer(true)}><Check size={17} /> I got it right</button></div><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>}
+    </section>
+    <p className="practice-footnote"><Headphones size={14} /> Mandarin audio plays automatically · You can replay it anytime</p>
+  </div>
 }
 
 function HistoryView({ child, datasets, scores, legacyCount, onBack }: { child: Child; datasets: Dataset[]; scores: DatasetScore[]; legacyCount: number; onBack: () => void }) { const ordered = sortDatasetsNewestFirst(datasets); return <div className="page history-page"><button className="back-link" onClick={onBack}><ArrowLeft size={16} /> Back to practice</button><div className="history-heading"><div><p className="eyebrow">Progress for {child.name}</p><h1>Small steps,<br /><em>real progress.</em></h1></div><div className={`avatar avatar-${child.color} avatar-large`}>{child.initials}</div></div>{legacyCount > 0 && <div className="history-note"><History size={17} /><span>{legacyCount} legacy result{legacyCount === 1 ? '' : 's'} preserved without an invented date range.</span></div>}{ordered.map((dataset) => <DatasetGraph key={dataset.id} dataset={dataset} scores={scores.filter((score) => score.childId === child.id && score.datasetId === dataset.id)} />)}</div> }
-function DatasetGraph({ dataset, scores }: { dataset: Dataset; scores: DatasetScore[] }) { const orderedScores = [...scores].sort((a, b) => a.sessionDate.localeCompare(b.sessionDate)); return <section className="dataset-graph progress-card"><div className="progress-card-heading"><div><span className="eyebrow">{dataset.dateRange} · {dataset.grade}</span><h2>{dataset.description}</h2></div><BarChart3 size={22} /></div>{orderedScores.length === 0 ? <p className="empty-graph">No complete dataset review has been scored yet.</p> : <div className="score-list">{orderedScores.map((score) => <div className="score-row" key={score.id}><div className={`score-dot dot-${score.phase}`} /><div className="score-row-copy"><strong>{score.sessionDate}</strong><span>{phaseLabel(score.phase)} · {score.correct}/{score.wordCount} correct</span></div><div className="score-bar"><span style={{ width: `${score.percent}%` }} /></div><strong className="score-number">{score.percent}%</strong></div>)}</div>}</section> }
+function DatasetGraph({ dataset, scores }: { dataset: Dataset; scores: DatasetScore[] }) {
+  const orderedScores = [...scores].sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
+  return <section className="dataset-graph progress-card">
+    <div className="progress-card-heading"><div><span className="eyebrow">{dataset.dateRange} · {dataset.grade}</span><h2>{dataset.description}</h2></div><BarChart3 size={22} /></div>
+    {orderedScores.length === 0 ? <p className="empty-graph">No scores recorded yet.</p> : <div className="score-list">{orderedScores.map((score) => <div className="score-row" key={score.id}><div className={`score-dot dot-${score.phase}`} /><div className="score-row-copy"><strong>{score.sessionDate}</strong><span>{phaseLabel(score.phase)} · {score.correct}/{score.wordCount} correct</span></div><div className="score-bar"><span style={{ width: `${score.percent}%` }} /></div><strong className="score-number">{score.percent}%</strong></div>)}</div>}
+  </section>
+}
 function ProfileModal({ children, selectedChildId, onSelect, onClose, onAdd, onUpdate }: { children: Child[]; selectedChildId: string; onSelect: (id: string) => void; onClose: () => void; onAdd: (input: Pick<ChildProfile, 'nickname' | 'grade' | 'schoolYear'>) => Promise<void>; onUpdate: (childId: string, patch: Partial<Pick<ChildProfile, 'nickname' | 'grade' | 'schoolYear' | 'active'>>) => Promise<void> }) {
   const [nickname, setNickname] = useState(''); const [grade, setGrade] = useState<string>(DEFAULT_GRADE); const [schoolYear, setSchoolYear] = useState(DEFAULT_SCHOOL_YEAR); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null)
   const add = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setError(null); try { await onAdd({ nickname, grade, schoolYear }); setNickname('') } catch (caught) { setError(authErrorMessage(caught)) } finally { setSaving(false) } }

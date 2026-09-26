@@ -90,14 +90,14 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 
 - Firebase project values and Firestore rule deployment are still required.
 - The importer service, local import command, and guarded Cloud Run importer are available, but no Cloud Run service or Monday Cloud Scheduler job is deployed. Automatic Monday imports are not live until the documented credentials, IAM, and deployment steps are completed.
-- The dashboard presents overlapping Acquisition and Test Review datasets as separate lifecycle choices, and each choice starts its own required adaptive Warmup before its primary phase.
+- The dashboard presents overlapping Acquisition and Test Review datasets as separate activities. Each offers its own adaptive Warmup, which may be completed or skipped before the primary activity.
 - Monthly Random Rotation accuracy is calculated and persisted, but its required Progress graph is not rendered yet.
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets and follows Warmup → complete without Acquisition/Test Review or a zero-word score.
 - If no current primary dataset is available, the app offers Mastery Warmup from eligible prior targets; if no prior targets exist, it shows a clear setup state instead of fabricating words.
 - Grade 2 is the only active deck configuration. Grade 5 remains registered but inactive and without newly imported datasets; Kindergarten and Grades 1, 3, and 4 remain supported by the grade model without deck configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
-- Acquisition uses the explicitly approved true-BM pool (`一` through `十`, `大`, `小`, `人`, `水`) plus current-week targets that earn BM status. True-BM and show/copy responses are discarded; hidden-target and earned-BM trials are recorded and scored.
+- Acquisition uses the explicitly approved Established DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Established and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
 
 ## Checks
 

@@ -87,3 +87,8 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .add-child-form{display:grid;gap:10px;margin-top:22px;padding-top:20px;border-top:1px solid #eee5dc;text-align:left}
 .add-child-form h3{margin:0 0 2px}
 .promotion-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:12px 15px;border-radius:12px;background:#fff4cf;color:#6d5722;font-size:12px}.promotion-banner button{padding:7px 10px;border-radius:8px;background:#f4d071;color:#57451e;font-size:11px;font-weight:700}
+
+/* Practice controls may include Exit, Done/Skip, and the position label together. */
+.practice-top{flex-wrap:wrap;gap:10px}
+.practice-top .replay-button{margin-left:auto}
+@media (max-width:520px){.practice-top .practice-count{order:3;width:100%;text-align:center}.practice-top .replay-button{margin-left:0}}

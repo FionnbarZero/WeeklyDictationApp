@@ -129,8 +129,8 @@ Grade 5 and Kindergarten writing-workshop or intentional no-instruction markers 
 - Dataset IDs are stable and are never replaced by labels such as current, previous, or preview.
 - Lifecycle labels and transitions come from the grade’s explicit practice profile rather than one global calendar rule.
 - Older datasets remain archived with their original source provenance, lifecycle history, attempts, and scores.
-- Warmup is required before every Acquisition or Test Review pathway and is also available through its own independent entry point for every grade. A child does not need to enter Acquisition or Test Review to use standalone Warmup.
-- Acquisition and one or more Test Review stages may be visible in the same instructional week. Each starts its own required Warmup before the primary segment.
+- Warmup is offered before every Acquisition or Test Review pathway and is also available through its own independent entry point for every grade. The child may complete it or use **Skip Warmup** and begin the selected activity immediately. A skipped Warmup creates no Warmup result, attempt, graph point, or mastery update. A child does not need to enter Acquisition or Test Review to use standalone Warmup.
+- Acquisition and one or more Test Review stages may be visible in the same instructional week. Each starts its own independent, skippable Warmup before the primary segment.
 - Tier 1 writing and future Tier 2 reading use separate attempts, adaptive state, and scores even when they originate from the same weekly dataset.
 
 Use `2026–2027` as the display school-year value. Use the normalized ASCII token `2026-27` only inside deterministic IDs. Each dataset receives a deterministic internal ID formed as `grade__school-year__week-start__week-end`, such as `grade-2__2026-27__2026-09-07__2026-09-11`. The date components use normalized ISO dates even when the slide uses a shorter date format. Each ordered vocabulary occurrence receives a stable occurrence identity downstream of that dataset ID; normalized text alone is never used as the unique key. The IDs prevent duplicate imports, preserve intentionally repeated targets, separate the same week across grades or school years, and link datasets to words, attempts, scores, and history. They are internal Firestore keys and are not displayed to children; user-facing screens show the date range and vocabulary instead.
@@ -145,7 +145,7 @@ Acquisition during the assigned week
 → Archived and Warmup-eligible
 ```
 
-Grade 2 currently uses a 20-second primary Acquisition timer and a 10-second Test Review timer. Kindergarten is intended to use the same high-level Acquisition → Test Review → Archived path, but its date activation and display-range rules remain deferred until the Sheets date policy is approved.
+Grade 2 Acquisition uses the routine-specific timers in the Shared Acquisition contract below; it does not use one generic Acquisition timer. Grade 2 uses a 10-second Test Review timer. Kindergarten is intended to use the same high-level Acquisition → Test Review → Archived path, but its date activation and display-range rules remain deferred until the Sheets date policy is approved.
 
 Grade 5 uses an additional review stage:
 
@@ -166,9 +166,9 @@ Grade 5 transitions are driven only by validated instructional source progressio
 - A week with no new instructional slide, such as a parent-teacher-conference week, freezes every Grade 5 dataset in its current lifecycle position. The next fully validated slide after the gap advances the cohorts once, not once per missed calendar week.
 - A missing, malformed, or conflicting source unit is not a valid advancement step. All existing cohorts remain in place, while any otherwise extractable new bottom-row cohort remains pending and inactive until the issue is resolved.
 - If the top `This week` confirmation differs from the prior bottom-row source, preserve the prior canonical vocabulary and lifecycle stage. Do not activate the new bottom-row cohort or advance any dependent cohort until an administrator corrects the source or explicitly activates a reviewed revision.
-- Test Review 1 and Test Review 2 use the same timer, prompt sequence, scoring rules, completion rules, and all-or-nothing abandonment behavior. Only their lifecycle labels and selected cohorts differ.
+- Test Review 1 and Test Review 2 use the same timer, prompt sequence, scoring rules, completion rules, and abandonment behavior. Only their lifecycle labels and selected cohorts differ. The child may explicitly skip the entire activity; that choice is recorded as skipped and creates no Test Review answers or score. Any completed Warmup results remain saved.
 - Grade 5 Test Review 1 and Test Review 2 each use a 10-second timer. A visible Skip Timer control may end the remaining countdown and move directly to that word's review frame; it never skips the word, its self-assessment, or its scoring obligation.
-- Acquisition, Test Review 1, and Test Review 2 each have a separate required six-word Warmup. Completing one pathway's Warmup does not satisfy another pathway's Warmup.
+- Acquisition, Test Review 1, and Test Review 2 each offer a separate six-word Warmup. Completing or skipping one pathway's Warmup does not satisfy another pathway's Warmup.
 
 The observed sequence is:
 
@@ -187,11 +187,11 @@ Grade 5 Tier 1 candidates currently accept 3–10 terms. Duplicate Tier 1 terms 
 
 Warmup is a practice pathway, not another canonical dataset identity. It uses persistent per-child, per-module, per-word state while each source dataset retains its canonical date range and lifecycle history. A dataset becomes eligible only after completing every configured Test Review stage and becoming archived. Active Acquisition, active Test Review 1 or 2, future, unrecognized no-instruction, and malformed datasets are excluded even when a persisted word state is marked Recent Review or Errored Word.
 
-The current Grade 2 Warmup policy places newly archived words in Recent Review, seeds older eligible words into Random Rotation, and prioritizes incorrect eligible words as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. A standalone Grade 2 Warmup targets 16 words and a required pre-segment Warmup targets 6, using 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas. Missing slots use eligible unique words and repeat only Random Rotation words when necessary. These counts, quotas, promotion thresholds, repetition rules, and audio-rate choices are Grade 2 profile values; Kindergarten must adopt or override them explicitly rather than inheriting them silently. Grade 5 explicitly adopts a six-word target for each required pre-Acquisition, pre-Test-Review-1, and pre-Test-Review-2 Warmup. Its independent standalone Warmup is always available, but its standalone visit target, bucket quotas, and promotion thresholds still require explicit configuration.
+The current Grade 2 Warmup policy places newly archived words in Recent Review, seeds older eligible words into Random Rotation, and prioritizes incorrect eligible words as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. A standalone Grade 2 Warmup targets 16 words and a pre-activity Warmup targets 6, using 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas. Missing slots use eligible unique words and repeat only Random Rotation words when necessary. These counts, quotas, promotion thresholds, repetition rules, and audio-rate choices are Grade 2 profile values; Kindergarten must adopt or override them explicitly rather than inheriting them silently. Grade 5 explicitly adopts a six-word target for each offered pre-Acquisition, pre-Test-Review-1, and pre-Test-Review-2 Warmup. Its independent standalone Warmup is always available, but its standalone visit target, bucket quotas, and promotion thresholds still require explicit configuration.
 
-Every enabled grade and activity module must have at least six eligible BM words before its required Warmups or primary lifecycles are activated. The approved interim bootstrap pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds both Tier 1 writing and Tier 2 reading for every grade, but the two modules maintain separate per-child mastery state and attempts. The list is a versioned BM bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import.
+Every enabled grade and activity module must have at least six eligible Distractor Targets (DTs) before its offered Warmups or primary activities are activated. The approved interim **Established DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds both Tier 1 writing and Tier 2 reading for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Established DT pools will be derived from that child's demonstrated and mastered words over successive years.
 
-If a configuration or data error ever leaves fewer than six eligible BM terms, fail closed with an administrator/setup state. Never borrow active Acquisition or Test Review targets merely to fill the Warmup. Under the approved bootstrap and future baseline model, ordinary users should not encounter this state.
+If a configuration or data error ever leaves fewer than six eligible DT terms, fail closed with an administrator/setup state. Never borrow active Acquisition or Test Review targets merely to fill the Warmup. Under the approved bootstrap and future baseline model, ordinary users should not encounter this state.
 
 Every completed Warmup response is durable and contributes to the module’s Warmup history even when the child stops before reaching the visit target. Tier 1 writing Warmup and Tier 2 reading Warmup never share adaptive mastery state.
 
@@ -199,61 +199,63 @@ Every completed Warmup response is durable and contributes to the module’s War
 
 At the start of each Warmup, create a durable visit record and materialize its target word order and source buckets. Preserve the visit ID, Warmup type, target count, ordered word IDs, source dataset IDs, source buckets, current dictation or review position, completed self-assessments, started and updated times, and `in_progress`, `partial`, or `completed` status. Saving this state prevents a refresh or device change from drawing a different set or consuming shuffle-bag entries twice.
 
-Update the same Warmup visit and its graph point after each completed self-assessment. An unanswered prompt does not affect accuracy or adaptive state. An unfinished required Warmup resumes before its associated Acquisition or Test Review begins. An unfinished standalone Warmup remains available to resume; if the child explicitly ends it, retain the assessed items and mark the visit partial rather than erasing it. Completing a resumed visit changes that same record to completed instead of creating a duplicate graph point.
+Update the same Warmup visit and its graph point after each completed self-assessment. An unanswered prompt does not affect accuracy or adaptive state. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review begins unless the child explicitly chooses Skip Warmup. An unfinished standalone Warmup remains available to resume; if the child explicitly ends it, retain the assessed items and mark the visit partial rather than erasing it. Completing a resumed visit changes that same record to completed instead of creating a duplicate graph point.
 
-### Future baseline BM assessment and long-term maintenance
+### Future baseline DT assessment and long-term maintenance
 
-The interim bootstrap pool is deliberately small. A later `feature/bm-baseline-and-remediation` branch will establish each child's actual Tier 1 writing and Tier 2 reading BM pools from administrator-imported, versioned standard lists. This feature is separate from weekly curriculum import and must not convert baseline terms into fake weekly datasets.
+The interim Established DT pool is deliberately small. A later `feature/dt-baseline-and-remediation` branch will establish each child's actual Tier 1 writing and Tier 2 reading DT pools from administrator-imported, versioned standard lists. This feature is separate from weekly curriculum import and must not convert baseline terms into fake weekly datasets.
 
 The intended future flow is:
 
 1. Import an approved standard list for each activity module and applicable grade-history range.
 2. Before granting that child access to the module's weekly lifecycles, assess the imported terms in resumable sets until every baseline occurrence has been tested.
-3. Add demonstrated terms to that child's usable BM and long-term Warmup pool for the matching module.
+3. Add demonstrated terms to that child's usable Established DT and long-term Warmup pool for the matching module.
 4. Preserve prior-grade learned vocabulary across school years so the Warmup pool grows longitudinally rather than resetting each year.
 5. Maintain forgotten vocabulary through Warmup. The planned rule is an immediate correction cycle after one error and transfer to a separate reacquisition queue after three errors so the term can be explicitly retaught.
 
-Tier 1 and Tier 2 baseline lists, assessments, BM pools, errors, corrections, and reacquisition records remain separate even when they contain the same written term. The baseline visit must be durable and resumable because Grade 2 and Grade 5 children joining the application may need to assess a large amount of earlier Kindergarten and prior-grade vocabulary.
+Tier 1 and Tier 2 baseline lists, assessments, DT pools, errors, corrections, and reacquisition records remain separate even when they contain the same written term. The baseline visit must be durable and resumable because Grade 2 and Grade 5 children joining the application may need to assess a large amount of earlier Kindergarten and prior-grade vocabulary.
 
 The full standard lists, assessment-set size, error-window semantics, correction routine, and reacquisition sequence are deferred to that branch. Until it is approved, development uses only the versioned bootstrap pool above. The future feature must define whether the three-error threshold is consecutive or cumulative and must keep baseline remediation separate from the active weekly Acquisition cohort unless an explicit product rule links them.
 
 ### Shared Acquisition contract
 
-The intended Acquisition structure for every grade includes Introduction, true BM and earned BM opportunities, Expanded Trials, Correction, and promotion of learned targets into the earned-BM pool. The response modality comes from the activity module: Tier 1 dictation hides the target during scored writing trials, while Tier 2 reading shows the character or word for the child to say aloud.
+The intended Acquisition structure for every grade includes Introduction, Established DT and Earned DT opportunities, Expanded Trials, Correction, and promotion of learned weekly targets into the Earned DT pool. “Distractor Target” or “DT” is the only canonical product and code terminology; remove all legacy terminology from documentation, types, field names, and child-facing copy. The response modality comes from the activity module: Tier 1 dictation hides the target during assessed writing trials, while Tier 2 reading shows the character or word for the child to say aloud.
 
 Each progression stores a `practiceStrategyId` and strategy version. The exact pool, sequence, timers, scoring events, and correction rules below are the canonical Grade 2 reference strategy. Kindergarten and Grade 5 may explicitly reuse or override individual parameters after review; they must never receive Grade 2 behavior through an undocumented fallback.
 
-#### Grade 2 Acquisition strategy v1
+#### Grade 2 Acquisition strategy v2
 
-Every Acquisition trial uses the same child-facing cycle: timed writing prompt, reveal/review frame, Yes/No response, then the next writing prompt without an extra transition screen. Show/copy prompts visibly show the word; all other writing prompts hide it. True-BM words use the approved bootstrap pool `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`. Show/copy responses remain unscored. Hidden current-target trials and earned-BM trials are recorded and contribute to the official Acquisition score. Tier 1 true-BM responses may now be collected and scored separately through the BM-observation system below.
+Every Acquisition trial uses the same child-facing cycle: timed writing prompt, reveal/review frame, Yes/No response, then the next writing prompt without an extra transition screen. Show/copy prompts visibly show the word; all other writing prompts hide it. Established DTs use the approved placeholder pool `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`. Show/copy responses may receive a Yes/No response for interaction consistency, but no copy-trial correctness data is saved. Hidden weekly-target trials, Established DT trials, and Earned DT trials are recorded. Only hidden weekly-target trials contribute to the weekly Acquisition score; DT performance is stored in the separate DT-observation stream below.
 
-Introduction presents two different true-BM words for 5 seconds each, one 10-second show/say/copy target trial, then one 10-second hidden target trial. A correct hidden response starts Expanded Trials; an incorrect response starts Correction.
+Introduction presents two different Established DTs for 5 seconds each, one 10-second show/say/copy target trial, then one 10-second hidden weekly-target trial. The two DTs follow shuffle-bag rules and cannot repeat when an alternative is available. A correct hidden response starts Expanded Trials; an incorrect response starts Correction.
 
-Expanded Trials use the exact 10-position sequence `target, BM, target, BM, BM, target, BM, BM, BM, target`. The hidden-target timer starts at 10 seconds for the Introduction attempt and decreases by one second after each hidden current-target attempt to a 5-second minimum. Every BM opportunity independently chooses 50% true BM and 50% earned BM; while the earned pool is empty it uses true BM. True and earned pools use shuffle-bag rotation, exhaust available members before reuse, and prevent consecutive BM-word repetition. Completing every required target trial promotes that current-week target into the earned-BM pool and starts Introduction for the next target.
+Expanded Trials use the exact 11-position sequence `target, target, DT, target, DT, DT, target, DT, DT, DT, target`. Its five hidden weekly-target timers are exactly 10, 9, 8, 7, and 6 seconds. Every DT position independently chooses 50% Established DT and 50% Earned DT when both pools are available; while the Earned DT pool is empty it uses Established DT. Established and Earned pools each use shuffle-bag rotation, exhaust their eligible members before reuse, and prevent consecutive DT repetition when an alternative exists. An incorrect weekly-target response immediately enters Correction. Completing the sequence promotes that current-week target into the Earned DT pool and starts Introduction for the next target.
 
-Correction presents three 10-second show/say/copy trials, one 10-second hidden trial, a new 5-second true-BM trial, and a final 10-second hidden trial. The final hidden response determines success. An incorrect final response repeats Correction; three consecutive scored errors restart that word from Introduction; any correct scored response resets its consecutive-error count. Successful Correction for a current target restarts Expanded Trials at step 1 and resets its timer progression, so that first target receives 10 seconds. Successful Correction for an earned-BM word returns it to the earned pool and resumes the interrupted target at the next exact sequence step.
+Correction uses the exact sequence `visible copy, visible copy, hidden target, new Established DT, final hidden target`. Copy and hidden-target trials use 10 seconds; the Established DT uses 5 seconds. Copy responses are not saved, the DT response is saved separately, and both hidden weekly-target responses are saved for the visit's weekly score. The final hidden response determines success. After successful Correction, the child returns to the next unfinished position in the interrupted teaching sequence; Correction does not silently complete the weekly target or restart completed Expanded positions. An incorrect final response repeats Correction. Three consecutive scored errors for a weekly target or Earned DT restart that word at Introduction. Any correct scored response resets that word's consecutive-error count. Established DT errors are recorded but do not turn the placeholder DT into a weekly Acquisition target.
 
-The Grade 2 Acquisition score is trial-based. Every hidden current-target attempt and earned-BM attempt contributes. True-BM observations and show/copy trials do not contribute to the official weekly Acquisition percentage. Grade 2 Acquisition must not collapse repeated target trials into one final answer per vocabulary word.
+The Grade 2 Acquisition score is visit- and trial-based. When the child selects **Done for today**, create that visit's score from every hidden weekly-target response completed during the visit, including Introduction, Expanded Trials, and Correction. Repeated attempts remain separate scored trials and must not be collapsed to one final answer per vocabulary word. Established DT, Earned DT, and show/copy responses never contribute to the weekly dataset score. If the visit contains no hidden weekly-target response, create no weekly dataset score; any assessed DT responses are still saved.
 
-### Tier 1 BM observation and scoring boundary
+After every weekly target completes its teaching sequence, Acquisition remains available as ongoing DT-only practice. Each new DT-only opportunity uses the same 50% Established DT and 50% Earned DT choice and shuffle-bag rules. The child ends this open-ended practice with **Done for today**. DT-only practice creates no weekly score because it contains no weekly-target response.
 
-Tier 1 Acquisition supports a versioned practice-profile option such as `bmObservationMode: collect | discard`. The approved forward configuration is `collect`; `discard` remains available only for controlled compatibility testing or an explicitly configured environment. The child still completes the normal true-BM writing and Yes/No review. In collect mode, that review creates a durable correctness observation for the BM term instead of throwing the response away.
+### Tier 1 DT observation and scoring boundary
 
-BM correctness is a separate learning signal, not part of the current weekly dataset score. A true-BM error therefore does not yet interrupt the current Acquisition sequence, enter Correction, remove BM status, or add the term to a reacquisition set. Those consequences remain disabled until the baseline/remediation branch defines and tests the policy. Earned-BM trials continue to follow their existing Acquisition scoring and correction rules and must also appear in longitudinal BM history. Reuse or link their existing stable attempt record rather than creating a second correctness event or counting them twice in the weekly score.
+Tier 1 Acquisition supports a versioned practice-profile option such as `dtObservationMode: collect | discard`. The approved forward configuration is `collect`; `discard` remains available only for controlled compatibility testing or an explicitly configured environment. In collect mode, every reviewed Established DT and Earned DT creates a durable correctness observation for that individual DT.
 
-Each collected BM observation must include:
+DT correctness is a separate learning signal, not part of the current weekly dataset score. An Established DT error does not interrupt the current Acquisition sequence, enter Correction, remove DT status, or add the term to a reacquisition set. Those consequences remain disabled until the baseline/remediation branch defines and tests the policy. An incorrect Earned DT does enter the same Correction routine, then returns to the exact interrupted weekly-target position. Earned DT attempts also appear once in longitudinal DT history; reuse or link their stable attempt record rather than creating a duplicate correctness event.
 
-- Stable, idempotent observation ID derived from the Acquisition progression, trial position, and BM term identity.
+Each collected DT observation must include:
+
+- Stable, idempotent observation ID derived from the Acquisition progression, trial position, and DT identity.
 - Child ID, activity module, tier, grade, school year, and application version.
-- Stable BM term ID, normalized term text, pool type (`bootstrap`, future `standard-list`, or `earned`), and pool/list version.
+- Stable DT term ID, normalized term text, pool type (`established`, future `standard-list`, or `earned`), and pool/list version.
 - Acquisition dataset and progression context, lifecycle stage, routine, and exact trial position.
-- Whether the term was true BM or earned BM.
+- Whether the term was an Established DT or Earned DT.
 - Right/wrong self-assessment, presentation time, review time, and whether Skip Timer was used.
 - Created and updated timestamps and synchronization status.
 
-Do not store handwriting with the observation. During local-only development, observations persist in the child's local AppState. In authenticated cloud mode, they synchronize to a family-owned per-child BM-observation collection in Firestore. Canonical BM profiles and standard lists remain server-managed; a browser observation may never alter the shared list itself.
+Do not store handwriting with the observation. During local-only development, observations persist in the child's local AppState. In authenticated cloud mode, they synchronize to a family-owned per-child DT-observation collection in Firestore. Canonical DT profiles and standard lists remain server-managed; a browser observation may never alter the shared list itself.
 
-Per-term counts and accuracy may be derived from the observation history, but the initial implementation must retain the underlying events so later correction, forgetting, and reacquisition rules can be tested against real longitudinal data. Until those rules are approved, reports must label this as BM performance data rather than a completed weekly score or authoritative mastery decision.
+Per-term counts and accuracy may be derived from the observation history, but the initial implementation must retain the underlying events so later correction, forgetting, and reacquisition rules can be tested against real longitudinal data. Until those rules are approved, reports must label this as DT performance data rather than a completed weekly score or authoritative mastery decision.
 
 ### Acquisition continuity and persistence
 
@@ -265,18 +267,18 @@ The durable progress record must preserve enough state to reproduce the next ste
 - Activity module, vocabulary tier, lifecycle stage, practice strategy ID, and strategy version.
 - Ordered target list and current target index.
 - Current routine: Introduction, Expanded Trials, or Correction.
-- Exact step within the current routine, including the ten-position Expanded Trials sequence.
+- Exact step within the current routine, including the eleven-position Expanded Trials sequence.
 - Current hidden-target timer value.
-- Completed target words and the earned-BM pool.
-- True-BM and earned-BM shuffle-bag state, including the most recently used BM word.
-- BM observation mode and the stable BM observation ID for a reviewed BM trial when collection is enabled.
+- Completed target words and the Earned DT pool.
+- Established DT and Earned DT shuffle-bag state, including the most recently used DT.
+- DT observation mode and the stable DT observation ID for a reviewed DT trial when collection is enabled.
 - Consecutive scored-error count for the current word.
 - Completed scored trials, with stable attempt IDs for duplicate prevention.
 - Last completed step, next step, last-updated time, completion state, and application version.
 
-The saved trial and next-position update must be atomic or idempotently recoverable so a retry cannot skip or count a trial twice. When a reviewed trial produces a BM observation, saving that observation and advancing to the next position must use the same idempotent checkpoint boundary. If the child leaves after beginning but before completing a trial, that one incomplete trial restarts; completed trials, completed words, timer progression, pools, sequence position, and previously reviewed BM observations remain intact. An official completed Acquisition score is created only after the full dataset progression is complete, but valid partial Acquisition trials, BM observations, and teaching state are retained in progress history.
+The saved trial and next-position update must be atomic or idempotently recoverable so a retry cannot skip or count a trial twice. When a reviewed trial produces a DT observation, saving that observation and advancing to the next position must use the same idempotent checkpoint boundary. If the child leaves after beginning but before completing a trial, that one incomplete trial restarts; completed trials, completed words, timer progression, pools, sequence position, and previously reviewed DT observations remain intact. **Done for today** saves the exact next position and creates a visit score only from that visit's hidden weekly-target responses. Valid partial Acquisition trials, DT observations, and teaching state remain in progress history across visits and devices.
 
-A new Acquisition progression begins only when a different canonical weekly dataset is successfully imported, validated, and activated for that child’s grade, school year, and activity module. The Monday calendar boundary by itself must not reset progress. A duplicate import, confirmation, failed import, malformed source unit, no-slide instructional pause, refresh, new day, or application update must not erase or replace existing Acquisition progress. Older progress and completed history remain attached to their original stable dataset IDs.
+A new Acquisition progression begins when a different canonical weekly dataset is successfully imported, validated, and activated for that child’s grade, school year, and activity module. The new current-week set enters Acquisition even if the prior set was unfinished; the prior set advances to Test Review on schedule and does not hold the new set back. Its unfinished Acquisition progression remains attached to its stable dataset ID and is available from that Test Review activity through a clearly labeled secondary action such as **Learn 9/21–9/25 words**. A duplicate import, confirmation, failed import, malformed source unit, no-slide instructional pause, refresh, new day, or application update must not erase or replace existing Acquisition progress.
 
 Dataset selection filters by the child’s grade and school year before resolving lifecycle state through that grade’s practice profile. If a configured grade has no validated datasets yet, the child sees the existing empty-state or eligible Warmup fallback behavior. Adding or activating Kindergarten and Grade 5 datasets must not delete or rewrite any existing Grade 2, Grade 5, or other historical records.
 
@@ -286,7 +288,7 @@ Vocabulary records carry `language` (`mandarin` or `english`), `tier` (`tier-1`,
 
 ## Practice flow
 
-Every dictation prompt speaks the Mandarin term aloud, offers Replay, gives the child a writing surface, and runs the configured phase timer. A visible Skip Timer control lets a child who has finished early proceed to the required review frame. It does not skip the target, create an unanswered result, bypass self-assessment, or change scoring. Grade 2 uses 10 seconds for Warmup, 20 seconds for Acquisition, and 10 seconds for Test Review. Grade 5 uses 10 seconds for Test Review 1 and Test Review 2; its other timers remain profile values.
+Every dictation prompt speaks the Mandarin term aloud, offers Replay, gives the child a writing surface, and runs the configured prompt timer. A visible **Skip Timer** control lets a child who has finished early proceed to the required review frame. It does not skip the target, create an unanswered result, bypass self-assessment, or change scoring. Grade 2 uses 10 seconds for Warmup, the routine-specific Acquisition timers above, and 10 seconds for Test Review. Grade 5 uses 10 seconds for Test Review 1 and Test Review 2; its other timers remain profile values.
 
 Warmup and Test Review preserve the set-based flow: dictate the selected terms without showing their answers, then reveal each answer during the review portion and collect the child’s I got it right or I got it wrong self-assessment. Acquisition uses its teaching-specific trial flow instead: each timed writing prompt is followed immediately by its reveal/comparison frame and Yes/No response before the next trial. The current implementation may use paper, but the Acquisition handwriting-pad prototype supplies the writing surface and comparison behavior described below.
 
@@ -294,15 +296,15 @@ The word/context/repeated-word audio sequence uses one-second pauses. Warmup use
 
 Persistence on interruption is lifecycle-specific:
 
-- **Warmup:** Save each completed self-assessment immediately, including its source bucket and source word/dataset identity. Preserve partial-session history, attempted count, accuracy, and adaptive-state changes. An unfinished required Warmup resumes before its associated Acquisition or Test Review path continues. A started but unanswered prompt is not counted and may restart.
+- **Warmup:** Save each completed self-assessment immediately, including its source bucket and source word/dataset identity. Preserve partial-session history, attempted count, accuracy, and adaptive-state changes. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review path continues unless the child explicitly chooses Skip Warmup. A started but unanswered prompt is not counted and may restart. A skipped Warmup creates no result.
 - **Acquisition:** Save every completed trial and the exact next teaching position as described in Acquisition continuity and persistence. Resume later from that point. A started but unfinished trial may restart without rolling back earlier completed work.
-- **Test Review 1 or 2:** Keep answers provisional until every required target in that review has been assessed. If the child leaves, refreshes, signs out, or otherwise abandons the review, discard its temporary answers and do not create a score, adaptive-state update, or completed Test Review record. Previously completed sessions remain intact. An optional metadata-only abandonment audit may be retained, but it must not contain or count provisional answers as results.
+- **Test Review 1 or 2:** Keep answers provisional until every required target in that review has been assessed. If the child leaves, refreshes, signs out, or otherwise abandons the review, discard its temporary answers and do not create a score, adaptive-state update, or completed Test Review record. The child may also explicitly choose **Skip Test Review** before or during the activity; save any completed Warmup results, create no Test Review answer or score, and record the activity outcome as `skipped`, not `completed`. Previously completed sessions remain intact. A metadata-only abandonment audit may be retained, but it must not contain or count provisional answers as results.
 
 ### On-screen handwriting exploration
 
 Before the production pilot, prototype an on-screen handwriting pad for Acquisition so a child cannot refer to previously written paper answers during later target trials. Use pointer input that supports touch, stylus, and mouse. The child writes in a clear canvas during the timed prompt; after submission or timer completion, the next review frame displays a snapshot of that writing beside the canonical Mandarin term and asks the child to mark it right or wrong. Clear and hide the prior writing before the next prompt.
 
-Show/copy trials continue to display the canonical term while the child writes; hidden current-target and earned-BM trials do not. Provide child-friendly Clear and Undo controls without exposing the answer early. If a canvas trial is interrupted before self-assessment, discard only that temporary drawing and restart that trial while retaining the last completed Acquisition position.
+Show/copy trials continue to display the canonical term while the child writes; hidden weekly-target, Established DT, and Earned DT trials do not. Provide child-friendly Clear and Undo controls without exposing the answer early. If a canvas trial is interrupted before self-assessment, discard only that temporary drawing and restart that trial while retaining the last completed Acquisition position.
 
 Keep raw strokes and drawing snapshots in browser memory only for the immediate comparison by default. Do not upload or permanently store handwriting unless a later privacy, retention, deletion, and family-access review explicitly authorizes it. Persist the trial result and learning-state metadata, not the drawing. Test the prototype on representative phone, tablet, stylus, and desktop input, including accidental scrolling, orientation changes, small screens, and reduced-motion or accessibility settings. Decide whether the handwriting pad replaces paper or remains an optional mode only after child usability testing.
 
@@ -323,9 +325,9 @@ The child-facing response changes from writing to reading aloud:
 3. Provide canonical Mandarin audio through a separate control for review or comparison.
 4. Collect an explicit child self-assessment.
 
-Tier 2 uses the same high-level grade lifecycle as Tier 1: Acquisition with BM, earned BM, Expanded Trials, and Correction; the grade’s configured Test Review stages; and a required or standalone Tier 2 Warmup using already learned Tier 2 words. Grade 5 therefore uses Acquisition, Test Review 1, and Test Review 2 for both Tier 1 writing and Tier 2 reading, and each pathway begins with its own six-word Tier 2 Warmup. Tier 1 and Tier 2 maintain separate progressions, attempts, adaptive state, Warmup graphs, and scores.
+Tier 2 uses the same high-level grade lifecycle as Tier 1: Acquisition with Established and Earned DTs, Expanded Trials, and Correction; the grade’s configured Test Review stages; and an offered or standalone Tier 2 Warmup using already learned Tier 2 words. Grade 5 therefore uses Acquisition, Test Review 1, and Test Review 2 for both Tier 1 writing and Tier 2 reading, and each pathway offers its own six-word Tier 2 Warmup. Tier 1 and Tier 2 maintain separate progressions, attempts, adaptive state, Warmup graphs, and scores.
 
-Tier 2 true-BM trials use a separate per-child mastery pool of easy displayed characters or words that the child reads aloud. The interim Tier 2 pool is seeded from the approved bootstrap terms listed above; it uses the same term text as Tier 1 but never shares Tier 1 attempts or mastery state. Earned Tier 2 BM items come only from completed Tier 2 reading targets. The future imported standard list and individualized baseline replace the bootstrap configuration only through the dedicated BM-baseline branch.
+Tier 2 Established DT trials use a separate per-child pool of easy displayed characters or words that the child reads aloud. The interim Tier 2 pool is seeded from the approved bootstrap terms listed above; it uses the same term text as Tier 1 but never shares Tier 1 attempts or performance state. Earned Tier 2 DT items come only from completed Tier 2 reading targets. The future imported standard list and individualized baseline replace the bootstrap configuration only through the dedicated DT-baseline branch.
 
 The first Tier 2 implementation must decide whether it uses immediate self-assessment without retaining audio or includes the previously proposed four-second `MediaRecorder` capture and playback. Voice recording is not assumed merely because the term is read aloud. If recording is included, microphone permission, private family-scoped storage, upload recovery, retention, deletion, supported formats, and cross-device playback must pass a separate privacy and storage review before production.
 
@@ -333,15 +335,15 @@ Following Tier 2 reading, begin a separate English spelling dictation section us
 
 ## Scoring and history
 
-The primary metric is percentage correct. Create a primary dataset score only after every required word or scored trial in the relevant Acquisition or Test Review progression has been completed and reviewed. Partial Acquisition trials remain durable learning records but do not create a falsely complete dataset score. Abandoned Test Review answers remain temporary and create no score.
+The primary metric is percentage correct. Acquisition creates one score per visit when the child selects **Done for today**, using only the hidden weekly-target responses assessed in that visit; a visit with no such responses creates no weekly score. Test Review creates a dataset score only after every required target in that review has been completed and reviewed. Abandoned or explicitly skipped Test Review answers create no score.
 
 Warmup does not create a per-dataset score. It has its own line graph with one point per Warmup visit that contains at least one completed self-assessment. Each point records the local date, Warmup type, target item count, attempted item count, correct item count, percentage correct, and `partial` or `completed` status. The graph must display the attempted-versus-target count so a short partial Warmup is not presented as equivalent to a completed six- or sixteen-item Warmup. Preserve the source category of each attempt so the history can also distinguish Random Rotation, Recent Review, and Errored Word performance. Filters or separate series may show monthly Random Rotation accuracy without losing the complete Warmup history.
 
-Show a separate history graph for every permanent weekly dataset, ordered newest first, with each completed score point labeled by phase and date. Acquisition may span several daily visits but remains attached to one stable dataset progression; visit dates and partial trial history remain inspectable even though the official dataset score is added only upon completion.
+Show a separate history graph for every permanent weekly dataset, ordered newest first, with each score point labeled by activity and date. Acquisition may span several daily visits but remains attached to one stable dataset progression; each **Done for today** visit with at least one hidden weekly-target response adds its own score point.
 
-Tier 1 BM observations use a separate history stream keyed by child, activity module, and stable BM term identity. Initially retain event-level right/wrong history and derived attempted, correct, incorrect, and percentage values. Do not merge these values into weekly Acquisition graphs or official dataset percentages. A later BM-policy branch may add dedicated longitudinal reports and state transitions after the meaning of one error, repeated errors, correction, and reacquisition is approved.
+Tier 1 DT observations use a separate history stream keyed by child, activity module, and stable DT identity. Initially retain event-level right/wrong history and derived attempted, correct, incorrect, and percentage values. Do not merge these values into weekly Acquisition graphs or official dataset percentages. A later DT-policy branch may add dedicated longitudinal reports and state transitions after the meaning of one error, repeated errors, correction, and reacquisition is approved.
 
-Preserve detailed records containing child ID, stable dataset ID and date range, word or BM term ID, grade, activity module, vocabulary tier, lifecycle stage, practice strategy ID and version, unique visit/session ID, stable attempt or observation ID, local session date, correct/incorrect result, error history, Warmup-session history, Acquisition progression ID and position where applicable, complete-source-dataset status, completion status, scoring status, answer-reveal method, and application version. Duplicate attempt, BM observation, progression, or session IDs must never create duplicate trials, observations, or scores.
+Preserve detailed records containing child ID, stable dataset ID and date range, word or DT term ID, grade, activity module, vocabulary tier, lifecycle stage, practice strategy ID and version, unique visit/session ID, stable attempt or observation ID, local session date, correct/incorrect result, error history, Warmup-session history, Acquisition progression ID and position where applicable, complete-source-dataset status, completion status, scoring status, answer-reveal method, and application version. Duplicate attempt, DT observation, progression, or session IDs must never create duplicate trials, observations, or scores.
 
 Reading records preserve the child ID, stable dataset and Tier 2 target identity, lifecycle stage, strategy version, session and attempt IDs, canonical-audio reference, self-assessed right/wrong result, completion state, and timestamps. If recording is approved, they additionally preserve the private storage path, recording format and duration, and upload status. Reading results are never included in dictation percentage scores. The English spelling section has its own answer records and score.
 
@@ -380,11 +382,11 @@ These stages describe the product scope. The implementation order for the curren
 
 ### Stage 1 — Practice prototype and durable learning state
 
-Build the practice experience with canonical importer-derived fixtures and reviewed date-range datasets, required Warmup, Acquisition and configured Test Review lifecycle phases, randomized words, audio, Replay, phase timers, interstitials, right/wrong review controls, dataset-level scores, legacy migration, and separate graphs. Do not use handwritten production sample vocabulary or silent fallback datasets. Persist partial Warmup attempts and Warmup graph points. Persist Acquisition as an exact multi-day teaching progression. Optionally collect Tier 1 true-BM correctness as a separate observation stream without changing weekly scores. Keep abandoned Test Review work provisional and unscored.
+Build the practice experience with canonical importer-derived fixtures and reviewed date-range datasets, skippable pre-activity Warmup, Acquisition and configured Test Review lifecycle phases, randomized words, audio, Replay, phase timers, interstitials, right/wrong review controls, visit-appropriate scores, legacy migration, and separate graphs. Do not use handwritten production sample vocabulary or silent fallback datasets. Persist partial Warmup attempts and Warmup graph points. Persist Acquisition as an exact multi-day teaching progression. Collect Tier 1 DT correctness in a separate observation stream without changing weekly-target scores. Keep abandoned or skipped Test Review work unscored.
 
 ### Stage 2 — Accounts and data
 
-Add parent authentication, multiple child profiles, Firestore persistence, archive behavior, cross-device sessions, and security rules separating family data. Cloud persistence must include module-specific Warmup visits and attempts, Acquisition progression state and trials, per-child BM observations, Test Review 1 and 2 temporary state, and scores without mixing their different completion rules. Persistent reward state is added only after the reward prototype defines its minimum schema.
+Add parent authentication, multiple child profiles, Firestore persistence, archive behavior, cross-device sessions, and security rules separating family data. Cloud persistence must include module-specific Warmup visits and attempts, Acquisition progression state and trials, per-child DT observations, Test Review 1 and 2 temporary state, and scores without mixing their different completion rules. Persistent reward state is added only after the reward prototype defines its minimum schema.
 
 ### Stage 3 — Administrator configuration
 
@@ -428,19 +430,19 @@ feature/persistent-warmup
 feature/persistent-acquisition
 ```
 
-After persistent Acquisition merges, the BM-baseline, handwriting, reward, and Tier 2 modules branch from that updated shared foundation rather than from a Grade 2, Grade 5, or Kindergarten feature branch:
+After persistent Acquisition merges, the DT-baseline, handwriting, reward, and Tier 2 modules branch from that updated shared foundation rather than from a Grade 2, Grade 5, or Kindergarten feature branch:
 
 ```text
 feature/persistent-acquisition
         ↓ merge
 updated main
-├── feature/bm-baseline-and-remediation
+├── feature/dt-baseline-and-remediation
 ├── feature/handwriting-pad
 ├── feature/reward-system
 └── feature/tier2-reading-lifecycle
 ```
 
-The BM-baseline branch is deferred until its full lists and behavior are specified. It may implement Tier 1 first and add Tier 2 activation after the reading module exists, but both modules use the same source/version/assessment contract and separate mastery records. Firebase Hosting may be prepared without production data after the source and local persistence foundation is stable. Secure cloud persistence, controlled multi-grade imports, the production pilot, and automatic multi-source synchronization retain their separate acceptance gates. The final ordering of Tier 2 relative to the writing-only production pilot depends on whether the first Tier 2 release stores child voice recordings.
+The DT-baseline branch is deferred until its full lists and behavior are specified. It may implement Tier 1 first and add Tier 2 activation after the reading module exists, but both modules use the same source/version/assessment contract and separate mastery records. Firebase Hosting may be prepared without production data after the source and local persistence foundation is stable. Secure cloud persistence, controlled multi-grade imports, the production pilot, and automatic multi-source synchronization retain their separate acceptance gates. The final ordering of Tier 2 relative to the writing-only production pilot depends on whether the first Tier 2 release stores child voice recordings.
 
 Before starting each branch, stop the development server, verify that the worktree is clean, update `main`, and branch from the updated commit:
 
@@ -475,13 +477,13 @@ Goal: parse and validate the latest Grade 5 structure without changing Grade 2 b
 - Extract Tier 1–3 from the correct Mandarin table cells using source role rather than first/last Tier heading position.
 - Map `Coming next week/Core vocab` to the displayed week’s Acquisition candidate and treat its later `This week` appearance as confirmation.
 - Preserve source labels, assigned week, content fingerprint, slide provenance, the 3–10 Tier 1 count rule, and every allowed duplicate as its own ordered target occurrence.
-- Define the Grade 5 lifecycle profile with behaviorally identical Test Review 1 and Test Review 2 stages, three separate required six-word Warmups, and one-step advancement per fully validated source slide.
+- Define the Grade 5 lifecycle profile with behaviorally identical Test Review 1 and Test Review 2 stages, three separate skippable six-word pre-activity Warmups, and one-step advancement per fully validated source slide.
 - Configure both Grade 5 Test Review stages with the same 10-second timer and Skip Timer behavior that advances to review without bypassing assessment or scoring.
 - Freeze every cohort during no-slide weeks and after malformed or conflicting source steps; the next valid slide advances exactly once regardless of elapsed calendar time.
 - Treat a mismatched top-row confirmation as a blocking conflict: preserve prior vocabulary and stages, leave the new bottom-row cohort pending, and require administrator resolution before progression.
 - Use Week 4 as the activation baseline and preserve Week 1–3 as provenance or issues without reconstructing missing review cohorts.
 
-Acceptance gate: fixtures for the latest validated pattern produce the approved Acquisition and confirmation candidates; Week 4 starts without invented review cohorts; each later valid slide advances exactly one stage; a conference gap advances zero stages; a later valid slide advances only once; a mismatched confirmation freezes progression; repeated source terms remain repeated ordered targets; all three primary Grade 5 paths require distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort and both use the configured 10-second timer; Grade 2 output is unchanged; no Firestore write occurs.
+Acceptance gate: fixtures for the latest validated pattern produce the approved Acquisition and confirmation candidates; Week 4 starts without invented review cohorts; each later valid slide advances exactly one stage; a conference gap advances zero stages; a later valid slide advances only once; a mismatched confirmation freezes progression; repeated source terms remain repeated ordered targets; all three primary Grade 5 paths offer distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort and both use the configured 10-second timer; Grade 2 output is unchanged; no Firestore write occurs.
 
 ### Phase 3 — Kindergarten Sheets adapter
 
@@ -506,10 +508,10 @@ Goal: preserve partial Warmup work through a grade- and module-aware shared cont
 - Persist the materialized target order, source buckets, current position, completed self-assessments, partial/completed status, and graph point.
 - Keep Tier 1 writing and Tier 2 reading Warmup state separate.
 - Preserve the current Grade 2 counts, quotas, promotion thresholds, shuffle bag, and audio behavior behind the Grade 2 profile.
-- Configure Grade 5 required pre-path Warmups at exactly six words and expose standalone Warmup independently for every grade. Seed at least six eligible items through the versioned bootstrap BM profile while requiring explicit decisions for Grade 5's standalone count, bucket quotas, and promotion thresholds. Require Kindergarten to adopt or override every teaching parameter explicitly.
+- Configure Grade 5 pre-activity Warmups at exactly six words, make them skippable, and expose standalone Warmup independently for every grade. Seed at least six eligible items through the versioned Established DT bootstrap profile while requiring explicit decisions for Grade 5's standalone count, bucket quotas, and promotion thresholds. Require Kindergarten to adopt or override every teaching parameter explicitly.
 - Keep Test Review answers provisional and unrelated to durable partial Warmup results.
 
-Acceptance gate: partial Warmup history survives restart without duplicate graph points or shuffle-bag consumption; every grade exposes standalone Warmup independently; each Grade 5 primary pathway materializes a distinct six-word required Warmup; the interim bootstrap profile provides at least six module-specific BM records without creating weekly datasets; Grade 2 behavior is unchanged; and unsupported grade/module policies fail closed.
+Acceptance gate: partial Warmup history survives restart without duplicate graph points or shuffle-bag consumption; every grade exposes standalone Warmup independently; each Grade 5 primary pathway materializes a distinct six-word pre-activity Warmup that may be skipped without a result; the interim bootstrap profile provides at least six module-specific DT records without creating weekly datasets; Grade 2 behavior is unchanged; and unsupported grade/module policies fail closed.
 
 ### Phase 5 — Persistent Acquisition and grade lifecycle strategies
 
@@ -519,34 +521,34 @@ Goal: preserve the exact teaching point while supporting versioned grade lifecyc
 
 - Persist the strategy ID and version, activity module, tier, lifecycle stage, exact routine step, timers, pools, counters, completed trials, and next position.
 - Resume after refresh, sign-out, a new day, and application restart without replaying completed work.
-- Preserve the exact Grade 2 Acquisition behavior as `grade2-acquisition-v1`.
+- Preserve the exact Grade 2 Acquisition strategy above as `grade2-acquisition-v2`.
 - Support Grade 5's source-sequence lifecycle, Week 4 baseline, Test Review 1, Test Review 2, confirmation-conflict freezes, and no-slide freezes without changing Grade 2 lifecycle behavior.
 - Ensure Test Review 1 and Test Review 2 share one behavioral strategy and differ only by lifecycle label and cohort selection.
 - Apply the shared 10-second Grade 5 Test Review timer and ensure Skip Timer reaches the required review frame without dropping or auto-scoring the occurrence.
-- Add the versioned Tier 1 `bmObservationMode` profile option. In collect mode, persist reviewed true-BM right/wrong observations through the same idempotent checkpoint as Acquisition progression; in discard mode, preserve compatibility without fabricating observations.
-- Keep true-BM observations separate from the official weekly Acquisition score and do not trigger correction, demotion, or reacquisition yet.
+- Add the versioned Tier 1 `dtObservationMode` profile option. In collect mode, persist reviewed Established and Earned DT right/wrong observations through the same idempotent checkpoint as Acquisition progression; in discard mode, preserve compatibility without fabricating observations.
+- Keep DT observations separate from the weekly-target Acquisition score. Established DT errors do not trigger Correction, demotion, or reacquisition; Earned DT errors follow the approved Correction routine.
 - Keep abandoned Test Review 1 and 2 answers provisional and unscored.
 - Migrate or safely interpret existing local records without fabricating completed progress.
 
-Acceptance gate: Grade 2 sequence and weekly-score regression tests remain unchanged; partial Acquisition resumes at the exact next step without duplicate attempts; collect mode saves one idempotent BM observation for each reviewed true-BM trial while discard mode saves none; earned-BM attempts appear once in longitudinal BM history without duplicate scoring; collected observations survive serialization and reload; true-BM correctness cannot change the weekly Acquisition percentage or teaching sequence; Grade 5 advances only on validated instructional source progression; no-slide weeks freeze positions; both Grade 5 Test Review stages use 10 seconds; Skip Timer always reaches review without skipping or auto-scoring an occurrence; and abandoned Test Reviews create no result or score.
+Acceptance gate: Grade 2 uses the exact 11-position Expanded Trials sequence, five target timers, and five-step Correction routine; partial Acquisition resumes at the exact next step without duplicate attempts; **Done for today** scores only that visit's hidden weekly-target responses; collect mode saves one idempotent DT observation for each reviewed DT trial while discard mode saves none; Earned DT attempts appear once in longitudinal DT history without weekly-score contamination; collected observations survive serialization and reload; Grade 5 advances only on validated instructional source progression; no-slide weeks freeze positions; both Grade 5 Test Review stages use 10 seconds; Skip Timer always reaches review without skipping or auto-scoring an occurrence; and abandoned or skipped Test Reviews create no result or score.
 
-### Deferred branch — Baseline BM assessment and remediation
+### Deferred branch — Baseline DT assessment and remediation
 
-Branch: `feature/bm-baseline-and-remediation`, created from updated `main` after persistent Warmup and Acquisition merge.
+Branch: `feature/dt-baseline-and-remediation`, created from updated `main` after persistent Warmup and Acquisition merge.
 
-Goal: replace the temporary presumption of a small known BM pool with imported standard lists and an individualized, resumable baseline for each child and activity module.
+Goal: replace the temporary presumption of a small known Established DT pool with imported standard lists and an individualized, resumable baseline for each child and activity module.
 
 - Keep the approved bootstrap profile available for current development without representing it as weekly curriculum.
 - Import versioned standard Tier 1 writing and Tier 2 reading lists through an administrator-reviewed path.
 - Once imported baseline mode is enabled for a module, block that child's weekly lifecycle entry until the module's baseline assessment is complete. The temporary bootstrap-only development profile does not fabricate baseline results.
-- Test the complete list in resumable sets and persist exact position, results, list version, and derived BM eligibility.
+- Test the complete list in resumable sets and persist exact position, results, list version, and derived DT eligibility.
 - Carry demonstrated prior-grade vocabulary into the child's longitudinal independent Warmup pool.
 - Keep Tier 1 and Tier 2 assessment, mastery, correction, and reacquisition state separate.
-- Consume the longitudinal BM-observation history as evidence, but do not reinterpret historical results until an explicit, versioned transition policy is approved.
+- Consume the longitudinal DT-observation history as evidence, but do not reinterpret historical results until an explicit, versioned transition policy is approved.
 - Add immediate Warmup correction after the configured first-error threshold and a distinct reacquisition queue after the configured three-error threshold, without silently inserting remediation terms into the current weekly dataset.
 - Require explicit decisions for list provenance, set size, error-window semantics, correction steps, reacquisition steps, migration, and re-baselining after a list revision.
 
-Acceptance gate: once imported baseline mode is enabled, restarting or switching devices resumes the exact baseline position; no term is skipped or tested twice because of a retry; weekly lifecycles remain unavailable until the applicable module baseline is complete; derived BM pools are deterministic; prior-year vocabulary remains available across school years; Tier 1 and Tier 2 results never contaminate each other; and remediation cannot alter canonical weekly datasets.
+Acceptance gate: once imported baseline mode is enabled, restarting or switching devices resumes the exact baseline position; no term is skipped or tested twice because of a retry; weekly lifecycles remain unavailable until the applicable module baseline is complete; derived DT pools are deterministic; prior-year vocabulary remains available across school years; Tier 1 and Tier 2 results never contaminate each other; and remediation cannot alter canonical weekly datasets.
 
 ### Phase 6 — Public hosting and branding
 
@@ -578,7 +580,7 @@ Firebase Authentication user
     └── child
         ├── warmup visits and attempts
         ├── acquisition progressions and trials
-        ├── BM observations and derived per-term aggregates
+        ├── DT observations and derived per-term aggregates
         ├── configured test-review-stage sessions and temporary attempts
         ├── scores
         └── adaptive/warmup state
@@ -586,7 +588,7 @@ Firebase Authentication user
 Shared server-managed data
 ├── datasets
 │   └── words
-├── versioned BM bootstrap and standard-list profiles
+├── versioned DT bootstrap and standard-list profiles
 └── import logs
 ```
 
@@ -594,13 +596,13 @@ Shared server-managed data
 - Keep local and cloud modes explicit. Never silently upload, merge, overwrite, or discard local browser progress when cloud mode is enabled.
 - Test Firestore rules with the Firebase Emulator Suite. Parent A must not read or write Parent B's family, and browser clients must never write shared datasets or import logs.
 - Require attempts to reference an owned active child, a valid session, an existing canonical dataset, and a word belonging to that dataset.
-- Validate BM observations separately from weekly attempts because true-BM terms may come from a bootstrap or standard list rather than the active dataset. Require an owned child, valid Acquisition progression, server-recognized BM term and profile version, stable observation ID, allowed right/wrong value, and matching activity module. Browser observations may not edit shared BM profiles or standard lists.
-- Require completed scores to match the child and dataset. Partial Warmup and Acquisition records may be durable, but they must not claim a completed dataset score. Abandoned Test Review sessions may not create attempts, adaptive updates, or official scores.
-- Make Acquisition trial writes, BM observations where applicable, and next-position updates atomic or idempotently recoverable, and reject duplicate stable attempt or observation IDs.
+- Validate DT observations separately from weekly attempts because Established DTs may come from a bootstrap or standard list rather than the active dataset. Require an owned child, valid Acquisition progression, server-recognized DT term and profile version, stable observation ID, allowed right/wrong value, and matching activity module. Browser observations may not edit shared DT profiles or standard lists.
+- Require scores to match the child and dataset. A partial Acquisition progression may have a valid per-visit score after **Done for today**, but it must not claim that the complete teaching progression finished. Abandoned or skipped Test Review sessions may not create Test Review attempts, adaptive updates, or scores.
+- Make Acquisition trial writes, DT observations where applicable, and next-position updates atomic or idempotently recoverable, and reject duplicate stable attempt or observation IDs.
 - Treat browser-computed scores as client-trusted pilot data until final score creation is moved behind a trusted server endpoint or receives equivalent server-side verification. Do not describe client-trusted scores as independently verified assessments.
 - Define account removal, data retention, and deletion procedures before collecting production data.
 
-Acceptance gate: an invited staging parent can sign in, create or select a child, complete or partially complete practice, sign in on a second computer, and see the same Warmup history, exact Acquisition position, and collected Tier 1 BM observations. Cross-family access, invalid or duplicate attempts or BM observations, false completion scores, abandoned Test Review results, and shared-data writes are rejected by emulator-backed tests.
+Acceptance gate: an invited staging parent can sign in, create or select a child, complete or partially complete practice, sign in on a second computer, and see the same Warmup history, exact Acquisition position, and collected Tier 1 DT observations. Cross-family access, invalid or duplicate attempts or DT observations, false completion claims, abandoned or skipped Test Review results, and shared-data writes are rejected by emulator-backed tests.
 
 ### Phase 8 — Controlled cloud dataset population
 
@@ -659,7 +661,7 @@ Goal: activate preserved Tier 2 vocabulary through one shared reading module wit
 - Show the character or word and ask the child to say it aloud.
 - Reuse the grade’s configured Acquisition, Test Review, and Warmup structure without sharing Tier 1 dictation state.
 - Support Grade 5 Test Review 1 and Test Review 2.
-- Seed each grade's initial Tier 2 true-BM pool from the versioned bootstrap terms while keeping its mastery state separate from Tier 1; integrate imported individualized baselines only through the dedicated baseline branch.
+- Seed each grade's initial Tier 2 Established DT pool from the versioned bootstrap terms while keeping its mastery state separate from Tier 1; integrate imported individualized baselines only through the dedicated baseline branch.
 - Keep reading attempts, scores, adaptive state, and history separate from dictation.
 - Decide before implementation whether the first release is self-assessment-only or records four-second voice clips.
 - If recording is included, complete the private-storage, permission, retention, deletion, format, upload-recovery, and cross-device review before production.
@@ -741,10 +743,10 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Never display pinyin or English meanings to children.
 - Save completed Warmup and Acquisition work according to their durable progress rules; never erase it merely because a visit ends.
 - Never count provisional answers from an abandoned Test Review in results, adaptive state, or official scores.
-- Never represent partial Acquisition progress as a completed dataset score.
-- Never merge true-BM observation accuracy into the official weekly Acquisition score.
-- Never use a collected BM error to trigger correction, remove BM status, or create a reacquisition target until a versioned BM transition policy is explicitly approved and tested.
-- Never discard or duplicate a reviewed BM observation because of refresh, retry, or cross-device synchronization.
+- Never represent partial Acquisition progress as a completed teaching progression; a **Done for today** score is explicitly a visit score.
+- Never merge DT observation accuracy into the weekly-target Acquisition score.
+- Never use a collected Established DT error to trigger Correction, remove DT status, or create a reacquisition target until a versioned DT transition policy is explicitly approved and tested.
+- Never discard or duplicate a reviewed DT observation because of refresh, retry, or cross-device synchronization.
 - Do not delete historical weekly sets or completed attempts.
 - Do not store private credentials in GitHub.
 - Keep parent settings separate from child practice screens.
@@ -754,7 +756,7 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Treat child voice recordings as private personal data; restrict access to the authorized family and define retention/deletion behavior before production.
 - Do not use automatic speech recognition as the official pronunciation score without a separately validated feature; the child’s explicit self-assessment is the initial reading result.
 
-## Current implementation baseline and required revisions — 2026-09-24
+## Current implementation baseline and required revisions — 2026-09-26
 
 The repository contains Stage 2 foundations as a Firebase REST-backed browser flow with safe configuration placeholders. They have not been deployed, validated with the Firebase Emulator Suite, or approved for production data collection. The approved requirements in this plan supersede any existing implementation behavior that treats every incomplete lifecycle in the same way.
 
@@ -767,15 +769,17 @@ Already implemented:
 - Grade/school-year filtering, stable date-range dataset identities, cloud session primitives, temporary and completed attempts, dataset-level scores, and stale-session cleanup.
 - An idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck.
 - Explicit writing-workshop outcomes, malformed-slide rejection, missing-current-week Warmup fallback, and Firestore ownership rules in `firestore.rules`.
+- Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
+- Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
 Required revisions before a production pilot:
 
-- Replace the existing shared incomplete-session cleanup behavior with durable partial Warmup records, exact resumable Acquisition progression, and all-or-nothing Test Review handling.
+- Replace the remaining incomplete-Warmup cleanup behavior with durable partial Warmup records. Exact Acquisition resumption and abandoned/skipped Test Review isolation are now implemented.
 - Add the full Warmup history line graph with target, attempted, correct, percentage, and partial/completed data.
 - Introduce the canonical source boundary, validate the latest Grade 5 table roles, and add the Kindergarten Sheets adapter without guessing deferred date rules.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
-- Add cloud rules and emulator tests for module-specific Warmup visits, Acquisition progressions, stable attempt IDs, exact next-position updates, and Test Review 1 and 2 provisional data.
-- Add durable, idempotent Tier 1 BM observations in local state and family-owned Firestore data, while keeping shared BM profiles server-managed and weekly scores unchanged.
+- Add emulator tests for module-specific Warmup visits, Acquisition progressions, stable attempt IDs, exact next-position updates, DT observations, and Test Review 1 and 2 provisional data. The corresponding rule paths now exist but remain unverified in the Emulator Suite.
+- Move the related Acquisition attempt, DT observation, and next-position writes into one transaction or trusted batch, and add a server-managed DT profile that Firestore rules can validate.
 - Prototype and test the in-memory handwriting pad. Keep the cumulative-star reward system in its separate Kindergarten-only branch until its award, redemption, and parent-control rules are approved.
 - Create separate staging and production Firebase environments. Test Firestore rules in the Emulator Suite before deployment.
 - Configure Firebase Hosting, cross-device staging validation, production Authentication, production Firestore rules, App Check monitoring, retention procedures, and public-pilot access.
@@ -784,4 +788,4 @@ Required revisions before a production pilot:
 
 The active Grade 2 source deck was inspected read-only; its structure and page IDs are in `docs/grade2-deck-structure.md`. The Grade 5 observed structure is in `docs/grade5-deck-structure.md`, and the existing partial Grade 5 parser profile must be validated and extended against the latest approved table-role rules rather than replaced blindly. Kindergarten uses one authoritative Sheets workbook with weekly tabs; its source adapter must preserve the inspected `Writing character` and `High frequency word` mappings while its date policy remains deferred.
 
-Remaining product decisions include Grade 5's standalone-Warmup target size, bucket quotas, and promotion thresholds; which users or environments may disable Tier 1 BM observation collection; how BM performance should be displayed; the minimum evidence needed to change BM status; the future standard Tier 1 and Tier 2 baseline-list sources and versions; baseline assessment set size; whether the three-error remediation threshold is consecutive or cumulative; the exact Warmup correction and reacquisition sequences; Kindergarten displayed end dates and activation rollover; trusted Grade 5 and Kindergarten no-instruction/workshop markers; whether the first Tier 2 release stores voice recordings; whether parent registration is invitation-only or open; whether email verification is required; the account and practice-data retention/deletion policy; how existing local profiles are mapped during migration; whether the handwriting pad replaces paper or remains optional; and the Kindergarten reward award/redemption/parent-control model. Each decision must be recorded before the phase whose security, privacy, migration, source identity, or child experience depends on it.
+Remaining product decisions include Grade 5's standalone-Warmup target size, bucket quotas, and promotion thresholds; which users or environments may disable Tier 1 DT observation collection; how DT performance should be displayed; the minimum evidence needed to change Established DT status; the future standard Tier 1 and Tier 2 baseline-list sources and versions; baseline assessment set size; whether future baseline remediation uses a consecutive or cumulative error window; the exact Warmup correction and reacquisition sequences; Kindergarten displayed end dates and activation rollover; trusted Grade 5 and Kindergarten no-instruction/workshop markers; whether the first Tier 2 release stores voice recordings; whether parent registration is invitation-only or open; whether email verification is required; the account and practice-data retention/deletion policy; how existing local profiles are mapped during migration; whether the handwriting pad replaces paper or remains optional; and the Kindergarten reward award/redemption/parent-control model. Each decision must be recorded before the phase whose security, privacy, migration, source identity, or child experience depends on it.
