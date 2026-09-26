@@ -1,5 +1,6 @@
 import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
 import { GRADE_TIMERS, TIMER_DEFAULT_GRADE, type SupportedGrade } from './config.ts'
+import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
@@ -235,24 +236,16 @@ export type WarmupSelection = {
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
 export const LEGACY_ATTEMPTS_KEY = 'weekly-dictation-attempts'
-export const WARMUP_TARGET_SIZE = 16
-export const RECENT_REVIEW_PROMOTION_STREAK = 2
-export const ERRORED_WORD_PROMOTION_STREAK = 3
+export const WARMUP_TARGET_SIZE = grade2PracticeProfile.lifecycle.warmupTargetSize
+export const RECENT_REVIEW_PROMOTION_STREAK = grade2PracticeProfile.lifecycle.recentReviewPromotionStreak
+export const ERRORED_WORD_PROMOTION_STREAK = grade2PracticeProfile.lifecycle.erroredWordPromotionStreak
 export const AUDIO_PAUSE_MS = 1000
 export const NORMAL_WORD_RATE = 0.25
 export const NORMAL_SENTENCE_RATE = 0.55
 export const GRADE_ORDER = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 
 export const ACQUISITION_TIMER_DEFAULTS: AcquisitionTimerConfig = {
-  trueBmSeconds: 5,
-  earnedBmSeconds: 5,
-  introductionShowCopySeconds: 10,
-  introductionHiddenTargetSeconds: 10,
-  expandedStartSeconds: 10,
-  expandedMinimumSeconds: 5,
-  expandedDecrementSeconds: 1,
-  correctionShowCopySeconds: 10,
-  correctionHiddenSeconds: 10,
+  ...grade2PracticeProfile.acquisition.timers,
 }
 
 export const ACQUISITION_TIMER_CONFIG: Record<string, AcquisitionTimerConfig> = Object.fromEntries(
@@ -263,7 +256,7 @@ export function acquisitionTimerConfigFor(grade: string) {
   return ACQUISITION_TIMER_CONFIG[grade] || ACQUISITION_TIMER_DEFAULTS
 }
 
-const TRUE_BM_TEXTS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '大', '小', '人', '水']
+const TRUE_BM_TEXTS = grade2PracticeProfile.acquisition.trueBmTexts
 
 export const TRUE_BM_WORDS: Word[] = TRUE_BM_TEXTS.map((text, index) => ({
   id: `true-bm-${index + 1}`,
@@ -514,9 +507,9 @@ export function createPracticeSessionForTarget(options: {
   }
 }
 
-const INTRODUCTION_SEQUENCE = ['true-bm', 'true-bm', 'show-copy', 'target'] as const
-const EXPANDED_SEQUENCE = ['target', 'bm', 'target', 'bm', 'bm', 'target', 'bm', 'bm', 'bm', 'target'] as const
-const CORRECTION_SEQUENCE = ['show-copy', 'show-copy', 'show-copy', 'target', 'true-bm', 'target'] as const
+const INTRODUCTION_SEQUENCE = grade2PracticeProfile.acquisition.introductionSequence
+const EXPANDED_SEQUENCE = grade2PracticeProfile.acquisition.expandedSequence
+const CORRECTION_SEQUENCE = grade2PracticeProfile.acquisition.correctionSequence
 
 function shuffledBag(words: Word[], random: () => number) {
   return shuffleWords(words, random)

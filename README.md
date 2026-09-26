@@ -39,7 +39,7 @@ The repository does not currently include Firebase Emulator configuration. Secur
 
 ## Google Slides importer
 
-The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The deck-specific parser profile is in `src/slidesImporter.ts`; the observed structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports.
+The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The public compatibility API and Grade 2 parser profile remain in `src/slidesImporter.ts`; source extraction now runs through the pure adapter and shared identity/validation layers documented in [`docs/canonical-source-boundary.md`](./docs/canonical-source-boundary.md). The observed Grade 2 structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports.
 
 When a current weekly dataset is missing, incomplete, or intentionally contains no vocabulary targets for a writing-workshop period, the child is offered a warmup-only mastery session whenever eligible older targets exist. This path never invents a primary dataset or primary score; completed Random Rotation answers contribute only to adaptive mastery state and monthly Random Rotation accuracy.
 
