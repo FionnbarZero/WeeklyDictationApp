@@ -1,17 +1,20 @@
-import { DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, DECK_REGISTRY, GRADE2_DECK_ID, GRADE5_DECK_ID, schoolYearToken } from './config.ts'
+import { DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, DECK_REGISTRY, GRADE2_DECK_ID, GRADE5_DECK_ID } from './config.ts'
+import {
+  candidateFromSlide as candidateFromSlideWithProfile,
+  candidatesFromPresentation as candidatesFromPresentationWithProfile,
+  classifyWritingWorkshop as classifyWritingWorkshopWithProfile,
+  dateRangeFromText as dateRangeFromTextWithProfile,
+  extractTier1 as extractTier1WithProfile,
+  slidesSourceAdapterFor,
+  type PresentationLike as SlidesPresentationLike,
+  type SlideLike as SlidesSlideLike,
+  type SlidesParserProfile,
+} from './curriculum/adapters/googleSlides.ts'
+import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity.ts'
+import type { WeeklyDatasetCandidate } from './curriculum/model.ts'
 import type { Dataset, Word } from './domain.ts'
 
-export type ParserProfile = {
-  id: string
-  grade: string
-  schoolYear: string
-  sourceDeckId: string
-  weeklyHeading: RegExp
-  tier1Heading: RegExp
-  tierStops: RegExp[]
-  termSeparators: RegExp
-  workshopMarkers: RegExp[]
-}
+export type ParserProfile = SlidesParserProfile
 
 const weeklyHeading = /\bweek(?:\s+\d+(?=\s*\())?\s*(?:\(\s*)?(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[-–]\s*(?:(\d{1,2})\s*[/.\-]\s*)?(\d{1,2})(?:\s*\))?/i
 const tierStops = [
@@ -23,19 +26,19 @@ const termSeparators = /[、,，;；\n]+/
 const workshopMarkers = [/writing\s+project/i, /writing\s+workshop/i, /writers['’]?\s*workshop/i, /biography/i, /sample\s+writing/i, /no\s+(?:new\s+)?tier\s*1/i, /no\s+dictation/i, /homework\s+instructions/i, /mastery\s+warm\s*up/i]
 
 export const grade2DeckProfile: ParserProfile = {
-  id: 'grade-2-2026-27-weekly-focus', grade: DEFAULT_GRADE, schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE2_DECK_ID,
+  id: 'grade-2-2026-27-weekly-focus', version: 1, sourceAdapterId: 'grade-2-google-slides', grade: DEFAULT_GRADE, schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE2_DECK_ID,
   weeklyHeading, tier1Heading: /tier\s*1\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
 }
 
 export const grade5DeckProfile: ParserProfile = {
-  id: 'grade-5-2026-27-weekly-focus', grade: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE5_DECK_ID,
+  id: 'grade-5-2026-27-weekly-focus', version: 0, sourceAdapterId: 'grade-5-google-slides-placeholder', grade: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE5_DECK_ID,
   weeklyHeading, tier1Heading: /tier\s*1\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
 }
 
 export const parserProfiles = [grade2DeckProfile, grade5DeckProfile] as const
 
-export type SlideLike = { objectId?: string; pageObjectId?: string; pageElements?: unknown[]; text?: string; speakerNotes?: string }
-export type PresentationLike = { presentationId?: string; slides?: SlideLike[] }
+export type SlideLike = SlidesSlideLike
+export type PresentationLike = SlidesPresentationLike
 export type ImportOutcome = { status: 'imported' | 'duplicate' | 'writing-workshop' | 'error'; dataset?: Dataset; message: string; sourceDeckId?: string; sourceSlideId?: string; datasetId?: string }
 export type ImportBatchOutcome = {
   status: 'ok' | 'error'
@@ -75,62 +78,54 @@ export function isDuplicateOnlyBatch(batch: ImportBatchOutcome) {
   return batch.status === 'error' && batch.outcomes.length > 0 && batch.outcomes.every((outcome) => outcome.status === 'duplicate')
 }
 
-function collectText(value: unknown): string[] {
-  if (!value || typeof value !== 'object') return []
-  if (Array.isArray(value)) return value.flatMap(collectText)
-  const record = value as Record<string, unknown>
-  const parts: string[] = []
-  if (typeof record.text === 'string') parts.push(record.text)
-  if (typeof record.content === 'string') parts.push(record.content)
-  for (const [key, child] of Object.entries(record)) if (!((key === 'text' || key === 'content') && typeof child === 'string')) parts.push(...collectText(child))
-  return parts
-}
-
-export function slideText(slide: SlideLike) { return [slide.text || '', ...collectText(slide.pageElements), slide.speakerNotes || ''].filter(Boolean).join('\n').replace(/\u000b/g, '\n') }
-
-function schoolYearStart(year: string) { const match = year.match(/20\d{2}/); return Number(match?.[0] || 2026) }
-
-function isoDate(year: string, month: number, day: number) {
-  const actualYear = month >= 8 ? schoolYearStart(year) : schoolYearStart(year) + 1
-  const candidate = new Date(Date.UTC(actualYear, month - 1, day))
-  if (candidate.getUTCFullYear() !== actualYear || candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) return null
-  return `${actualYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-}
+export { slideText } from './curriculum/adapters/googleSlides.ts'
 
 export function dateRangeFromText(text: string, profile = grade2DeckProfile) {
-  const match = text.match(profile.weeklyHeading); if (!match) return null
-  const startMonth = Number(match[1]); const startDay = Number(match[2]); const endMonth = Number(match[3] || match[1]); const endDay = Number(match[4])
-  const startDate = isoDate(profile.schoolYear, startMonth, startDay); const endDate = isoDate(profile.schoolYear, endMonth, endDay)
-  if (!startDate || !endDate || endDate < startDate) return null
-  const startWeekday = new Date(`${startDate}T00:00:00Z`).getUTCDay(); const endWeekday = new Date(`${endDate}T00:00:00Z`).getUTCDay()
-  const spanDays = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86_400_000
-  if (startWeekday === 0 || startWeekday === 6 || endWeekday === 0 || endWeekday === 6 || spanDays > 7) return null
-  return { startDate, endDate, dateRange: `${startMonth}/${startDay}–${endMonth}/${endDay}` }
+  return dateRangeFromTextWithProfile(text, profile)
 }
 
-function mandarinText(text: string) { const match = text.match(/Mandarin[\s\S]*?(?=\bELA\b|\bMath\b|\bScience\b|\bSocial\s+Studies?\b|$)/i); return match?.[0] || text }
-
 export function extractTier1(text: string, profile = grade2DeckProfile) {
-  const mandarin = mandarinText(text); const heading = mandarin.match(profile.tier1Heading); if (!heading || heading.index === undefined) return []
-  let values = mandarin.slice(heading.index + heading[0].length)
-  const stops = profile.tierStops.map((stop) => stop.exec(values)?.index).filter((index): index is number => index !== undefined).sort((a, b) => a - b)
-  if (stops.length) values = values.slice(0, stops[0])
-  return values.split(profile.termSeparators).map((value) => value.replace(/[“”".。:：]/g, '').replace(/\s+/g, '').trim()).filter(Boolean)
+  return extractTier1WithProfile(text, profile)
 }
 
 export function classifyWritingWorkshop(text: string, profile = grade2DeckProfile) {
-  const marker = profile.workshopMarkers.find((candidate) => candidate.test(text))
-  return marker ? { isWritingWorkshop: true, marker: marker.source } : { isWritingWorkshop: false }
+  return classifyWritingWorkshopWithProfile(text, profile)
 }
 
 // Tier 1 context is generated by a separate authorized service. The deck parser
 // must never infer it from Sentence Frame, example-writing, or slide prose.
 
-export function datasetIdFor(profile: ParserProfile, range: { startDate: string; endDate: string }) { return `${profile.grade.toLowerCase().replace(/[^a-z0-9]+/g, '-')}__${schoolYearToken(profile.schoolYear)}__${range.startDate}__${range.endDate}` }
+export function datasetIdFor(profile: ParserProfile, range: { startDate: string; endDate: string }) { return canonicalDatasetId(profile.grade, profile.schoolYear, range) }
 
 export function wordIdFor(profile: ParserProfile, range: { startDate: string; endDate: string }, wordNumber: number) {
   if (!Number.isInteger(wordNumber) || wordNumber < 1) throw new Error('Word numbers must be positive integers.')
-  return `${datasetIdFor(profile, range)}-${wordNumber}`
+  return targetOccurrenceIdFor(datasetIdFor(profile, range), 'tier-1', wordNumber)
+}
+
+export function candidateFromSlide(slide: SlideLike, profile = grade2DeckProfile, sourceDocumentId = profile.sourceDeckId): WeeklyDatasetCandidate {
+  return candidateFromSlideWithProfile(slide, profile, sourceDocumentId)
+}
+
+export function candidatesFromPresentation(presentation: PresentationLike, profile = grade2DeckProfile) {
+  return candidatesFromPresentationWithProfile(presentation, profile)
+}
+
+export { slidesSourceAdapterFor }
+export const grade2SlidesSourceAdapter = slidesSourceAdapterFor(grade2DeckProfile)
+
+export function importOutcomeFromCandidate(candidate: WeeklyDatasetCandidate, profile: ParserProfile): ImportOutcome {
+  const sourceSlideId = candidate.source.sourceUnitId || undefined
+  if (!sourceSlideId) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no stable source slide ID; it cannot be imported safely.' }
+  if (!candidate.assignedWeek || !candidate.dateRangeLabel || !candidate.datasetId) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no recognizable, valid Week/date-range heading.', sourceSlideId }
+  const range = { ...candidate.assignedWeek, dateRange: candidate.dateRangeLabel }
+  const datasetId = candidate.datasetId
+  if (candidate.status === 'no-instruction') {
+    const marker = candidate.noInstructionReason?.replace(/^writing-workshop:/, '') || 'explicit no-instruction marker'
+    return { status: 'writing-workshop', sourceDeckId: profile.sourceDeckId, message: `Writing-workshop marker detected: ${marker}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, [], true) }
+  }
+  if (candidate.status === 'malformed' || !candidate.tier1.length) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has a weekly heading but no confident Tier 1 vocabulary section.', sourceSlideId, datasetId }
+  const words: Word[] = candidate.tier1.map((term) => ({ id: term.targetOccurrenceId!, text: term.text, sentence: '', datasetId, grade: profile.grade, sourceSlideId, language: 'mandarin', tier: 'tier-1', activityType: 'dictation' }))
+  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words) }
 }
 
 export function profileForDataset(dataset: Pick<Dataset, 'grade' | 'schoolYear' | 'sourceDeckId'>) {
@@ -161,15 +156,7 @@ function datasetFor(profile: ParserProfile, range: { startDate: string; endDate:
 }
 
 export function parseSlide(slide: SlideLike, profile = grade2DeckProfile): ImportOutcome {
-  const text = slideText(slide); const sourceSlideId = slide.objectId || slide.pageObjectId
-  if (!sourceSlideId) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no stable source slide ID; it cannot be imported safely.' }
-  const range = dateRangeFromText(text, profile); if (!range) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no recognizable, valid Week/date-range heading.', sourceSlideId }
-  const datasetId = datasetIdFor(profile, range)
-  const workshop = classifyWritingWorkshop(text, profile)
-  if (workshop.isWritingWorkshop) return { status: 'writing-workshop', sourceDeckId: profile.sourceDeckId, message: `Writing-workshop marker detected: ${workshop.marker}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, [], true) }
-  const terms = extractTier1(text, profile); if (!terms.length) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has a weekly heading but no confident Tier 1 vocabulary section.', sourceSlideId, datasetId }
-  const words: Word[] = terms.map((term, index) => ({ id: wordIdFor(profile, range, index + 1), text: term, sentence: '', datasetId, grade: profile.grade, sourceSlideId, language: 'mandarin', tier: 'tier-1', activityType: 'dictation' }))
-  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words) }
+  return importOutcomeFromCandidate(candidateFromSlide(slide, profile), profile)
 }
 
 export function validateAndClassifyPresentation(presentation: PresentationLike, existingDatasetIds: string[] = [], profile = grade2DeckProfile): ImportBatchOutcome {
@@ -177,8 +164,10 @@ export function validateAndClassifyPresentation(presentation: PresentationLike, 
     return { status: 'error', outcomes: [{ status: 'error', sourceDeckId: profile.sourceDeckId, message: `The inspected presentation ID does not match the configured ${profile.grade} deck.`, sourceSlideId: presentation.presentationId }], datasets: [], summary: { datasetCount: 0, slideIds: [], dateRanges: [], wordCounts: [] }, message: 'No Firestore write may occur because the source deck identity is not validated.' }
   }
   const knownIds = new Set(existingDatasetIds); const outcomes: ImportOutcome[] = []; const datasets: Dataset[] = []
-  for (const slide of presentation.slides || []) {
-    const outcome = parseSlide(slide, profile); const dataset = outcome.dataset
+  const adapter = slidesSourceAdapterFor(profile)
+  const candidates = adapter.adapt({ sourceType: 'google-slides', ...presentation })
+  for (const candidate of candidates) {
+    const outcome = importOutcomeFromCandidate(candidate, profile); const dataset = outcome.dataset
     if (dataset && knownIds.has(dataset.id)) outcomes.push({ ...outcome, status: 'duplicate', message: 'The stable dataset ID already exists; no duplicate import was created.' })
     else {
       outcomes.push(outcome)

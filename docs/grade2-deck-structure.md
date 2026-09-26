@@ -13,7 +13,7 @@ The deck was inspected read-only. It currently contains four valid weekly Mandar
 
 `tests/fixtures/grade2-presentation.json` transcribes only these four observed slides and preserves their observed page IDs. It is test-only input, not a live export or production seed. The separate writing-workshop and malformed fixtures are synthetic parser-contract inputs; they are intentionally excluded from the canonical observed fixture and must not be described as source-deck observations.
 
-The deck uses headings such as `Week 9/21-9/25`, with no parentheses around the date range. Tier 1 appears in the Mandarin vocabulary section as `Tier 1:` or `Tier 1：`, followed by comma- or Chinese-comma-separated terms. Tier 2 and Tier 3 follow the Tier 1 list and must not be imported by the initial Grade 2 path.
+The deck uses headings such as `Week 9/21-9/25`, with no parentheses around the date range. Tier 1 appears in the Mandarin vocabulary section as `Tier 1:` or `Tier 1：`, followed by comma- or Chinese-comma-separated terms. The source adapter preserves Tier 2 and Tier 3 as structured candidate metadata, but only Tier 1 enters the current Grade 2 dictation datasets.
 
 The importer also accepts explicit writing-workshop markers. A workshop slide with a valid date range becomes a zero-word placeholder dataset; a malformed slide remains an import error and is skipped.
 
