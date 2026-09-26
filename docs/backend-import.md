@@ -26,7 +26,7 @@ IMPORT_WRITE_ENABLED=true
 
 ## Scheduler
 
-Invoke `POST /run` every Monday at 3:00 p.m. Pacific time with timezone `America/Los_Angeles`. The job reads every slide, routes the full response through `importWeeklyDatasets`, rejects a source-deck identity mismatch, skips malformed slides, and writes only canonical validated datasets and stable import logs. Repeated runs are idempotent by canonical dataset ID and import-log ID.
+Invoke `POST /run` every Monday at 3:00 p.m. Pacific time with timezone `America/Los_Angeles`. The job reads every slide, routes the full response through `importWeeklyDatasets`, rejects a source-deck identity mismatch, skips malformed slides, and writes only canonical validated datasets and stable import logs. Repeated runs are idempotent by canonical dataset ID and import-log ID; an unchanged duplicate-only run is acknowledged as a successful no-change request.
 
 This repository contains the service code and contract tests. Deployment, Secret Manager configuration, Cloud Run IAM, and Scheduler creation remain explicit operator actions.
 

@@ -1,6 +1,6 @@
 import { fetchGooglePresentation, googleAccessToken } from './googleSlides.ts'
-import { firestoreAccessToken, listDatasetIds, writeImportBatch } from './firestore.ts'
-import { isDuplicateOnlyBatch, profileForDeckId, validateAndClassifyPresentation, type ImportBatchOutcome } from '../src/slidesImporter.ts'
+import { firestoreAccessToken, listDatasetIds, listDatasetReferences, writeImportBatch } from './firestore.ts'
+import { isDuplicateOnlyBatch, profileForDeckId, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome } from '../src/slidesImporter.ts'
 
 export type ImportJobConfig = {
   deckId: string
@@ -13,11 +13,12 @@ export type ImportJobDependencies = {
   googleAccessToken: typeof googleAccessToken
   fetchGooglePresentation: typeof fetchGooglePresentation
   listDatasetIds: typeof listDatasetIds
+  listDatasetReferences?: typeof listDatasetReferences
   writeImportBatch: typeof writeImportBatch
   firestoreAccessToken: typeof firestoreAccessToken
 }
 
-const defaults: ImportJobDependencies = { googleAccessToken, fetchGooglePresentation, listDatasetIds, writeImportBatch, firestoreAccessToken }
+const defaults: ImportJobDependencies = { googleAccessToken, fetchGooglePresentation, listDatasetIds, listDatasetReferences, writeImportBatch, firestoreAccessToken }
 
 export type ImportJobResult = { batch: ImportBatchOutcome; written: boolean; writeSummary?: { written: number; datasetCount: number; documentCount: number } }
 
@@ -27,12 +28,14 @@ export async function runImportJob(config: ImportJobConfig, dependencies: Import
   const slidesToken = await dependencies.googleAccessToken(config.googleOAuth)
   const presentation = await dependencies.fetchGooglePresentation(config.deckId, slidesToken)
   let firestoreToken: string | undefined
-  let existingIds: string[] = []
+  let existingDatasets: ExistingDatasetReference[] = []
   if (config.writeEnabled) {
     firestoreToken = await dependencies.firestoreAccessToken()
-    existingIds = await dependencies.listDatasetIds(config.projectId, firestoreToken)
+    existingDatasets = dependencies.listDatasetReferences
+      ? await dependencies.listDatasetReferences(config.projectId, firestoreToken)
+      : await dependencies.listDatasetIds(config.projectId, firestoreToken)
   }
-  const batch = validateAndClassifyPresentation(presentation, existingIds, profile)
+  const batch = validateAndClassifyPresentation(presentation, existingDatasets, profile)
   if (!config.writeEnabled) return { batch, written: false }
   if (!firestoreToken) throw new Error('Firestore authorization was not established for the write path.')
   if (batch.status === 'error' && !isDuplicateOnlyBatch(batch)) return { batch, written: false }

@@ -32,6 +32,19 @@ test('re-hydration classifies an existing canonical dataset as a duplicate', () 
   assert.equal(second.state.datasets.length, 1)
 })
 
+test('local re-hydration detects changed content for an existing instructional week', () => {
+  const first = hydrateLocalStateFromJson(createInitialState(), payload, grade2DeckProfile)
+  const changed = hydrateLocalStateFromJson(first.state, JSON.stringify({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'changed-slide', text: 'Week 9/21-9/25\nMandarin\nTier 1: 不同、内容' }],
+  }), grade2DeckProfile)
+
+  assert.equal(changed.batch.status, 'error')
+  assert.equal(changed.batch.outcomes[0].status, 'conflict')
+  assert.deepEqual(changed.state.datasets[0].words.map((word) => word.text), ['比如', '部分', '更', '方便', '美好'])
+  assert.equal(changed.state.datasetImportReferences?.length, 1)
+})
+
 test('trusted JSON parsing rejects malformed payloads before import', () => {
   assert.throws(() => parsePresentationJson('{not json'), /not valid JSON/i)
   assert.throws(() => parsePresentationJson(JSON.stringify({ slides: ['not a slide'] })), /valid PresentationLike/i)

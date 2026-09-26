@@ -39,7 +39,7 @@ The repository does not currently include Firebase Emulator configuration. Secur
 
 ## Google Slides importer
 
-The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The public compatibility API and Grade 2 parser profile remain in `src/slidesImporter.ts`; source extraction now runs through the pure adapter and shared identity/validation layers documented in [`docs/canonical-source-boundary.md`](./docs/canonical-source-boundary.md). The observed Grade 2 structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports.
+The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The source registry uses neutral document identity, so a future Sheets source will not require fake deck fields. The public compatibility API and Grade 2 parser profile remain in `src/slidesImporter.ts`; source extraction now runs through the pure adapter and shared identity/validation layers documented in [`docs/canonical-source-boundary.md`](./docs/canonical-source-boundary.md). The observed Grade 2 structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports, and grades without an explicit practice profile cannot inherit Grade 2 teaching behavior.
 
 When a current weekly dataset is missing, incomplete, or intentionally contains no vocabulary targets for a writing-workshop period, the child is offered a warmup-only mastery session whenever eligible older targets exist. This path never invents a primary dataset or primary score; completed Random Rotation answers contribute only to adaptive mastery state and monthly Random Rotation accuracy.
 
@@ -74,7 +74,7 @@ npm run hydrate:slides -- [--state=path/to/app-state.json] [--deck-id=PRESENTATI
 
 Export `GOOGLE_SLIDES_PRESENTATION_ID`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REFRESH_TOKEN` in the invoking shell. The command prints the import summary and hydrated state to stdout. It has no Firestore dependency, does not write a local state file, and is not imported by the browser application.
 
-The command is idempotent when existing dataset IDs are supplied, imports every valid weekly slide as its own dataset, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. The command is dry-run by default:
+The command is idempotent when existing dataset IDs are supplied, imports every valid weekly slide as its own dataset, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. Before an authorized write, it reads the stored fingerprint references so changed same-week content is treated as a conflict rather than an ID-only duplicate. The command is dry-run by default:
 
 ```bash
 npm run import:slides -- path/to/google-slides-presentation.json

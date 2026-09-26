@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { listDatasetIds, writeImportBatch } from '../backend/firestore.ts'
+import { listDatasetReferences, writeImportBatch } from '../backend/firestore.ts'
 import { dryRunSummary, grade2DeckProfile, grade5DeckProfile, isDuplicateOnlyBatch, validateAndClassifyPresentation, type PresentationLike } from '../src/slidesImporter.ts'
 
 const args = process.argv.slice(2)
@@ -28,8 +28,8 @@ const accessToken = process.env.FIRESTORE_ACCESS_TOKEN
 if (!projectId || !accessToken) throw new Error('No Firestore write occurred. Set FIREBASE_PROJECT_ID and FIRESTORE_ACCESS_TOKEN using a safe local authentication flow; do not create or commit service-account keys.')
 
 if (suppliedExistingIds.length === 0) {
-  const existingIds = await listDatasetIds(projectId, accessToken)
-  batch = validateAndClassifyPresentation(presentation, existingIds, profile)
+  const existingDatasets = await listDatasetReferences(projectId, accessToken)
+  batch = validateAndClassifyPresentation(presentation, existingDatasets, profile)
   console.log(JSON.stringify({ duplicateCheck: dryRunSummary(batch) }, null, 2))
 }
 if (batch.status === 'error' && !isDuplicateOnlyBatch(batch)) throw new Error('No Firestore write occurred because the inspected deck produced no valid datasets.')

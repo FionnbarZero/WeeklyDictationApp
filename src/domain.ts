@@ -1,6 +1,8 @@
-import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
-import { GRADE_TIMERS, TIMER_DEFAULT_GRADE, type SupportedGrade } from './config.ts'
+import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
+import type { SupportedGrade } from './config.ts'
 import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
+import type { WritingPracticeProfile } from './practice/profiles/model.ts'
+import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
@@ -140,6 +142,7 @@ export type AppState = {
   childWordStates: ChildWordState[]
   monthlyRotationScores: MonthlyRotationScore[]
   rotationCycles: Record<string, number>
+  datasetImportReferences?: Array<Exclude<ExistingDatasetReference, string>>
 }
 
 export type SessionAnswer = {
@@ -236,24 +239,14 @@ export type WarmupSelection = {
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
 export const LEGACY_ATTEMPTS_KEY = 'weekly-dictation-attempts'
-export const WARMUP_TARGET_SIZE = grade2PracticeProfile.lifecycle.warmupTargetSize
-export const RECENT_REVIEW_PROMOTION_STREAK = grade2PracticeProfile.lifecycle.recentReviewPromotionStreak
-export const ERRORED_WORD_PROMOTION_STREAK = grade2PracticeProfile.lifecycle.erroredWordPromotionStreak
 export const AUDIO_PAUSE_MS = 1000
 export const NORMAL_WORD_RATE = 0.25
 export const NORMAL_SENTENCE_RATE = 0.55
 export const GRADE_ORDER = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 
-export const ACQUISITION_TIMER_DEFAULTS: AcquisitionTimerConfig = {
-  ...grade2PracticeProfile.acquisition.timers,
-}
-
-export const ACQUISITION_TIMER_CONFIG: Record<string, AcquisitionTimerConfig> = Object.fromEntries(
-  GRADE_ORDER.map((grade) => [grade, { ...ACQUISITION_TIMER_DEFAULTS }]),
-)
-
 export function acquisitionTimerConfigFor(grade: string) {
-  return ACQUISITION_TIMER_CONFIG[grade] || ACQUISITION_TIMER_DEFAULTS
+  const profile = requirePracticeProfileForGrade(grade)
+  return { ...profile.acquisition.timers }
 }
 
 const TRUE_BM_TEXTS = grade2PracticeProfile.acquisition.trueBmTexts
@@ -278,19 +271,15 @@ export function audioPartsForWord(word: Word, warmup = false): AudioPart[] {
 }
 
 export function timerSecondsFor(grade: string | null | undefined, segment: string | null | undefined, primaryPhase: string | null | undefined) {
-  const selectedGrade = isSupportedGrade(grade) ? grade : TIMER_DEFAULT_GRADE
+  const profile = requirePracticeProfileForGrade(grade)
   const selectedSegment = segment === 'warmup' ? 'warmup' : 'primary'
   const selectedPhase = primaryPhase === 'test-review' ? 'test-review' : 'acquisition'
-  const timer = GRADE_TIMERS[selectedGrade]
+  const timer = profile.timers
   return selectedSegment === 'warmup' ? timer.warmup : selectedPhase === 'test-review' ? timer.testReview : timer.acquisition
 }
 
 export function createSessionId() {
   return `session-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`
-}
-
-function isSupportedGrade(value: unknown): value is SupportedGrade {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(GRADE_TIMERS, value)
 }
 
 export function localDateKey(date = new Date(), timeZone = 'America/Los_Angeles') {
@@ -383,11 +372,11 @@ function stateForWord(word: Word, childId: string, dataset: Dataset | undefined,
   return { id: wordStateId(childId, word.id), childId, wordId: word.id, datasetId: word.datasetId, category, correctStreak: 0, ...(category === 'random-rotation' ? { randomCycleId: rotationCycleId, randomCycleReviewed: false } : {}) }
 }
 
-function applyWordResponse(state: ChildWordState, correct: boolean, reviewedAt: string, rotationCycleId: number): ChildWordState {
+function applyWordResponse(state: ChildWordState, correct: boolean, reviewedAt: string, rotationCycleId: number, lifecycle: WritingPracticeProfile['lifecycle']): ChildWordState {
   if (!correct) return { ...state, category: 'errored-word', correctStreak: 0, lastReviewedAt: reviewedAt, lastIncorrectAt: reviewedAt, randomCycleReviewed: state.category === 'random-rotation' ? true : state.randomCycleReviewed }
   if (state.category === 'recent-review' || state.category === 'errored-word') {
     const correctStreak = state.correctStreak + 1
-    const promotionThreshold = state.category === 'recent-review' ? RECENT_REVIEW_PROMOTION_STREAK : ERRORED_WORD_PROMOTION_STREAK
+    const promotionThreshold = state.category === 'recent-review' ? lifecycle.recentReviewPromotionStreak : lifecycle.erroredWordPromotionStreak
     if (correctStreak >= promotionThreshold) return { ...state, category: 'random-rotation', correctStreak: 0, lastReviewedAt: reviewedAt, randomCycleId: rotationCycleId + 1, randomCycleReviewed: false }
     return { ...state, correctStreak, lastReviewedAt: reviewedAt }
   }
@@ -399,12 +388,14 @@ function orderedResultsForWord(results: WordResult[], childId: string, wordId: s
   return results.filter((result) => result.childId === childId && result.wordId === wordId).sort((a, b) => a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id))
 }
 
-export function deriveChildWordStates(options: { datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number }): ChildWordState[] {
+export function deriveChildWordStates(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number }): ChildWordState[] {
+  const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
-  const datasetsById = new Map(options.datasets.map((dataset) => [dataset.id, dataset]))
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
+  const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
   const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
-  return uniqueWords(options.datasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
+  return uniqueWords(gradeDatasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
     const existing = existingByWordId.get(word.id)
     if (existing) {
       const dataset = datasetsById.get(word.datasetId)
@@ -415,7 +406,7 @@ export function deriveChildWordStates(options: { datasets: Dataset[]; results: W
       return existing
     }
     let state = stateForWord(word, options.childId, datasetsById.get(word.datasetId), today, cycle)
-    for (const result of orderedResultsForWord(options.results, options.childId, word.id)) state = applyWordResponse(state, result.correct, result.completedAt, cycle)
+    for (const result of orderedResultsForWord(options.results, options.childId, word.id)) state = applyWordResponse(state, result.correct, result.completedAt, cycle, profile.lifecycle)
     return state
   })
 }
@@ -433,12 +424,13 @@ function takeWords(words: Word[], count: number, random = Math.random) {
   return shuffleWords(words, random).slice(0, Math.max(0, count))
 }
 
-export function buildWarmupSelection(options: { datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number }): WarmupSelection {
+export function buildWarmupSelection(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number }): WarmupSelection {
+  const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
-  const targetSize = options.targetSize ?? WARMUP_TARGET_SIZE
+  const targetSize = options.targetSize ?? profile.lifecycle.warmupTargetSize
   const random = options.random || Math.random
-  const states = deriveChildWordStates({ datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId })
-  const eligibleDatasets = options.datasets.filter((dataset) => isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, today) === 'archived')
+  const states = deriveChildWordStates({ grade: options.grade, datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId })
+  const eligibleDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, today) === 'archived')
   const eligibleDatasetIds = new Set(eligibleDatasets.map((dataset) => dataset.id))
   const eligibleStates = states.filter((state) => eligibleDatasetIds.has(state.datasetId))
   const wordsById = new Map(uniqueWords(eligibleDatasets.flatMap((dataset) => dataset.words)).map((word) => [word.id, word]))
@@ -476,6 +468,7 @@ export function createPracticeSessionForTarget(options: {
   cloudSessionId?: string
   random?: () => number
 }): PracticeSession {
+  requirePracticeProfileForGrade(options.grade)
   const random = options.random || Math.random
   const target = options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop ? options.target : null
   const primaryDatasetId = target?.dataset.id || options.warmup.words[0]?.datasetId || 'warmup-only'
@@ -506,10 +499,6 @@ export function createPracticeSessionForTarget(options: {
     cloudSessionId: options.cloudSessionId,
   }
 }
-
-const INTRODUCTION_SEQUENCE = grade2PracticeProfile.acquisition.introductionSequence
-const EXPANDED_SEQUENCE = grade2PracticeProfile.acquisition.expandedSequence
-const CORRECTION_SEQUENCE = grade2PracticeProfile.acquisition.correctionSequence
 
 function shuffledBag(words: Word[], random: () => number) {
   return shuffleWords(words, random)
@@ -563,7 +552,18 @@ function makeAcquisitionPrompt(flow: AcquisitionFlow, grade: string, kind: Acqui
 }
 
 function trueBmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const drawn = drawFromBag(TRUE_BM_WORDS, flow.trueBmBag, flow.lastBmWordId, random)
+  const profile = requirePracticeProfileForGrade(grade)
+  const profileWords = profile.acquisition.trueBmTexts.map((text, index): Word => ({
+    id: `${profile.id}-true-bm-${index + 1}`,
+    text,
+    sentence: '',
+    datasetId: `__${profile.id}-true-bm__`,
+    language: 'mandarin',
+    tier: 'tier-1',
+    activityType: 'dictation',
+  }))
+  const words = profile.id === grade2PracticeProfile.id ? TRUE_BM_WORDS : profileWords
+  const drawn = drawFromBag(words, flow.trueBmBag, flow.lastBmWordId, random)
   return makeAcquisitionPrompt({ ...flow, trueBmBag: drawn.bag, lastBmWordId: drawn.word.id }, grade, 'true-bm', drawn.word)
 }
 
@@ -584,7 +584,8 @@ function bmPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
 
 function coreAcquisitionPrompt(flow: AcquisitionFlow, grade: string, random: () => number): AcquisitionFlow {
   if (!flow.currentTarget) return { ...flow, prompt: null, complete: true }
-  const token = flow.phase === 'introduction' ? INTRODUCTION_SEQUENCE[flow.step] : flow.phase === 'expanded-trials' ? EXPANDED_SEQUENCE[flow.step] : CORRECTION_SEQUENCE[flow.step]
+  const acquisition = requirePracticeProfileForGrade(grade).acquisition
+  const token = flow.phase === 'introduction' ? acquisition.introductionSequence[flow.step] : flow.phase === 'expanded-trials' ? acquisition.expandedSequence[flow.step] : acquisition.correctionSequence[flow.step]
   if (!token) return flow
   if (token === 'true-bm') return trueBmPrompt(flow, grade, random)
   if (token === 'bm') return bmPrompt(flow, grade, random)
@@ -691,7 +692,7 @@ export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset,
     const expandedTargetAttempts = flow.expandedTargetAttempts + 1
     if (!correct) return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, 'current-target', grade, random)
     const nextStep = flow.step + 1
-    return nextStep >= EXPANDED_SEQUENCE.length
+    return nextStep >= requirePracticeProfileForGrade(grade).acquisition.expandedSequence.length
       ? completeCurrentTarget({ ...updated, expandedTargetAttempts, prompt: null }, dataset, grade, random)
       : coreAcquisitionPrompt({ ...updated, step: nextStep, expandedTargetAttempts, prompt: null }, grade, random)
   }
@@ -741,10 +742,31 @@ function discardIncompleteWarmupData(state: AppState) {
 
 export type LocalHydrationResult = { state: AppState; batch: ImportBatchOutcome }
 
+function localDatasetReferences(state: AppState): ExistingDatasetReference[] {
+  const storedById = new Map((state.datasetImportReferences || []).map((reference) => [reference.datasetId, reference]))
+  return state.datasets.map((dataset) => storedById.get(dataset.id) || dataset.id)
+}
+
+function updatedLocalDatasetReferences(state: AppState, batch: ImportBatchOutcome, datasets: Dataset[]) {
+  const references = new Map((state.datasetImportReferences || []).map((reference) => [reference.datasetId, reference]))
+  for (const outcome of batch.outcomes) {
+    const shouldStore = outcome.status === 'imported' || outcome.status === 'writing-workshop' || (outcome.status === 'confirmation' && outcome.refreshExistingMetadata)
+    if (!shouldStore || !outcome.datasetId || !outcome.contentFingerprint || !outcome.candidateStatus || !outcome.instructionalRole) continue
+    references.set(outcome.datasetId, {
+      datasetId: outcome.datasetId,
+      contentFingerprint: outcome.contentFingerprint,
+      candidateStatus: outcome.candidateStatus,
+      instructionalRole: outcome.instructionalRole,
+    })
+  }
+  const retainedIds = new Set(datasets.map((dataset) => dataset.id))
+  return [...references.values()].filter((reference) => retainedIds.has(reference.datasetId))
+}
+
 export function hydrateLocalState(state: AppState, presentation: PresentationLike, profile: ParserProfile = grade2DeckProfile): LocalHydrationResult {
-  const batch = validateAndClassifyPresentation(presentation, state.datasets.map((dataset) => dataset.id), profile)
+  const batch = validateAndClassifyPresentation(presentation, localDatasetReferences(state), profile)
   const datasets = canonicalDatasets([...batch.datasets, ...state.datasets])
-  return { state: { ...state, datasets }, batch }
+  return { state: { ...state, datasets, datasetImportReferences: updatedLocalDatasetReferences(state, batch, datasets) }, batch }
 }
 
 export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string | null = [], legacyRaw?: string | null): AppState {
@@ -771,7 +793,8 @@ export function isAppState(value: unknown): value is AppState {
   const statesValid = !('childWordStates' in value) || (Array.isArray(value.childWordStates) && value.childWordStates.every((state) => isRecord(state) && typeof state.id === 'string' && typeof state.childId === 'string' && typeof state.wordId === 'string' && typeof state.datasetId === 'string' && ['acquisition', 'recent-review', 'errored-word', 'random-rotation'].includes(String(state.category)) && typeof state.correctStreak === 'number'))
   const monthlyValid = !('monthlyRotationScores' in value) || (Array.isArray(value.monthlyRotationScores) && value.monthlyRotationScores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.month === 'string' && typeof score.correct === 'number' && typeof score.total === 'number' && typeof score.percent === 'number' && (score.status === 'open' || score.status === 'finalized') && typeof score.updatedAt === 'string'))
   const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid
+  const datasetReferencesValid = !('datasetImportReferences' in value) || (Array.isArray(value.datasetImportReferences) && value.datasetImportReferences.every((reference) => isRecord(reference) && typeof reference.datasetId === 'string' && (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') && (!('candidateStatus' in reference) || ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) && (!('instructionalRole' in reference) || ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(String(reference.instructionalRole)))))
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid
 }
 
 export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
@@ -812,12 +835,13 @@ function updateMonthlyRotationScores(scores: MonthlyRotationScore[], childId: st
 }
 
 function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
+  const profile = requirePracticeProfileForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
-  let states = deriveChildWordStates({ datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
+  let states = deriveChildWordStates({ grade: session.grade, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
   for (const answer of [...session.warmupAnswers, ...session.primaryAnswers]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
-    const next = applyWordResponse(current, answer.correct, now.toISOString(), rotationCycleId)
+    const next = applyWordResponse(current, answer.correct, now.toISOString(), rotationCycleId, profile.lifecycle)
     states = states.map((item) => item.id === next.id ? next : item)
   }
   return { states, rotationCycleId }
@@ -852,7 +876,12 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
   const monthlyRotationScores = updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
   const materialized = materializeStateForCommit(state, session, now)
-  const priorStates = state.childWordStates.filter((item) => item.childId !== session.childId)
+  const datasetGradeById = new Map(state.datasets.map((dataset) => [dataset.id, dataset.grade]))
+  const priorStates = state.childWordStates.filter((item) => {
+    if (item.childId !== session.childId) return true
+    const datasetGrade = datasetGradeById.get(item.datasetId)
+    return !datasetGrade || datasetGrade !== session.grade
+  })
   return { ...state, results: [...state.results, ...warmupResults, ...primaryResults], scores: [...state.scores, ...safeScores], warmupSessions: [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
 }
 

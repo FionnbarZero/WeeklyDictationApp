@@ -32,18 +32,23 @@ function stableHash(value: string) {
 }
 
 export function candidateContentFingerprint(candidate: Pick<WeeklyDatasetCandidate,
-  'grade' | 'schoolYear' | 'assignedWeek' | 'instructionalRole' | 'tier1' | 'tier2' | 'tier3' | 'noInstructionReason'
+  'grade' | 'schoolYear' | 'assignedWeek' | 'tier1' | 'tier2' | 'tier3'
 >) {
+  let normalizedSchoolYear = candidate.schoolYear
+  try {
+    normalizedSchoolYear = schoolYearToken(candidate.schoolYear)
+  } catch {
+    // Invalid profile data is reported by canonical validation. Keeping the
+    // raw value here makes even a malformed candidate fingerprintable.
+  }
   const canonicalContent = JSON.stringify({
-    version: 1,
+    version: 2,
     grade: candidate.grade,
-    schoolYear: schoolYearToken(candidate.schoolYear),
+    schoolYear: normalizedSchoolYear,
     assignedWeek: candidate.assignedWeek,
-    instructionalRole: candidate.instructionalRole,
     tier1: orderedTierContent(candidate.tier1),
     tier2: orderedTierContent(candidate.tier2),
     tier3: orderedTierContent(candidate.tier3),
-    noInstructionReason: candidate.noInstructionReason || null,
   })
-  return `v1-fnv1a64-${stableHash(canonicalContent)}`
+  return `v2-fnv1a64-${stableHash(canonicalContent)}`
 }
