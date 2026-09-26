@@ -13,6 +13,7 @@ import {
   createPracticeSessionForTarget,
   createSessionId,
   datasetLifecycle,
+  deriveChildWordStates,
   filterDatasetsForChild,
   getActiveLifecycleDatasets,
   hydrateLocalState,
@@ -26,11 +27,12 @@ import {
   sortDatasetsNewestFirst,
   timerSecondsFor,
   type AppState,
+  type ChildWordState,
   type PracticeSession,
   type WordResult,
 } from '../src/domain.ts'
 import { datasetIdFor, grade2DeckProfile, grade5DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
-import { PRIMARY_LIFECYCLE_WARMUP_TRIALS } from '../src/config.ts'
+import { grade2PracticeProfile } from '../src/practice/profiles/grade2.ts'
 
 const today = new Date(2026, 8, 18)
 const hydrationPresentation = { presentationId: grade2DeckProfile.sourceDeckId, slides: [
@@ -44,12 +46,16 @@ const archiveDataset = importedDatasets.find((dataset) => dataset.sourceSlideId 
 const priorDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'prior')!
 const currentDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'current')!
 const futureDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'future')!
+const grade5Dataset = importWeeklyDatasets({
+  presentationId: grade5DeckProfile.sourceDeckId,
+  slides: [{ objectId: 'grade-five-history', text: 'Week 9/14-9/18\nMandarin\nTier 1: 需要、部分、重要' }],
+}, [], grade5DeckProfile).datasets[0]
 const initialState = () => createInitialState(importedDatasets)
 
 function result(overrides: Partial<WordResult>): WordResult {
   return {
     id: `result-${Math.random()}`, childId: 'maya', datasetId: currentDataset.id, datasetDateRange: currentDataset.dateRange,
-    wordId: currentDataset.words[0].id, grade: 'Kindergarten', phase: 'acquisition', sessionId: 'old-session', sessionDate: '2026-09-17', completedAt: '2026-09-17T12:00:00.000Z', correct: false, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false,
+    wordId: currentDataset.words[0].id, grade: 'Grade 2', phase: 'acquisition', sessionId: 'old-session', sessionDate: '2026-09-17', completedAt: '2026-09-17T12:00:00.000Z', correct: false, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false,
     ...overrides,
   }
 }
@@ -100,7 +106,7 @@ test('grade and school-year filtering occurs before lifecycle selection', () => 
 
 test('each lifecycle target starts with the same required adaptive Warmup', () => {
   const lifecycleDate = new Date(2026, 8, 23)
-  const warmup = buildWarmupSelection({ datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: PRIMARY_LIFECYCLE_WARMUP_TRIALS, random: () => 0.25 })
+  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
   assert.equal(warmup.words.length, 6)
   assert.ok(warmup.words.every((word) => word.datasetId !== futureDataset.id))
 
@@ -127,7 +133,7 @@ test('each lifecycle target starts with the same required adaptive Warmup', () =
 
 test('Acquisition and Test Review completion records and scores remain independent', () => {
   const lifecycleDate = new Date(2026, 8, 23, 12, 0)
-  const warmup = buildWarmupSelection({ datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, random: () => 0.25 })
+  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, random: () => 0.25 })
   const acquisitionStarted = createPracticeSessionForTarget({ id: 'independent-acquisition', childId: 'maya', grade: 'Grade 2', target: { dataset: futureDataset, phase: 'acquisition' }, warmup, startedAt: lifecycleDate.toISOString(), random: () => 0 })
   const acquisitionComplete: PracticeSession = {
     ...acquisitionStarted,
@@ -169,12 +175,12 @@ test('Acquisition and Test Review completion records and scores remain independe
 })
 
 test('Warmup-only fallback starts safely without a primary lifecycle target', () => {
-  const warmup = buildWarmupSelection({ datasets: importedDatasets, results: [], childId: 'maya', today: new Date(2026, 9, 20), random: () => 0.25 })
+  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: new Date(2026, 9, 20), random: () => 0.25 })
   const session = createPracticeSessionForTarget({ id: 'warmup-only-session', childId: 'maya', grade: 'Grade 2', target: null, warmup, startedAt: '2026-10-20T12:00:00.000Z', random: () => 0 })
   assert.equal(session.segment, 'warmup')
   assert.equal(session.stage, 'warmup-intro')
   assert.equal(session.warmupQueue.length, warmup.words.length)
-  assert.ok(session.warmupQueue.length > PRIMARY_LIFECYCLE_WARMUP_TRIALS)
+  assert.equal(session.warmupQueue.length, 16)
   assert.equal(session.primaryQueue.length, 0)
   assert.equal(session.acquisition, undefined)
   assert.equal(session.warmupOnly, true)
@@ -261,11 +267,14 @@ test('phase timers remain configurable by lifecycle', () => {
   assert.equal(timerSecondsFor('Grade 2', 'warmup', 'acquisition'), 10)
   assert.equal(timerSecondsFor('Grade 2', 'primary', 'acquisition'), 20)
   assert.equal(timerSecondsFor('Grade 2', 'primary', 'test-review'), 10)
+  assert.throws(() => timerSecondsFor('Kindergarten', 'primary', 'acquisition'), /not configured/i)
+  assert.throws(() => startAcquisitionFlow({ ...currentDataset, grade: 'Grade 5' }, 'Grade 5'), /not configured/i)
+  assert.throws(() => buildWarmupSelection({ grade: 'Grade 5', datasets: [], results: [], childId: 'maya' }), /not configured/i)
 })
 
 test('adaptive warmup uses only archived datasets and excludes active Acquisition and Test Review', () => {
   const lifecycleDate = new Date(2026, 8, 23)
-  const selection = buildWarmupSelection({ datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: PRIMARY_LIFECYCLE_WARMUP_TRIALS, random: () => 0.25 })
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
   const eligibleDatasetIds = new Set([archiveDataset.id, priorDataset.id])
   assert.equal(selection.words.length, 6)
   assert.ok(selection.words.every((word) => eligibleDatasetIds.has(word.datasetId)))
@@ -278,10 +287,10 @@ test('errors from active Acquisition and Test Review datasets cannot bypass warm
   const lifecycleDate = new Date(2026, 8, 23)
   const acquisitionError = futureDataset.words[2]
   const testReviewError = currentDataset.words[2]
-  const selection = buildWarmupSelection({ datasets: importedDatasets, results: [
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [
     result({ id: 'acquisition-error', datasetId: futureDataset.id, datasetDateRange: futureDataset.dateRange, wordId: acquisitionError.id, correct: false }),
     result({ id: 'test-review-error', datasetId: currentDataset.id, datasetDateRange: currentDataset.dateRange, wordId: testReviewError.id, correct: false }),
-  ], childId: 'maya', today: lifecycleDate, targetSize: PRIMARY_LIFECYCLE_WARMUP_TRIALS, random: () => 0.25 })
+  ], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
   assert.ok(!selection.erroredWordIds.includes(acquisitionError.id))
   assert.ok(!selection.erroredWordIds.includes(testReviewError.id))
   assert.ok(selection.words.every((word) => word.id !== acquisitionError.id && word.id !== testReviewError.id))
@@ -291,7 +300,7 @@ test('persisted adaptive categories cannot bypass active lifecycle exclusion', (
   const lifecycleDate = new Date(2026, 8, 23)
   const acquisitionWord = futureDataset.words[0]
   const testReviewWord = currentDataset.words[0]
-  const selection = buildWarmupSelection({ datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: PRIMARY_LIFECYCLE_WARMUP_TRIALS, childWordStates: [
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, childWordStates: [
     { id: `maya::${acquisitionWord.id}`, childId: 'maya', wordId: acquisitionWord.id, datasetId: futureDataset.id, category: 'errored-word', correctStreak: 0 },
     { id: `maya::${testReviewWord.id}`, childId: 'maya', wordId: testReviewWord.id, datasetId: currentDataset.id, category: 'recent-review', correctStreak: 1 },
   ], random: () => 0.25 })
@@ -301,10 +310,10 @@ test('persisted adaptive categories cannot bypass active lifecycle exclusion', (
 })
 
 test('a Test Review dataset becomes Recent Review only after it becomes archived', () => {
-  const duringTestReview = buildWarmupSelection({ datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
+  const duringTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
   assert.equal(duringTestReview.words.length, 0)
 
-  const afterTestReview = buildWarmupSelection({ datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), random: () => 0.25 })
+  const afterTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), random: () => 0.25 })
   assert.ok(afterTestReview.words.length > 0)
   assert.ok(afterTestReview.words.every((word) => word.datasetId === currentDataset.id))
   assert.ok(afterTestReview.recentReviewWordIds.every((id) => currentDataset.words.some((word) => word.id === id)))
@@ -312,7 +321,7 @@ test('a Test Review dataset becomes Recent Review only after it becomes archived
 
 test('newly archived datasets replace stale active-lifecycle categories with Recent Review', () => {
   const word = currentDataset.words[0]
-  const selection = buildWarmupSelection({ datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), childWordStates: [
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), childWordStates: [
     { id: `maya::${word.id}`, childId: 'maya', wordId: word.id, datasetId: currentDataset.id, category: 'errored-word', correctStreak: 0, lastReviewedAt: '2026-09-23T12:00:00.000Z', lastIncorrectAt: '2026-09-23T12:00:00.000Z' },
   ], random: () => 0.25 })
   assert.ok(selection.words.some((candidate) => candidate.id === word.id))
@@ -322,7 +331,7 @@ test('newly archived datasets replace stale active-lifecycle categories with Rec
 
 test('adaptive warmup promotes Recent Review after two correct responses', () => {
   const word = priorDataset.words[0]
-  const selection = buildWarmupSelection({ datasets: importedDatasets, results: [result({ id: 'recent-correct-1', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-21T12:00:00.000Z' }), result({ id: 'recent-correct-2', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-22T12:00:00.000Z' })], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [result({ id: 'recent-correct-1', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-21T12:00:00.000Z' }), result({ id: 'recent-correct-2', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-22T12:00:00.000Z' })], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
   assert.ok(!selection.recentReviewWordIds.includes(word.id))
 })
 
@@ -559,7 +568,7 @@ test('Acquisition scores every recorded trial instead of reducing to one answer 
 
 function completeSession(state: AppState): PracticeSession {
   return {
-    id: createSessionId(), childId: 'maya', grade: 'Kindergarten', primaryDatasetId: currentDataset.id, primaryPhase: 'acquisition', segment: 'primary', stage: 'review',
+    id: createSessionId(), childId: 'maya', grade: 'Grade 2', primaryDatasetId: currentDataset.id, primaryPhase: 'acquisition', segment: 'primary', stage: 'review',
     queue: currentDataset.words, warmupQueue: priorDataset.words, primaryQueue: currentDataset.words, index: currentDataset.words.length - 1, startedAt: '2026-09-18T12:00:00.000Z',
     warmupAnswers: priorDataset.words.map((word) => ({ word, correct: true, revealMethod: 'timer' })),
     primaryAnswers: currentDataset.words.map((word, index) => ({ word, correct: index !== 1, revealMethod: 'timer' })),
@@ -580,10 +589,25 @@ test('complete sessions create a primary score once and preserve adaptive warmup
   assert.equal(duplicateCommit.results.length, committed.results.length)
 })
 
+test('completing Grade 2 practice preserves other-grade, orphaned, and other-child adaptive states', () => {
+  const grade5State: ChildWordState = { id: `maya::${grade5Dataset.words[0].id}`, childId: 'maya', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review', correctStreak: 1 }
+  const orphanedState: ChildWordState = { id: 'maya::orphaned-word', childId: 'maya', wordId: 'orphaned-word', datasetId: 'temporarily-unloaded-dataset', category: 'random-rotation', correctStreak: 0 }
+  const otherChildState: ChildWordState = { id: `eli::${currentDataset.words[0].id}`, childId: 'eli', wordId: currentDataset.words[0].id, datasetId: currentDataset.id, category: 'errored-word', correctStreak: 0 }
+  const state: AppState = { ...initialState(), datasets: [...importedDatasets, grade5Dataset], childWordStates: [grade5State, orphanedState, otherChildState] }
+  const committed = commitCompletedSession(state, completeSession(state), today)
+
+  assert.deepEqual(committed.childWordStates.find((item) => item.id === grade5State.id), grade5State)
+  assert.deepEqual(committed.childWordStates.find((item) => item.id === orphanedState.id), orphanedState)
+  assert.deepEqual(committed.childWordStates.find((item) => item.id === otherChildState.id), otherChildState)
+  assert.ok(committed.childWordStates.some((item) => item.childId === 'maya' && item.datasetId === currentDataset.id))
+  const activeGrade2States = deriveChildWordStates({ grade: 'Grade 2', datasets: committed.datasets, results: committed.results, childId: 'maya', existingStates: committed.childWordStates, today })
+  assert.ok(!activeGrade2States.some((item) => item.id === orphanedState.id))
+})
+
 test('warmup-only sessions preserve mastery results without creating a primary score', () => {
   const state = initialState()
   const session: PracticeSession = {
-    id: createSessionId(), childId: 'maya', grade: 'Kindergarten', primaryDatasetId: '', primaryPhase: 'acquisition', segment: 'warmup', stage: 'review', warmupOnly: true,
+    id: createSessionId(), childId: 'maya', grade: 'Grade 2', primaryDatasetId: '', primaryPhase: 'acquisition', segment: 'warmup', stage: 'review', warmupOnly: true,
     queue: priorDataset.words, warmupQueue: priorDataset.words, primaryQueue: [], index: priorDataset.words.length - 1, startedAt: '2026-09-22T12:00:00.000Z',
     warmupAnswers: priorDataset.words.map((word) => ({ word, correct: true, revealMethod: 'timer' })), primaryAnswers: [],
   }

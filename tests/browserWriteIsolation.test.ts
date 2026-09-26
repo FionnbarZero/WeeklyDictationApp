@@ -38,8 +38,20 @@ test('dashboard exposes separate Acquisition and Test Review start controls', ()
 
 test('Acquisition and Test Review use the configured six-trial adaptive Warmup', () => {
   const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
-  assert.match(source, /targetSize: primaryChoices\.length > 0 \? PRIMARY_LIFECYCLE_WARMUP_TRIALS : undefined/)
+  assert.match(source, /targetSize: primaryChoices\.length > 0 \? practiceProfile\.lifecycle\.primaryWarmupTrials : undefined/)
   assert.match(source, /warmup: warmupSelection/)
+})
+
+test('cloud state reloads when a child grade changes', () => {
+  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  assert.match(source, /selectedChild\?\.id, selectedChild\?\.grade/)
+})
+
+test('an unsupported grade shows an explicit setup state while preserving history access', () => {
+  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  assert.match(source, /!practiceProfile && <UnsupportedPracticeView/)
+  assert.match(source, /Practice for \{child\.grade\} is not configured yet\. Existing datasets and history remain available\./)
+  assert.match(source, /function UnsupportedPracticeView[\s\S]*onClick=\{onHistory\}>View progress/)
 })
 
 test('Acquisition UI reveals every trial and visibly distinguishes only show-and-copy prompts', () => {

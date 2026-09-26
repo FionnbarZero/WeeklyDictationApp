@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
-import { canonicalizeWeeklyDatasetCandidate, isCanonicalWeeklyDatasetCandidate, validateWeeklyDatasetCandidate } from '../src/curriculum/canonical.ts'
+import { canonicalizeWeeklyDatasetCandidate, classifyCandidateCollision, isCanonicalWeeklyDatasetCandidate, validateWeeklyDatasetCandidate } from '../src/curriculum/canonical.ts'
+import { classifyWeeklyDatasetCandidates } from '../src/curriculum/classification.ts'
 import type { SheetsWorkbookPayload, SourceAdapter } from '../src/curriculum/model.ts'
+import { SOURCE_REGISTRY, type CurriculumSourceRegistryEntry } from '../src/config.ts'
 import { grade2PracticeProfile } from '../src/practice/profiles/grade2.ts'
 import {
   candidateFromSlide,
   grade2DeckProfile,
   grade2SlidesSourceAdapter,
+  importLatestWeeklyDataset,
   importLogIdFor,
   importWeeklyDatasets,
   parseSlide,
@@ -173,7 +176,7 @@ test('workshop, malformed, and duplicate Grade 2 outcomes remain compatible', ()
   const fixture = loadPresentationFixture('grade2-presentation.json')
   const existingIds = expectedGrade2Datasets.map((dataset) => dataset.id)
   const duplicate = importWeeklyDatasets(fixture, existingIds, grade2DeckProfile)
-  assert.equal(duplicate.status, 'error')
+  assert.equal(duplicate.status, 'ok')
   assert.equal(duplicate.datasets.length, 0)
   assert.ok(duplicate.outcomes.every((outcome) => outcome.status === 'duplicate'))
   assert.deepEqual(duplicate.outcomes.map(importLogIdFor), [
@@ -203,7 +206,7 @@ test('Grade 2 Slides normalize all vocabulary tiers before Tier 1 becomes writin
   assert.deepEqual(candidate.tier3.map((item) => item.text), ['社区'])
   assert.equal(candidate.source.sourceType, 'google-slides')
   assert.equal(candidate.source.sourceUnitId, 'canonical-slide')
-  assert.match(candidate.contentFingerprint, /^v1-fnv1a64-/)
+  assert.match(candidate.contentFingerprint, /^v2-fnv1a64-/)
   assert.ok(isCanonicalWeeklyDatasetCandidate(candidate))
   assert.deepEqual(imported.dataset?.words.map((word) => word.text), ['比如', '部分'])
 })
@@ -268,6 +271,39 @@ test('the source adapter contract also accepts a Google Sheets workbook payload'
   assert.ok(isCanonicalWeeklyDatasetCandidate(candidate))
 })
 
+test('source-neutral classification preserves every Sheets candidate outcome and provenance', () => {
+  const sheetsCandidate = (sourceUnitId: string, instructionalRole: 'next-week-preview' | 'current-confirmation', tier1: string[]) => canonicalizeWeeklyDatasetCandidate({
+    grade: 'Fixture Grade',
+    schoolYear: '2026–2027',
+    rawDate: 'Week 6 09/21',
+    dateRangeLabel: '9/21–9/25',
+    normalizedStartDate: '2026-09-21',
+    normalizedEndDate: '2026-09-25',
+    assignedWeek: { startDate: '2026-09-21', endDate: '2026-09-25' },
+    source: { sourceType: 'google-sheets', sourceDocumentId: 'fixture-workbook', sourceUnitId, adapterId: 'fixture-sheets-adapter' },
+    sourceSectionLabel: 'Writing character',
+    instructionalRole,
+    tier1,
+    tier2: ['红色', '蓝色'],
+    tier3: [],
+  })
+  const preview = sheetsCandidate('week-6-preview', 'next-week-preview', ['九', '十', '白'])
+  const current = sheetsCandidate('week-6-current-a', 'current-confirmation', ['九', '十', '白'])
+  const duplicateCurrent = sheetsCandidate('week-6-current-b', 'current-confirmation', ['九', '十', '白'])
+  const collapsed = classifyWeeklyDatasetCandidates([preview, current, duplicateCurrent])
+
+  assert.equal(collapsed.decisions.length, 3)
+  assert.deepEqual(collapsed.decisions.map((decision) => decision.status), ['confirmation', 'selected', 'duplicate'])
+  assert.deepEqual(collapsed.decisions.map((decision) => decision.candidate.source.sourceUnitId), ['week-6-preview', 'week-6-current-a', 'week-6-current-b'])
+  assert.ok(collapsed.decisions.every((decision) => decision.candidate.source.sourceType === 'google-sheets'))
+  assert.deepEqual(collapsed.selectedCandidates.map((candidate) => candidate.source.sourceUnitId), ['week-6-current-a'])
+
+  const conflict = sheetsCandidate('week-6-conflict', 'current-confirmation', ['不同', '内容', '词语'])
+  const conflicted = classifyWeeklyDatasetCandidates([current, conflict])
+  assert.deepEqual(conflicted.decisions.map((decision) => decision.status), ['conflict', 'conflict'])
+  assert.equal(conflicted.selectedCandidates.length, 0)
+})
+
 test('canonical validation detects content changed after fingerprinting', () => {
   const candidate = candidateFromSlide({ objectId: 'fingerprint-slide', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
   const changed = {
@@ -282,4 +318,154 @@ test('Grade 2 behavior is explicitly versioned without changing its established 
   assert.deepEqual(grade2PracticeProfile.timers, { warmup: 10, acquisition: 20, testReview: 10 })
   assert.equal(grade2PracticeProfile.lifecycle.primaryWarmupTrials, 6)
   assert.deepEqual(grade2PracticeProfile.acquisition.introductionSequence, ['true-bm', 'true-bm', 'show-copy', 'target'])
+})
+
+test('same-week vocabulary disagreements are conflicts and neither version is imported', () => {
+  const batch = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [
+      { objectId: 'version-a', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' },
+      { objectId: 'version-b', text: 'Week 9/21-9/25\nMandarin\nTier 1: 不同、内容' },
+    ],
+  }, [], grade2DeckProfile)
+
+  assert.equal(batch.status, 'error')
+  assert.equal(batch.datasets.length, 0)
+  assert.deepEqual(batch.outcomes.map((outcome) => outcome.status), ['conflict', 'conflict'])
+  assert.ok(batch.outcomes.every((outcome) => !outcome.dataset))
+})
+
+test('a later conflict invalidates every earlier duplicate for the same week', () => {
+  const presentation = {
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [
+      { objectId: 'matching-a', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' },
+      { objectId: 'matching-b', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' },
+      { objectId: 'conflicting-c', text: 'Week 9/21-9/25\nMandarin\nTier 1: 不同、内容' },
+    ],
+  }
+  const batch = importWeeklyDatasets(presentation, [], grade2DeckProfile)
+  const latest = importLatestWeeklyDataset(presentation, [], grade2DeckProfile)
+
+  assert.equal(batch.status, 'error')
+  assert.equal(batch.datasets.length, 0)
+  assert.deepEqual(batch.outcomes.map((outcome) => outcome.status), ['conflict', 'conflict', 'conflict'])
+  assert.ok(batch.outcomes.every((outcome) => !outcome.dataset))
+  assert.equal(latest.status, 'error')
+  assert.equal(latest.dataset, undefined)
+})
+
+test('identical same-week candidates choose the same canonical source regardless of slide order', () => {
+  const slideA = { objectId: 'source-a', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' }
+  const slideB = { objectId: 'source-b', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' }
+  const forward = importWeeklyDatasets({ presentationId: grade2DeckProfile.sourceDeckId, slides: [slideA, slideB] }, [], grade2DeckProfile)
+  const reversed = importWeeklyDatasets({ presentationId: grade2DeckProfile.sourceDeckId, slides: [slideB, slideA] }, [], grade2DeckProfile)
+
+  assert.equal(forward.datasets[0].sourceSlideId, 'source-a')
+  assert.equal(reversed.datasets[0].sourceSlideId, 'source-a')
+  assert.deepEqual(forward.datasets[0].words.map((word) => word.text), reversed.datasets[0].words.map((word) => word.text))
+})
+
+test('a stored fingerprint distinguishes a true rerun from a changed existing week', () => {
+  const original = candidateFromSlide({ objectId: 'stored', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
+  const presentation = {
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'changed', text: 'Week 9/21-9/25\nMandarin\nTier 1: 不同、内容' }],
+  }
+  const reference = { datasetId: original.datasetId!, contentFingerprint: original.contentFingerprint, candidateStatus: original.status, instructionalRole: original.instructionalRole }
+  const batch = importWeeklyDatasets(presentation, [reference], grade2DeckProfile)
+
+  assert.equal(batch.status, 'error')
+  assert.equal(batch.datasets.length, 0)
+  assert.equal(batch.outcomes[0].status, 'conflict')
+  assert.match(batch.outcomes[0].message, /previous valid dataset was preserved/i)
+})
+
+test('preview and current roles confirm identical vocabulary without changing its content fingerprint', () => {
+  const base = candidateFromSlide({ objectId: 'preview', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
+  const preview = { ...base, instructionalRole: 'next-week-preview' as const }
+  const current = { ...base, source: { ...base.source, sourceUnitId: 'current' }, instructionalRole: 'current-confirmation' as const }
+  const changed = { ...candidateFromSlide({ objectId: 'changed', text: 'Week 9/21-9/25\nMandarin\nTier 1: 改变、部分' }), instructionalRole: 'current-confirmation' as const }
+
+  assert.equal(preview.contentFingerprint, current.contentFingerprint)
+  assert.equal(classifyCandidateCollision(preview, current), 'confirmation')
+  assert.equal(classifyCandidateCollision(preview, changed), 'conflict')
+})
+
+test('a current source confirms a stored preview across import runs', () => {
+  const current = candidateFromSlide({ objectId: 'current-slide', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
+  const storedPreview = {
+    datasetId: current.datasetId!,
+    contentFingerprint: current.contentFingerprint,
+    candidateStatus: current.status,
+    instructionalRole: 'next-week-preview' as const,
+  }
+  const batch = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'current-slide', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' }],
+  }, [storedPreview], grade2DeckProfile)
+
+  assert.equal(batch.status, 'ok')
+  assert.equal(batch.datasets.length, 0)
+  assert.equal(batch.outcomes[0].status, 'confirmation')
+  assert.equal(batch.outcomes[0].refreshExistingMetadata, true)
+  assert.equal(batch.outcomes[0].instructionalRole, 'weekly-acquisition')
+  assert.match(batch.message, /no vocabulary was rewritten/i)
+})
+
+test('a conflicting current source cancels a stored-preview confirmation in the same run', () => {
+  const stored = candidateFromSlide({ objectId: 'stored-preview', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
+  const batch = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [
+      { objectId: 'matching-current', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' },
+      { objectId: 'conflicting-current', text: 'Week 9/21-9/25\nMandarin\nTier 1: 不同、内容' },
+    ],
+  }, [{ datasetId: stored.datasetId!, contentFingerprint: stored.contentFingerprint, candidateStatus: stored.status, instructionalRole: 'next-week-preview' }], grade2DeckProfile)
+
+  assert.equal(batch.status, 'error')
+  assert.equal(batch.datasets.length, 0)
+  assert.deepEqual(batch.outcomes.map((outcome) => outcome.status), ['conflict', 'conflict'])
+  assert.ok(batch.outcomes.every((outcome) => !outcome.dataset && !outcome.refreshExistingMetadata))
+})
+
+test('shared validation rejects impossible and reversed assigned-week dates', () => {
+  const candidateFor = (startDate: string, endDate: string) => canonicalizeWeeklyDatasetCandidate({
+    grade: 'Fixture Grade',
+    schoolYear: '2026–2027',
+    rawDate: `${startDate}–${endDate}`,
+    dateRangeLabel: `${startDate}–${endDate}`,
+    normalizedStartDate: startDate,
+    normalizedEndDate: endDate,
+    assignedWeek: { startDate, endDate },
+    source: { sourceType: 'google-sheets', sourceDocumentId: 'fixture-workbook', sourceUnitId: 'fixture-tab', adapterId: 'fixture-adapter' },
+    sourceSectionLabel: 'Vocabulary',
+    instructionalRole: 'weekly-acquisition',
+    tier1: ['甲'],
+    tier2: [],
+    tier3: [],
+  })
+
+  const impossible = candidateFor('2026-02-30', '2026-03-02')
+  const reversed = candidateFor('2026-09-25', '2026-09-21')
+  assert.equal(impossible.status, 'malformed')
+  assert.ok(impossible.validationOutcomes.some((outcome) => outcome.code === 'invalid_week_date'))
+  assert.equal(reversed.status, 'malformed')
+  assert.ok(reversed.validationOutcomes.some((outcome) => outcome.code === 'invalid_week_order'))
+})
+
+test('the source registry can represent Sheets without fake deck fields', () => {
+  const sheetsEntry: CurriculumSourceRegistryEntry = {
+    grade: 'Kindergarten',
+    displayName: 'Fixture Sheets Source',
+    schoolYear: '2026–2027',
+    sourceType: 'google-sheets',
+    sourceDocumentId: 'fixture-workbook',
+    sourceAdapterId: 'fixture-sheets-adapter',
+    practiceProfileId: 'fixture-practice-profile',
+    active: false,
+  }
+
+  assert.equal(sheetsEntry.sourceType, 'google-sheets')
+  assert.ok(SOURCE_REGISTRY.every((entry) => !('sourceDeckId' in entry)))
 })

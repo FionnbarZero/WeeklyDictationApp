@@ -41,7 +41,7 @@ test('canonical Grade 2 fixture traces through import, local state, practice, an
   assert.equal(hydrated.state.datasets.length, 4)
   assert.equal(hydrated.state.results[0].id, 'existing-progress')
 
-  const warmup = buildWarmupSelection({ datasets: hydrated.state.datasets, results: hydrated.state.results, childId: 'maya', today: new Date(2026, 8, 23), random: () => 0 })
+  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: hydrated.state.datasets, results: hydrated.state.results, childId: 'maya', today: new Date(2026, 8, 23), random: () => 0 })
   const primaryDataset = hydrated.state.datasets.find((dataset) => dataset.dateRange === '9/14–9/18')!
   const warmupWords = warmup.words.slice(0, 2)
   assert.equal(warmupWords.length, 2)

@@ -1,3 +1,5 @@
+import type { WritingPracticeProfile } from './model.ts'
+
 export const grade2PracticeProfile = {
   id: 'grade-2-writing-practice',
   version: 1,
@@ -30,4 +32,4 @@ export const grade2PracticeProfile = {
     expandedSequence: ['target', 'bm', 'target', 'bm', 'bm', 'target', 'bm', 'bm', 'bm', 'target'],
     correctionSequence: ['show-copy', 'show-copy', 'show-copy', 'target', 'true-bm', 'target'],
   },
-} as const
+} as const satisfies WritingPracticeProfile

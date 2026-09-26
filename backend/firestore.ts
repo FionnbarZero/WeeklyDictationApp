@@ -1,4 +1,4 @@
-import { importLogIdFor, isDuplicateOnlyBatch, type ImportBatchOutcome } from '../src/slidesImporter.ts'
+import { importLogIdFor, isDuplicateOnlyBatch, type ExistingDatasetReference, type ImportBatchOutcome } from '../src/slidesImporter.ts'
 
 type FetchLike = typeof fetch
 type FirestoreValue = Record<string, unknown>
@@ -28,7 +28,11 @@ function firestoreUrl(projectId: string, suffix: string) { return `https://fires
 async function responseBody(response: Response) { return response.json().catch(() => ({})) as Promise<Record<string, unknown>> }
 
 export async function listDatasetIds(projectId: string, accessToken: string, fetchImpl: FetchLike = fetch) {
-  const ids: string[] = []
+  return (await listDatasetReferences(projectId, accessToken, fetchImpl)).map((reference) => reference.datasetId)
+}
+
+export async function listDatasetReferences(projectId: string, accessToken: string, fetchImpl: FetchLike = fetch): Promise<Array<Exclude<ExistingDatasetReference, string>>> {
+  const references: Array<Exclude<ExistingDatasetReference, string>> = []
   let pageToken = ''
   do {
     const query = new URLSearchParams({ pageSize: '300' }); if (pageToken) query.set('pageToken', pageToken)
@@ -36,22 +40,49 @@ export async function listDatasetIds(projectId: string, accessToken: string, fet
     const body = await responseBody(response)
     if (!response.ok) throw new Error(`Firestore read failed: ${typeof body.error === 'object' && body.error && 'message' in body.error ? body.error.message : response.statusText}`)
     for (const document of Array.isArray(body.documents) ? body.documents : []) {
-      if (document && typeof document === 'object' && 'name' in document && typeof document.name === 'string') ids.push(document.name.split('/').pop() || '')
+      if (!document || typeof document !== 'object' || !('name' in document) || typeof document.name !== 'string') continue
+      const datasetId = document.name.split('/').pop() || ''
+      if (!datasetId) continue
+      const storedFields = 'fields' in document && document.fields && typeof document.fields === 'object' ? document.fields as Record<string, { stringValue?: unknown }> : {}
+      const stringField = (name: string) => typeof storedFields[name]?.stringValue === 'string' ? storedFields[name].stringValue as string : undefined
+      references.push({
+        datasetId,
+        contentFingerprint: stringField('contentFingerprint'),
+        candidateStatus: stringField('candidateStatus') as Exclude<ExistingDatasetReference, string>['candidateStatus'],
+        instructionalRole: stringField('instructionalRole') as Exclude<ExistingDatasetReference, string>['instructionalRole'],
+      })
     }
     pageToken = typeof body.nextPageToken === 'string' ? body.nextPageToken : ''
   } while (pageToken)
-  return ids.filter(Boolean)
+  return references
 }
 
 function writesForBatch(batch: ImportBatchOutcome, projectId: string, importedAt: string) {
   const writes: Array<Record<string, unknown>> = []
   for (const dataset of batch.datasets) {
     const { words, ...metadata } = dataset
-    writes.push({ update: { name: documentName(projectId, `datasets/${dataset.id}`), ...fields({ ...metadata, importedAt }) } })
+    const outcome = batch.outcomes.find((item) => item.datasetId === dataset.id && (item.status === 'imported' || item.status === 'writing-workshop'))
+    const canonicalMetadata = outcome?.contentFingerprint ? { contentFingerprint: outcome.contentFingerprint, candidateStatus: outcome.candidateStatus, instructionalRole: outcome.instructionalRole } : {}
+    writes.push({ update: { name: documentName(projectId, `datasets/${dataset.id}`), ...fields({ ...metadata, ...canonicalMetadata, importedAt }) } })
     for (const word of words) writes.push({ update: { name: documentName(projectId, `datasets/${dataset.id}/words/${word.id}`), ...fields(word) } })
   }
+  for (const outcome of batch.outcomes.filter((item) => item.status === 'confirmation' && item.refreshExistingMetadata && item.datasetId)) {
+    writes.push({
+      update: {
+        name: documentName(projectId, `datasets/${outcome.datasetId}`),
+        ...fields({
+          contentFingerprint: outcome.contentFingerprint,
+          candidateStatus: outcome.candidateStatus,
+          instructionalRole: outcome.instructionalRole,
+          confirmationSourceSlideId: outcome.sourceSlideId,
+          confirmedAt: importedAt,
+        }),
+      },
+      updateMask: { fieldPaths: ['contentFingerprint', 'candidateStatus', 'instructionalRole', 'confirmationSourceSlideId', 'confirmedAt'] },
+    })
+  }
   for (const outcome of batch.outcomes) {
-    writes.push({ update: { name: documentName(projectId, `importLogs/${importLogIdFor(outcome)}`), ...fields({ datasetId: outcome.datasetId, sourceDeckId: batch.datasets.find((dataset) => dataset.id === outcome.datasetId)?.sourceDeckId || outcome.dataset?.sourceDeckId, sourceSlideId: outcome.sourceSlideId, status: outcome.status, message: outcome.message, createdAt: importedAt }) } })
+    writes.push({ update: { name: documentName(projectId, `importLogs/${importLogIdFor(outcome)}`), ...fields({ datasetId: outcome.datasetId, sourceDeckId: batch.datasets.find((dataset) => dataset.id === outcome.datasetId)?.sourceDeckId || outcome.dataset?.sourceDeckId, sourceSlideId: outcome.sourceSlideId, status: outcome.status, message: outcome.message, contentFingerprint: outcome.contentFingerprint, candidateStatus: outcome.candidateStatus, instructionalRole: outcome.instructionalRole, createdAt: importedAt }) } })
   }
   return writes
 }

@@ -10,9 +10,12 @@ import {
   type SlideLike as SlidesSlideLike,
   type SlidesParserProfile,
 } from './curriculum/adapters/googleSlides.ts'
+import { classifyWeeklyDatasetCandidates, type CandidateClassificationDecision, type ExistingDatasetReference } from './curriculum/classification.ts'
 import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity.ts'
-import type { WeeklyDatasetCandidate } from './curriculum/model.ts'
+import type { CandidateStatus, InstructionalRole, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import type { Dataset, Word } from './domain.ts'
+
+export type { ExistingDatasetReference } from './curriculum/classification.ts'
 
 export type ParserProfile = SlidesParserProfile
 
@@ -39,7 +42,7 @@ export const parserProfiles = [grade2DeckProfile, grade5DeckProfile] as const
 
 export type SlideLike = SlidesSlideLike
 export type PresentationLike = SlidesPresentationLike
-export type ImportOutcome = { status: 'imported' | 'duplicate' | 'writing-workshop' | 'error'; dataset?: Dataset; message: string; sourceDeckId?: string; sourceSlideId?: string; datasetId?: string }
+export type ImportOutcome = { status: 'imported' | 'duplicate' | 'confirmation' | 'conflict' | 'writing-workshop' | 'error'; dataset?: Dataset; message: string; sourceDeckId?: string; sourceSlideId?: string; datasetId?: string; contentFingerprint?: string; candidateStatus?: CandidateStatus; instructionalRole?: InstructionalRole; refreshExistingMetadata?: boolean }
 export type ImportBatchOutcome = {
   status: 'ok' | 'error'
   outcomes: ImportOutcome[]
@@ -75,7 +78,23 @@ export function importLogIdFor(outcome: ImportOutcome) {
 }
 
 export function isDuplicateOnlyBatch(batch: ImportBatchOutcome) {
-  return batch.status === 'error' && batch.outcomes.length > 0 && batch.outcomes.every((outcome) => outcome.status === 'duplicate')
+  return batch.outcomes.length > 0 && batch.outcomes.every((outcome) => outcome.status === 'duplicate')
+}
+
+function outcomeWithoutDataset(outcome: ImportOutcome, status: ImportOutcome['status'], message: string): ImportOutcome {
+  const { dataset: _dataset, refreshExistingMetadata: _refreshExistingMetadata, ...metadata } = outcome
+  return { ...metadata, status, message }
+}
+
+function outcomeForDecision(outcome: ImportOutcome, decision: CandidateClassificationDecision): ImportOutcome {
+  if (decision.status === 'selected' || decision.status === 'malformed') return outcome
+  if (decision.reason === 'same-week-conflict') return outcomeWithoutDataset(outcome, 'conflict', 'Different normalized vocabulary was found for the same instructional week; neither new version may be imported automatically.')
+  if (decision.reason === 'existing-conflict') return outcomeWithoutDataset(outcome, 'conflict', 'The existing dataset and current source contain different normalized content for the same instructional week; the previous valid dataset was preserved.')
+  if (decision.reason === 'same-week-confirmation') return outcomeWithoutDataset(outcome, 'confirmation', 'The preview and authoritative current section describe the same instructional-week content.')
+  if (decision.reason === 'same-week-duplicate') return outcomeWithoutDataset(outcome, 'duplicate', 'The same normalized vocabulary already exists for this instructional week; no duplicate import was created.')
+  if (decision.reason === 'existing-confirmation-current') return { ...outcome, status: 'confirmation', refreshExistingMetadata: true, message: 'The stored preview was confirmed by the authoritative current section; canonical source metadata will be refreshed without rewriting vocabulary.' }
+  if (decision.reason === 'existing-confirmation-preview') return { ...outcome, status: 'confirmation', message: 'The preview matches the stored authoritative current section; the current source remains authoritative.' }
+  return { ...outcome, status: 'duplicate', message: 'The stable dataset ID already exists with no detected content conflict; no duplicate import was created.' }
 }
 
 export { slideText } from './curriculum/adapters/googleSlides.ts'
@@ -115,17 +134,24 @@ export const grade2SlidesSourceAdapter = slidesSourceAdapterFor(grade2DeckProfil
 
 export function importOutcomeFromCandidate(candidate: WeeklyDatasetCandidate, profile: ParserProfile): ImportOutcome {
   const sourceSlideId = candidate.source.sourceUnitId || undefined
+  const candidateMetadata = { contentFingerprint: candidate.contentFingerprint, candidateStatus: candidate.status, instructionalRole: candidate.instructionalRole }
   if (!sourceSlideId) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no stable source slide ID; it cannot be imported safely.' }
   if (!candidate.assignedWeek || !candidate.dateRangeLabel || !candidate.datasetId) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has no recognizable, valid Week/date-range heading.', sourceSlideId }
   const range = { ...candidate.assignedWeek, dateRange: candidate.dateRangeLabel }
   const datasetId = candidate.datasetId
   if (candidate.status === 'no-instruction') {
     const marker = candidate.noInstructionReason?.replace(/^writing-workshop:/, '') || 'explicit no-instruction marker'
-    return { status: 'writing-workshop', sourceDeckId: profile.sourceDeckId, message: `Writing-workshop marker detected: ${marker}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, [], true) }
+    return { status: 'writing-workshop', sourceDeckId: profile.sourceDeckId, message: `Writing-workshop marker detected: ${marker}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, [], true), ...candidateMetadata }
   }
-  if (candidate.status === 'malformed' || !candidate.tier1.length) return { status: 'error', sourceDeckId: profile.sourceDeckId, message: 'The slide has a weekly heading but no confident Tier 1 vocabulary section.', sourceSlideId, datasetId }
+  if (candidate.status === 'malformed' || !candidate.tier1.length) {
+    const validationError = candidate.validationOutcomes.find((item) => item.severity === 'error')
+    const message = candidate.validationOutcomes.some((item) => item.code === 'missing_tier_1')
+      ? 'The slide has a weekly heading but no confident Tier 1 vocabulary section.'
+      : `Canonical validation failed${validationError ? ` (${validationError.code}): ${validationError.message}` : '.'}`
+    return { status: 'error', sourceDeckId: profile.sourceDeckId, message, sourceSlideId, datasetId }
+  }
   const words: Word[] = candidate.tier1.map((term) => ({ id: term.targetOccurrenceId!, text: term.text, sentence: '', datasetId, grade: profile.grade, sourceSlideId, language: 'mandarin', tier: 'tier-1', activityType: 'dictation' }))
-  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words) }
+  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words), ...candidateMetadata }
 }
 
 export function profileForDataset(dataset: Pick<Dataset, 'grade' | 'schoolYear' | 'sourceDeckId'>) {
@@ -133,7 +159,7 @@ export function profileForDataset(dataset: Pick<Dataset, 'grade' | 'schoolYear' 
 }
 
 export function profileForDeckId(sourceDeckId: string) {
-  return parserProfiles.find((profile) => profile.sourceDeckId === sourceDeckId && DECK_REGISTRY.some((entry) => entry.active && entry.sourceDeckId === sourceDeckId && entry.parserProfileId === profile.id)) || null
+  return parserProfiles.find((profile) => profile.sourceDeckId === sourceDeckId && DECK_REGISTRY.some((entry) => entry.active && entry.sourceType === 'google-slides' && entry.sourceDocumentId === sourceDeckId && entry.parserProfileId === profile.id)) || null
 }
 
 export function isCanonicalDataset(dataset: Dataset) {
@@ -159,36 +185,44 @@ export function parseSlide(slide: SlideLike, profile = grade2DeckProfile): Impor
   return importOutcomeFromCandidate(candidateFromSlide(slide, profile), profile)
 }
 
-export function validateAndClassifyPresentation(presentation: PresentationLike, existingDatasetIds: string[] = [], profile = grade2DeckProfile): ImportBatchOutcome {
+export function validateAndClassifyPresentation(presentation: PresentationLike, existingDatasetReferences: ExistingDatasetReference[] = [], profile = grade2DeckProfile): ImportBatchOutcome {
   if (presentation.presentationId !== profile.sourceDeckId) {
     return { status: 'error', outcomes: [{ status: 'error', sourceDeckId: profile.sourceDeckId, message: `The inspected presentation ID does not match the configured ${profile.grade} deck.`, sourceSlideId: presentation.presentationId }], datasets: [], summary: { datasetCount: 0, slideIds: [], dateRanges: [], wordCounts: [] }, message: 'No Firestore write may occur because the source deck identity is not validated.' }
   }
-  const knownIds = new Set(existingDatasetIds); const outcomes: ImportOutcome[] = []; const datasets: Dataset[] = []
   const adapter = slidesSourceAdapterFor(profile)
   const candidates = adapter.adapt({ sourceType: 'google-slides', ...presentation })
-  for (const candidate of candidates) {
-    const outcome = importOutcomeFromCandidate(candidate, profile); const dataset = outcome.dataset
-    if (dataset && knownIds.has(dataset.id)) outcomes.push({ ...outcome, status: 'duplicate', message: 'The stable dataset ID already exists; no duplicate import was created.' })
-    else {
-      outcomes.push(outcome)
-      if (dataset && (outcome.status === 'imported' || outcome.status === 'writing-workshop')) { datasets.push(dataset); knownIds.add(dataset.id) }
-    }
-  }
+  const baseOutcomes = candidates.map((candidate) => importOutcomeFromCandidate(candidate, profile))
+  const classification = classifyWeeklyDatasetCandidates(candidates, existingDatasetReferences)
+  const outcomes = classification.decisions.map((decision, index) => outcomeForDecision(baseOutcomes[index], decision))
+  const datasets = classification.decisions.flatMap((decision, index) => decision.status === 'selected' && baseOutcomes[index].dataset ? [baseOutcomes[index].dataset!] : [])
   datasets.sort((a, b) => a.startDate.localeCompare(b.startDate))
   const summary = { datasetCount: datasets.length, slideIds: datasets.map((dataset) => dataset.sourceSlideId || ''), dateRanges: datasets.map((dataset) => dataset.dateRange), wordCounts: datasets.map((dataset) => dataset.words.length) }
-  return { status: datasets.length ? 'ok' : 'error', outcomes, datasets, summary, message: datasets.length ? `Validated ${datasets.length} weekly dataset${datasets.length === 1 ? '' : 's'}; malformed slides were skipped.` : 'No valid weekly datasets were found; nothing may be written.' }
+  const hasAttentionIssue = outcomes.some((item) => item.status === 'error' || item.status === 'conflict')
+  const confirmationCount = outcomes.filter((item) => item.status === 'confirmation').length
+  const duplicateOnly = outcomes.length > 0 && outcomes.every((item) => item.status === 'duplicate')
+  const batchIsSuccessful = datasets.length > 0 || confirmationCount > 0 || duplicateOnly
+  const message = datasets.length
+    ? hasAttentionIssue
+      ? `Validated ${datasets.length} weekly dataset${datasets.length === 1 ? '' : 's'}; malformed or conflicting source units were skipped.`
+      : `Validated ${datasets.length} weekly dataset${datasets.length === 1 ? '' : 's'}; malformed slides were skipped.`
+    : confirmationCount
+      ? `Confirmed ${confirmationCount} existing weekly dataset source${confirmationCount === 1 ? '' : 's'}; no vocabulary was rewritten.`
+      : duplicateOnly
+        ? 'The inspected weekly datasets are already current; no new vocabulary was written.'
+    : 'No valid weekly datasets were found; nothing may be written.'
+  return { status: batchIsSuccessful ? 'ok' : 'error', outcomes, datasets, summary, message }
 }
 
-export function importWeeklyDatasets(presentation: PresentationLike, existingDatasetIds: string[] = [], profile = grade2DeckProfile) {
-  return validateAndClassifyPresentation(presentation, existingDatasetIds, profile)
+export function importWeeklyDatasets(presentation: PresentationLike, existingDatasetReferences: ExistingDatasetReference[] = [], profile = grade2DeckProfile) {
+  return validateAndClassifyPresentation(presentation, existingDatasetReferences, profile)
 }
 
 export function dryRunSummary(batch: ImportBatchOutcome) {
-  return { status: batch.status, message: batch.message, datasets: batch.datasets.map((dataset) => ({ id: dataset.id, slideId: dataset.sourceSlideId, dateRange: dataset.dateRange, wordCount: dataset.words.length, importStatus: dataset.importStatus })), skipped: batch.outcomes.filter((outcome) => outcome.status === 'error').map((outcome) => ({ slideId: outcome.sourceSlideId, message: outcome.message })) }
+  return { status: batch.status, message: batch.message, datasets: batch.datasets.map((dataset) => ({ id: dataset.id, slideId: dataset.sourceSlideId, dateRange: dataset.dateRange, wordCount: dataset.words.length, importStatus: dataset.importStatus })), skipped: batch.outcomes.filter((outcome) => outcome.status === 'error' || outcome.status === 'conflict').map((outcome) => ({ slideId: outcome.sourceSlideId, message: outcome.message })) }
 }
 
-export function importLatestWeeklyDataset(presentation: PresentationLike, existingDatasetIds: string[] = [], profile = grade2DeckProfile): ImportOutcome {
-  const batch = validateAndClassifyPresentation(presentation, existingDatasetIds, profile)
-  const candidates = batch.outcomes.filter((outcome) => outcome.dataset && (outcome.status === 'imported' || outcome.status === 'writing-workshop' || outcome.status === 'duplicate')).sort((a, b) => (b.dataset?.startDate || '').localeCompare(a.dataset?.startDate || ''))
+export function importLatestWeeklyDataset(presentation: PresentationLike, existingDatasetReferences: ExistingDatasetReference[] = [], profile = grade2DeckProfile): ImportOutcome {
+  const batch = validateAndClassifyPresentation(presentation, existingDatasetReferences, profile)
+  const candidates = batch.outcomes.filter((outcome) => outcome.dataset && (outcome.status === 'imported' || outcome.status === 'writing-workshop' || outcome.status === 'duplicate' || outcome.status === 'confirmation')).sort((a, b) => (b.dataset?.startDate || '').localeCompare(a.dataset?.startDate || ''))
   return candidates[0] || { status: 'error', message: batch.message }
 }

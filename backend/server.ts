@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { runImportJob, type ImportJobConfig } from './importJob.ts'
+import type { ImportBatchOutcome } from '../src/slidesImporter.ts'
 
 function required(name: string) {
   const value = process.env[name]
@@ -23,6 +24,10 @@ export function authorized(request: RequestLike) {
 
 type RequestLike = Pick<IncomingMessage, 'method' | 'url' | 'headers'>
 
+export function importHttpStatus(batch: Pick<ImportBatchOutcome, 'status'>) {
+  return batch.status === 'ok' ? 200 : 422
+}
+
 export function createImporterServer() {
   return createServer(async (request: IncomingMessage, response: ServerResponse) => {
     if (request.method === 'GET' && request.url === '/healthz') { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: true })); return }
@@ -30,7 +35,7 @@ export function createImporterServer() {
     if (!authorized(request)) { response.writeHead(401, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ error: 'Unauthorized' })); return }
     try {
       const result = await runImportJob(configFromEnvironment())
-      response.writeHead(result.batch.status === 'ok' ? 200 : 422, { 'Content-Type': 'application/json' })
+      response.writeHead(importHttpStatus(result.batch), { 'Content-Type': 'application/json' })
       response.end(JSON.stringify({ ...result, summary: result.batch.summary, message: result.batch.message }))
     } catch (error) {
       response.writeHead(500, { 'Content-Type': 'application/json' })
