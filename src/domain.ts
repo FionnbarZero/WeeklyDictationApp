@@ -479,11 +479,11 @@ function orderedResultsForWord(results: WordResult[], childId: string, wordId: s
   return results.filter((result) => result.childId === childId && result.wordId === wordId).sort((a, b) => a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id))
 }
 
-export function deriveChildWordStates(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number; lifecycleResolution?: DatasetLifecycleResolution }): ChildWordState[] {
+export function deriveChildWordStates(options: { grade: string; schoolYear?: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number; lifecycleResolution?: DatasetLifecycleResolution }): ChildWordState[] {
   const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
-  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!options.schoolYear || dataset.schoolYear === options.schoolYear))
   const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
   const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
   const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
@@ -948,10 +948,16 @@ function updateMonthlyRotationScores(scores: MonthlyRotationScore[], childId: st
   return existing ? scores.map((score) => score.id === existing.id ? next : score) : [...scores, next]
 }
 
+function datasetForSession(state: AppState, session: PracticeSession) {
+  const datasetIds = [session.primaryDatasetId, ...session.primaryQueue.map((word) => word.datasetId), ...session.warmupQueue.map((word) => word.datasetId)]
+  return datasetIds.map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId)).find((dataset): dataset is Dataset => Boolean(dataset))
+}
+
 function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
   const profile = requirePracticeProfileForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
-  let states = deriveChildWordStates({ grade: session.grade, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
+  const schoolYear = datasetForSession(state, session)?.schoolYear
+  let states = deriveChildWordStates({ grade: session.grade, schoolYear, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
   for (const answer of [...session.warmupAnswers, ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false)]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
@@ -1051,11 +1057,12 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
   const monthlyRotationScores = updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
   const materialized = materializeStateForCommit(state, session, now)
-  const datasetGradeById = new Map(state.datasets.map((dataset) => [dataset.id, dataset.grade]))
+  const sessionSchoolYear = datasetForSession(state, session)?.schoolYear
+  const datasetScopeById = new Map(state.datasets.map((dataset) => [dataset.id, { grade: dataset.grade, schoolYear: dataset.schoolYear }]))
   const priorStates = state.childWordStates.filter((item) => {
     if (item.childId !== session.childId) return true
-    const datasetGrade = datasetGradeById.get(item.datasetId)
-    return !datasetGrade || datasetGrade !== session.grade
+    const datasetScope = datasetScopeById.get(item.datasetId)
+    return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
   return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
 }

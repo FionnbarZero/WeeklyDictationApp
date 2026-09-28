@@ -145,10 +145,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       const attempts = (await Promise.all(readableSessions.map((item) => listAttempts(family.id, selectedChild.id, item.id)))).flat()
       await Promise.all(readableSessions.filter((item) => item.status === 'in_progress').map((item) => item.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, item, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, item)))
       if (cancelled) return
-      setState(cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations))
+      setState(cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations, selectedChild.schoolYear))
     }).catch((error) => { if (!cancelled) setCloudError(authErrorMessage(error)) }).finally(() => { if (!cancelled) setDataLoading(false) })
     return () => { cancelled = true }
-  }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade])
+  }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade, selectedChild?.schoolYear])
 
   const chooseChild = (childId: string) => { setSelectedChildId(childId); setShowChildMenu(false); setShowProfiles(false); setSession(null); setView('home') }
   const confirmPromotion = async () => {

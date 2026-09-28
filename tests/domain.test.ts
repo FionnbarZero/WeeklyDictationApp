@@ -653,12 +653,15 @@ test('complete sessions create a primary score once and preserve adaptive warmup
 
 test('completing Grade 2 practice preserves other-grade, orphaned, and other-child adaptive states', () => {
   const grade5State: ChildWordState = { id: `maya::${grade5Dataset.words[0].id}`, childId: 'maya', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review', correctStreak: 1 }
+  const historicalDataset: Dataset = { ...currentDataset, id: 'historical-grade-2-dataset', schoolYear: '2025–2026', words: currentDataset.words.map((word, index) => ({ ...word, id: `historical-grade-2-word-${index + 1}`, datasetId: 'historical-grade-2-dataset' })) }
+  const historicalState: ChildWordState = { id: `maya::${historicalDataset.words[0].id}`, childId: 'maya', wordId: historicalDataset.words[0].id, datasetId: historicalDataset.id, category: 'random-rotation', correctStreak: 0 }
   const orphanedState: ChildWordState = { id: 'maya::orphaned-word', childId: 'maya', wordId: 'orphaned-word', datasetId: 'temporarily-unloaded-dataset', category: 'random-rotation', correctStreak: 0 }
   const otherChildState: ChildWordState = { id: `eli::${currentDataset.words[0].id}`, childId: 'eli', wordId: currentDataset.words[0].id, datasetId: currentDataset.id, category: 'errored-word', correctStreak: 0 }
-  const state: AppState = { ...initialState(), datasets: [...importedDatasets, grade5Dataset], childWordStates: [grade5State, orphanedState, otherChildState] }
+  const state: AppState = { ...initialState(), datasets: [...importedDatasets, grade5Dataset, historicalDataset], childWordStates: [grade5State, historicalState, orphanedState, otherChildState] }
   const committed = commitCompletedSession(state, completeSession(state), today)
 
   assert.deepEqual(committed.childWordStates.find((item) => item.id === grade5State.id), grade5State)
+  assert.deepEqual(committed.childWordStates.find((item) => item.id === historicalState.id), historicalState)
   assert.deepEqual(committed.childWordStates.find((item) => item.id === orphanedState.id), orphanedState)
   assert.deepEqual(committed.childWordStates.find((item) => item.id === otherChildState.id), otherChildState)
   assert.ok(committed.childWordStates.some((item) => item.childId === 'maya' && item.datasetId === currentDataset.id))
