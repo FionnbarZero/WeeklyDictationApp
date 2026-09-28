@@ -33,7 +33,7 @@ export type DeckRegistryEntry = CurriculumSourceRegistryEntry
 
 export const SOURCE_REGISTRY: CurriculumSourceRegistryEntry[] = [
   { grade: 'Grade 2', displayName: 'Grade 2', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE2_DECK_ID, parserProfileId: 'grade-2-2026-27-weekly-focus', sourceAdapterId: 'grade-2-google-slides', practiceProfileId: grade2PracticeProfile.id, active: true },
-  { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-placeholder', practiceProfileId: 'grade-5-unimplemented', active: false },
+  { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: 'grade-5-unimplemented', active: false },
 ]
 export const DECK_REGISTRY = SOURCE_REGISTRY
 

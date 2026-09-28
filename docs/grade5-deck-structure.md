@@ -1,29 +1,53 @@
-# 5th-grade deck structure observed
+# Grade 5 deck structure
 
-Source: `G5 Weekly Focus SY 26-27`, deck ID `1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI`.
+Source: [`G5 Weekly Focus SY 26-27`](https://docs.google.com/presentation/d/1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI/edit), deck ID `1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI`.
 
-The Drive connector read was blocked in this environment with `MCP tool call requires approval, but approval policy is never`. The deck was therefore inspected through the signed-in Google Slides read-only browser view. No slide was edited.
+The deck was inspected read-only on 2026-09-28. No slide was edited. The test fixture at `tests/fixtures/grade5-presentation.json` is a reduced Google Slides-shaped transcription of the observed Week 4–7 Mandarin tables. It is test data, not production fallback vocabulary.
 
-## Observed layout
+## Approved extraction boundary
 
-- Six slides are ordered newest first.
-- The week heading is near the top and uses `Week N (M/D-D)` when a date range is available. The newest slide is `Week 6 (9/14-18)`.
-- Each slide contains subject sections. The Mandarin section is followed by ELA, Math, and Science/Social Studies sections.
-- On complete weekly slides, Tier 1 is inline in the Mandarin section as `Tier 1：term、term、term`. Terms are separated with the Chinese enumeration comma `、`; multi-character terms remain one target.
-- Mandarin prose outside the Tier 1 list is not word-specific context. The importer leaves `Word.sentence` empty until a separately authorized sentence-generation step supplies a verified short context sentence.
-- Tier 2 and Tier 3 follow Tier 1 and are not imported.
-- Week 2 has no complete Mandarin Tier 1 list in the visible content, and Week 1 contains placeholders (`Content`, `Vocabulary`, `Sentence Frame`). Both are rejected as incomplete rather than silently treated as a workshop.
-- No explicit writing-workshop marker was observed in the six slides. The parser recognizes explicit markers such as `Writing Project`, `Biography`, `Writers' workshop`, `Sample writing`, `No Dictation`, and `Homework instructions`; absent a marker, an incomplete slide is an import error.
+Grade 5 must be parsed from the Mandarin table structure rather than flattened slide text. Complete weekly slides contain:
 
-## Observed page IDs
+- a merged `Mandarin` heading;
+- a top `This week` row whose vocabulary confirms the cohort introduced by the prior accepted source step; and
+- a bottom `Coming next week` / `Core vocab` area whose Tier 1, Tier 2, and Tier 3 values form the Acquisition cohort assigned to the displayed slide week.
 
-| Slide | Week | Page ID | Tier 1 observation |
+Despite the source label `Coming next week`, the bottom cohort belongs to the displayed instructional week in this application. Source order never overrides the displayed week dates.
+
+The adapter:
+
+- preserves Tier 1, Tier 2, and Tier 3 as ordered canonical occurrences;
+- uses Tier 1 as the future writing target set without discarding Tier 2 or Tier 3;
+- accepts 3–10 Tier 1 occurrences;
+- preserves repeated source occurrences as separate stable targets;
+- excludes Mandarin narrative prose, book descriptions, and sentence structures from vocabulary;
+- emits no approved writing context from slide prose;
+- creates one deterministic progression event for each accepted instructional source step;
+- emits no progression event for duplicates, malformed slides, same-week conflicts, or a top-row confirmation mismatch; and
+- leaves an otherwise valid new bottom cohort pending when the confirmation chain is blocked.
+
+Week 4 (`2026-08-31` through `2026-09-04`) is the activation baseline. Earlier startup slides remain source provenance or import issues; they do not reconstruct older Test Review cohorts.
+
+## Observed source units
+
+| Slide | Displayed week | Page ID | Bottom-row Acquisition Tier 1 |
 |---|---|---|---|
-| 1 | Week 6 (9/14-18) | `g3fb43a5e916_1_1` | 怎样, 吸收, 通过, 像, 如果 |
-| 2 | Week 5 (9/8-11) | `g3fbb7d5bcd5_0_0` | 怎样, 吸收, 通过, 像, 如果 |
-| 3 | Week 4 (8/31-9/4) | `g3fb43066ba2_0_0` | 需要, 部分, 重要, 开始, 各种各样 |
-| 4 | Week 3 (8/24-28) | `g3facdc62d75_0_0` | 问, 课, 猫, 经常, 说, 同学, 兔子, 蛇, 害怕, 照顾, 打扫 |
-| 5 | Week 2 | `g3f8b04c699e_0_0` | incomplete / no Mandarin Tier 1 list |
-| 6 | Week 1 | `g3f728729da8_0_0` | placeholders only |
+| 1 | Week 7 (9/21–9/25) | `g3fb43a5e916_1_1` | 盐, 咸, 层, 用处, 神奇的 |
+| 2 | Week 6 (9/14–9/18) | `h582f1d63128ff4cf_0_0` | 或者, 了解, 完, 兴奋的, 告诉 |
+| 3 | Week 5 (9/8–9/11) | `g3fbb7d5bcd5_0_0` | 怎样, 吸收, 通过, 像, 如果 |
+| 4 | Week 4 (8/31–9/4) | `g3fb43066ba2_0_0` | 需要, 部分, 重要, 开始, 各种各样 |
+| 5 | Week 3 (8/24–8/28) | `g3facdc62d75_0_0` | Pre-baseline startup source; not activated |
+| 6 | Week 2 | `g3f8b04c699e_0_0` | No approved date range or complete vocabulary structure |
+| 7 | Week 1 | `g3f728729da8_0_0` | Empty placeholders |
 
-The parser profile is in `src/slidesImporter.ts` and is intentionally deck-specific. A future grade deck can supply a different profile without changing the core importer.
+## Progression evidence
+
+For every post-baseline source step, the adapter compares all ordered Tier 1, Tier 2, and Tier 3 values in the top `This week` section with the previously accepted bottom cohort.
+
+- Exact match: confirm the prior cohort and emit one event introducing the new bottom cohort.
+- Mismatch: preserve prior accepted data and emit no event.
+- Missing slide: emit no event; elapsed calendar time never manufactures a transition.
+- Identical duplicate source occurrence: classify it as a duplicate and emit no additional event.
+- Different content for the same displayed week: classify the week as a conflict and accept neither new version automatically.
+
+The adapter is implemented in `src/curriculum/adapters/grade5GoogleSlides.ts`. Grade 5 remains inactive in the source registry until its lifecycle strategy and practice profile are implemented and tested.

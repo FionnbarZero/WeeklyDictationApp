@@ -33,8 +33,10 @@ export const grade2DeckProfile: ParserProfile = {
   weeklyHeading, tier1Heading: /tier\s*1\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
 }
 
+// Compatibility-only profile for historical cross-grade tests. Real Grade 5
+// extraction must use the table-aware grade5SlidesSourceAdapter directly.
 export const grade5DeckProfile: ParserProfile = {
-  id: 'grade-5-2026-27-weekly-focus', version: 0, sourceAdapterId: 'grade-5-google-slides-placeholder', grade: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE5_DECK_ID,
+  id: 'grade-5-legacy-placeholder', version: 0, sourceAdapterId: 'grade-5-google-slides-legacy-placeholder', grade: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE5_DECK_ID,
   weeklyHeading, tier1Heading: /tier\s*1\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
 }
 
