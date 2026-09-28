@@ -3,6 +3,8 @@ import type { SupportedGrade } from './config.ts'
 import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
 import type { WritingPracticeProfile } from './practice/profiles/model.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
+import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
+import { resolveLifecycle } from './lifecycle/registry.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
@@ -356,32 +358,50 @@ function uniqueCanonicalDatasets(datasets: Dataset[]) {
   return [...byId.values()].sort((left, right) => left.startDate.localeCompare(right.startDate) || left.endDate.localeCompare(right.endDate) || left.id.localeCompare(right.id))
 }
 
-// Grade 2 currently has one Test Review stage. Callers must pass one grade and
-// school-year collection; Grade 5 needs a profile-driven multi-review resolver.
-export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date()): DatasetLifecycleResolution {
-  const today = localDateKey(date)
-  const canonical = uniqueCanonicalDatasets(datasets)
-  const noInstruction = canonical.filter((dataset) => dataset.isWritingWorkshop && dataset.startDate <= today)
-  const vocabulary = canonical.filter((dataset) => !dataset.isWritingWorkshop && dataset.words.length > 0)
-  const arrived = vocabulary.filter((dataset) => dataset.startDate <= today)
-  const future = vocabulary.filter((dataset) => dataset.startDate > today)
-  const acquisition = arrived[arrived.length - 1] || null
-  const testReview = arrived[arrived.length - 2] || null
-  const mastered = arrived.slice(0, Math.max(0, arrived.length - 2))
-  const masteredAtByDatasetId = Object.fromEntries(mastered.map((dataset, index) => [dataset.id, arrived[index + 2].startDate]))
-  const lifecycleByDatasetId: Record<string, DatasetLifecycle> = {}
+function emptyDatasetLifecycleResolution(): DatasetLifecycleResolution {
+  return { acquisition: null, testReview: null, mastered: [], masteredAtByDatasetId: {}, future: [], noInstruction: [], lifecycleByDatasetId: {} }
+}
 
-  for (const dataset of canonical) {
-    lifecycleByDatasetId[dataset.id] = dataset.startDate > today
-      ? 'future'
-      : dataset.isWritingWorkshop
-        ? 'no-instruction'
-        : 'mastered'
+function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
+  return {
+    datasetId: dataset.id,
+    grade: dataset.grade,
+    schoolYear: dataset.schoolYear,
+    activationDate: dataset.startDate,
+    instructionalEndDate: dataset.endDate,
+    kind: dataset.isWritingWorkshop ? 'no-instruction' : 'vocabulary',
   }
-  if (testReview) lifecycleByDatasetId[testReview.id] = 'test-review'
-  if (acquisition) lifecycleByDatasetId[acquisition.id] = 'acquisition'
+}
 
-  return { acquisition, testReview, mastered, masteredAtByDatasetId, future, noInstruction, lifecycleByDatasetId }
+function compatibilityLifecycle(stage: CurriculumStage): DatasetLifecycle {
+  if (stage.kind === 'test-review') return 'test-review'
+  if (stage.kind === 'mastery') return 'mastered'
+  return stage.kind
+}
+
+// Grade 2 compatibility wrapper. Callers pass one grade and school-year
+// collection; future grades receive their own registered lifecycle strategy.
+export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date()): DatasetLifecycleResolution {
+  const canonical = uniqueCanonicalDatasets(datasets)
+  if (canonical.length === 0) return emptyDatasetLifecycleResolution()
+  const [{ grade, schoolYear }] = canonical
+  if (canonical.some((dataset) => dataset.grade !== grade || dataset.schoolYear !== schoolYear)) {
+    throw new Error('Lifecycle resolution requires one grade and school-year collection.')
+  }
+  const resolution = resolveLifecycle({ grade, schoolYear, currentDateKey: localDateKey(date) }, canonical.map(lifecycleSetForDataset))
+  const datasetsById = new Map(canonical.map((dataset) => [dataset.id, dataset]))
+  const datasetsForIds = (ids: string[]) => ids.map((id) => datasetsById.get(id)).filter((dataset): dataset is Dataset => Boolean(dataset))
+  const lifecycleByDatasetId = Object.fromEntries(Object.entries(resolution.assignmentByDatasetId).map(([datasetId, assignment]) => [datasetId, compatibilityLifecycle(assignment.stage)]))
+
+  return {
+    acquisition: resolution.acquisitionDatasetId ? datasetsById.get(resolution.acquisitionDatasetId) || null : null,
+    testReview: datasetsById.get(resolution.testReviews.find((review) => review.cycle === 1)?.datasetId || '') || null,
+    mastered: datasetsForIds(resolution.masteryDatasetIds),
+    masteredAtByDatasetId: resolution.masteredAtByDatasetId,
+    future: datasetsForIds(resolution.futureDatasetIds),
+    noInstruction: datasetsForIds(resolution.noInstructionDatasetIds),
+    lifecycleByDatasetId,
+  }
 }
 
 export function datasetLifecycle(dataset: Dataset, datasets: Dataset[], date = new Date()): DatasetLifecycle {
@@ -459,12 +479,12 @@ function orderedResultsForWord(results: WordResult[], childId: string, wordId: s
   return results.filter((result) => result.childId === childId && result.wordId === wordId).sort((a, b) => a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id))
 }
 
-export function deriveChildWordStates(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number }): ChildWordState[] {
+export function deriveChildWordStates(options: { grade: string; schoolYear?: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number; lifecycleResolution?: DatasetLifecycleResolution }): ChildWordState[] {
   const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
-  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
-  const lifecycleResolution = resolveDatasetLifecycles(gradeDatasets, today)
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!options.schoolYear || dataset.schoolYear === options.schoolYear))
+  const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
   const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
   const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
   return uniqueWords(gradeDatasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
@@ -497,14 +517,15 @@ function takeWords(words: Word[], count: number, random = Math.random) {
   return shuffleWords(words, random).slice(0, Math.max(0, count))
 }
 
-export function buildWarmupSelection(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number }): WarmupSelection {
+export function buildWarmupSelection(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number; lifecycleResolution?: DatasetLifecycleResolution }): WarmupSelection {
   const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
   const targetSize = options.targetSize ?? profile.lifecycle.warmupTargetSize
   const random = options.random || Math.random
-  const states = deriveChildWordStates({ grade: options.grade, datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId })
   const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
-  const masteredDatasetIds = new Set(resolveDatasetLifecycles(gradeDatasets, today).mastered.map((dataset) => dataset.id))
+  const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
+  const states = deriveChildWordStates({ grade: options.grade, datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId, lifecycleResolution })
+  const masteredDatasetIds = new Set(lifecycleResolution.mastered.map((dataset) => dataset.id))
   const eligibleDatasets = gradeDatasets.filter((dataset) => masteredDatasetIds.has(dataset.id))
   const eligibleDatasetIds = new Set(eligibleDatasets.map((dataset) => dataset.id))
   const eligibleStates = states.filter((state) => eligibleDatasetIds.has(state.datasetId))
@@ -927,10 +948,16 @@ function updateMonthlyRotationScores(scores: MonthlyRotationScore[], childId: st
   return existing ? scores.map((score) => score.id === existing.id ? next : score) : [...scores, next]
 }
 
+function datasetForSession(state: AppState, session: PracticeSession) {
+  const datasetIds = [session.primaryDatasetId, ...session.primaryQueue.map((word) => word.datasetId), ...session.warmupQueue.map((word) => word.datasetId)]
+  return datasetIds.map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId)).find((dataset): dataset is Dataset => Boolean(dataset))
+}
+
 function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
   const profile = requirePracticeProfileForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
-  let states = deriveChildWordStates({ grade: session.grade, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
+  const schoolYear = datasetForSession(state, session)?.schoolYear
+  let states = deriveChildWordStates({ grade: session.grade, schoolYear, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
   for (const answer of [...session.warmupAnswers, ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false)]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
@@ -1030,11 +1057,12 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
   const monthlyRotationScores = updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
   const materialized = materializeStateForCommit(state, session, now)
-  const datasetGradeById = new Map(state.datasets.map((dataset) => [dataset.id, dataset.grade]))
+  const sessionSchoolYear = datasetForSession(state, session)?.schoolYear
+  const datasetScopeById = new Map(state.datasets.map((dataset) => [dataset.id, { grade: dataset.grade, schoolYear: dataset.schoolYear }]))
   const priorStates = state.childWordStates.filter((item) => {
     if (item.childId !== session.childId) return true
-    const datasetGrade = datasetGradeById.get(item.datasetId)
-    return !datasetGrade || datasetGrade !== session.grade
+    const datasetScope = datasetScopeById.get(item.datasetId)
+    return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
   return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
 }

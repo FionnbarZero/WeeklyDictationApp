@@ -129,7 +129,7 @@ function isValidCloudChildWordState(value: unknown, childId: string, datasetsByI
   return Boolean(dataset?.words.some((word) => word.id === value.wordId && word.datasetId === dataset.id))
 }
 
-export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: AcquisitionProgressRecord[] = [], rawDtObservations: DistractorTargetObservation[] = []) {
+export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: AcquisitionProgressRecord[] = [], rawDtObservations: DistractorTargetObservation[] = [], schoolYear?: string) {
   const practiceProfile = practiceProfileForGrade(grade)
   const seenDatasetIds = new Set<string>()
   const datasets = rawDatasets.filter((dataset) => isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true))
@@ -150,10 +150,12 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
     : []
   const trustedMonthlyScores = adaptiveState?.childId === childId && Array.isArray(adaptiveState.monthlyRotationScores) && adaptiveState.monthlyRotationScores.every((score) => score.childId === childId && Number.isFinite(score.correct) && Number.isFinite(score.total) && Number.isFinite(score.percent)) ? adaptiveState.monthlyRotationScores : null
   const trustedCycle = adaptiveState?.childId === childId && Number.isInteger(adaptiveState.rotationCycleId) && adaptiveState.rotationCycleId > 0 ? adaptiveState.rotationCycleId : 1
-  const currentGradeStates = trustedStates.filter((state) => datasetsById.get(state.datasetId)?.grade === grade)
-  const preservedOtherGradeStates = trustedStates.filter((state) => datasetsById.get(state.datasetId)?.grade !== grade)
+  const currentScopeDatasets = datasets.filter((dataset) => dataset.grade === grade && (!schoolYear || dataset.schoolYear === schoolYear))
+  const currentScopeDatasetIds = new Set(currentScopeDatasets.map((dataset) => dataset.id))
+  const currentScopeStates = trustedStates.filter((state) => currentScopeDatasetIds.has(state.datasetId))
+  const preservedOtherScopeStates = trustedStates.filter((state) => !currentScopeDatasetIds.has(state.datasetId))
   const childWordStates = practiceProfile
-    ? [...preservedOtherGradeStates, ...deriveChildWordStates({ grade, datasets, results, childId, existingStates: currentGradeStates, rotationCycleId: trustedCycle })]
+    ? [...preservedOtherScopeStates, ...deriveChildWordStates({ grade, schoolYear, datasets: currentScopeDatasets, results, childId, existingStates: currentScopeStates, rotationCycleId: trustedCycle })]
     : trustedStates
   const monthlyRotationScores = trustedMonthlyScores || []
   const rotationCycles = { [childId]: trustedCycle }
