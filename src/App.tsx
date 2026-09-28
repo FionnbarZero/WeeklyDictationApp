@@ -81,12 +81,15 @@ function unlockSpeech() {
   if ('speechSynthesis' in window) window.speechSynthesis.resume()
 }
 
-export function App({ now = () => new Date() }: { now?: AppClock }) {
+export function App({ now = () => new Date(), manualTestDateLabel }: { now?: AppClock; manualTestDateLabel?: string }) {
   const [auth, setAuth] = useState<AuthState>(() => firebaseConfigReady ? { status: 'loading', user: null, error: null } : { status: 'unconfigured', user: null, error: null })
   useEffect(() => subscribeAuth(setAuth), [])
-  if (auth.status === 'loading') return <div className="auth-shell"><div className="auth-card"><Sparkles size={28} /><h1>Loading Weekly Dictation</h1><p>Checking your secure family session…</p></div></div>
-  if (firebaseConfigReady && auth.status === 'signed-out') return <AuthScreen />
-  return <AuthenticatedApp auth={auth} now={now} />
+  const content = auth.status === 'loading'
+    ? <div className="auth-shell"><div className="auth-card"><Sparkles size={28} /><h1>Loading Weekly Dictation</h1><p>Checking your secure family session…</p></div></div>
+    : firebaseConfigReady && auth.status === 'signed-out'
+      ? <AuthScreen />
+      : <AuthenticatedApp auth={auth} now={now} />
+  return <>{manualTestDateLabel && <div className="manual-test-date-banner" role="status">{manualTestDateLabel}<span>Development only</span></div>}{content}</>
 }
 
 function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
