@@ -10,6 +10,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles"],
+  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup"],
   "files": ["src/config.ts", "src/domain.ts", "src/localHydration.ts", "src/slidesImporter.ts"]
 }
