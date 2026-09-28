@@ -225,6 +225,44 @@ test('Grade 2 replacement strategy reproduces the golden replacement ordering', 
   })
 })
 
+test('Grade 2 compatibility wrapper projects the strategy without changing dataset identity', () => {
+  const sourceDatasets = [...baseSets, week0928]
+  const compatibility = resolveDatasetLifecycles(sourceDatasets, new Date(2026, 8, 28))
+  const strategy = resolveLifecycle({
+    grade: 'Grade 2',
+    schoolYear: '2026–2027',
+    currentDateKey: '2026-09-28',
+  }, sourceDatasets.map(lifecycleSet))
+
+  assert.strictEqual(compatibility.acquisition, week0928)
+  assert.strictEqual(compatibility.testReview, week0921)
+  assert.deepEqual(compatibility.mastered.map((dataset) => dataset.id), strategy.masteryDatasetIds)
+  assert.deepEqual(compatibility.future.map((dataset) => dataset.id), strategy.futureDatasetIds)
+  assert.deepEqual(compatibility.noInstruction.map((dataset) => dataset.id), strategy.noInstructionDatasetIds)
+  assert.deepEqual(compatibility.masteredAtByDatasetId, strategy.masteredAtByDatasetId)
+  assert.deepEqual(compatibility.lifecycleByDatasetId, Object.fromEntries(
+    Object.entries(strategy.assignmentByDatasetId).map(([datasetId, assignment]) => [
+      datasetId,
+      assignment.stage.kind === 'test-review'
+        ? 'test-review'
+        : assignment.stage.kind === 'mastery'
+          ? 'mastered'
+          : assignment.stage.kind,
+    ]),
+  ))
+})
+
+test('Grade 2 compatibility wrapper rejects an unresolved mixed scope', () => {
+  const grade5 = importWeeklyDatasets({
+    presentationId: grade5DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'grade-5-mixed-scope', text: 'Week 6 (9/21-25)\nMandarin\nTier 1: 需要、部分、重要' }],
+  }, [], grade5DeckProfile).datasets[0]
+  assert.throws(
+    () => resolveDatasetLifecycles([week0921, grade5], new Date(2026, 8, 28)),
+    /one grade and school-year collection/,
+  )
+})
+
 test('lifecycle registry has no silent fallback for unsupported grades', () => {
   assert.equal(lifecycleStrategyForGrade('Grade 2')?.id, 'grade-2-replacement-driven-v1')
   assert.equal(lifecycleStrategyForGrade('Grade 5'), null)
