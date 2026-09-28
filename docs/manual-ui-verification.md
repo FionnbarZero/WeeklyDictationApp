@@ -17,9 +17,12 @@ The canonical fixture is test-only input. It is not production seed data and mus
 1. Confirm the dashboard shows these datasets, newest first:
    - Acquisition: `9/21–9/25`.
    - Test Review: `9/14–9/18`.
-   - Warmup sources include eligible words from `9/8–9/11` and `8/31–9/4`, while those datasets retain their permanent archived identity.
+   - Warmup sources include eligible words from the Mastered `9/8–9/11` and `8/31–9/4` datasets, while those datasets retain their permanent identity and history.
 2. Confirm Acquisition and Test Review have separate start controls.
 3. Confirm there are no placeholder or date-only datasets and that each canonical fixture dataset shows Grade 2 and five words.
+4. Reload with `?testDate=2026-09-27`. Confirm the weekend does not expire either assignment: Acquisition remains `9/21–9/25`, Test Review remains `9/14–9/18`, and neither set enters Mastered Warmup.
+5. Reload with `?testDate=2026-09-28`. Because this fixture contains no valid `9/28` replacement, confirm the same Acquisition and Test Review assignments remain active.
+6. Return to `?testDate=2026-09-23` before continuing the activity checks below.
 
 ## Acquisition
 

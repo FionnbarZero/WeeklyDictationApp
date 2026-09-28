@@ -41,13 +41,13 @@ import { grade2PracticeProfile } from '../src/practice/profiles/grade2.ts'
 
 const today = new Date(2026, 8, 18)
 const hydrationPresentation = { presentationId: grade2DeckProfile.sourceDeckId, slides: [
-  { objectId: 'archive', text: 'Week 8/31-9/4\nMandarin\nTier 1: 甲、乙、丙、丁、戊' },
+  { objectId: 'oldest', text: 'Week 8/31-9/4\nMandarin\nTier 1: 甲、乙、丙、丁、戊' },
   { objectId: 'prior', text: 'Week 9/8-9/11\nMandarin\nTier 1: 己、庚、辛、壬、癸' },
   { objectId: 'current', text: 'Week 9/14-9/18\nMandarin\nTier 1: 子、丑、寅、卯、辰' },
   { objectId: 'future', text: 'Week 9/21-9/25\nMandarin\nTier 1: 巳、午、未、申、酉' },
 ]}
 const importedDatasets = importWeeklyDatasets(hydrationPresentation, [], grade2DeckProfile).datasets
-const archiveDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'archive')!
+const oldestDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'oldest')!
 const priorDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'prior')!
 const currentDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'current')!
 const futureDataset = importedDatasets.find((dataset) => dataset.sourceSlideId === 'future')!
@@ -55,6 +55,14 @@ const grade5Dataset = importWeeklyDatasets({
   presentationId: grade5DeckProfile.sourceDeckId,
   slides: [{ objectId: 'grade-five-history', text: 'Week 9/14-9/18\nMandarin\nTier 1: 需要、部分、重要' }],
 }, [], grade5DeckProfile).datasets[0]
+const replacementDataset = importWeeklyDatasets({
+  presentationId: grade2DeckProfile.sourceDeckId,
+  slides: [{ objectId: 'replacement', text: 'Week 9/28-10/2\nMandarin\nTier 1: 天、地、玄、黄、宇' }],
+}, [], grade2DeckProfile).datasets[0]
+const delayedReplacementDataset = importWeeklyDatasets({
+  presentationId: grade2DeckProfile.sourceDeckId,
+  slides: [{ objectId: 'delayed-replacement', text: 'Week 10/12-10/16\nMandarin\nTier 1: 金、木、水、火、土' }],
+}, [], grade2DeckProfile).datasets[0]
 const initialState = () => createInitialState(importedDatasets)
 
 function result(overrides: Partial<WordResult>): WordResult {
@@ -65,10 +73,11 @@ function result(overrides: Partial<WordResult>): WordResult {
   }
 }
 
-test('dataset lifecycle uses permanent date ranges', () => {
-  assert.equal(datasetLifecycle(currentDataset, new Date(2026, 8, 18)), 'acquisition')
-  assert.equal(datasetLifecycle(priorDataset, today), 'test-review')
-  assert.equal(datasetLifecycle(archiveDataset, today), 'archived')
+test('dataset lifecycle uses ordered valid replacements instead of Friday expiration', () => {
+  assert.equal(datasetLifecycle(currentDataset, importedDatasets, today), 'acquisition')
+  assert.equal(datasetLifecycle(priorDataset, importedDatasets, today), 'test-review')
+  assert.equal(datasetLifecycle(oldestDataset, importedDatasets, today), 'mastered')
+  assert.equal(datasetLifecycle(futureDataset, importedDatasets, today), 'future')
 })
 
 test('Acquisition and Test Review are independently active on the same date', () => {
@@ -77,24 +86,48 @@ test('Acquisition and Test Review are independently active on the same date', ()
   assert.equal(active.testReview?.id, currentDataset.id)
 })
 
-test('lifecycle selection supports Acquisition-only, Test-Review-only, and neither', () => {
+test('lifecycle selection assigns the newest arrived dataset and its immediate predecessor', () => {
   const lifecycleDate = new Date(2026, 8, 23)
   assert.deepEqual(getActiveLifecycleDatasets([futureDataset], lifecycleDate), { acquisition: futureDataset, testReview: null })
-  assert.deepEqual(getActiveLifecycleDatasets([currentDataset], lifecycleDate), { acquisition: null, testReview: currentDataset })
-  assert.deepEqual(getActiveLifecycleDatasets([archiveDataset, priorDataset], lifecycleDate), { acquisition: null, testReview: null })
+  assert.deepEqual(getActiveLifecycleDatasets([currentDataset], lifecycleDate), { acquisition: currentDataset, testReview: null })
+  assert.deepEqual(getActiveLifecycleDatasets([oldestDataset, priorDataset], lifecycleDate), { acquisition: priorDataset, testReview: oldestDataset })
   assert.deepEqual(getActiveLifecycleDatasets([], lifecycleDate), { acquisition: null, testReview: null })
 })
 
-test('writing-workshop and malformed datasets never create primary lifecycle options', () => {
+test('weekends and missing replacements preserve Acquisition and Test Review assignments', () => {
+  for (const lifecycleDate of [new Date(2026, 8, 18), new Date(2026, 8, 19), new Date(2026, 8, 20)]) {
+    const active = getActiveLifecycleDatasets(importedDatasets, lifecycleDate)
+    assert.equal(active.acquisition?.id, currentDataset.id)
+    assert.equal(active.testReview?.id, priorDataset.id)
+  }
+
+  const withoutReplacement = getActiveLifecycleDatasets(importedDatasets, new Date(2026, 8, 28))
+  assert.equal(withoutReplacement.acquisition?.id, futureDataset.id)
+  assert.equal(withoutReplacement.testReview?.id, currentDataset.id)
+
+  const duplicateOnly = getActiveLifecycleDatasets([...importedDatasets, futureDataset], new Date(2026, 8, 28))
+  assert.equal(duplicateOnly.acquisition?.id, futureDataset.id)
+  assert.equal(duplicateOnly.testReview?.id, currentDataset.id)
+
+  const withReplacement = getActiveLifecycleDatasets([...importedDatasets, replacementDataset], new Date(2026, 8, 28))
+  assert.equal(withReplacement.acquisition?.id, replacementDataset.id)
+  assert.equal(withReplacement.testReview?.id, futureDataset.id)
+  assert.equal(datasetLifecycle(currentDataset, [...importedDatasets, replacementDataset], new Date(2026, 8, 28)), 'mastered')
+})
+
+test('writing-workshop and malformed datasets never create or advance primary lifecycle options', () => {
   const workshop = importWeeklyDatasets({
     presentationId: grade2DeckProfile.sourceDeckId,
-    slides: [{ objectId: 'workshop-week', text: 'Week 9/21-9/25\nMandarin\nWriting Workshop\nNo new Tier 1 targets' }],
+    slides: [{ objectId: 'workshop-week', text: 'Week 9/28-10/2\nMandarin\nWriting Workshop\nNo new Tier 1 targets' }],
   }, [], grade2DeckProfile).datasets[0]
   assert.ok(workshop?.isWritingWorkshop)
   assert.deepEqual(getActiveLifecycleDatasets([workshop], new Date(2026, 8, 23)), { acquisition: null, testReview: null })
+  assert.equal(datasetLifecycle(workshop, [...importedDatasets, workshop], new Date(2026, 8, 28)), 'no-instruction')
+  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, workshop], new Date(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
 
   const malformed = { ...futureDataset, id: '2026-09-21__2026-09-25' }
   assert.deepEqual(getActiveLifecycleDatasets([malformed], new Date(2026, 8, 23)), { acquisition: null, testReview: null })
+  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, malformed], new Date(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
 })
 
 test('grade and school-year filtering occurs before lifecycle selection', () => {
@@ -277,15 +310,15 @@ test('phase timers remain configurable by lifecycle', () => {
   assert.throws(() => buildWarmupSelection({ grade: 'Grade 5', datasets: [], results: [], childId: 'maya' }), /not configured/i)
 })
 
-test('adaptive warmup uses only archived datasets and excludes active Acquisition and Test Review', () => {
+test('adaptive warmup uses only Mastered datasets and excludes active Acquisition and Test Review', () => {
   const lifecycleDate = new Date(2026, 8, 23)
   const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
-  const eligibleDatasetIds = new Set([archiveDataset.id, priorDataset.id])
+  const eligibleDatasetIds = new Set([oldestDataset.id, priorDataset.id])
   assert.equal(selection.words.length, 6)
   assert.ok(selection.words.every((word) => eligibleDatasetIds.has(word.datasetId)))
   assert.ok(selection.words.every((word) => word.datasetId !== futureDataset.id && word.datasetId !== currentDataset.id))
   assert.ok(selection.recentReviewWordIds.every((id) => priorDataset.words.some((word) => word.id === id)))
-  assert.ok(selection.randomRotationWordIds.every((id) => archiveDataset.words.some((word) => word.id === id)))
+  assert.ok(selection.randomRotationWordIds.every((id) => oldestDataset.words.some((word) => word.id === id)))
 })
 
 test('errors from active Acquisition and Test Review datasets cannot bypass warmup eligibility', () => {
@@ -314,24 +347,37 @@ test('persisted adaptive categories cannot bypass active lifecycle exclusion', (
   assert.ok(!selection.recentReviewWordIds.includes(testReviewWord.id))
 })
 
-test('a Test Review dataset becomes Recent Review only after it becomes archived', () => {
-  const duringTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
-  assert.equal(duringTestReview.words.length, 0)
+test('a Test Review dataset becomes Recent Review only after a valid replacement moves it to Mastered', () => {
+  const duringTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
+  assert.ok(duringTestReview.words.every((word) => word.datasetId !== currentDataset.id))
 
-  const afterTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), random: () => 0.25 })
-  assert.ok(afterTestReview.words.length > 0)
-  assert.ok(afterTestReview.words.every((word) => word.datasetId === currentDataset.id))
-  assert.ok(afterTestReview.recentReviewWordIds.every((id) => currentDataset.words.some((word) => word.id === id)))
+  const afterTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: new Date(2026, 8, 28), random: () => 0.25 })
+  assert.ok(afterTestReview.words.some((word) => word.datasetId === currentDataset.id))
+  assert.ok(afterTestReview.recentReviewWordIds.some((id) => currentDataset.words.some((word) => word.id === id)))
 })
 
-test('newly archived datasets replace stale active-lifecycle categories with Recent Review', () => {
+test('newly Mastered datasets replace stale active-lifecycle categories with Recent Review', () => {
   const word = currentDataset.words[0]
-  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: [currentDataset], results: [], childId: 'maya', today: new Date(2026, 8, 26), childWordStates: [
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: new Date(2026, 8, 28), childWordStates: [
     { id: `maya::${word.id}`, childId: 'maya', wordId: word.id, datasetId: currentDataset.id, category: 'errored-word', correctStreak: 0, lastReviewedAt: '2026-09-23T12:00:00.000Z', lastIncorrectAt: '2026-09-23T12:00:00.000Z' },
   ], random: () => 0.25 })
   assert.ok(selection.words.some((candidate) => candidate.id === word.id))
   assert.ok(selection.recentReviewWordIds.includes(word.id))
   assert.ok(!selection.erroredWordIds.includes(word.id))
+})
+
+test('a delayed valid replacement starts Recent Review when the prior Test Review becomes Mastered', () => {
+  const lifecycleDate = new Date(2026, 9, 12)
+  const datasets = [...importedDatasets, delayedReplacementDataset]
+  const active = getActiveLifecycleDatasets(datasets, lifecycleDate)
+  assert.equal(active.acquisition?.id, delayedReplacementDataset.id)
+  assert.equal(active.testReview?.id, futureDataset.id)
+
+  const states = deriveChildWordStates({ grade: 'Grade 2', datasets, results: [], childId: 'maya', today: lifecycleDate })
+  const newlyMasteredIds = new Set(currentDataset.words.map((word) => word.id))
+  const newlyMasteredStates = states.filter((state) => newlyMasteredIds.has(state.wordId))
+  assert.equal(newlyMasteredStates.length, currentDataset.words.length)
+  assert.ok(newlyMasteredStates.every((state) => state.category === 'recent-review'))
 })
 
 test('adaptive warmup promotes Recent Review after two correct responses', () => {

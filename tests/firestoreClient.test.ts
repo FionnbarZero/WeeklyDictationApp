@@ -16,7 +16,7 @@ const grade5Dataset = importWeeklyDatasets({
 const grade2State = { id: `maya::${dataset.words[0].id}`, childId: 'maya', wordId: dataset.words[0].id, datasetId: dataset.id, category: 'recent-review' as const, correctStreak: 2 }
 const grade5State = { id: `maya::${grade5Dataset.words[0].id}`, childId: 'maya', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review' as const, correctStreak: 1 }
 
-test('cloud hydration accepts only canonical datasets and restores adaptive state', () => {
+test('cloud hydration accepts only canonical datasets and reconciles adaptive state with lifecycle assignments', () => {
   const placeholder = { ...dataset, id: '2026-09-21__2026-09-25', words: [{ ...dataset.words[0], id: '2026-09-21__2026-09-25-1', datasetId: '2026-09-21__2026-09-25' }] }
   const session: CloudSession = { id: 'cloud-session', childId: 'maya', familyId: 'family-maya', sessionDate: '2026-09-23T12:00:00.000Z', localDate: '2026-09-23', startedAt: '2026-09-23T12:00:00.000Z', primaryPhase: 'acquisition', datasetId: dataset.id, status: 'completed', warmupStatus: 'completed', applicationVersion: 'test' }
   const attempt: CloudAttempt = { id: 'attempt-1', sessionId: session.id, wordId: dataset.words[0].id, sourceDatasetId: dataset.id, phase: 'warmup', correct: true, reviewedAt: '2026-09-23T12:01:00.000Z', completionStatus: 'complete' }
@@ -25,7 +25,7 @@ test('cloud hydration accepts only canonical datasets and restores adaptive stat
   })
   assert.deepEqual(state.datasets.map((item) => item.id), [dataset.id])
   assert.equal(state.results.length, 1)
-  assert.equal(state.childWordStates[0].category, 'recent-review')
+  assert.equal(state.childWordStates[0].category, 'acquisition')
   assert.equal(state.rotationCycles.maya, 4)
 })
 

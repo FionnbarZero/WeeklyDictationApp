@@ -41,14 +41,14 @@ The repository does not currently include Firebase Emulator configuration. Secur
 
 The active source is the 2026–2027 Grade 2 deck in `src/config.ts`: `26-27 G2 Weekly Focus` (`10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4`). The source registry uses neutral document identity, so a future Sheets source will not require fake deck fields. The public compatibility API and Grade 2 parser profile remain in `src/slidesImporter.ts`; source extraction now runs through the pure adapter and shared identity/validation layers documented in [`docs/canonical-source-boundary.md`](./docs/canonical-source-boundary.md). The observed Grade 2 structure and page IDs are documented in [`docs/grade2-deck-structure.md`](./docs/grade2-deck-structure.md). Grade 5 remains registered but inactive for new imports, and grades without an explicit practice profile cannot inherit Grade 2 teaching behavior.
 
-When a current weekly dataset is missing, incomplete, or intentionally contains no vocabulary targets for a writing-workshop period, the child is offered a warmup-only mastery session whenever eligible older targets exist. This path never invents a primary dataset or primary score; completed Random Rotation answers contribute only to adaptive mastery state and monthly Random Rotation accuracy.
+When no valid vocabulary dataset has ever activated, the child is offered a Warmup-only mastery session whenever eligible Mastered targets exist. Once Acquisition and Test Review assignments exist, a missing, malformed, conflicting, duplicate-only, or writing-workshop source unit does not expire or advance them. This path never invents a primary dataset or primary score.
 
 ## Practice contract
 
-- Acquisition is the current weekly dataset, and Test Review is the prior weekly dataset during its review week. Both may be active at the same time and must be separately visible and startable.
+- Acquisition is the newest valid vocabulary dataset whose activation date has arrived, and Test Review is its immediate valid predecessor. Both remain assigned through weekends and source gaps until a valid replacement activates, and both must be separately visible and startable.
 - Every Acquisition or Test Review session begins with its own required adaptive Warmup.
-- Warmup is a practice segment assembled only from canonical archived-dataset words; active Acquisition, active Test Review, future, writing-workshop, and malformed datasets are excluded regardless of persisted adaptive category, and no fallback dataset is created.
-- An incomplete session is abandoned without creating results, scores, adaptive-state updates, or a completed-session record. Previously completed progress remains.
+- Warmup is a practice segment assembled only from canonical Mastered words. Active Acquisition, active Test Review, Future, writing-workshop, and malformed datasets are excluded regardless of persisted adaptive category, and no fallback dataset is created.
+- Acquisition checkpoints every reviewed trial and resumes from the exact next teaching step; leaving during an unanswered trial restarts only that trial. Test Review answers remain provisional and are discarded if the review is abandoned, producing no Test Review score. Durable partial-Warmup visits are not implemented yet, so unfinished Warmup work does not currently survive restart.
 - A context sentence is used only when it comes from an approved `word.sentence` source. Sentence Frames, example writing, and unrelated slide prose are never inferred as target-word context.
 - Google Slides OAuth and importer credentials remain in trusted backend or Node-only code and are never exposed to the browser.
 
@@ -93,8 +93,8 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - The dashboard presents overlapping Acquisition and Test Review datasets as separate activities. Each offers its own adaptive Warmup, which may be completed or skipped before the primary activity.
 - Monthly Random Rotation accuracy is calculated and persisted, but its required Progress graph is not rendered yet.
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
-- An explicitly classified writing-workshop dataset is stored with zero vocabulary targets and follows Warmup → complete without Acquisition/Test Review or a zero-word score.
-- If no current primary dataset is available, the app offers Mastery Warmup from eligible prior targets; if no prior targets exist, it shows a clear setup state instead of fabricating words.
+- An explicitly classified writing-workshop dataset is stored with zero vocabulary targets but does not replace or advance the current Acquisition and Test Review assignments. A future writing-workshop remediation activity may draw from repeatedly incorrect Mastered words only after its rules are explicitly approved.
+- The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
 - Grade 2 is the only active deck configuration. Grade 5 remains registered but inactive and without newly imported datasets; Kindergarten and Grades 1, 3, and 4 remain supported by the grade model without deck configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Established DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Established and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.

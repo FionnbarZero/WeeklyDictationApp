@@ -127,8 +127,11 @@ Grade 5 and Kindergarten writing-workshop or intentional no-instruction markers 
 
 - Every weekly focus is a permanent dataset identified by its assigned instructional date range, such as `8/31–9/4`.
 - Dataset IDs are stable and are never replaced by labels such as current, previous, or preview.
-- Lifecycle labels and transitions come from the grade’s explicit practice profile rather than one global calendar rule.
-- Older datasets remain archived with their original source provenance, lifecycle history, attempts, and scores.
+- Lifecycle labels and transitions come from the grade’s explicit practice profile and the ordered collection of accepted datasets rather than from one dataset's end date in isolation.
+- Vocabulary datasets progress through Future, Acquisition, every configured Test Review stage, and then Mastered. Mastered datasets and words are never removed or made unavailable: they remain permanent, retain their source provenance, lifecycle history, attempts, and scores, and supply the long-term Warmup pool.
+- A Friday end date never expires a dataset by itself. Until a valid replacement activates, the current Acquisition and Test Review assignments remain unchanged through weekends, source gaps, and delayed imports.
+- Malformed, conflicting, duplicate-only, and no-valid-dataset import outcomes do not advance lifecycle assignments. An already accepted Future dataset may activate on its approved activation date, but rereading the same duplicate source does not create an additional transition.
+- An explicitly recognized writing-workshop/no-instruction unit does not replace the current vocabulary cohort or advance lifecycle assignments. Future writing-workshop activities may build a remediation Acquisition set from Mastered words that meet an approved error rule, but that selection and teaching policy is deferred and must never be inferred automatically.
 - Warmup is offered before every Acquisition or Test Review pathway and is also available through its own independent entry point for every grade. The child may complete it or use **Skip Warmup** and begin the selected activity immediately. A skipped Warmup creates no Warmup result, attempt, graph point, or mastery update. A child does not need to enter Acquisition or Test Review to use standalone Warmup.
 - Acquisition and one or more Test Review stages may be visible in the same instructional week. Each starts its own independent, skippable Warmup before the primary segment.
 - Tier 1 writing and future Tier 2 reading use separate attempts, adaptive state, and scores even when they originate from the same weekly dataset.
@@ -137,15 +140,15 @@ Use `2026–2027` as the display school-year value. Use the normalized ASCII tok
 
 ### Grade lifecycle profiles
 
-The current Grade 2 reference profile uses:
+The current Grade 2 reference profile uses replacement-driven progression:
 
 ```text
-Acquisition during the assigned week
-→ Test Review during the following instructional week
-→ Archived and Warmup-eligible
+Newest valid activated vocabulary dataset: Acquisition
+→ immediate valid predecessor: Test Review
+→ every older valid vocabulary dataset: Mastered and Warmup-eligible
 ```
 
-Grade 2 Acquisition uses the routine-specific timers in the Shared Acquisition contract below; it does not use one generic Acquisition timer. Grade 2 uses a 10-second Test Review timer. Kindergarten is intended to use the same high-level Acquisition → Test Review → Archived path, but its date activation and display-range rules remain deferred until the Sheets date policy is approved.
+Grade 2 Acquisition uses the routine-specific timers in the Shared Acquisition contract below; it does not use one generic Acquisition timer. Grade 2 uses a 10-second Test Review timer. A dataset remains in its current assignment through the weekend and whenever no valid later vocabulary dataset activates. Kindergarten is intended to use the same high-level Acquisition → Test Review → Mastered path, but its date activation and display-range rules remain deferred until the Sheets date policy is approved.
 
 Grade 5 uses an additional review stage:
 
@@ -153,7 +156,7 @@ Grade 5 uses an additional review stage:
 Acquisition
 → Test Review 1
 → Test Review 2
-→ Archived and Warmup-eligible
+→ Mastered and Warmup-eligible
 ```
 
 Grade 5 transitions are driven only by validated instructional source progression, never by elapsed calendar weeks:
@@ -161,7 +164,7 @@ Grade 5 transitions are driven only by validated instructional source progressio
 - On a slide for instructional week W, the bottom Mandarin row labeled `Coming next week` or `Core vocab` supplies the Acquisition candidate assigned to W. Despite its visible label, this row is not a future preview in the application.
 - On the next validated instructional slide, the same content appearing under `This week` confirms the existing candidate and places it in Test Review 1. It does not create a second dataset.
 - The candidate from two validated instructional source steps earlier is in Test Review 2, whether or not it is repeated as a separate source section on the current slide.
-- After Test Review 2, the dataset becomes archived and eligible for Grade 5 Warmup.
+- After Test Review 2, the dataset becomes Mastered and eligible for Grade 5 Warmup.
 - Each fully validated new Grade 5 slide advances every active cohort by exactly one stage and introduces exactly one new Acquisition cohort. The number of elapsed calendar weeks is irrelevant.
 - A week with no new instructional slide, such as a parent-teacher-conference week, freezes every Grade 5 dataset in its current lifecycle position. The next fully validated slide after the gap advances the cohorts once, not once per missed calendar week.
 - A missing, malformed, or conflicting source unit is not a valid advancement step. All existing cohorts remain in place, while any otherwise extractable new bottom-row cohort remains pending and inactive until the issue is resolved.
@@ -185,9 +188,9 @@ Grade 5 Tier 1 candidates currently accept 3–10 terms. Duplicate Tier 1 terms 
 
 ### Warmup eligibility and the Grade 2 reference policy
 
-Warmup is a practice pathway, not another canonical dataset identity. It uses persistent per-child, per-module, per-word state while each source dataset retains its canonical date range and lifecycle history. A dataset becomes eligible only after completing every configured Test Review stage and becoming archived. Active Acquisition, active Test Review 1 or 2, future, unrecognized no-instruction, and malformed datasets are excluded even when a persisted word state is marked Recent Review or Errored Word.
+Warmup is a practice pathway, not another canonical dataset identity. It uses persistent per-child, per-module, per-word state while each source dataset retains its canonical date range and lifecycle history. A dataset becomes eligible only after leaving every configured Test Review stage and entering Mastered. Active Acquisition, active Test Review 1 or 2, Future, unrecognized no-instruction, and malformed datasets are excluded even when a persisted word state is marked Recent Review or Errored Word.
 
-The current Grade 2 Warmup policy places newly archived words in Recent Review, seeds older eligible words into Random Rotation, and prioritizes incorrect eligible words as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. A standalone Grade 2 Warmup targets 16 words and a pre-activity Warmup targets 6, using 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas. Missing slots use eligible unique words and repeat only Random Rotation words when necessary. These counts, quotas, promotion thresholds, repetition rules, and audio-rate choices are Grade 2 profile values; Kindergarten must adopt or override them explicitly rather than inheriting them silently. Grade 5 explicitly adopts a six-word target for each offered pre-Acquisition, pre-Test-Review-1, and pre-Test-Review-2 Warmup. Its independent standalone Warmup is always available, but its standalone visit target, bucket quotas, and promotion thresholds still require explicit configuration.
+The current Grade 2 Warmup policy places newly Mastered words in Recent Review, seeds older Mastered words into Random Rotation, and prioritizes incorrect eligible words as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. A standalone Grade 2 Warmup targets 16 words and a pre-activity Warmup targets 6, using 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas. Missing slots use eligible unique words and repeat only Random Rotation words when necessary. These counts, quotas, promotion thresholds, repetition rules, and audio-rate choices remain the current Grade 2 profile values; the future Recently Mastered versus Older Mastered frequency redesign is deferred. Kindergarten must adopt or override these values explicitly rather than inheriting them silently. Grade 5 explicitly adopts a six-word target for each offered pre-Acquisition, pre-Test-Review-1, and pre-Test-Review-2 Warmup. Its independent standalone Warmup is always available, but its standalone visit target, bucket quotas, and promotion thresholds still require explicit configuration.
 
 Every enabled grade and activity module must have at least six eligible Distractor Targets (DTs) before its offered Warmups or primary activities are activated. The approved interim **Established DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds both Tier 1 writing and Tier 2 reading for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Established DT pools will be derived from that child's demonstrated and mastered words over successive years.
 
@@ -756,7 +759,7 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Treat child voice recordings as private personal data; restrict access to the authorized family and define retention/deletion behavior before production.
 - Do not use automatic speech recognition as the official pronunciation score without a separately validated feature; the child’s explicit self-assessment is the initial reading result.
 
-## Current implementation baseline and required revisions — 2026-09-26
+## Current implementation baseline and required revisions — 2026-09-27
 
 The repository contains Stage 2 foundations as a Firebase REST-backed browser flow with safe configuration placeholders. They have not been deployed, validated with the Firebase Emulator Suite, or approved for production data collection. The approved requirements in this plan supersede any existing implementation behavior that treats every incomplete lifecycle in the same way.
 
@@ -768,7 +771,8 @@ Already implemented:
 - August 1 America/Los_Angeles grade-promotion suggestions with parent confirmation; historical datasets retain their original grade and school year.
 - Grade/school-year filtering, stable date-range dataset identities, cloud session primitives, temporary and completed attempts, dataset-level scores, and stale-session cleanup.
 - An idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck.
-- Explicit writing-workshop outcomes, malformed-slide rejection, missing-current-week Warmup fallback, and Firestore ownership rules in `firestore.rules`.
+- Replacement-driven Grade 2 lifecycle assignment that remains stable through weekends and source gaps, moves only older cohorts into Mastered, excludes Acquisition and Test Review words from Warmup, ignores writing-workshop and invalid source units as replacements, and preserves Firestore ownership rules in `firestore.rules`.
+- The current lifecycle resolver intentionally implements the one-review Grade 2 profile only. Before Grade 5 activation, lifecycle stages must move into the grade practice profile so Test Review 1 and Test Review 2 can advance from validated source steps without changing Grade 2 behavior.
 - Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
 - Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
