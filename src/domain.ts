@@ -15,14 +15,16 @@ import type {
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
 import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
-import type { WritingPracticeProfile } from './practice/profiles/model.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
 import { resolveLifecycle } from './lifecycle/registry.ts'
 import { practicePhaseForStage } from './lifecycle/stageMapping.ts'
 import type { Dataset, Word } from './domain/contracts.ts'
+import { applyWarmupResponse, deriveWarmupWordStates, selectWarmupWords } from './warmup/engine.ts'
+import type { ChildWordState, WarmupCategory, WarmupLifecycleSnapshot, WarmupPolicy, WarmupSelection } from './warmup/contracts.ts'
 
 export type { Dataset, Word } from './domain/contracts.ts'
+export type { ChildWordState, WarmupCategory, WarmupSelection } from './warmup/contracts.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
@@ -94,21 +96,6 @@ export type DistractorTargetObservation = {
   correct: boolean
   revealMethod: RevealMethod
   reviewedAt: string
-}
-
-export type WarmupCategory = 'acquisition' | 'recent-review' | 'errored-word' | 'random-rotation'
-
-export type ChildWordState = {
-  id: string
-  childId: string
-  wordId: string
-  datasetId: string
-  category: WarmupCategory
-  correctStreak: number
-  lastReviewedAt?: string
-  lastIncorrectAt?: string
-  randomCycleId?: number
-  randomCycleReviewed?: boolean
 }
 
 export type MonthlyRotationScore = {
@@ -210,14 +197,6 @@ export type PracticeSession = {
 
 export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'acquisition' | 'queue' | 'index'>) {
   return session.segment === 'primary' && session.acquisition?.prompt ? session.acquisition.prompt.word : session.queue[session.index]
-}
-
-export type WarmupSelection = {
-  words: Word[]
-  randomRotationWordIds: string[]
-  recentReviewWordIds: string[]
-  erroredWordIds: string[]
-  rotationCycleId: number
 }
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
@@ -386,74 +365,43 @@ export function shouldSuggestGradePromotion(child: { grade: string; gradeEffecti
   return today >= augustFirst && Boolean(nextGrade(child.grade)) && (child.gradeEffectiveDate || '') < augustFirst
 }
 
-function uniqueWords(words: Word[]) {
-  const seen = new Set<string>()
-  return words.filter((word) => {
-    if (seen.has(word.id)) return false
-    seen.add(word.id)
-    return true
-  })
-}
-
-function datasetSeedCategory(dataset: Dataset, resolution: DatasetLifecycleResolution, today: Date): WarmupCategory {
-  if (resolution.lifecycleByDatasetId[dataset.id] !== 'mastered') return 'acquisition'
-  const masteredAt = resolution.masteredAtByDatasetId[dataset.id]
-  if (!masteredAt) return 'random-rotation'
-  const start = parseDateKey(masteredAt)
-  return dateIsBetween(today, start, addDays(start, 6)) ? 'recent-review' : 'random-rotation'
-}
-
-function wordStateId(childId: string, wordId: string) {
-  return `${childId}::${wordId}`
-}
-
-function stateForWord(word: Word, childId: string, category: WarmupCategory, rotationCycleId: number): ChildWordState {
-  return { id: wordStateId(childId, word.id), childId, wordId: word.id, datasetId: word.datasetId, category, correctStreak: 0, ...(category === 'random-rotation' ? { randomCycleId: rotationCycleId, randomCycleReviewed: false } : {}) }
-}
-
-function applyWordResponse(state: ChildWordState, correct: boolean, reviewedAt: string, rotationCycleId: number, lifecycle: WritingPracticeProfile['lifecycle']): ChildWordState {
-  if (!correct) return { ...state, category: 'errored-word', correctStreak: 0, lastReviewedAt: reviewedAt, lastIncorrectAt: reviewedAt, randomCycleReviewed: state.category === 'random-rotation' ? true : state.randomCycleReviewed }
-  if (state.category === 'recent-review' || state.category === 'errored-word') {
-    const correctStreak = state.correctStreak + 1
-    const promotionThreshold = state.category === 'recent-review' ? lifecycle.recentReviewPromotionStreak : lifecycle.erroredWordPromotionStreak
-    if (correctStreak >= promotionThreshold) return { ...state, category: 'random-rotation', correctStreak: 0, lastReviewedAt: reviewedAt, randomCycleId: rotationCycleId + 1, randomCycleReviewed: false }
-    return { ...state, correctStreak, lastReviewedAt: reviewedAt }
+function warmupPolicyForGrade(grade: string): WarmupPolicy {
+  const lifecycle = requirePracticeProfileForGrade(grade).lifecycle
+  return {
+    warmupTargetSize: lifecycle.warmupTargetSize,
+    recentReviewPromotionStreak: lifecycle.recentReviewPromotionStreak,
+    erroredWordPromotionStreak: lifecycle.erroredWordPromotionStreak,
   }
-  if (state.category === 'random-rotation') return { ...state, correctStreak: 0, lastReviewedAt: reviewedAt, randomCycleId: rotationCycleId, randomCycleReviewed: true }
-  return { ...state, correctStreak: 0, lastReviewedAt: reviewedAt }
 }
 
-function orderedResultsForWord(results: WordResult[], childId: string, wordId: string) {
-  return results.filter((result) => result.childId === childId && result.wordId === wordId).sort((a, b) => a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id))
+function warmupLifecycleSnapshot(resolution: DatasetLifecycleResolution): WarmupLifecycleSnapshot {
+  return {
+    masteredDatasetIds: resolution.mastered.map((dataset) => dataset.id),
+    masteredAtByDatasetId: resolution.masteredAtByDatasetId,
+    lifecycleByDatasetId: resolution.lifecycleByDatasetId,
+  }
 }
 
 export function deriveChildWordStates(options: { grade: string; schoolYear?: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number; lifecycleResolution?: DatasetLifecycleResolution }): ChildWordState[] {
-  const profile = requirePracticeProfileForGrade(options.grade)
+  const policy = warmupPolicyForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
   const requestedSchoolYear = options.schoolYear ? schoolYearToken(options.schoolYear) : null
   const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!requestedSchoolYear || schoolYearToken(dataset.schoolYear) === requestedSchoolYear))
   const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
-  const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
-  const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
-  return uniqueWords(gradeDatasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
-    const existing = existingByWordId.get(word.id)
-    if (existing) {
-      const dataset = datasetsById.get(word.datasetId)
-      const seed = dataset ? datasetSeedCategory(dataset, lifecycleResolution, today) : 'random-rotation'
-      if (seed === 'acquisition' && existing.category !== 'acquisition') return { ...existing, category: 'acquisition', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
-      if (seed === 'recent-review' && dataset && (!existing.lastReviewedAt || existing.lastReviewedAt.slice(0, 10) < lifecycleResolution.masteredAtByDatasetId[dataset.id])) return { ...existing, category: 'recent-review', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
-      if (existing.category === 'acquisition' && seed !== 'acquisition') return { ...existing, category: seed, correctStreak: 0, randomCycleId: seed === 'random-rotation' ? cycle : undefined, randomCycleReviewed: seed === 'random-rotation' ? false : undefined }
-      return existing
-    }
-    const dataset = datasetsById.get(word.datasetId)
-    let state = stateForWord(word, options.childId, dataset ? datasetSeedCategory(dataset, lifecycleResolution, today) : 'random-rotation', cycle)
-    for (const result of orderedResultsForWord(options.results, options.childId, word.id)) state = applyWordResponse(state, result.correct, result.completedAt, cycle, profile.lifecycle)
-    return state
+  return deriveWarmupWordStates({
+    datasets: gradeDatasets,
+    results: options.results,
+    childId: options.childId,
+    today,
+    existingStates: options.existingStates,
+    rotationCycleId: cycle,
+    lifecycle: warmupLifecycleSnapshot(lifecycleResolution),
+    policy,
   })
 }
 
-function shuffleWords<T>(words: T[], random = Math.random) {
+function shuffleSessionWords<T>(words: T[], random = Math.random) {
   const output = [...words]
   for (let index = output.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1))
@@ -462,45 +410,23 @@ function shuffleWords<T>(words: T[], random = Math.random) {
   return output
 }
 
-function takeWords(words: Word[], count: number, random = Math.random) {
-  return shuffleWords(words, random).slice(0, Math.max(0, count))
-}
-
 export function buildWarmupSelection(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number; lifecycleResolution?: DatasetLifecycleResolution }): WarmupSelection {
-  const profile = requirePracticeProfileForGrade(options.grade)
+  const policy = warmupPolicyForGrade(options.grade)
   const today = options.today || new Date()
-  const targetSize = options.targetSize ?? profile.lifecycle.warmupTargetSize
-  const random = options.random || Math.random
   const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
   const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
-  const states = deriveChildWordStates({ grade: options.grade, datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId, lifecycleResolution })
-  const masteredDatasetIds = new Set(lifecycleResolution.mastered.map((dataset) => dataset.id))
-  const eligibleDatasets = gradeDatasets.filter((dataset) => masteredDatasetIds.has(dataset.id))
-  const eligibleDatasetIds = new Set(eligibleDatasets.map((dataset) => dataset.id))
-  const eligibleStates = states.filter((state) => eligibleDatasetIds.has(state.datasetId))
-  const wordsById = new Map(uniqueWords(eligibleDatasets.flatMap((dataset) => dataset.words)).map((word) => [word.id, word]))
-  const currentCycle = options.rotationCycleId || 1
-  const rotationStates = eligibleStates.filter((state) => state.category === 'random-rotation' && (state.randomCycleId || currentCycle) <= currentCycle)
-  const allRotationReviewed = rotationStates.length > 0 && rotationStates.every((state) => state.randomCycleId === currentCycle && state.randomCycleReviewed)
-  const rotationCycleId = allRotationReviewed ? currentCycle + 1 : currentCycle
-  const effectiveRotationStates = allRotationReviewed ? eligibleStates.filter((state) => state.category === 'random-rotation') : rotationStates
-  const unreviewedRotationStates = effectiveRotationStates.filter((state) => state.randomCycleId !== rotationCycleId || !state.randomCycleReviewed)
-  const rotationPool = shuffleWords(unreviewedRotationStates.map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
-  const recentPool = shuffleWords(eligibleStates.filter((state) => state.category === 'recent-review').map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
-  const erroredPool = shuffleWords(eligibleStates.filter((state) => state.category === 'errored-word').map((state) => wordsById.get(state.wordId)).filter((word): word is Word => Boolean(word)), random)
-  const selectedRotation = takeWords(rotationPool, Math.ceil(targetSize * 0.5), random)
-  const selectedRecent = takeWords(recentPool, Math.ceil(targetSize * 0.25), random)
-  const selectedErrored = takeWords(erroredPool, targetSize - Math.ceil(targetSize * 0.5) - Math.ceil(targetSize * 0.25), random)
-  const selected = [...selectedRotation, ...selectedRecent, ...selectedErrored]
-  const selectedIds = new Set(selected.map((word) => word.id))
-  const fillUnique = (pool: Word[]) => { for (const word of pool) { if (selected.length >= targetSize || selectedIds.has(word.id)) continue; selected.push(word); selectedIds.add(word.id) } }
-  fillUnique(rotationPool); fillUnique(erroredPool); fillUnique(recentPool)
-  if (selected.length < targetSize && rotationPool.length > 0) { let repeatIndex = 0; while (selected.length < targetSize) { selected.push(rotationPool[repeatIndex % rotationPool.length]); repeatIndex += 1 } }
-  const selectedUnique = uniqueWords(selected)
-  const rotationIds = selected.filter((word) => rotationPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
-  const recentIds = selected.filter((word) => recentPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
-  const erroredIds = selected.filter((word) => erroredPool.some((candidate) => candidate.id === word.id)).map((word) => word.id)
-  return { words: selected.length < targetSize && rotationPool.length === 0 ? selectedUnique : selected, randomRotationWordIds: rotationIds, recentReviewWordIds: recentIds, erroredWordIds: erroredIds, rotationCycleId }
+  return selectWarmupWords({
+    datasets: gradeDatasets,
+    results: options.results,
+    childId: options.childId,
+    today,
+    existingStates: options.childWordStates,
+    rotationCycleId: options.rotationCycleId || 1,
+    lifecycle: warmupLifecycleSnapshot(lifecycleResolution),
+    policy,
+    targetSize: options.targetSize,
+    random: options.random,
+  })
 }
 
 export function createPracticeSessionForTarget(options: {
@@ -530,7 +456,7 @@ export function createPracticeSessionForTarget(options: {
     primaryPhase: target?.phase || 'acquisition',
     segment: 'warmup',
     stage: 'warmup-intro',
-    queue: shuffleWords(options.warmup.words, random),
+    queue: shuffleSessionWords(options.warmup.words, random),
     warmupQueue: options.warmup.words,
     primaryQueue: target?.dataset.words || [],
     index: 0,
@@ -712,14 +638,14 @@ function datasetForSession(state: AppState, session: PracticeSession) {
 }
 
 function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
-  const profile = requirePracticeProfileForGrade(session.grade)
+  const policy = warmupPolicyForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
   const schoolYear = datasetForSession(state, session)?.schoolYear
   let states = deriveChildWordStates({ grade: session.grade, schoolYear, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
   for (const answer of [...session.warmupAnswers, ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false)]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
-    const next = applyWordResponse(current, answer.correct, now.toISOString(), rotationCycleId, profile.lifecycle)
+    const next = applyWarmupResponse(current, answer.correct, now.toISOString(), rotationCycleId, policy)
     states = states.map((item) => item.id === next.id ? next : item)
   }
   return { states, rotationCycleId }
