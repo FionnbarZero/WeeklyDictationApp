@@ -4,6 +4,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: #f7f4ee; }
 button { border: 0; font: inherit; cursor: pointer; color: inherit; }
+.manual-test-date-banner { position: fixed; right: 18px; bottom: 18px; z-index: 100; display: grid; gap: 2px; padding: 10px 13px; border: 1px solid #8c6c1f; border-radius: 11px; background: #fff0c5; color: #57451e; box-shadow: 0 8px 24px rgba(35,49,57,.18); font-size: 12px; font-weight: 700; }
+.manual-test-date-banner span { color: #8c6c1f; text-transform: uppercase; letter-spacing: .1em; font-size: 8px; }
 .app-shell { min-height: 100vh; }
 .topbar { height: 76px; padding: 0 max(5vw, 28px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(35,49,57,.08); background: rgba(247,244,238,.86); position: sticky; top: 0; z-index: 5; backdrop-filter: blur(14px); }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; letter-spacing: -.5px; background: none; }
@@ -92,3 +94,4 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .practice-top{flex-wrap:wrap;gap:10px}
 .practice-top .replay-button{margin-left:auto}
 @media (max-width:520px){.practice-top .practice-count{order:3;width:100%;text-align:center}.practice-top .replay-button{margin-left:0}}
+@media (max-width:680px){.manual-test-date-banner{right:12px;bottom:77px}}
