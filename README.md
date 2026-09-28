@@ -46,7 +46,7 @@ When no valid vocabulary dataset has ever activated, the child is offered a Warm
 ## Practice contract
 
 - Acquisition is the newest valid vocabulary dataset whose activation date has arrived, and Test Review is its immediate valid predecessor. Both remain assigned through weekends and source gaps until a valid replacement activates, and both must be separately visible and startable.
-- Every Acquisition or Test Review session begins with its own required adaptive Warmup.
+- Every Acquisition or Test Review path offers its own adaptive Warmup. Grade 2 currently includes a **Skip Warmup** development option; whether Warmup is required is a grade-profile policy rather than a universal rule.
 - Warmup is a practice segment assembled only from canonical Mastered words. Active Acquisition, active Test Review, Future, writing-workshop, and malformed datasets are excluded regardless of persisted adaptive category, and no fallback dataset is created.
 - Acquisition checkpoints every reviewed trial and resumes from the exact next teaching step; leaving during an unanswered trial restarts only that trial. Test Review answers remain provisional and are discarded if the review is abandoned, producing no Test Review score. Durable partial-Warmup visits are not implemented yet, so unfinished Warmup work does not currently survive restart.
 - A context sentence is used only when it comes from an approved `word.sentence` source. Sentence Frames, example writing, and unrelated slide prose are never inferred as target-word context.
@@ -90,14 +90,22 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 
 - Firebase project values and Firestore rule deployment are still required.
 - The importer service, local import command, and guarded Cloud Run importer are available, but no Cloud Run service or Monday Cloud Scheduler job is deployed. Automatic Monday imports are not live until the documented credentials, IAM, and deployment steps are completed.
-- The dashboard presents overlapping Acquisition and Test Review datasets as separate activities. Each offers its own adaptive Warmup, which may be completed or skipped before the primary activity.
-- Monthly Random Rotation accuracy is calculated and persisted, but its required Progress graph is not rendered yet.
+- The current Grade 2 dashboard presents overlapping Acquisition and Test Review datasets as separate activities. Each offers its own adaptive Warmup, which Grade 2 may complete or skip during development before the primary activity. Other grades use an explicit profile-controlled requirement and must not inherit Grade 2's optional setting.
+- Legacy monthly Random Rotation accuracy is calculated and persisted, but its required Progress graph is not rendered yet. The approved future model calls this bucket Mastery Rotation and derives monthly reporting from individual Warmup attempts.
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets but does not replace or advance the current Acquisition and Test Review assignments. A future writing-workshop remediation activity may draw from repeatedly incorrect Mastered words only after its rules are explicitly approved.
 - The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
 - Grade 2 is the only active deck configuration. Grade 5 remains registered but inactive and without newly imported datasets; Kindergarten and Grades 1, 3, and 4 remain supported by the grade model without deck configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Established DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Established and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
+
+## Adaptive Warmup architecture status
+
+The current Warmup selection and transition algorithm has been mechanically extracted into `src/warmup/`, with `src/domain.ts` retaining compatibility exports. That extraction intentionally preserves today's runtime behavior and stored state; it does not make the legacy category names, shortage order, or repeated-word filling the approved future design.
+
+The approved next model separates curriculum occurrences, mastery eligibility, child evidence, scheduling buckets, and visit progress. Repeated weekly occurrences will link to one long-term mastery term within the same activity module, vocabulary tier, and language; writing and reading remain separate skills. The approved scheduling buckets are Recent Entry, Needs Attention, and Mastery Rotation. Ordinary Warmups will use unique terms, prioritize shortage filling from Needs Attention, then Recent Entry, then Mastery Rotation, and complete with a shorter queue when the eligible pool is small.
+
+This model is planned, not active. The next implementation branch will build and test it as an unused pure model without changing `App.tsx`, local or cloud storage, Firestore rules, or child-facing behavior. A later persistent-visits branch will perform the versioned migration, activate durable queues and per-answer checkpoints, provide exact resumption and one graph point per visit, and expose standalone Warmup independently.
 
 ## Checks
 
