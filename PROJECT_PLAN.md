@@ -424,9 +424,15 @@ docs/cloud-launch-roadmap
         ↓ approve and merge
 refactor/canonical-source-boundary
         ↓ merge
+refactor/lifecycle-strategy-boundary
+        ↓ merge
 feature/grade5-source-profile
         ↓ merge
+feature/grade5-lifecycle-strategy
+        ↓ merge
 feature/kindergarten-sheets-adapter
+        ↓ merge
+feature/kindergarten-lifecycle-profile
         ↓ merge
 feature/persistent-warmup
         ↓ merge
@@ -470,6 +476,21 @@ Goal: separate shared canonical identity and validation from Grade 2 source and 
 
 Acceptance gate: normalized Grade 2 output is unchanged, all existing tests pass, source-independent validation is testable with fixtures, and the browser still has no shared-data write path.
 
+### Lifecycle strategy boundary
+
+Branch: `refactor/lifecycle-strategy-boundary`, created from updated `main` after the canonical source boundary merged.
+
+Goal: extract lifecycle assignment from `domain.ts` behind source-neutral contracts without changing the Grade 2 child experience.
+
+- Freeze the existing Grade 2 replacement behavior with golden lifecycle matrices, including weekends, source gaps, delayed replacements, duplicates, malformed input, no-instruction units, grade scope, and school-year scope.
+- Keep curriculum stages distinct from child-facing practice phases.
+- Resolve one grade and school-year collection through an explicitly registered strategy with no cross-grade fallback.
+- Keep the existing Grade 2 resolver as a compatibility wrapper that projects strategy results onto the original canonical dataset objects.
+- Route Acquisition, Test Review, Mastery/Warmup eligibility, and lifecycle display through the shared resolution.
+- Document Grade 5's future validated progression-event requirement without implementing Grade 5 parsing, vocabulary, or behavior in this branch.
+
+Acceptance gate: the complete Grade 2 golden lifecycle output and object identity remain unchanged, unsupported or mixed scopes fail explicitly, all existing tests and the production build pass, and the branch adds no Google access, Firestore execution, Grade 5 parsing, Kindergarten parsing, or new child-facing behavior.
+
 ### Phase 2 — Grade 5 source profile
 
 Branch: `feature/grade5-source-profile`
@@ -480,13 +501,26 @@ Goal: parse and validate the latest Grade 5 structure without changing Grade 2 b
 - Extract Tier 1–3 from the correct Mandarin table cells using source role rather than first/last Tier heading position.
 - Map `Coming next week/Core vocab` to the displayed week’s Acquisition candidate and treat its later `This week` appearance as confirmation.
 - Preserve source labels, assigned week, content fingerprint, slide provenance, the 3–10 Tier 1 count rule, and every allowed duplicate as its own ordered target occurrence.
-- Define the Grade 5 lifecycle profile with behaviorally identical Test Review 1 and Test Review 2 stages, three separate skippable six-word pre-activity Warmups, and one-step advancement per fully validated source slide.
-- Configure both Grade 5 Test Review stages with the same 10-second timer and Skip Timer behavior that advances to review without bypassing assessment or scoring.
-- Freeze every cohort during no-slide weeks and after malformed or conflicting source steps; the next valid slide advances exactly once regardless of elapsed calendar time.
-- Treat a mismatched top-row confirmation as a blocking conflict: preserve prior vocabulary and stages, leave the new bottom-row cohort pending, and require administrator resolution before progression.
+- Emit the validated progression-event identity and confirmation/conflict information needed by a later Grade 5 lifecycle strategy without assigning practice stages in this branch.
+- Treat a mismatched top-row confirmation as a blocking source conflict and leave the new bottom-row cohort pending for administrator resolution.
 - Use Week 4 as the activation baseline and preserve Week 1–3 as provenance or issues without reconstructing missing review cohorts.
 
-Acceptance gate: fixtures for the latest validated pattern produce the approved Acquisition and confirmation candidates; Week 4 starts without invented review cohorts; each later valid slide advances exactly one stage; a conference gap advances zero stages; a later valid slide advances only once; a mismatched confirmation freezes progression; repeated source terms remain repeated ordered targets; all three primary Grade 5 paths offer distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort and both use the configured 10-second timer; Grade 2 output is unchanged; no Firestore write occurs.
+Acceptance gate: fixtures for the latest validated pattern produce the approved Acquisition and confirmation candidates plus stable progression-event inputs; Week 4 is identified as the baseline without invented review cohorts; gaps emit no event; a mismatched confirmation blocks the event; repeated source terms remain repeated ordered targets; Grade 2 output is unchanged; no lifecycle assignment or Firestore write occurs.
+
+### Grade 5 lifecycle strategy
+
+Branch: `feature/grade5-lifecycle-strategy`, created from updated `main` after the Grade 5 source profile merges.
+
+Goal: consume validated Grade 5 progression events through the source-neutral lifecycle boundary without changing Grade 2 behavior.
+
+- Register a Grade 5 strategy with Acquisition, Test Review 1, Test Review 2, and Mastery stages.
+- Advance every active cohort exactly once for each accepted progression event.
+- Freeze every cohort during no-slide weeks and after malformed, duplicate-only, or conflicting source steps.
+- Use Week 4 as the activation baseline without inventing earlier review cohorts.
+- Keep Test Review 1 and Test Review 2 behaviorally identical except for lifecycle label and selected cohort.
+- Configure each Grade 5 primary pathway to offer its own skippable six-word Warmup and configure both Test Review stages with the approved 10-second timer and Skip Timer behavior.
+
+Acceptance gate: each valid event advances exactly one stage; a conference gap advances zero stages; the next valid event advances only once; a mismatched confirmation freezes progression; all three primary paths offer distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort; the Grade 2 golden matrix remains unchanged.
 
 ### Phase 3 — Kindergarten Sheets adapter
 
@@ -501,6 +535,19 @@ Goal: adapt the authoritative Kindergarten workbook into normalized candidates w
 - Produce reviewed local dry-run output only; do not write Firestore.
 
 Acceptance gate: observed weekly-tab fixtures normalize tiers without mixing labels, no `gid` is treated as the yearly source ID, deferred date fields fail closed rather than being guessed, and Grade 2 and Grade 5 tests remain unchanged.
+
+### Kindergarten lifecycle profile
+
+Branch: `feature/kindergarten-lifecycle-profile`, created from updated `main` after the Kindergarten Sheets adapter merges.
+
+Goal: register Kindergarten lifecycle behavior only after the deferred date, rollover, and no-instruction decisions are approved.
+
+- Keep Kindergarten rules explicit; never inherit Grade 2 or Grade 5 lifecycle behavior through a fallback.
+- Convert the approved tab-date and rollover policy into source-neutral lifecycle inputs.
+- Define the number of Test Review stages, progression event, Warmup eligibility boundary, and no-instruction handling before enabling child practice.
+- Preserve the Grade 2 and Grade 5 golden lifecycle results unchanged.
+
+Acceptance gate: the approved Kindergarten date and progression matrices pass, unsupported or unresolved source units fail closed, and enabling Kindergarten does not rewrite any other grade's datasets, assignments, or history.
 
 ### Phase 4 — Persistent Warmup and analytics
 
@@ -730,9 +777,9 @@ Rollout order:
 
 Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosting, family isolation, lifecycle-specific cross-device persistence, and a controlled dataset import for every grade included in the pilot must work first.
 
-## Next approved implementation — Canonical source boundary
+## Next approved implementation — Grade 5 source profile
 
-After this working plan is approved and merged, the next implementation is `refactor/canonical-source-boundary`. It is a behavior-preserving Grade 2 refactor that introduces the shared normalized candidate and adapter boundary. It makes no Google API calls, includes no Grade 5 or Kindergarten vocabulary, performs no Firestore writes, and must not change the existing Grade 2 child experience. Grade 5, Kindergarten, persistent Warmup, and persistent Acquisition follow only through the approved branch sequence above.
+After the canonical source and lifecycle strategy boundaries merge, the next implementation is `feature/grade5-source-profile`. It adds and validates only the approved Grade 5 source structure and progression-event inputs. Grade 5 lifecycle behavior remains a separate reviewed strategy step, and Kindergarten, persistent Warmup, and persistent Acquisition follow only through the approved dependency sequence above.
 
 ## Deferred features
 
@@ -772,7 +819,7 @@ Already implemented:
 - Grade/school-year filtering, stable date-range dataset identities, cloud session primitives, temporary and completed attempts, dataset-level scores, and stale-session cleanup.
 - An idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck.
 - Replacement-driven Grade 2 lifecycle assignment that remains stable through weekends and source gaps, moves only older cohorts into Mastered, excludes Acquisition and Test Review words from Warmup, ignores writing-workshop and invalid source units as replacements, and preserves Firestore ownership rules in `firestore.rules`.
-- The current lifecycle resolver intentionally implements the one-review Grade 2 profile only. Before Grade 5 activation, lifecycle stages must move into the grade practice profile so Test Review 1 and Test Review 2 can advance from validated source steps without changing Grade 2 behavior.
+- A source-neutral lifecycle strategy boundary with an explicit Grade 2 replacement-driven strategy, a compatibility wrapper for existing callers, and no cross-grade fallback. Grade 5 still requires its own validated progression-event strategy before activation; see `docs/lifecycle-strategy-boundary.md`.
 - Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
 - Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
