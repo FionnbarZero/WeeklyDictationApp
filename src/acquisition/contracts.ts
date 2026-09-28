@@ -73,3 +73,30 @@ export type AcquisitionStrategy<TTarget extends AcquisitionTarget = AcquisitionT
   readonly expandedSequence: readonly AcquisitionSequenceToken[]
   readonly correctionSequence: readonly AcquisitionSequenceToken[]
 }
+
+export type AcquisitionResponse<TRevealMethod extends string = string> = {
+  readonly correct: boolean
+  readonly revealMethod: TRevealMethod
+}
+
+export type AcquisitionAssessment<
+  TTarget extends AcquisitionTarget = AcquisitionTarget,
+  TRevealMethod extends string = string,
+> = {
+  readonly promptId: string
+  readonly targetOccurrenceId: string
+  readonly target: TTarget
+  readonly kind: AcquisitionPromptKind
+  readonly correct: boolean
+  readonly countsTowardWeeklyScore: boolean
+  readonly dtPoolType?: 'established' | 'earned'
+  readonly revealMethod: TRevealMethod
+}
+
+export type AcquisitionTransition<
+  TTarget extends AcquisitionTarget = AcquisitionTarget,
+  TRevealMethod extends string = string,
+> = {
+  readonly nextFlow: EngineAcquisitionFlow<TTarget>
+  readonly assessment?: AcquisitionAssessment<TTarget, TRevealMethod>
+}

@@ -4,8 +4,8 @@ import {
   RotateCcw, Sparkles, Volume2, X,
 } from 'lucide-react'
 import {
-  APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, answerAcquisitionPrompt, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
-  acquisitionProgressFor, checkpointAcquisitionSession, buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt, shouldRecordAcquisitionAnswer,
+  APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
+  acquisitionProgressFor, checkpointAcquisitionSession, buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt, transitionAcquisitionPrompt,
   filterDatasetsForChild, latestScore, loadState, localDateKey, createSessionId, requireDatasetLifecycle, resolveDatasetLifecycles, sortDatasetsNewestFirst, timerSecondsFor, shouldSuggestGradePromotion, nextGrade, type LifecyclePhase, type PrimaryPhase,
   type PracticeSession, type SessionAnswer, type Word, LEGACY_ATTEMPTS_KEY,
 } from './domain'
@@ -285,19 +285,19 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (!current || current.stage !== 'review') return
     if (current.segment === 'primary' && current.acquisition) {
       const dataset = state.datasets.find((item) => item.id === current.primaryDatasetId)
-      const prompt = current.acquisition.prompt
-      if (!dataset || !prompt || !prompt.revealed) return
-      const nextFlow = answerAcquisitionPrompt(current.acquisition, dataset, current.grade, correct)
-      const response: SessionAnswer = { word: prompt.word, correct, revealMethod: current.currentRevealMethod || 'timer', acquisitionKind: prompt.kind, promptId: prompt.id, countsTowardWeeklyScore: prompt.countsTowardWeeklyScore, dtPoolType: prompt.dtPoolType }
-      const primaryAnswers = shouldRecordAcquisitionAnswer(prompt) ? [...current.primaryAnswers, response] : current.primaryAnswers
+      if (!dataset || !current.acquisition.prompt?.revealed) return
+      const transition = transitionAcquisitionPrompt(current.acquisition, dataset, current.grade, correct, current.currentRevealMethod || 'timer')
+      const { nextFlow, assessment } = transition
+      const response: SessionAnswer | undefined = assessment ? { word: assessment.target, correct: assessment.correct, revealMethod: assessment.revealMethod, acquisitionKind: assessment.kind, promptId: assessment.promptId, countsTowardWeeklyScore: assessment.countsTowardWeeklyScore, dtPoolType: assessment.dtPoolType } : undefined
+      const primaryAnswers = response ? [...current.primaryAnswers, response] : current.primaryAnswers
       const nextSession: PracticeSession = { ...current, acquisition: nextFlow, primaryAnswers, currentRevealMethod: undefined, stage: nextFlow.complete ? 'complete' : 'dictation', queue: nextFlow.prompt ? [nextFlow.prompt.word] : [], index: 0 }
       const reviewedAt = now()
-      setState((existing) => checkpointAcquisitionSession(existing, nextSession, shouldRecordAcquisitionAnswer(prompt) ? response : undefined, reviewedAt))
+      setState((existing) => checkpointAcquisitionSession(existing, nextSession, response, reviewedAt))
       if (auth.user && family && selectedChild) {
         const progression = { id: `${selectedChild.id}::${current.primaryDatasetId}::tier-1-writing`, childId: selectedChild.id, datasetId: current.primaryDatasetId, grade: current.grade, flow: nextFlow, updatedAt: reviewedAt.toISOString() }
         const writes: Promise<unknown>[] = [saveCloudAcquisitionProgress(family.id, selectedChild.id, progression)]
-        if (response.dtPoolType && practiceProfileForGrade(current.grade)?.acquisition.dtObservationMode === 'collect') writes.push(saveCloudDistractorTargetObservation(family.id, selectedChild.id, { id: `${current.id}-dt-${prompt.id}`, childId: selectedChild.id, sessionId: current.id, datasetId: current.primaryDatasetId, wordId: response.word.id, text: response.word.text, poolType: response.dtPoolType, correct, revealMethod: response.revealMethod, reviewedAt: reviewedAt.toISOString() }))
-        if (response.countsTowardWeeklyScore && current.cloudSessionId) writes.push(saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-acquisition-${prompt.id}`, sessionId: current.id, wordId: response.word.id, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition', correct, reviewedAt: reviewedAt.toISOString(), completionStatus: 'complete', countsTowardWeeklyScore: true, acquisitionKind: prompt.kind }))
+        if (assessment?.dtPoolType && practiceProfileForGrade(current.grade)?.acquisition.dtObservationMode === 'collect') writes.push(saveCloudDistractorTargetObservation(family.id, selectedChild.id, { id: `${current.id}-dt-${assessment.promptId}`, childId: selectedChild.id, sessionId: current.id, datasetId: current.primaryDatasetId, wordId: assessment.targetOccurrenceId, text: assessment.target.text, poolType: assessment.dtPoolType, correct: assessment.correct, revealMethod: assessment.revealMethod, reviewedAt: reviewedAt.toISOString() }))
+        if (assessment?.countsTowardWeeklyScore && current.cloudSessionId) writes.push(saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-acquisition-${assessment.promptId}`, sessionId: current.id, wordId: assessment.targetOccurrenceId, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition', correct: assessment.correct, reviewedAt: reviewedAt.toISOString(), completionStatus: 'complete', countsTowardWeeklyScore: true, acquisitionKind: assessment.kind }))
         void Promise.all(writes).catch((error) => setCloudError(`Acquisition progress could not be confirmed in the cloud: ${authErrorMessage(error)}`))
       }
       setSession(nextSession)
