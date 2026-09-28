@@ -24,6 +24,10 @@ type GoldenTrace = {
 
 type GoldenFixture = {
   startedFlowSha256: string
+  correctionFlowSha256: string
+  earnedDtRecoveryFlowSha256: string
+  completedTeachingFlowSha256: string
+  dtOnlyFlowSha256: string
   mismatchedResumeSha256: string
   emptyUnsupportedSha256: string
   establishedTargetsSha256: string
@@ -104,6 +108,33 @@ test('the pre-extraction Grade 2 Acquisition JSON and prompt trace stay fixed', 
   assert.equal(hashJson(ESTABLISHED_DT_WORDS), golden.establishedTargetsSha256)
   assert.deepEqual(ESTABLISHED_DT_WORDS.map((word) => word.id), golden.establishedTargetIds)
   assert.deepEqual(traceFrom(started, golden.trace.length), golden.trace)
+})
+
+test('serialized Correction, Earned-DT recovery, completion, and DT-only states stay fixed', () => {
+  let correction = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  for (let index = 0; index < 3; index += 1) correction = answer(correction)
+  correction = answer(correction, false)
+  assert.equal(correction.phase, 'correction')
+  assert.equal(hashJson(correction), golden.correctionFlowSha256)
+
+  let earnedDtRecovery = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  while (earnedDtRecovery.targetIndex === 0) earnedDtRecovery = answer(earnedDtRecovery)
+  for (let index = 0; index < 4; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
+  earnedDtRecovery = answer(earnedDtRecovery, true, () => 0.75)
+  earnedDtRecovery = answer(earnedDtRecovery, true, () => 0.75)
+  earnedDtRecovery = answer(earnedDtRecovery, false)
+  for (let index = 0; index < 5; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
+  assert.equal(earnedDtRecovery.phase, 'expanded-trials')
+  assert.equal(earnedDtRecovery.step, 3)
+  assert.equal(hashJson(earnedDtRecovery), golden.earnedDtRecoveryFlowSha256)
+
+  let completedTeaching = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  while (!completedTeaching.complete) completedTeaching = answer(completedTeaching)
+  assert.equal(hashJson(completedTeaching), golden.completedTeachingFlowSha256)
+
+  const dtOnly = resumeAcquisitionFlow(completedTeaching, dataset, 'Grade 2', () => 0.75)
+  assert.equal(dtOnly.mode, 'dt-practice')
+  assert.equal(hashJson(dtOnly), golden.dtOnlyFlowSha256)
 })
 
 test('the extraction preserves no-op, mismatch, empty-set, and public signature behavior', () => {

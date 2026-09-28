@@ -42,7 +42,7 @@ The broader Grade 2 practice profile references that strategy object directly. `
 
 ## Behavior-preservation proof
 
-The checked-in pre-extraction fixtures freeze exact serialized flow output, prompt ordering and IDs, timer values, Established DT identities, edge-case no-ops, mismatch and empty-dataset behavior, public function arity, and the 50/50 DT boundary. Those fixtures are extraction evidence; structural value equality is the lasting application contract unless a later design deliberately hashes or signs serialized state.
+The checked-in pre-extraction fixture freezes exact serialized-flow hashes at the starting state, first Correction entry, return from Earned-DT Correction, teaching completion, and DT-only resumption. It also freezes the successful-path prompt trace and IDs, timer values, Established DT identities, edge-case no-ops, mismatch and empty-dataset behavior, public function arity, and the 50/50 DT boundary. Those fixtures are extraction evidence; structural value equality is the lasting application contract unless a later design deliberately hashes or signs serialized state.
 
 Architecture tests enforce the import boundary and single-owner object identity. The full test suite and production build must pass before this branch merges.
 
