@@ -1,7 +1,17 @@
 import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
 import type { SupportedGrade } from './config.ts'
 import { schoolYearToken } from './curriculum/identity.ts'
-import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
+import { answerAcquisition, resumeAcquisition, revealAcquisition, startAcquisition } from './acquisition/engine.ts'
+import type {
+  AcquisitionPhase as EngineAcquisitionPhase,
+  AcquisitionPromptKind as EngineAcquisitionPromptKind,
+  AcquisitionStrategy,
+  AcquisitionTargetSet,
+  AcquisitionTimerConfig as EngineAcquisitionTimerConfig,
+  EngineAcquisitionFlow,
+  EngineAcquisitionPrompt,
+} from './acquisition/contracts.ts'
+import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
 import type { WritingPracticeProfile } from './practice/profiles/model.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
@@ -175,54 +185,11 @@ export type SessionAnswer = {
   dtPoolType?: 'established' | 'earned'
 }
 
-export type AcquisitionPhase = 'introduction' | 'expanded-trials' | 'correction'
-export type AcquisitionPromptKind = 'established-dt' | 'earned-dt' | 'show-copy' | 'target'
-
-export type AcquisitionTimerConfig = {
-  establishedDtSeconds: number
-  earnedDtSeconds: number
-  introductionShowCopySeconds: number
-  introductionHiddenTargetSeconds: number
-  expandedStartSeconds: number
-  expandedMinimumSeconds: number
-  expandedDecrementSeconds: number
-  correctionShowCopySeconds: number
-  correctionHiddenSeconds: number
-}
-
-export type AcquisitionPrompt = {
-  id: string
-  kind: AcquisitionPromptKind
-  phase: AcquisitionPhase
-  word: Word
-  targetWordId?: string
-  scored: boolean
-  countsTowardWeeklyScore: boolean
-  dtPoolType?: 'established' | 'earned'
-  timerSeconds: number
-  revealed: boolean
-}
-
-export type AcquisitionFlow = {
-  datasetId: string
-  mode: 'teaching' | 'dt-practice'
-  targetIndex: number
-  currentTarget: Word | null
-  phase: AcquisitionPhase
-  step: number
-  trialNumber: number
-  expandedTargetAttempts: number
-  earnedDtPool: Word[]
-  establishedDtBag: Word[]
-  earnedDtBag: Word[]
-  lastDtWordId?: string
-  consecutiveErrors: Record<string, number>
-  correctionRole?: 'current-target' | 'earned-dt'
-  resumePosition?: { phase: 'expanded-trials'; step: number; expandedTargetAttempts: number; currentTarget: Word; targetIndex: number }
-  prompt: AcquisitionPrompt | null
-  teachingComplete: boolean
-  complete: boolean
-}
+export type AcquisitionPhase = EngineAcquisitionPhase
+export type AcquisitionPromptKind = EngineAcquisitionPromptKind
+export type AcquisitionTimerConfig = EngineAcquisitionTimerConfig
+export type AcquisitionPrompt = EngineAcquisitionPrompt<Word>
+export type AcquisitionFlow = EngineAcquisitionFlow<Word>
 
 export type AcquisitionProgressRecord = {
   id: string
@@ -287,17 +254,7 @@ export function acquisitionTimerConfigFor(grade: string) {
   return { ...profile.acquisition.timers }
 }
 
-const ESTABLISHED_DT_TEXTS = grade2PracticeProfile.acquisition.establishedDtTexts
-
-export const ESTABLISHED_DT_WORDS: Word[] = ESTABLISHED_DT_TEXTS.map((text, index) => ({
-  id: `established-dt-${index + 1}`,
-  text,
-  sentence: '',
-  datasetId: '__established-dt__',
-  language: 'mandarin',
-  tier: 'tier-1',
-  activityType: 'dictation',
-}))
+export const ESTABLISHED_DT_WORDS: Word[] = grade2AcquisitionStrategy.establishedDtTargets
 
 export type AudioPart = { text: string; rate: number }
 
@@ -611,228 +568,32 @@ export function createPracticeSessionForTarget(options: {
   }
 }
 
-function shuffledBag(words: Word[], random: () => number) {
-  return shuffleWords(words, random)
+function acquisitionTargetSetFor(dataset: Dataset): AcquisitionTargetSet<Word> {
+  return { id: dataset.id, targets: dataset.words }
 }
 
-function drawFromBag(words: Word[], bag: Word[], lastDtWordId: string | undefined, random: () => number) {
-  const eligibleIds = new Set(words.map((word) => word.id))
-  let nextBag = bag.filter((word) => eligibleIds.has(word.id))
-  if (nextBag.length === 0) nextBag = shuffledBag(words, random)
-  if (nextBag.length > 1 && nextBag[0].id === lastDtWordId) {
-    const alternativeIndex = nextBag.findIndex((word) => word.id !== lastDtWordId)
-    if (alternativeIndex > 0) [nextBag[0], nextBag[alternativeIndex]] = [nextBag[alternativeIndex], nextBag[0]]
-  }
-  const [word, ...remaining] = nextBag
-  return { word, bag: remaining }
-}
-
-function bagCanAvoidRepeat(words: Word[], bag: Word[], lastDtWordId: string | undefined) {
-  const eligibleIds = new Set(words.map((word) => word.id))
-  const activeBag = bag.filter((word) => eligibleIds.has(word.id))
-  const candidates = activeBag.length > 0 ? activeBag : words
-  return candidates.some((word) => word.id !== lastDtWordId)
-}
-
-function acquisitionPromptTimer(grade: string, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
-  const config = acquisitionTimerConfigFor(grade)
-  if (kind === 'established-dt') return config.establishedDtSeconds
-  if (kind === 'earned-dt') return config.earnedDtSeconds
-  if (kind === 'show-copy') return phase === 'correction' ? config.correctionShowCopySeconds : config.introductionShowCopySeconds
-  if (phase === 'introduction') return config.introductionHiddenTargetSeconds
-  if (phase === 'correction') return config.correctionHiddenSeconds
-  return Math.max(config.expandedMinimumSeconds, config.expandedStartSeconds - expandedTargetAttempts * config.expandedDecrementSeconds)
-}
-
-function makeAcquisitionPrompt(flow: AcquisitionFlow, grade: string, kind: AcquisitionPromptKind, word: Word, targetWordId?: string): AcquisitionFlow {
-  const trialNumber = flow.trialNumber + 1
-  const weeklyTarget = kind === 'target' && flow.correctionRole !== 'earned-dt'
-  const dtPoolType = kind === 'established-dt' ? 'established' as const : kind === 'earned-dt' || (kind === 'target' && flow.correctionRole === 'earned-dt') ? 'earned' as const : undefined
-  return {
-    ...flow,
-    trialNumber,
-    prompt: {
-      id: `${flow.datasetId}-${flow.targetIndex}-${flow.phase}-${flow.step}-${trialNumber}-${kind}-${word.id}`,
-      kind,
-      phase: flow.phase,
-      word,
-      targetWordId,
-      scored: weeklyTarget,
-      countsTowardWeeklyScore: weeklyTarget,
-      dtPoolType,
-      timerSeconds: acquisitionPromptTimer(grade, flow.phase, kind, flow.expandedTargetAttempts),
-      revealed: false,
-    },
-  }
-}
-
-function establishedDtWordsFor(grade: string) {
-  const profile = requirePracticeProfileForGrade(grade)
-  if (profile.id === grade2PracticeProfile.id) return ESTABLISHED_DT_WORDS
-  return profile.acquisition.establishedDtTexts.map((text, index): Word => ({
-    id: `${profile.id}-established-dt-${index + 1}`,
-    text,
-    sentence: '',
-    datasetId: `__${profile.id}-established-dt__`,
-    language: 'mandarin',
-    tier: 'tier-1',
-    activityType: 'dictation',
-  }))
-}
-
-function establishedDtPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const words = establishedDtWordsFor(grade)
-  const drawn = drawFromBag(words, flow.establishedDtBag, flow.lastDtWordId, random)
-  return makeAcquisitionPrompt({ ...flow, establishedDtBag: drawn.bag, lastDtWordId: drawn.word.id }, grade, 'established-dt', drawn.word)
-}
-
-function dtPrompt(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const preferEarned = flow.earnedDtPool.length > 0 && random() >= 0.5
-  const earnedCanAvoidRepeat = bagCanAvoidRepeat(flow.earnedDtPool, flow.earnedDtBag, flow.lastDtWordId)
-  if (preferEarned && earnedCanAvoidRepeat) {
-    const drawn = drawFromBag(flow.earnedDtPool, flow.earnedDtBag, flow.lastDtWordId, random)
-    const resumePosition = flow.mode === 'teaching' && flow.phase === 'expanded-trials' && flow.currentTarget
-      ? { phase: 'expanded-trials' as const, step: flow.step + 1, expandedTargetAttempts: flow.expandedTargetAttempts, currentTarget: flow.currentTarget, targetIndex: flow.targetIndex }
-      : flow.resumePosition
-    return makeAcquisitionPrompt({ ...flow, earnedDtBag: drawn.bag, lastDtWordId: drawn.word.id, resumePosition }, grade, 'earned-dt', drawn.word, drawn.word.id)
-  }
-  return establishedDtPrompt(flow, grade, random)
-}
-
-function coreAcquisitionPrompt(flow: AcquisitionFlow, grade: string, random: () => number): AcquisitionFlow {
-  if (flow.mode === 'dt-practice' && !flow.currentTarget) return dtPrompt({ ...flow, complete: false }, grade, random)
-  if (!flow.currentTarget) return { ...flow, prompt: null, complete: true }
-  const acquisition = requirePracticeProfileForGrade(grade).acquisition
-  const token = flow.phase === 'introduction' ? acquisition.introductionSequence[flow.step] : flow.phase === 'expanded-trials' ? acquisition.expandedSequence[flow.step] : acquisition.correctionSequence[flow.step]
-  if (!token) return flow
-  if (token === 'established-dt') return establishedDtPrompt(flow, grade, random)
-  if (token === 'dt') return dtPrompt(flow, grade, random)
-  if (token === 'show-copy') return makeAcquisitionPrompt(flow, grade, 'show-copy', flow.currentTarget, flow.currentTarget.id)
-  return makeAcquisitionPrompt(flow, grade, 'target', flow.currentTarget, flow.currentTarget.id)
+function acquisitionStrategyFor(grade: string): AcquisitionStrategy<Word> {
+  return requirePracticeProfileForGrade(grade).acquisition
 }
 
 export function startAcquisitionFlow(dataset: Dataset, grade = dataset.grade, random = Math.random): AcquisitionFlow {
-  const currentTarget = dataset.words[0] || null
-  return coreAcquisitionPrompt({
-    datasetId: dataset.id,
-    mode: 'teaching',
-    targetIndex: 0,
-    currentTarget,
-    phase: 'introduction',
-    step: 0,
-    trialNumber: 0,
-    expandedTargetAttempts: 0,
-    earnedDtPool: [],
-    establishedDtBag: [],
-    earnedDtBag: [],
-    consecutiveErrors: {},
-    prompt: null,
-    teachingComplete: !currentTarget,
-    complete: !currentTarget,
-  }, grade, random)
+  const strategy = dataset.words.length === 0 ? grade2AcquisitionStrategy : acquisitionStrategyFor(grade)
+  return startAcquisition<Word>(acquisitionTargetSetFor(dataset), strategy, random)
 }
 
 export function resumeAcquisitionFlow(saved: AcquisitionFlow | undefined, dataset: Dataset, grade = dataset.grade, random = Math.random) {
   if (!saved || saved.datasetId !== dataset.id) return startAcquisitionFlow(dataset, grade, random)
-  if (saved.complete || saved.teachingComplete) return coreAcquisitionPrompt({ ...saved, mode: 'dt-practice', currentTarget: null, prompt: null, teachingComplete: true, complete: false, correctionRole: undefined, resumePosition: undefined }, grade, random)
-  return saved
-}
-
-function withEarnedWord(flow: AcquisitionFlow, word: Word) {
-  return flow.earnedDtPool.some((candidate) => candidate.id === word.id) ? flow : { ...flow, earnedDtPool: [...flow.earnedDtPool, word] }
-}
-
-function withoutEarnedWord(flow: AcquisitionFlow, wordId: string) {
-  return { ...flow, earnedDtPool: flow.earnedDtPool.filter((word) => word.id !== wordId), earnedDtBag: flow.earnedDtBag.filter((word) => word.id !== wordId) }
-}
-
-function resumeInterruptedTarget(flow: AcquisitionFlow, grade: string, random: () => number) {
-  const resume = flow.resumePosition
-  if (!resume) return coreAcquisitionPrompt({ ...flow, mode: 'dt-practice', currentTarget: null, correctionRole: undefined, prompt: null, complete: false }, grade, random)
-  return coreAcquisitionPrompt({ ...flow, mode: 'teaching', targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, phase: resume.phase, step: resume.step, expandedTargetAttempts: resume.expandedTargetAttempts, correctionRole: undefined, resumePosition: undefined, prompt: null }, grade, random)
-}
-
-function advanceToNextTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
-  const nextIndex = flow.targetIndex + 1
-  if (nextIndex >= dataset.words.length) return { ...flow, currentTarget: null, prompt: null, teachingComplete: true, complete: true, correctionRole: undefined, resumePosition: undefined }
-  return coreAcquisitionPrompt({ ...flow, targetIndex: nextIndex, currentTarget: dataset.words[nextIndex], phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumePosition: undefined, prompt: null, complete: false }, grade, random)
-}
-
-function completeCurrentTarget(flow: AcquisitionFlow, dataset: Dataset, grade: string, random: () => number) {
-  const target = flow.currentTarget
-  if (!target) return { ...flow, prompt: null, complete: true }
-  const earned = withEarnedWord(flow, target)
-  return flow.correctionRole === 'earned-dt' ? resumeInterruptedTarget(earned, grade, random) : advanceToNextTarget(earned, dataset, grade, random)
-}
-
-function errorsAfter(flow: AcquisitionFlow, wordId: string, correct: boolean) {
-  return { ...flow.consecutiveErrors, [wordId]: correct ? 0 : (flow.consecutiveErrors[wordId] || 0) + 1 }
-}
-
-function restartIntroduction(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-dt', grade: string, random: () => number) {
-  const restarted = role === 'earned-dt' ? withoutEarnedWord(flow, word.id) : flow
-  return coreAcquisitionPrompt({ ...restarted, currentTarget: word, phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: role, prompt: null }, grade, random)
-}
-
-function enterCorrection(flow: AcquisitionFlow, word: Word, role: 'current-target' | 'earned-dt', resumePosition: AcquisitionFlow['resumePosition'], grade: string, random: () => number) {
-  return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, resumePosition, prompt: null }, grade, random)
-}
-
-function advanceUnscoredOrEstablishedDt(flow: AcquisitionFlow, grade: string, random: () => number) {
-  if (flow.mode === 'dt-practice') return coreAcquisitionPrompt({ ...flow, prompt: null }, grade, random)
-  return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, grade, random)
+  if (!saved.complete && !saved.teachingComplete) return saved
+  return resumeAcquisition<Word>(saved, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), random)
 }
 
 export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
-  if (!flow.prompt) return flow
-  return { ...flow, prompt: { ...flow.prompt, revealed: true } }
+  return revealAcquisition(flow)
 }
 
 export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, random = Math.random): AcquisitionFlow {
-  const prompt = flow.prompt
-  if (!prompt || !prompt.revealed) return flow
-  if (prompt.kind === 'show-copy' || prompt.kind === 'established-dt') return advanceUnscoredOrEstablishedDt(flow, grade, random)
-
-  const consecutiveErrors = errorsAfter(flow, prompt.word.id, correct)
-  const updated = { ...flow, consecutiveErrors }
-
-  if (prompt.kind === 'earned-dt') {
-    if (correct) return flow.mode === 'dt-practice' ? coreAcquisitionPrompt({ ...updated, prompt: null }, grade, random) : resumeInterruptedTarget(updated, grade, random)
-    if (consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, 'earned-dt', grade, random)
-    return enterCorrection(updated, prompt.word, 'earned-dt', flow.resumePosition, grade, random)
-  }
-
-  if (!correct && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', grade, random)
-
-  if (flow.phase === 'introduction') {
-    if (correct) return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, prompt: null }, grade, random)
-    const resumePosition = { phase: 'expanded-trials' as const, step: 0, expandedTargetAttempts: 0, currentTarget: prompt.word, targetIndex: flow.targetIndex }
-    return enterCorrection(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', resumePosition, grade, random)
-  }
-
-  if (flow.phase === 'expanded-trials') {
-    const expandedTargetAttempts = flow.expandedTargetAttempts + 1
-    const nextStep = flow.step + 1
-    if (!correct) {
-      const resumePosition = { phase: 'expanded-trials' as const, step: nextStep, expandedTargetAttempts, currentTarget: prompt.word, targetIndex: flow.targetIndex }
-      return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', resumePosition, grade, random)
-    }
-    return nextStep >= requirePracticeProfileForGrade(grade).acquisition.expandedSequence.length
-      ? completeCurrentTarget({ ...updated, expandedTargetAttempts, prompt: null }, dataset, grade, random)
-      : coreAcquisitionPrompt({ ...updated, step: nextStep, expandedTargetAttempts, prompt: null }, grade, random)
-  }
-
-  const finalCorrectionStep = requirePracticeProfileForGrade(grade).acquisition.correctionSequence.length - 1
-  if (flow.step < finalCorrectionStep) return coreAcquisitionPrompt({ ...updated, step: flow.step + 1, prompt: null }, grade, random)
-  if (correct) {
-    if (flow.correctionRole === 'earned-dt') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), grade, random)
-    const resume = updated.resumePosition
-    if (resume && resume.step >= requirePracticeProfileForGrade(grade).acquisition.expandedSequence.length) {
-      return completeCurrentTarget({ ...updated, targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, correctionRole: undefined, resumePosition: undefined, prompt: null }, dataset, grade, random)
-    }
-    return resumeInterruptedTarget(updated, grade, random)
-  }
-  return coreAcquisitionPrompt({ ...updated, step: 0, prompt: null }, grade, random)
+  if (!flow.prompt || !flow.prompt.revealed) return flow
+  return answerAcquisition<Word>(flow, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), correct, random)
 }
 
 function normalizeLegacyAttempt(value: unknown): LegacyRecord | null {

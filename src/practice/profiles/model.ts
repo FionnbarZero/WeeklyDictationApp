@@ -1,4 +1,6 @@
-export type AcquisitionSequenceToken = 'established-dt' | 'dt' | 'show-copy' | 'target'
+import type { AcquisitionStrategy } from '../../acquisition/contracts.ts'
+
+export type { AcquisitionSequenceToken } from '../../acquisition/contracts.ts'
 
 export type WritingPracticeProfile = {
   readonly id: string
@@ -14,22 +16,5 @@ export type WritingPracticeProfile = {
     readonly warmup: number
     readonly testReview: number
   }
-  readonly acquisition: {
-    readonly timers: {
-      readonly establishedDtSeconds: number
-      readonly earnedDtSeconds: number
-      readonly introductionShowCopySeconds: number
-      readonly introductionHiddenTargetSeconds: number
-      readonly expandedStartSeconds: number
-      readonly expandedMinimumSeconds: number
-      readonly expandedDecrementSeconds: number
-      readonly correctionShowCopySeconds: number
-      readonly correctionHiddenSeconds: number
-    }
-    readonly dtObservationMode: 'collect' | 'discard'
-    readonly establishedDtTexts: readonly string[]
-    readonly introductionSequence: readonly AcquisitionSequenceToken[]
-    readonly expandedSequence: readonly AcquisitionSequenceToken[]
-    readonly correctionSequence: readonly AcquisitionSequenceToken[]
-  }
+  readonly acquisition: AcquisitionStrategy
 }
