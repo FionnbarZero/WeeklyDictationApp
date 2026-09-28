@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   filterDatasetsForChild,
+  requireDatasetLifecycle,
   resolveDatasetLifecycles,
   type Dataset,
   type DatasetLifecycleResolution,
 } from '../src/domain.ts'
+import { schoolYearToken } from '../src/curriculum/identity.ts'
 import { grade2DeckProfile, grade5DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
-import type { LifecycleSet } from '../src/lifecycle/contracts.ts'
-import { lifecycleStrategyForGrade, resolveLifecycle } from '../src/lifecycle/registry.ts'
+import type { LifecycleProgressionEvent, LifecycleSet } from '../src/lifecycle/contracts.ts'
+import { lifecycleStrategyForGradeAndSchoolYear, lifecycleStrategyForScope, resolveLifecycle } from '../src/lifecycle/registry.ts'
+import { curriculumStageLabel, practicePhaseForStage } from '../src/lifecycle/stageMapping.ts'
 
 const grade2Presentation = {
   presentationId: grade2DeckProfile.sourceDeckId,
@@ -57,10 +60,18 @@ function lifecycleSet(dataset: Dataset): LifecycleSet {
   return {
     datasetId: dataset.id,
     grade: dataset.grade,
-    schoolYear: dataset.schoolYear,
+    schoolYearKey: schoolYearToken(dataset.schoolYear),
     activationDate: dataset.startDate,
     instructionalEndDate: dataset.endDate,
     kind: dataset.isWritingWorkshop ? 'no-instruction' : 'vocabulary',
+  }
+}
+
+function lifecycleContext(sets: Dataset[], currentDateKey: string, progressionEvents: LifecycleProgressionEvent[] = []) {
+  return {
+    scope: { grade: 'Grade 2', schoolYearKey: '2026-27', currentDateKey },
+    sets: sets.map(lifecycleSet),
+    progressionEvents,
   }
 }
 
@@ -209,11 +220,7 @@ test('Grade 2 lifecycle golden matrix scopes grade and school year before resolu
 })
 
 test('Grade 2 replacement strategy reproduces the golden replacement ordering', () => {
-  const resolution = resolveLifecycle({
-    grade: 'Grade 2',
-    schoolYear: '2026–2027',
-    currentDateKey: '2026-09-28',
-  }, [...baseSets, week0928].map(lifecycleSet))
+  const resolution = resolveLifecycle(lifecycleContext([...baseSets, week0928], '2026-09-28'))
 
   assert.equal(resolution.acquisitionDatasetId, week0928.id)
   assert.deepEqual(resolution.testReviews, [{ datasetId: week0921.id, cycle: 1 }])
@@ -228,11 +235,7 @@ test('Grade 2 replacement strategy reproduces the golden replacement ordering', 
 test('Grade 2 compatibility wrapper projects the strategy without changing dataset identity', () => {
   const sourceDatasets = [...baseSets, week0928]
   const compatibility = resolveDatasetLifecycles(sourceDatasets, new Date(2026, 8, 28))
-  const strategy = resolveLifecycle({
-    grade: 'Grade 2',
-    schoolYear: '2026–2027',
-    currentDateKey: '2026-09-28',
-  }, sourceDatasets.map(lifecycleSet))
+  const strategy = resolveLifecycle(lifecycleContext(sourceDatasets, '2026-09-28'))
 
   assert.strictEqual(compatibility.acquisition, week0928)
   assert.strictEqual(compatibility.testReview, week0921)
@@ -263,8 +266,69 @@ test('Grade 2 compatibility wrapper rejects an unresolved mixed scope', () => {
   )
 })
 
-test('lifecycle registry has no silent fallback for unsupported grades', () => {
-  assert.equal(lifecycleStrategyForGrade('Grade 2')?.id, 'grade-2-replacement-driven-v1')
-  assert.equal(lifecycleStrategyForGrade('Grade 5'), null)
-  assert.throws(() => resolveLifecycle({ grade: 'Grade 5', schoolYear: '2026–2027', currentDateKey: '2026-09-28' }, []), /not configured for Grade 5/)
+test('lifecycle registry requires the exact grade and normalized school year', () => {
+  const grade2 = lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2026–2027')
+  assert.equal(grade2?.profileId, 'grade-2-replacement-2026-27')
+  assert.equal(grade2?.version, 1)
+  assert.strictEqual(lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2026-2027'), grade2)
+  assert.equal(lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2025–2026'), null)
+  assert.equal(lifecycleStrategyForGradeAndSchoolYear('Grade 5', '2026–2027'), null)
+  assert.throws(() => resolveLifecycle({
+    scope: { grade: 'Grade 5', schoolYearKey: '2026-27', currentDateKey: '2026-09-28' },
+    sets: [],
+    progressionEvents: [],
+  }), /not configured for Grade 5 in 2026-27/)
+})
+
+test('strategy resolution excludes mixed-grade and mixed-year inputs from the requested scope', () => {
+  const validSets = [...baseSets, week0928].map(lifecycleSet)
+  const mixedSets: LifecycleSet[] = [
+    ...validSets,
+    { ...lifecycleSet(week0928), datasetId: 'grade-5-foreign', grade: 'Grade 5' },
+    { ...lifecycleSet(week0928), datasetId: 'prior-year-foreign', schoolYearKey: '2025-26' },
+  ]
+  const resolution = resolveLifecycle({
+    scope: { grade: 'Grade 2', schoolYearKey: '2026-27', currentDateKey: '2026-09-28' },
+    sets: mixedSets,
+    progressionEvents: [],
+  })
+
+  assert.deepEqual(Object.keys(resolution.assignmentByDatasetId).sort(), validSets.map((set) => set.datasetId).sort())
+  assert.equal(resolution.assignmentByDatasetId['grade-5-foreign'], undefined)
+  assert.equal(resolution.assignmentByDatasetId['prior-year-foreign'], undefined)
+})
+
+test('Grade 2 explicitly preserves replacement behavior when progression events are present', () => {
+  const sourceDatasets = [...baseSets, week0928]
+  const event: LifecycleProgressionEvent = {
+    eventId: 'future-grade-5-style-event',
+    grade: 'Grade 2',
+    schoolYearKey: '2026-27',
+    effectiveDate: '2026-09-28',
+    introducedDatasetId: week0928.id,
+    confirmedDatasetId: week0921.id,
+  }
+  assert.deepEqual(
+    resolveLifecycle(lifecycleContext(sourceDatasets, '2026-09-28', [event])),
+    resolveLifecycle(lifecycleContext(sourceDatasets, '2026-09-28')),
+  )
+})
+
+test('curriculum stages map both review cycles to the existing Test Review practice behavior', () => {
+  assert.equal(practicePhaseForStage({ kind: 'acquisition' }), 'acquisition')
+  assert.equal(practicePhaseForStage({ kind: 'test-review', cycle: 1 }), 'test-review')
+  assert.equal(practicePhaseForStage({ kind: 'test-review', cycle: 2 }), 'test-review')
+  assert.equal(practicePhaseForStage({ kind: 'mastery' }), null)
+  assert.equal(curriculumStageLabel({ kind: 'test-review', cycle: 1 }), 'Test Review 1')
+  assert.equal(curriculumStageLabel({ kind: 'test-review', cycle: 2 }), 'Test Review 2')
+})
+
+test('canonical dataset lifecycle assignments are required instead of inferred from dates', () => {
+  const resolution = resolveDatasetLifecycles([...baseSets, week0928], new Date(2026, 8, 28))
+  assert.equal(requireDatasetLifecycle(resolution, week0928.id), 'acquisition')
+  assert.throws(() => requireDatasetLifecycle(resolution, 'missing-canonical-dataset'), /has no lifecycle assignment/)
+})
+
+test('the lifecycle profile can be discovered without a writing practice profile lookup', () => {
+  assert.equal(lifecycleStrategyForScope({ grade: 'Grade 2', schoolYearKey: '2026-27' })?.profileId, 'grade-2-replacement-2026-27')
 })

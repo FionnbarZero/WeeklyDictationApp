@@ -1,5 +1,6 @@
 import type {
   LifecycleAssignment,
+  LifecycleContext,
   LifecycleResolution,
   LifecycleScope,
   LifecycleSet,
@@ -8,7 +9,7 @@ import type {
 function uniqueScopedSets(scope: LifecycleScope, sets: readonly LifecycleSet[]) {
   const byId = new Map<string, LifecycleSet>()
   for (const set of sets) {
-    if (set.grade !== scope.grade || set.schoolYear !== scope.schoolYear || byId.has(set.datasetId)) continue
+    if (set.grade !== scope.grade || set.schoolYearKey !== scope.schoolYearKey || byId.has(set.datasetId)) continue
     byId.set(set.datasetId, set)
   }
   return [...byId.values()].sort((left, right) =>
@@ -18,9 +19,7 @@ function uniqueScopedSets(scope: LifecycleScope, sets: readonly LifecycleSet[]) 
   )
 }
 
-export function resolveReplacementDrivenLifecycle(options: {
-  scope: LifecycleScope
-  sets: readonly LifecycleSet[]
+export function resolveReplacementDrivenLifecycle(options: LifecycleContext & {
   testReviewCycles: number
 }): LifecycleResolution {
   const { scope } = options

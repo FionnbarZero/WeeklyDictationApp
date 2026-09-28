@@ -9,17 +9,32 @@ export type CurriculumStage =
 
 export type LifecycleScope = {
   grade: string
-  schoolYear: string
+  schoolYearKey: string
   currentDateKey: string
 }
 
 export type LifecycleSet = {
   datasetId: string
   grade: string
-  schoolYear: string
+  schoolYearKey: string
   activationDate: string
   instructionalEndDate: string
   kind: 'vocabulary' | 'no-instruction'
+}
+
+export type LifecycleProgressionEvent = {
+  eventId: string
+  grade: string
+  schoolYearKey: string
+  effectiveDate: string
+  introducedDatasetId: string
+  confirmedDatasetId?: string
+}
+
+export type LifecycleContext = {
+  scope: LifecycleScope
+  sets: readonly LifecycleSet[]
+  progressionEvents: readonly LifecycleProgressionEvent[]
 }
 
 export type LifecycleAssignment = {
@@ -45,7 +60,9 @@ export type LifecycleResolution = {
 }
 
 export type LifecycleStrategy = {
-  id: string
+  profileId: string
+  version: number
   grade: string
-  resolve: (scope: LifecycleScope, sets: readonly LifecycleSet[]) => LifecycleResolution
+  schoolYearKey: string
+  resolve: (context: LifecycleContext) => LifecycleResolution
 }

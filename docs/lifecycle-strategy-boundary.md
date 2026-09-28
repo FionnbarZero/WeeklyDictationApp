@@ -4,9 +4,9 @@ This boundary separates **when a canonical vocabulary cohort changes stage** fro
 
 ## Current implementation
 
-`src/lifecycle/contracts.ts` defines source-neutral lifecycle inputs and outputs. A `LifecycleSet` contains only the stable dataset identity, grade, school year, activation and instructional dates, and whether the source unit contains vocabulary or explicitly represents no instruction.
+`src/lifecycle/contracts.ts` defines source-neutral lifecycle inputs and outputs. A `LifecycleSet` contains only the stable dataset identity, grade, normalized school-year key, activation and instructional dates, and whether the source unit contains vocabulary or explicitly represents no instruction. A `LifecycleContext` carries those sets together with accepted source-neutral progression events.
 
-`src/lifecycle/registry.ts` requires an explicitly registered strategy for the requested grade. There is no cross-grade fallback. Grade 2 is currently the only registered strategy.
+`src/lifecycle/registry.ts` requires an explicitly registered, versioned strategy for the requested grade and normalized school year. There is no cross-grade or cross-year fallback. Grade 2 for 2026–27 is currently the only registered strategy.
 
 The Grade 2 strategy is replacement-driven:
 
@@ -16,6 +16,8 @@ The Grade 2 strategy is replacement-driven:
 - Assignments stay unchanged through weekends and source gaps.
 - A duplicate, malformed source unit, or no-instruction unit does not rotate cohorts.
 - A later valid vocabulary replacement rotates the cohorts once, regardless of how many calendar days elapsed.
+
+Grade 2 receives the common progression-event list but remains replacement-driven and does not advance from those events. Curriculum stages map centrally onto practice behavior, so all numbered Test Review stages reuse the existing `test-review` practice phase without changing persisted session or score values.
 
 `resolveDatasetLifecycles` remains as a compatibility wrapper for existing callers. It validates one grade and school-year scope, translates canonical application datasets into source-neutral lifecycle sets, delegates to the registered strategy, and projects the resolution back onto the original dataset objects. The dashboard, primary activity selection, and Warmup eligibility therefore share the same strategy result without changing the current Grade 2 public data shape.
 
@@ -39,7 +41,7 @@ No new validated slide means no progression event. A conference week or other so
 
 A mismatch between the top-row confirmation and the previously accepted cohort is a blocking conflict. The existing vocabulary and lifecycle assignments remain unchanged; the bottom-row cohort stays pending until an administrator corrects the source or explicitly activates a reviewed revision.
 
-The future Grade 5 source adapter should emit an explicit, stable progression-event identity and the canonical cohort candidates needed by the Grade 5 strategy. The lifecycle strategy must consume that validated event data without importing Google Slides types, parsing table labels, accessing Firestore, or creating application `Dataset` objects.
+The future Grade 5 source adapter should emit the explicit, stable `LifecycleProgressionEvent` identity and canonical cohort candidates needed by the Grade 5 strategy. The lifecycle strategy consumes that validated event data without importing Google Slides types, parsing table labels, accessing Firestore, or creating application `Dataset` objects.
 
 Week 4 remains the approved Grade 5 activation baseline. Earlier inconsistent startup slides may be retained as provenance or import issues, but the strategy must not invent missing review cohorts from them.
 
