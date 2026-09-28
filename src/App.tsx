@@ -22,7 +22,7 @@ type PracticeTarget = { dataset: Dataset; phase: PrimaryPhase }
 type AppClock = () => Date
 
 const demoChildren: Child[] = [
-  { id: 'maya', name: 'Maya', nickname: 'Maya', grade: 'Grade 2', schoolYear: '2026–2027', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'coral', initials: 'M' },
+  { id: 'rhys', name: 'Rhys', nickname: 'Rhys', grade: 'Grade 2', schoolYear: '2026–2027', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'coral', initials: 'R' },
   { id: 'eli', name: 'Eli', nickname: 'Eli', grade: 'Grade 2', schoolYear: '2026–2027', active: true, gradeEffectiveDate: '2026-08-01', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z', color: 'blue', initials: 'E' },
 ]
 
