@@ -20,41 +20,14 @@ import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
 import { resolveLifecycle } from './lifecycle/registry.ts'
 import { practicePhaseForStage } from './lifecycle/stageMapping.ts'
+import type { Dataset, Word } from './domain/contracts.ts'
+
+export type { Dataset, Word } from './domain/contracts.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
 export type DatasetLifecycle = PrimaryPhase | 'future' | 'mastered' | 'no-instruction'
 export type RevealMethod = 'show_answer' | 'timer' | 'skip_timer'
-
-export type Word = {
-  id: string
-  text: string
-  sentence: string
-  datasetId: string
-  grade?: string
-  sourceSlideId?: string
-  language?: 'mandarin' | 'english'
-  tier?: 'tier-1' | 'tier-2' | 'tier-3'
-  activityType?: 'dictation' | 'reading' | 'spelling'
-  audio?: { storagePath?: string; voice?: string; generatedAt?: string }
-}
-
-export type Dataset = {
-  id: string
-  dateRange: string
-  startDate: string
-  endDate: string
-  grade: string
-  schoolYear: string
-  description: string
-  words: Word[]
-  sourceDeckId?: string
-  sourceSlideId?: string
-  importStatus?: 'valid' | 'writing-workshop' | 'error'
-  isWritingWorkshop?: boolean
-  importedAt?: string
-  lifecycle?: { firstAvailableAt?: string; masteredAt?: string }
-}
 
 export type WordResult = {
   id: string

@@ -13,7 +13,7 @@ import {
 import { classifyWeeklyDatasetCandidates, type CandidateClassificationDecision, type ExistingDatasetReference } from './curriculum/classification.ts'
 import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity.ts'
 import type { CandidateStatus, InstructionalRole, WeeklyDatasetCandidate } from './curriculum/model.ts'
-import type { Dataset, Word } from './domain.ts'
+import type { Dataset, Word } from './domain/contracts.ts'
 
 export type { ExistingDatasetReference } from './curriculum/classification.ts'
 
