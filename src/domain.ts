@@ -6,7 +6,7 @@ import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
-export type DatasetLifecycle = LifecyclePhase | 'future' | 'archived'
+export type DatasetLifecycle = PrimaryPhase | 'future' | 'mastered' | 'no-instruction'
 export type RevealMethod = 'show_answer' | 'timer' | 'skip_timer'
 
 export type Word = {
@@ -36,7 +36,7 @@ export type Dataset = {
   importStatus?: 'valid' | 'writing-workshop' | 'error'
   isWritingWorkshop?: boolean
   importedAt?: string
-  lifecycle?: { firstAvailableAt?: string; archivedAt?: string }
+  lifecycle?: { firstAvailableAt?: string; masteredAt?: string }
 }
 
 export type WordResult = {
@@ -338,19 +338,60 @@ export function dateIsBetween(date: Date, start: Date, end: Date) {
   return value >= localDateKey(start) && value <= localDateKey(end)
 }
 
-export function datasetLifecycle(dataset: Dataset, date = new Date()): DatasetLifecycle {
-  const start = parseDateKey(dataset.startDate)
-  const end = parseDateKey(dataset.endDate)
-  if (dateIsBetween(date, start, end)) return 'acquisition'
-  if (dateIsBetween(date, addDays(start, 7), addDays(end, 7))) return 'test-review'
-  return localDateKey(date) < dataset.startDate ? 'future' : 'archived'
+export type DatasetLifecycleResolution = {
+  acquisition: Dataset | null
+  testReview: Dataset | null
+  mastered: Dataset[]
+  masteredAtByDatasetId: Record<string, string>
+  future: Dataset[]
+  noInstruction: Dataset[]
+  lifecycleByDatasetId: Record<string, DatasetLifecycle>
+}
+
+function uniqueCanonicalDatasets(datasets: Dataset[]) {
+  const byId = new Map<string, Dataset>()
+  for (const dataset of datasets) {
+    if (isCanonicalDataset(dataset) && !byId.has(dataset.id)) byId.set(dataset.id, dataset)
+  }
+  return [...byId.values()].sort((left, right) => left.startDate.localeCompare(right.startDate) || left.endDate.localeCompare(right.endDate) || left.id.localeCompare(right.id))
+}
+
+// Grade 2 currently has one Test Review stage. Callers must pass one grade and
+// school-year collection; Grade 5 needs a profile-driven multi-review resolver.
+export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date()): DatasetLifecycleResolution {
+  const today = localDateKey(date)
+  const canonical = uniqueCanonicalDatasets(datasets)
+  const noInstruction = canonical.filter((dataset) => dataset.isWritingWorkshop && dataset.startDate <= today)
+  const vocabulary = canonical.filter((dataset) => !dataset.isWritingWorkshop && dataset.words.length > 0)
+  const arrived = vocabulary.filter((dataset) => dataset.startDate <= today)
+  const future = vocabulary.filter((dataset) => dataset.startDate > today)
+  const acquisition = arrived[arrived.length - 1] || null
+  const testReview = arrived[arrived.length - 2] || null
+  const mastered = arrived.slice(0, Math.max(0, arrived.length - 2))
+  const masteredAtByDatasetId = Object.fromEntries(mastered.map((dataset, index) => [dataset.id, arrived[index + 2].startDate]))
+  const lifecycleByDatasetId: Record<string, DatasetLifecycle> = {}
+
+  for (const dataset of canonical) {
+    lifecycleByDatasetId[dataset.id] = dataset.startDate > today
+      ? 'future'
+      : dataset.isWritingWorkshop
+        ? 'no-instruction'
+        : 'mastered'
+  }
+  if (testReview) lifecycleByDatasetId[testReview.id] = 'test-review'
+  if (acquisition) lifecycleByDatasetId[acquisition.id] = 'acquisition'
+
+  return { acquisition, testReview, mastered, masteredAtByDatasetId, future, noInstruction, lifecycleByDatasetId }
+}
+
+export function datasetLifecycle(dataset: Dataset, datasets: Dataset[], date = new Date()): DatasetLifecycle {
+  return resolveDatasetLifecycles(datasets, date).lifecycleByDatasetId[dataset.id]
+    || (dataset.startDate > localDateKey(date) ? 'future' : dataset.isWritingWorkshop ? 'no-instruction' : 'mastered')
 }
 
 export function getActiveLifecycleDatasets(datasets: Dataset[], date = new Date()) {
-  const newest = (phase: 'acquisition' | 'test-review') => datasets
-    .filter((dataset) => isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, date) === phase)
-    .sort((a, b) => b.startDate.localeCompare(a.startDate))[0] || null
-  return { acquisition: newest('acquisition'), testReview: newest('test-review') }
+  const resolved = resolveDatasetLifecycles(datasets, date)
+  return { acquisition: resolved.acquisition, testReview: resolved.testReview }
 }
 
 export function sortDatasetsNewestFirst(datasets: Dataset[]) {
@@ -386,23 +427,19 @@ function uniqueWords(words: Word[]) {
   })
 }
 
-function datasetSeedCategory(dataset: Dataset, today: Date): WarmupCategory {
-  const lifecycle = datasetLifecycle(dataset, today)
-  if (lifecycle !== 'archived') return 'acquisition'
-  const end = parseDateKey(dataset.endDate)
-  return dateIsBetween(today, addDays(end, 8), addDays(end, 14)) ? 'recent-review' : 'random-rotation'
-}
-
-function archivedWarmupStart(dataset: Dataset) {
-  return localDateKey(addDays(parseDateKey(dataset.endDate), 8))
+function datasetSeedCategory(dataset: Dataset, resolution: DatasetLifecycleResolution, today: Date): WarmupCategory {
+  if (resolution.lifecycleByDatasetId[dataset.id] !== 'mastered') return 'acquisition'
+  const masteredAt = resolution.masteredAtByDatasetId[dataset.id]
+  if (!masteredAt) return 'random-rotation'
+  const start = parseDateKey(masteredAt)
+  return dateIsBetween(today, start, addDays(start, 6)) ? 'recent-review' : 'random-rotation'
 }
 
 function wordStateId(childId: string, wordId: string) {
   return `${childId}::${wordId}`
 }
 
-function stateForWord(word: Word, childId: string, dataset: Dataset | undefined, today: Date, rotationCycleId: number): ChildWordState {
-  const category = dataset ? datasetSeedCategory(dataset, today) : 'random-rotation'
+function stateForWord(word: Word, childId: string, category: WarmupCategory, rotationCycleId: number): ChildWordState {
   return { id: wordStateId(childId, word.id), childId, wordId: word.id, datasetId: word.datasetId, category, correctStreak: 0, ...(category === 'random-rotation' ? { randomCycleId: rotationCycleId, randomCycleReviewed: false } : {}) }
 }
 
@@ -427,19 +464,21 @@ export function deriveChildWordStates(options: { grade: string; datasets: Datase
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
   const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
+  const lifecycleResolution = resolveDatasetLifecycles(gradeDatasets, today)
   const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
   const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
   return uniqueWords(gradeDatasets.flatMap((dataset) => dataset.words)).map((word): ChildWordState => {
     const existing = existingByWordId.get(word.id)
     if (existing) {
       const dataset = datasetsById.get(word.datasetId)
-      const seed = dataset ? datasetSeedCategory(dataset, today) : 'random-rotation'
+      const seed = dataset ? datasetSeedCategory(dataset, lifecycleResolution, today) : 'random-rotation'
       if (seed === 'acquisition' && existing.category !== 'acquisition') return { ...existing, category: 'acquisition', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
-      if (seed === 'recent-review' && dataset && (!existing.lastReviewedAt || existing.lastReviewedAt.slice(0, 10) < archivedWarmupStart(dataset))) return { ...existing, category: 'recent-review', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
+      if (seed === 'recent-review' && dataset && (!existing.lastReviewedAt || existing.lastReviewedAt.slice(0, 10) < lifecycleResolution.masteredAtByDatasetId[dataset.id])) return { ...existing, category: 'recent-review', correctStreak: 0, randomCycleId: undefined, randomCycleReviewed: undefined }
       if (existing.category === 'acquisition' && seed !== 'acquisition') return { ...existing, category: seed, correctStreak: 0, randomCycleId: seed === 'random-rotation' ? cycle : undefined, randomCycleReviewed: seed === 'random-rotation' ? false : undefined }
       return existing
     }
-    let state = stateForWord(word, options.childId, datasetsById.get(word.datasetId), today, cycle)
+    const dataset = datasetsById.get(word.datasetId)
+    let state = stateForWord(word, options.childId, dataset ? datasetSeedCategory(dataset, lifecycleResolution, today) : 'random-rotation', cycle)
     for (const result of orderedResultsForWord(options.results, options.childId, word.id)) state = applyWordResponse(state, result.correct, result.completedAt, cycle, profile.lifecycle)
     return state
   })
@@ -464,7 +503,9 @@ export function buildWarmupSelection(options: { grade: string; datasets: Dataset
   const targetSize = options.targetSize ?? profile.lifecycle.warmupTargetSize
   const random = options.random || Math.random
   const states = deriveChildWordStates({ grade: options.grade, datasets: options.datasets, results: options.results, childId: options.childId, today, existingStates: options.childWordStates, rotationCycleId: options.rotationCycleId })
-  const eligibleDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && isCanonicalDataset(dataset) && !dataset.isWritingWorkshop && dataset.words.length > 0 && datasetLifecycle(dataset, today) === 'archived')
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
+  const masteredDatasetIds = new Set(resolveDatasetLifecycles(gradeDatasets, today).mastered.map((dataset) => dataset.id))
+  const eligibleDatasets = gradeDatasets.filter((dataset) => masteredDatasetIds.has(dataset.id))
   const eligibleDatasetIds = new Set(eligibleDatasets.map((dataset) => dataset.id))
   const eligibleStates = states.filter((state) => eligibleDatasetIds.has(state.datasetId))
   const wordsById = new Map(uniqueWords(eligibleDatasets.flatMap((dataset) => dataset.words)).map((word) => [word.id, word]))
