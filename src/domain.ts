@@ -1,13 +1,16 @@
 import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
 import type { SupportedGrade } from './config.ts'
 import { schoolYearToken } from './curriculum/identity.ts'
-import { answerAcquisition, resumeAcquisition, revealAcquisition, startAcquisition } from './acquisition/engine.ts'
+import { resumeAcquisition, revealAcquisition, startAcquisition } from './acquisition/engine.ts'
+import { transitionAcquisition } from './acquisition/transition.ts'
 import type {
+  AcquisitionAssessment as EngineAcquisitionAssessment,
   AcquisitionPhase as EngineAcquisitionPhase,
   AcquisitionPromptKind as EngineAcquisitionPromptKind,
   AcquisitionStrategy,
   AcquisitionTargetSet,
   AcquisitionTimerConfig as EngineAcquisitionTimerConfig,
+  AcquisitionTransition as EngineAcquisitionTransition,
   EngineAcquisitionFlow,
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
@@ -190,6 +193,8 @@ export type AcquisitionPromptKind = EngineAcquisitionPromptKind
 export type AcquisitionTimerConfig = EngineAcquisitionTimerConfig
 export type AcquisitionPrompt = EngineAcquisitionPrompt<Word>
 export type AcquisitionFlow = EngineAcquisitionFlow<Word>
+export type AcquisitionAssessment = EngineAcquisitionAssessment<Word, RevealMethod>
+export type AcquisitionTransition = EngineAcquisitionTransition<Word, RevealMethod>
 
 export type AcquisitionProgressRecord = {
   id: string
@@ -593,7 +598,12 @@ export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
 
 export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, random = Math.random): AcquisitionFlow {
   if (!flow.prompt || !flow.prompt.revealed) return flow
-  return answerAcquisition<Word>(flow, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), correct, random)
+  return transitionAcquisitionPrompt(flow, dataset, grade, correct, 'timer', random).nextFlow
+}
+
+export function transitionAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, revealMethod: RevealMethod, random = Math.random): AcquisitionTransition {
+  if (!flow.prompt || !flow.prompt.revealed) return { nextFlow: flow }
+  return transitionAcquisition<Word, RevealMethod>(flow, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), { correct, revealMethod }, random)
 }
 
 function normalizeLegacyAttempt(value: unknown): LegacyRecord | null {

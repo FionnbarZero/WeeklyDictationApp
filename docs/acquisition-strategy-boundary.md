@@ -50,6 +50,6 @@ Architecture tests enforce the import boundary and single-owner object identity.
 
 This extraction does not change `App.tsx`, Firestore clients or rules, persistence schemas, stored-flow validation, migrations, cloud transactions, session orchestration, scoring behavior, or child-facing behavior.
 
-A later `refactor/acquisition-transition-boundary` branch may introduce a storage-neutral result that pairs the next flow with an optional assessment. An application coordinator—not the engine—will add child, session, dataset, timestamp, and persistence context.
+The `refactor/acquisition-transition-boundary` branch builds on this boundary with a storage-neutral result that pairs the next flow with an optional assessment. The application layer—not the engine or transition—adds child, session, dataset-envelope, timestamp, and persistence context.
 
 The later `feature/persistent-acquisition` branch owns versioned progress envelopes, migration and strict validation, revision-aware atomic or idempotent persistence, conflicting-device handling, Firestore Emulator coverage, and reduction of Acquisition orchestration in `App.tsx`.

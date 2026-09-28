@@ -31,6 +31,7 @@ test('the Acquisition engine boundary has only its approved dependencies', () =>
     'contracts.ts': [],
     'engine.ts': ['./contracts.ts'],
     'strategies/grade2.ts': ['../contracts.ts'],
+    'transition.ts': ['./contracts.ts', './engine.ts'],
   }
   assert.deepEqual(acquisitionTypeScriptFiles(), Object.keys(approvedImports).sort())
   for (const [file, imports] of Object.entries(approvedImports)) {

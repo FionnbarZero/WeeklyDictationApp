@@ -516,8 +516,8 @@ Branch: `refactor/acquisition-transition-boundary`, created from updated `main` 
 
 Goal: centralize how one reviewed answer becomes the next teaching flow and a storage-neutral optional assessment without redesigning persistence.
 
-- Return the next flow together with an optional assessment containing only prompt, target-occurrence, correctness, scoring classification, DT-pool classification, and reveal-method facts.
-- Keep child, family, session, timestamp, dataset-envelope, and storage details in an application coordinator rather than the pure engine.
+- Return the next flow together with an optional assessment containing the answered prompt identity, complete generic target object, target-occurrence identity, correctness, scoring classification, DT-pool classification, and reveal-method facts.
+- Keep child, family, session, timestamp, dataset-envelope, and storage details in the application layer rather than the pure engine or transition.
 - Preserve existing public behavior, stored schemas, cloud writes, and exact flow compatibility.
 - Defer migrations, revision checks, atomic Firestore writes, malformed-record recovery, and concurrent-device conflict handling to `feature/persistent-acquisition`.
 
@@ -809,9 +809,9 @@ Rollout order:
 
 Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosting, family isolation, lifecycle-specific cross-device persistence, and a controlled dataset import for every grade included in the pilot must work first.
 
-## Next approved implementation — Acquisition transition boundary
+## Next approved implementation — Grade 5 source profile
 
-After the Acquisition strategy boundary merges, the next implementation is `refactor/acquisition-transition-boundary`. It centralizes the neutral answer-to-transition result while preserving existing persistence and application behavior. Grade 5 source work follows only after that structural boundary; persistence redesign remains deferred to `feature/persistent-acquisition`.
+After the Acquisition strategy and transition boundaries merge, the next implementation is `feature/grade5-source-profile`. It adds and validates only the approved Grade 5 source structure and progression-event inputs. Grade 5 lifecycle behavior remains a separate reviewed strategy step, and persistence redesign remains deferred to `feature/persistent-acquisition`.
 
 ## Deferred features
 
@@ -853,6 +853,7 @@ Already implemented:
 - Replacement-driven Grade 2 lifecycle assignment that remains stable through weekends and source gaps, moves only older cohorts into Mastered, excludes Acquisition and Test Review words from Warmup, ignores writing-workshop and invalid source units as replacements, and preserves Firestore ownership rules in `firestore.rules`.
 - A source-neutral lifecycle strategy boundary with an explicit Grade 2 replacement-driven strategy, a compatibility wrapper for existing callers, and no cross-grade fallback. Grade 5 still requires its own validated progression-event strategy before activation; see `docs/lifecycle-strategy-boundary.md`.
 - A generic, pure Acquisition strategy boundary with a Grade 2 single-owner strategy, exact domain compatibility wrappers, frozen pre-extraction fixtures, and no persistence or child-facing changes; see `docs/acquisition-strategy-boundary.md`.
+- A persistence-neutral Acquisition transition boundary that captures the answered prompt and returns the exact next flow plus an optional classified assessment, while preserving existing session answers, local checkpoints, cloud payloads, stored schemas, scoring, and child-facing behavior; see `docs/acquisition-transition-boundary.md`.
 - Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
 - Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
