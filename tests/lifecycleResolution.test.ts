@@ -7,6 +7,8 @@ import {
   type DatasetLifecycleResolution,
 } from '../src/domain.ts'
 import { grade2DeckProfile, grade5DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
+import type { LifecycleSet } from '../src/lifecycle/contracts.ts'
+import { lifecycleStrategyForGrade, resolveLifecycle } from '../src/lifecycle/registry.ts'
 
 const grade2Presentation = {
   presentationId: grade2DeckProfile.sourceDeckId,
@@ -50,6 +52,17 @@ function summarize(resolution: DatasetLifecycleResolution) {
 }
 
 const baseSets = [week0831, week0908, week0914, week0921]
+
+function lifecycleSet(dataset: Dataset): LifecycleSet {
+  return {
+    datasetId: dataset.id,
+    grade: dataset.grade,
+    schoolYear: dataset.schoolYear,
+    activationDate: dataset.startDate,
+    instructionalEndDate: dataset.endDate,
+    kind: dataset.isWritingWorkshop ? 'no-instruction' : 'vocabulary',
+  }
+}
 
 test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and replacement events', () => {
   const cases = [
@@ -193,4 +206,27 @@ test('Grade 2 lifecycle golden matrix scopes grade and school year before resolu
     noInstruction: [],
     stages: {},
   })
+})
+
+test('Grade 2 replacement strategy reproduces the golden replacement ordering', () => {
+  const resolution = resolveLifecycle({
+    grade: 'Grade 2',
+    schoolYear: '2026–2027',
+    currentDateKey: '2026-09-28',
+  }, [...baseSets, week0928].map(lifecycleSet))
+
+  assert.equal(resolution.acquisitionDatasetId, week0928.id)
+  assert.deepEqual(resolution.testReviews, [{ datasetId: week0921.id, cycle: 1 }])
+  assert.deepEqual(resolution.masteryDatasetIds, [week0831.id, week0908.id, week0914.id])
+  assert.deepEqual(resolution.masteredAtByDatasetId, {
+    [week0831.id]: '2026-09-14',
+    [week0908.id]: '2026-09-21',
+    [week0914.id]: '2026-09-28',
+  })
+})
+
+test('lifecycle registry has no silent fallback for unsupported grades', () => {
+  assert.equal(lifecycleStrategyForGrade('Grade 2')?.id, 'grade-2-replacement-driven-v1')
+  assert.equal(lifecycleStrategyForGrade('Grade 5'), null)
+  assert.throws(() => resolveLifecycle({ grade: 'Grade 5', schoolYear: '2026–2027', currentDateKey: '2026-09-28' }, []), /not configured for Grade 5/)
 })
