@@ -65,7 +65,9 @@ The initial source mappings are:
 - **Grade 5 Slides:** Tier 1, Tier 2, and Tier 3 are extracted from the correct Mandarin table section using its structural role. `This week` and `Coming next week/Core vocab` are preserved as source labels and then mapped through the Grade 5 rules below.
 - **Kindergarten Sheets:** `Writing character` maps to Tier 1, `High frequency word` maps to Tier 2, and Tier 3 is an empty array. Weekly tabs such as `Week 6 09/21` are separate source units within the same yearly workbook.
 
-Grade-specific adapters may recognize different layouts and separators. No grade may infer its structure, validation rules, word limits, or practice behavior from another grade’s source profile. Duplicate source terms are permitted where a grade profile allows them and must not cause the candidate to be rejected merely because the normalized text repeats. Every teacher-supplied occurrence is authoritative and becomes a distinct ordered practice target. Its stable `targetOccurrenceId` is derived from the canonical dataset, tier, and source position so repeated text cannot collide or be deduplicated away. Acquisition, each configured Test Review, and other source-ordered lifecycle flows present and score every required occurrence separately. When repeated target occurrences later become Warmup-eligible, each remains an eligible entry even if adaptive mastery is also summarized under one normalized lexical identity; shuffle rules should avoid placing identical text consecutively when alternatives exist.
+Grade-specific adapters may recognize different layouts and separators. No grade may infer its structure, validation rules, word limits, or practice behavior from another grade’s source profile. Duplicate source terms are permitted where a grade profile allows them and must not cause the candidate to be rejected merely because the normalized text repeats. Every teacher-supplied occurrence is authoritative and becomes a distinct ordered practice target. Its stable `targetOccurrenceId` is derived from the canonical dataset, tier, and source position so repeated text cannot collide or be deduplicated away. Acquisition, each configured Test Review, and other source-ordered lifecycle flows present and score every required occurrence separately.
+
+Warmup uses a different identity boundary. After occurrences become mastery-eligible, repeated occurrences of the same normalized term link to one long-term mastery term within the same activity module, vocabulary tier, and language. Their source occurrences and history remain intact as provenance, but an ordinary Warmup queue contains at most one entry for that mastery term. The same text in different skills—such as Tier 1 writing and Tier 2 reading—remains separate.
 
 ## Automatic curriculum-source import
 
@@ -132,8 +134,8 @@ Grade 5 and Kindergarten writing-workshop or intentional no-instruction markers 
 - A Friday end date never expires a dataset by itself. Until a valid replacement activates, the current Acquisition and Test Review assignments remain unchanged through weekends, source gaps, and delayed imports.
 - Malformed, conflicting, duplicate-only, and no-valid-dataset import outcomes do not advance lifecycle assignments. An already accepted Future dataset may activate on its approved activation date, but rereading the same duplicate source does not create an additional transition.
 - An explicitly recognized writing-workshop/no-instruction unit does not replace the current vocabulary cohort or advance lifecycle assignments. Future writing-workshop activities may build a remediation Acquisition set from Mastered words that meet an approved error rule, but that selection and teaching policy is deferred and must never be inferred automatically.
-- Warmup is offered before every Acquisition or Test Review pathway and is also available through its own independent entry point for every grade. The child may complete it or use **Skip Warmup** and begin the selected activity immediately. A skipped Warmup creates no Warmup result, attempt, graph point, or mastery update. A child does not need to enter Acquisition or Test Review to use standalone Warmup.
-- Acquisition and one or more Test Review stages may be visible in the same instructional week. Each starts its own independent, skippable Warmup before the primary segment.
+- Warmup is offered before every Acquisition or Test Review pathway and is also available through its own independent entry point for every grade. Whether a pre-activity Warmup may be skipped is controlled explicitly by `preActivityWarmupRequirement: 'optional' | 'required'` in that grade and module profile. Only Grade 2 is currently approved as `optional` during development; Grade 5 and Kindergarten remain undecided and must not inherit Grade 2's choice. When a profile permits skipping, a skipped Warmup creates no Warmup result, attempt, graph point, or mastery update. A child does not need to enter Acquisition or Test Review to use standalone Warmup.
+- Acquisition and one or more Test Review stages may be visible in the same instructional week. Each offers its own independent Warmup before the primary segment, using that grade and module's explicit requirement policy.
 - Tier 1 writing and future Tier 2 reading use separate attempts, adaptive state, and scores even when they originate from the same weekly dataset.
 
 Use `2026–2027` as the display school-year value. Use the normalized ASCII token `2026-27` only inside deterministic IDs. Each dataset receives a deterministic internal ID formed as `grade__school-year__week-start__week-end`, such as `grade-2__2026-27__2026-09-07__2026-09-11`. The date components use normalized ISO dates even when the slide uses a shorter date format. Each ordered vocabulary occurrence receives a stable occurrence identity downstream of that dataset ID; normalized text alone is never used as the unique key. The IDs prevent duplicate imports, preserve intentionally repeated targets, separate the same week across grades or school years, and link datasets to words, attempts, scores, and history. They are internal Firestore keys and are not displayed to children; user-facing screens show the date range and vocabulary instead.
@@ -171,7 +173,7 @@ Grade 5 transitions are driven only by validated instructional source progressio
 - If the top `This week` confirmation differs from the prior bottom-row source, preserve the prior canonical vocabulary and lifecycle stage. Do not activate the new bottom-row cohort or advance any dependent cohort until an administrator corrects the source or explicitly activates a reviewed revision.
 - Test Review 1 and Test Review 2 use the same timer, prompt sequence, scoring rules, completion rules, and abandonment behavior. Only their lifecycle labels and selected cohorts differ. The child may explicitly skip the entire activity; that choice is recorded as skipped and creates no Test Review answers or score. Any completed Warmup results remain saved.
 - Grade 5 Test Review 1 and Test Review 2 each use a 10-second timer. A visible Skip Timer control may end the remaining countdown and move directly to that word's review frame; it never skips the word, its self-assessment, or its scoring obligation.
-- Acquisition, Test Review 1, and Test Review 2 each offer a separate six-word Warmup. Completing or skipping one pathway's Warmup does not satisfy another pathway's Warmup.
+- Acquisition, Test Review 1, and Test Review 2 each offer a separate six-word Warmup. Completing one pathway's Warmup does not satisfy another pathway's Warmup. If Grade 5 is later approved as `optional`, skipping one pathway's Warmup likewise will not satisfy another pathway.
 
 The observed sequence is:
 
@@ -188,21 +190,53 @@ Grade 5 Tier 1 candidates currently accept 3–10 terms. Duplicate Tier 1 terms 
 
 ### Warmup eligibility and the Grade 2 reference policy
 
-Warmup is a practice pathway, not another canonical dataset identity. It uses persistent per-child, per-module, per-word state while each source dataset retains its canonical date range and lifecycle history. A dataset becomes eligible only after leaving every configured Test Review stage and entering Mastered. Active Acquisition, active Test Review 1 or 2, Future, unrecognized no-instruction, and malformed datasets are excluded even when a persisted word state is marked Recent Review or Errored Word.
+Warmup is a practice pathway, not another canonical dataset identity. Its approved model keeps five concepts separate:
 
-The current Grade 2 Warmup policy places newly Mastered words in Recent Review, seeds older Mastered words into Random Rotation, and prioritizes incorrect eligible words as Errored Word. Recent Review requires two consecutive correct responses to promote to Random Rotation; Errored Word requires three. A standalone Grade 2 Warmup targets 16 words and a pre-activity Warmup targets 6, using 50% Random Rotation, 25% Recent Review, and 25% Errored Word quotas. Missing slots use eligible unique words and repeat only Random Rotation words when necessary. These counts, quotas, promotion thresholds, repetition rules, and audio-rate choices remain the current Grade 2 profile values; the future Recently Mastered versus Older Mastered frequency redesign is deferred. Kindergarten must adopt or override these values explicitly rather than inheriting them silently. Grade 5 explicitly adopts a six-word target for each offered pre-Acquisition, pre-Test-Review-1, and pre-Test-Review-2 Warmup. Its independent standalone Warmup is always available, but its standalone visit target, bucket quotas, and promotion thresholds still require explicit configuration.
+1. A curriculum occurrence records one teacher-assigned appearance in a weekly dataset.
+2. Mastery eligibility determines whether that occurrence may contribute to Warmup.
+3. Child mastery evidence records `unassessed`, `demonstrated`, or `support-needed`.
+4. A scheduling bucket records `recent-entry`, `needs-attention`, or `mastery-rotation`.
+5. A Warmup visit materializes a queue and records its own progress and score.
 
-Every enabled grade and activity module must have at least six eligible Distractor Targets (DTs) before its offered Warmups or primary activities are activated. The approved interim **Established DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds both Tier 1 writing and Tier 2 reading for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Established DT pools will be derived from that child's demonstrated and mastered words over successive years.
+A curriculum occurrence becomes mastery-eligible only after it leaves the grade's final configured Test Review stage. For Grade 2 this means after Test Review; for Grade 5 it means after Test Review 2. The lifecycle advances independently of whether one child completed the review. Active Acquisition, any active Test Review stage, Future, unrecognized no-instruction, and malformed occurrences cannot enter Warmup.
 
-If a configuration or data error ever leaves fewer than six eligible DT terms, fail closed with an administrator/setup state. Never borrow active Acquisition or Test Review targets merely to fill the Warmup. Under the approved bootstrap and future baseline model, ordinary users should not encounter this state.
+The stable long-term mastery identity is activity module + vocabulary tier + language + normalized term. The initial normalizer version is exactly `mastery-normalizer-v1`. It applies Unicode NFC, trims leading and trailing whitespace, collapses repeated internal whitespace, preserves character form and case, and never silently combines Simplified and Traditional forms. Derive each mastery-term ID deterministically from that complete canonical tuple using a path-safe encoding or digest; never place raw vocabulary directly in a Firestore path. Store the complete canonical tuple alongside the ID and reject or quarantine any collision or tuple mismatch. Grade, school year, dataset, week, and occurrence ID remain provenance rather than identity. A matching active occurrence—defined by the same normalized term, activity module, vocabulary tier, and language—suppresses the mastery term from Warmup, even when an older occurrence is already Mastered. Suppression does not cross modules: Tier 1 writing and Tier 2 reading remain independent.
+
+When a term first becomes mastery-eligible, its latest valid completed result from the final Test Review initializes its child-specific placement. A correct result creates `demonstrated` evidence in `recent-entry`; an incorrect result creates `support-needed` evidence in `needs-attention`; no valid result creates `unassessed` evidence in `recent-entry`. Skipped, abandoned, provisional, and unanswered results do not initialize evidence. If several valid results exist, use the latest reviewed timestamp and then stable attempt ID as the deterministic tie-breaker. This initialization does not count toward a Warmup promotion streak.
+
+When a later weekly occurrence links to an existing mastery term, integrate that occurrence exactly once and preserve all occurrence provenance. New incorrect final-review evidence moves the term to `needs-attention` and resets its streak. New correct or missing evidence normally returns it to `recent-entry` with a reset streak, but it must not erase an existing `needs-attention` recovery requirement. While the new occurrence is active, the term remains suppressed from Warmup.
+
+Grade 2 uses these allocation and Recent Entry rules; the Needs Attention recovery rule applies to every grade:
+
+- A first correct Warmup assessment while `unassessed` changes the evidence to `demonstrated`, remains in `recent-entry`, and increments the Recent Entry streak.
+- Two consecutive correct Warmup assessments in `recent-entry` move the term to `mastery-rotation` and reset the streak.
+- A correct assessment while recovering in `needs-attention` increments the recovery streak but preserves `support-needed` evidence and remains in `needs-attention` until the third consecutive correct response.
+- The third consecutive correct recovery assessment changes the evidence to `demonstrated`, moves the term to `mastery-rotation`, and resets the streak. The three-correct recovery threshold applies to every grade.
+- A correct assessment in `mastery-rotation` preserves `demonstrated` evidence and `mastery-rotation`, with no recovery streak.
+- Any incorrect Warmup assessment moves the term to `needs-attention`, records `support-needed`, and resets the streak.
+- Skipped and unanswered prompts do not change evidence, bucket, or streak.
+- A standalone Warmup has a maximum of 16 unique terms: 8 Mastery Rotation, 4 Recent Entry, and 4 Needs Attention.
+- A pre-activity Warmup has a maximum of 6 unique terms: 3 Mastery Rotation, 2 Recent Entry, and 1 Needs Attention.
+- After the initial allocation, fill unused positions from remaining unique terms in this order: Needs Attention, Recent Entry, Mastery Rotation.
+- Never repeat a term merely to reach the configured maximum. If only five unique eligible terms exist, a completed five-term queue is recorded as five of five, not as a partial five of sixteen.
+
+Mastery Rotation is persistent per child and activity module. Correct and incorrect assessments both consume the current cycle opportunity. Exhaust eligible terms before reuse; a newly promoted term waits until the next cycle; and never start another cycle in the middle of a materialized visit merely to fill its queue. These are profile-controlled rules, and no grade silently inherits a complete Grade 2 profile. Grade 5 has approved a six-term pre-activity maximum but still needs explicit standalone allocation and promotion settings. Kindergarten must explicitly adopt or override every setting.
+
+The legacy occurrence-keyed state maps to the new model as follows: `recent-review` becomes `recent-entry`; `errored-word` becomes `needs-attention` with `support-needed` evidence; `random-rotation` becomes `mastery-rotation`; and `acquisition` is not a Warmup bucket. When several occurrence records collapse into one mastery term, Needs Attention wins over Recent Entry, and Recent Entry wins over Mastery Rotation. Conflicting streaks reset to zero, occurrence links are combined, the latest review and error timestamps are retained, and migration never invents demonstrated evidence when the stored history cannot prove it. Existing monthly aggregates remain preserved as legacy reports.
+
+Every enabled grade and activity module whose primary teaching strategy uses Distractor Trials must have at least six eligible Distractor Targets (DTs) before that primary activity is activated. The approved interim **Established DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds separate Tier 1 writing and Tier 2 reading DT pools for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Established DT pools will be derived from that child's demonstrated and mastered words over successive years. Whether a bootstrap DT also receives a mastery-term record must be explicit; it cannot bypass the approved Warmup identity and evidence rules.
+
+If a configuration or data error leaves a DT-dependent primary teaching activity with fewer than six eligible DT terms, fail that activity closed with an administrator/setup state. Never borrow active Acquisition or Test Review targets to fill a DT pool or a Warmup. This DT safety rule does not create a six-term minimum Warmup: an ordinary Warmup completes successfully with however many unique mastery-eligible terms were assigned.
 
 Every completed Warmup response is durable and contributes to the module’s Warmup history even when the child stops before reaching the visit target. Tier 1 writing Warmup and Tier 2 reading Warmup never share adaptive mastery state.
 
 ### Warmup continuity and analytics
 
-At the start of each Warmup, create a durable visit record and materialize its target word order and source buckets. Preserve the visit ID, Warmup type, target count, ordered word IDs, source dataset IDs, source buckets, current dictation or review position, completed self-assessments, started and updated times, and `in_progress`, `partial`, or `completed` status. Saving this state prevents a refresh or device change from drawing a different set or consuming shuffle-bag entries twice.
+At the start of each Warmup, create a durable visit record and materialize its target order and source buckets. Preserve the visit ID, Warmup type, configured maximum, assigned queue size, ordered mastery-term IDs, source occurrence and dataset provenance, source buckets, current position, completed self-assessments, started and updated times, revision, and `in_progress`, `partial`, `completed`, or `skipped` status. Saving this state prevents a refresh or device change from drawing a different set or consuming shuffle-bag entries twice.
 
-Update the same Warmup visit and its graph point after each completed self-assessment. An unanswered prompt does not affect accuracy or adaptive state. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review begins unless the child explicitly chooses Skip Warmup. An unfinished standalone Warmup remains available to resume; if the child explicitly ends it, retain the assessed items and mark the visit partial rather than erasing it. Completing a resumed visit changes that same record to completed instead of creating a duplicate graph point.
+Before presenting every unanswered queue entry, revalidate active-term suppression using the complete normalized-term + activity-module + vocabulary-tier + language identity. If a matching occurrence has become active since the queue was materialized, mark that entry `unavailable`, do not present or score it, leave completed attempts unchanged, do not reorder the queue, and continue deterministically to the next pending entry.
+
+Update the same Warmup visit and its graph point after each completed self-assessment. An unanswered prompt does not affect accuracy or adaptive state. Consecutive-correct streaks belong to the child mastery state and persist across Warmup visits until a transition resets them. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review begins unless that profile is `optional` and the child explicitly chooses **Skip Warmup**. Completing a pre-activity Warmup automatically enters the primary activity the child originally selected. Once that primary activity begins, the finalized Warmup visit cannot reopen. An unfinished standalone Warmup remains available to resume; if the child explicitly ends it, retain the assessed items and mark the visit partial rather than erasing it. Completing a resumed visit changes that same record to completed instead of creating a duplicate graph point.
 
 ### Future baseline DT assessment and long-term maintenance
 
@@ -299,7 +333,7 @@ The word/context/repeated-word audio sequence uses one-second pauses. Warmup use
 
 Persistence on interruption is lifecycle-specific:
 
-- **Warmup:** Save each completed self-assessment immediately, including its source bucket and source word/dataset identity. Preserve partial-session history, attempted count, accuracy, and adaptive-state changes. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review path continues unless the child explicitly chooses Skip Warmup. A started but unanswered prompt is not counted and may restart. A skipped Warmup creates no result.
+- **Warmup:** Save each completed self-assessment immediately, including its source bucket and source word/dataset identity. Preserve partial-session history, attempted count, accuracy, and adaptive-state changes. An unfinished pre-activity Warmup resumes before its associated Acquisition or Test Review path continues unless its profile is `optional` and the child explicitly chooses **Skip Warmup**. A started but unanswered prompt is not counted and may restart. Where skipping is permitted, a skipped Warmup creates no result.
 - **Acquisition:** Save every completed trial and the exact next teaching position as described in Acquisition continuity and persistence. Resume later from that point. A started but unfinished trial may restart without rolling back earlier completed work.
 - **Test Review 1 or 2:** Keep answers provisional until every required target in that review has been assessed. If the child leaves, refreshes, signs out, or otherwise abandons the review, discard its temporary answers and do not create a score, adaptive-state update, or completed Test Review record. The child may also explicitly choose **Skip Test Review** before or during the activity; save any completed Warmup results, create no Test Review answer or score, and record the activity outcome as `skipped`, not `completed`. Previously completed sessions remain intact. A metadata-only abandonment audit may be retained, but it must not contain or count provisional answers as results.
 
@@ -340,7 +374,7 @@ Following Tier 2 reading, begin a separate English spelling dictation section us
 
 The primary metric is percentage correct. Acquisition creates one score per visit when the child selects **Done for today**, using only the hidden weekly-target responses assessed in that visit; a visit with no such responses creates no weekly score. Test Review creates a dataset score only after every required target in that review has been completed and reviewed. Abandoned or explicitly skipped Test Review answers create no score.
 
-Warmup does not create a per-dataset score. It has its own line graph with one point per Warmup visit that contains at least one completed self-assessment. Each point records the local date, Warmup type, target item count, attempted item count, correct item count, percentage correct, and `partial` or `completed` status. The graph must display the attempted-versus-target count so a short partial Warmup is not presented as equivalent to a completed six- or sixteen-item Warmup. Preserve the source category of each attempt so the history can also distinguish Random Rotation, Recent Review, and Errored Word performance. Filters or separate series may show monthly Random Rotation accuracy without losing the complete Warmup history.
+Warmup does not create a per-dataset score. It has its own line graph with one point per Warmup visit that contains at least one completed self-assessment. Each point records the local date, Warmup type, configured maximum, assigned queue size, attempted item count, correct item count, percentage correct, and `partial` or `completed` status. Percentage uses attempted count—not configured maximum, assigned count, or unique terms—as its denominator. The graph must display attempted versus assigned so a completed short queue is not mistaken for an abandoned visit. Preserve each attempt's original source bucket so later transitions do not rewrite its historical classification. Monthly Mastery Rotation accuracy is a required derived report calculated from attempt history whose original source bucket was `mastery-rotation`; it must not replace or discard the complete visit and attempt history.
 
 Show a separate history graph for every permanent weekly dataset, ordered newest first, with each score point labeled by activity and date. Acquisition may span several daily visits but remains attached to one stable dataset progression; each **Done for today** visit with at least one hidden weekly-target response adds its own score point.
 
@@ -385,7 +419,7 @@ These stages describe the product scope. The implementation order for the curren
 
 ### Stage 1 — Practice prototype and durable learning state
 
-Build the practice experience with canonical importer-derived fixtures and reviewed date-range datasets, skippable pre-activity Warmup, Acquisition and configured Test Review lifecycle phases, randomized words, audio, Replay, phase timers, interstitials, right/wrong review controls, visit-appropriate scores, legacy migration, and separate graphs. Do not use handwritten production sample vocabulary or silent fallback datasets. Persist partial Warmup attempts and Warmup graph points. Persist Acquisition as an exact multi-day teaching progression. Collect Tier 1 DT correctness in a separate observation stream without changing weekly-target scores. Keep abandoned or skipped Test Review work unscored.
+Build the practice experience with canonical importer-derived fixtures and reviewed date-range datasets, profile-controlled pre-activity Warmup, Acquisition and configured Test Review lifecycle phases, randomized words, audio, Replay, phase timers, interstitials, right/wrong review controls, visit-appropriate scores, legacy migration, and separate graphs. Do not use handwritten production sample vocabulary or silent fallback datasets. Persist partial Warmup attempts and Warmup graph points. Persist Acquisition as an exact multi-day teaching progression. Collect Tier 1 DT correctness in a separate observation stream without changing weekly-target scores. Keep abandoned or skipped Test Review work unscored.
 
 ### Stage 2 — Accounts and data
 
@@ -430,6 +464,16 @@ refactor/acquisition-strategy-boundary
         ↓ merge
 refactor/acquisition-transition-boundary
         ↓ merge
+refactor/domain-contracts-boundary
+        ↓ merge
+refactor/warmup-boundary
+        ↓ merge
+docs/adaptive-warmup-model-plan
+        ↓ merge
+refactor/adaptive-warmup-model
+        ↓ merge
+feature/persistent-warmup-visits
+        ↓ merge
 feature/grade5-source-profile
         ↓ merge
 feature/grade5-lifecycle-strategy
@@ -438,10 +482,10 @@ feature/kindergarten-sheets-adapter
         ↓ merge
 feature/kindergarten-lifecycle-profile
         ↓ merge
-feature/persistent-warmup
-        ↓ merge
 feature/persistent-acquisition
 ```
+
+Warmup compatibility cleanup is deliberately not the next automatic branch after activation. After the migration window and operational gates described below have passed, create `refactor/warmup-facade-cleanup` from the then-current `main` to retire dormant compatibility code and supported legacy reads.
 
 After persistent Acquisition merges, the DT-baseline, handwriting, reward, and Tier 2 modules branch from that updated shared foundation rather than from a Grade 2, Grade 5, or Kindergarten feature branch:
 
@@ -523,7 +567,90 @@ Goal: centralize how one reviewed answer becomes the next teaching flow and a st
 
 Acceptance gate: every pre-extraction golden transition remains unchanged; weekly-target and DT classifications remain distinct through Earned-DT Correction; the existing stored representation and cloud behavior are unchanged; and all tests and the production build pass.
 
-### Phase 2 — Grade 5 source profile
+### Domain contracts boundary
+
+Branch: `refactor/domain-contracts-boundary`, merged before the Warmup extraction.
+
+Goal: give source-neutral modules access to the foundational `Word` and `Dataset` contracts without importing the `domain.ts` compatibility facade.
+
+- Move only the foundational contracts to `src/domain/contracts.ts` and re-export them through `domain.ts`.
+- Preserve every field, public import, runtime object, and stored JSON shape.
+- Keep application state and feature-specific contracts outside this foundational module.
+- Enforce the dependency direction with an architecture test covering all TypeScript-family files under `src/domain/`.
+
+Acceptance gate: no behavior or storage change, exact compatibility exports remain available, and the importer depends on the foundational contracts rather than the domain facade.
+
+### Adaptive Warmup compatibility boundary
+
+Branch: `refactor/warmup-boundary`, merged before this documentation reconciliation.
+
+Goal: mechanically extract the current Grade 2 Warmup algorithm from `domain.ts` without approving or changing its legacy behavior.
+
+- Move the current contracts and pure selection/transition behavior into `src/warmup/`.
+- Keep lifecycle resolution, sessions, scoring, persistence, hydration, reporting, React, and Firestore outside the Warmup engine.
+- Preserve public names, stored shapes, current IDs, current fill order, and current repetition behavior behind compatibility wrappers.
+- Label characterization tests as evidence that the extraction changed nothing, not as approval of the legacy product rules.
+- Preserve the legacy Adaptive Warmup branch until every useful assertion has been inventoried and classified as approved behavior, compatibility-only evidence, or obsolete behavior. Recreate approved evidence in the current architecture before deleting the branch; do not merge or cherry-pick it wholesale.
+
+Acceptance gate: the current runtime output remains identical, `domain.ts` remains a compatibility facade, forbidden dependencies are blocked, and no UI, persistence, lifecycle, or child-facing behavior changes.
+
+### Adaptive Warmup state model
+
+Branch: `refactor/adaptive-warmup-model`, created from updated `main` after this documentation branch merges.
+
+Goal: implement the approved Adaptive Warmup identity, evidence, scheduling, and migration logic as a pure, unused model before any production storage or child-facing cutover.
+
+- Add the exact `mastery-normalizer-v1` normalizer and a deterministic mastery-term ID derived from module, tier, language, and normalized term. Use a path-safe encoding or digest rather than raw vocabulary in storage paths, persist the canonical tuple beside the ID, and detect collisions or tuple mismatches.
+- Preserve all weekly occurrences as provenance while combining repeated occurrences into one mastery term within the same learning module.
+- Keep mastery eligibility, child evidence, scheduling bucket, and visit state as separate concepts.
+- Add pure active-term suppression, final-review initialization, exactly-once occurrence integration, Warmup transitions, allocation, shortage filling, and rotation behavior.
+- Define a deterministic, idempotent raw v2-to-v3 migration that returns a report, quarantines unresolved metadata, and leaves the original record untouched on failure.
+- Infer missing module, tier, or language only from trusted canonical Grade 2 Tier 1 writing data; quarantine unknown or conflicting records.
+- Keep the model unused by `App.tsx`, local storage, cloud storage, Firestore rules, and the current Warmup engine in this branch.
+
+Acceptance gate: pure tests cover identity and collision checks, module separation, final-stage eligibility, active suppression, repeated occurrences, evidence initialization, transitions, exact allocations, shortage priority, no duplicates, rotation exhaustion, deterministic migration, quarantine, and idempotency. Grade 5 final-stage tests use a synthetic multi-review strategy and must not register or activate a production Grade 5 lifecycle implementation. Migration preserves unrelated children, grades, modules, orphaned historical records, historical results, and active-term ineligibility; malformed entries are quarantined individually rather than invalidating unrelated records. The app remains on state version 2 and produces no new child-facing behavior or new-format writes.
+
+### Persistent Warmup visits and model activation
+
+Branch: `feature/persistent-warmup-visits`, created only after the pure Adaptive Warmup model merges.
+
+Goal: activate the approved model through safe versioned local and cloud persistence and make every reviewed Warmup response durable.
+
+- Back up and restore-test current data before the cutover. Dispatch migration from the raw stored version, validate the complete converted result before replacement, and preserve the raw record when conversion fails.
+- Introduce versioned Warmup storage with dual-read migration support. After a record converts successfully, write only the new version. Keep supported legacy readers throughout the migration window; this branch does not retire them.
+- Materialize each queue with stable visit, queue-entry, attempt, and transition IDs; queue entries use explicit `pending`, `answered`, or `unavailable` status.
+- Revalidate every pending entry immediately before presentation. If the same normalized term + module + tier + language has become active, mark the entry unavailable, do not present or score it, preserve completed attempts and queue order, and advance deterministically.
+- Use expected and next revisions for the visit and mastery state. The same transition ID and payload is an idempotent no-op; a reused ID with a different payload is rejected; stale device revisions are rejected or explicitly reconciled.
+- Atomically update the attempt, mastery transition, queue position, visit summary, and graph point.
+- Persist `in_progress`, `partial`, `completed`, and `skipped` visits. Skipping before an answer creates no result or graph point; continuing after responses finalizes a partial result.
+- Resume the exact next unanswered position without duplicating attempts, consuming shuffle state twice, or creating a second graph point.
+- Expose an independent standalone Warmup entry point and retain the Grade 2 development-time option to skip a pre-activity Warmup.
+- Update local validators, cloud validators, and Firestore security rules for the new mastery, visit, attempt, and transition records. Enforce family and child ownership; valid path-safe mastery, visit, attempt, and transition identities; allowed visit and queue-entry statuses; valid expected-to-next revision transitions; idempotent duplicate handling; stale-write rejection; and cross-family access rejection.
+- Add Firebase Emulator coverage proving valid owned writes succeed while malformed IDs, invalid status or revision transitions, conflicting duplicate transitions, stale writes, and cross-family reads or writes are rejected. Add rendered-browser test infrastructure before claiming cloud and UI acceptance.
+
+Acceptance gate: local and cloud migration, raw-record preservation on failure, exact resumption, idempotent retry, stale-device conflict behavior, security-rule ownership and validation, cross-family rejection, one graph point per visit, short completed queues, skip-before-answer, partial continuation, and standalone entry all pass without Acquisition, lifecycle, Test Review, or weekly-score regressions.
+
+One presentation-level decision remains for this branch: when a mastery term has several linked source occurrences with different context sentences, choose the approved occurrence used for its prompt and audio. The current recommendation is the newest mastery-eligible occurrence.
+
+### Final Warmup facade cleanup
+
+Branch: `refactor/warmup-facade-cleanup`, created from the then-current `main` only after the production migration window has elapsed.
+
+Goal: remove dormant legacy Warmup writers, readers, and compatibility paths only after the activated model has been proven recoverable with real data.
+
+This branch may begin only after:
+
+- Real child data has been backed up without authentication credentials.
+- A restore test has successfully recovered children, datasets, mastery state, visits, attempts, scores, and exact resumable positions.
+- Migration telemetry reports successful conversions and identifies or resolves every quarantined record.
+- The supported migration window has elapsed and no old client is still writing the legacy format.
+- Rollback criteria and the retained recovery artifact are documented.
+
+The cleanup removes superseded legacy writers first, then retires legacy readers and obsolete compatibility exports whose usage is proven absent. It must not delete historical results, unresolved quarantined data, or the recovery backup.
+
+Acceptance gate: production telemetry and restore evidence satisfy every prerequisite; all active clients read and write only the approved version; the complete test, Emulator, build, and rendered-browser gates pass; and rollback remains possible from the verified backup.
+
+### Grade 5 source profile
 
 Branch: `feature/grade5-source-profile`
 
@@ -550,11 +677,11 @@ Goal: consume validated Grade 5 progression events through the source-neutral li
 - Freeze every cohort during no-slide weeks and after malformed, duplicate-only, or conflicting source steps.
 - Use Week 4 as the activation baseline without inventing earlier review cohorts.
 - Keep Test Review 1 and Test Review 2 behaviorally identical except for lifecycle label and selected cohort.
-- Configure each Grade 5 primary pathway to offer its own skippable six-word Warmup and configure both Test Review stages with the approved 10-second timer and Skip Timer behavior.
+- Configure each Grade 5 primary pathway to offer its own six-word Warmup and configure both Test Review stages with the approved 10-second timer and Skip Timer behavior. Grade 5's `preActivityWarmupRequirement` remains undecided and must be approved explicitly before activation; it must not inherit Grade 2's development-time `optional` setting.
 
 Acceptance gate: each valid event advances exactly one stage; a conference gap advances zero stages; the next valid event advances only once; a mismatched confirmation freezes progression; all three primary paths offer distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort; the Grade 2 golden matrix remains unchanged.
 
-### Phase 3 — Kindergarten Sheets adapter
+### Kindergarten Sheets adapter
 
 Branch: `feature/kindergarten-sheets-adapter`
 
@@ -581,21 +708,7 @@ Goal: register Kindergarten lifecycle behavior only after the deferred date, rol
 
 Acceptance gate: the approved Kindergarten date and progression matrices pass, unsupported or unresolved source units fail closed, and enabling Kindergarten does not rewrite any other grade's datasets, assignments, or history.
 
-### Phase 4 — Persistent Warmup and analytics
-
-Branch: `feature/persistent-warmup`
-
-Goal: preserve partial Warmup work through a grade- and module-aware shared contract.
-
-- Persist the materialized target order, source buckets, current position, completed self-assessments, partial/completed status, and graph point.
-- Keep Tier 1 writing and Tier 2 reading Warmup state separate.
-- Preserve the current Grade 2 counts, quotas, promotion thresholds, shuffle bag, and audio behavior behind the Grade 2 profile.
-- Configure Grade 5 pre-activity Warmups at exactly six words, make them skippable, and expose standalone Warmup independently for every grade. Seed at least six eligible items through the versioned Established DT bootstrap profile while requiring explicit decisions for Grade 5's standalone count, bucket quotas, and promotion thresholds. Require Kindergarten to adopt or override every teaching parameter explicitly.
-- Keep Test Review answers provisional and unrelated to durable partial Warmup results.
-
-Acceptance gate: partial Warmup history survives restart without duplicate graph points or shuffle-bag consumption; every grade exposes standalone Warmup independently; each Grade 5 primary pathway materializes a distinct six-word pre-activity Warmup that may be skipped without a result; the interim bootstrap profile provides at least six module-specific DT records without creating weekly datasets; Grade 2 behavior is unchanged; and unsupported grade/module policies fail closed.
-
-### Phase 5 — Persistent Acquisition and grade lifecycle strategies
+### Persistent Acquisition and grade lifecycle strategies
 
 Branch: `feature/persistent-acquisition`
 
@@ -854,12 +967,15 @@ Already implemented:
 - A source-neutral lifecycle strategy boundary with an explicit Grade 2 replacement-driven strategy, a compatibility wrapper for existing callers, and no cross-grade fallback. Grade 5 still requires its own validated progression-event strategy before activation; see `docs/lifecycle-strategy-boundary.md`.
 - A generic, pure Acquisition strategy boundary with a Grade 2 single-owner strategy, exact domain compatibility wrappers, frozen pre-extraction fixtures, and no persistence or child-facing changes; see `docs/acquisition-strategy-boundary.md`.
 - A persistence-neutral Acquisition transition boundary that captures the answered prompt and returns the exact next flow plus an optional classified assessment, while preserving existing session answers, local checkpoints, cloud payloads, stored schemas, scoring, and child-facing behavior; see `docs/acquisition-transition-boundary.md`.
+- A dependency-light foundational contract boundary for `Word` and `Dataset`, with compatibility re-exports and an architecture gate covering TypeScript-family files under `src/domain/`.
+- A mechanically extracted Warmup compatibility boundary in `src/warmup/`. It preserves the current Grade 2 runtime and stored shapes; its legacy categories, shortage order, and repetition behavior are extraction evidence rather than the approved future Adaptive Warmup contract.
 - Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
-- Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
+- Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
 Required revisions before a production pilot:
 
-- Replace the remaining incomplete-Warmup cleanup behavior with durable partial Warmup records. Exact Acquisition resumption and abandoned/skipped Test Review isolation are now implemented.
+- Implement the approved Adaptive Warmup state model as a pure, unused boundary before activating it: long-term mastery-term identity, separate evidence and scheduling state, active-term suppression, exactly-once occurrence integration, approved allocation and no-repeat rules, and a deterministic reported v2-to-v3 migration.
+- After the pure model is merged, activate it through revision-aware persistent Warmup visits. Replace the remaining incomplete-Warmup cleanup behavior with durable materialized queues and atomic attempt, mastery, visit, and graph-point transitions. Exact Acquisition resumption and abandoned/skipped Test Review isolation are already implemented.
 - Add the full Warmup history line graph with target, attempted, correct, percentage, and partial/completed data.
 - Introduce the canonical source boundary, validate the latest Grade 5 table roles, and add the Kindergarten Sheets adapter without guessing deferred date rules.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
