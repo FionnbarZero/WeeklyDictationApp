@@ -54,6 +54,15 @@ test('an unsupported grade shows an explicit setup state while preserving histor
   assert.match(source, /function UnsupportedPracticeView[\s\S]*onClick=\{onHistory\}>View progress/)
 })
 
+test('lifecycle classification is independent from practice availability and has no date fallback', () => {
+  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  assert.match(source, /const lifecycleStrategy = lifecycleStrategyForGradeAndSchoolYear/)
+  assert.match(source, /lifecycleStrategy \? resolveDatasetLifecycles/)
+  assert.doesNotMatch(source, /practiceProfile \? resolveDatasetLifecycles/)
+  assert.match(source, /requireDatasetLifecycle\(lifecycleResolution, dataset\.id\)/)
+  assert.doesNotMatch(source, /lifecycleResolution\.lifecycleByDatasetId\[dataset\.id\] \|\|/)
+})
+
 test('Acquisition UI reveals every trial and visibly distinguishes only show-and-copy prompts', () => {
   const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
   assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\), currentRevealMethod: revealMethod, stage: 'review'/)

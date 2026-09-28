@@ -1,10 +1,12 @@
 import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
 import type { SupportedGrade } from './config.ts'
+import { schoolYearToken } from './curriculum/identity.ts'
 import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
 import type { WritingPracticeProfile } from './practice/profiles/model.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
 import { resolveLifecycle } from './lifecycle/registry.ts'
+import { practicePhaseForStage } from './lifecycle/stageMapping.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
@@ -366,7 +368,7 @@ function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
   return {
     datasetId: dataset.id,
     grade: dataset.grade,
-    schoolYear: dataset.schoolYear,
+    schoolYearKey: schoolYearToken(dataset.schoolYear),
     activationDate: dataset.startDate,
     instructionalEndDate: dataset.endDate,
     kind: dataset.isWritingWorkshop ? 'no-instruction' : 'vocabulary',
@@ -374,9 +376,16 @@ function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
 }
 
 function compatibilityLifecycle(stage: CurriculumStage): DatasetLifecycle {
-  if (stage.kind === 'test-review') return 'test-review'
+  const practicePhase = practicePhaseForStage(stage)
+  if (practicePhase === 'acquisition' || practicePhase === 'test-review') return practicePhase
   if (stage.kind === 'mastery') return 'mastered'
   return stage.kind
+}
+
+export function requireDatasetLifecycle(resolution: DatasetLifecycleResolution, datasetId: string): DatasetLifecycle {
+  const lifecycle = resolution.lifecycleByDatasetId[datasetId]
+  if (!lifecycle) throw new Error(`Canonical dataset ${datasetId} has no lifecycle assignment.`)
+  return lifecycle
 }
 
 // Grade 2 compatibility wrapper. Callers pass one grade and school-year
@@ -385,10 +394,15 @@ export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date())
   const canonical = uniqueCanonicalDatasets(datasets)
   if (canonical.length === 0) return emptyDatasetLifecycleResolution()
   const [{ grade, schoolYear }] = canonical
-  if (canonical.some((dataset) => dataset.grade !== grade || dataset.schoolYear !== schoolYear)) {
+  const schoolYearKey = schoolYearToken(schoolYear)
+  if (canonical.some((dataset) => dataset.grade !== grade || schoolYearToken(dataset.schoolYear) !== schoolYearKey)) {
     throw new Error('Lifecycle resolution requires one grade and school-year collection.')
   }
-  const resolution = resolveLifecycle({ grade, schoolYear, currentDateKey: localDateKey(date) }, canonical.map(lifecycleSetForDataset))
+  const resolution = resolveLifecycle({
+    scope: { grade, schoolYearKey, currentDateKey: localDateKey(date) },
+    sets: canonical.map(lifecycleSetForDataset),
+    progressionEvents: [],
+  })
   const datasetsById = new Map(canonical.map((dataset) => [dataset.id, dataset]))
   const datasetsForIds = (ids: string[]) => ids.map((id) => datasetsById.get(id)).filter((dataset): dataset is Dataset => Boolean(dataset))
   const lifecycleByDatasetId = Object.fromEntries(Object.entries(resolution.assignmentByDatasetId).map(([datasetId, assignment]) => [datasetId, compatibilityLifecycle(assignment.stage)]))
@@ -405,8 +419,7 @@ export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date())
 }
 
 export function datasetLifecycle(dataset: Dataset, datasets: Dataset[], date = new Date()): DatasetLifecycle {
-  return resolveDatasetLifecycles(datasets, date).lifecycleByDatasetId[dataset.id]
-    || (dataset.startDate > localDateKey(date) ? 'future' : dataset.isWritingWorkshop ? 'no-instruction' : 'mastered')
+  return requireDatasetLifecycle(resolveDatasetLifecycles(datasets, date), dataset.id)
 }
 
 export function getActiveLifecycleDatasets(datasets: Dataset[], date = new Date()) {
@@ -419,12 +432,12 @@ export function sortDatasetsNewestFirst(datasets: Dataset[]) {
 }
 
 export function filterDatasetsForChild(datasets: Dataset[], grade: string, schoolYear: string) {
-  const schoolYearKey = (value: string) => {
-    const years = [...value.matchAll(/20\d{2}/g)].map((match) => Number(match[0]))
-    return years.length >= 2 ? `${years[0]}-${String(years[1]).slice(-2)}` : years.length === 1 ? `${years[0]}-${String(years[0] + 1).slice(-2)}` : value
-  }
-  const requestedYear = schoolYearKey(schoolYear)
-  return sortDatasetsNewestFirst(datasets.filter((dataset) => isCanonicalDataset(dataset) && dataset.grade === grade && schoolYearKey(dataset.schoolYear) === requestedYear))
+  let requestedYear: string
+  try { requestedYear = schoolYearToken(schoolYear) } catch { return [] }
+  return sortDatasetsNewestFirst(datasets.filter((dataset) => {
+    if (!isCanonicalDataset(dataset) || dataset.grade !== grade) return false
+    try { return schoolYearToken(dataset.schoolYear) === requestedYear } catch { return false }
+  }))
 }
 
 export function nextGrade(grade: string) {
@@ -483,7 +496,8 @@ export function deriveChildWordStates(options: { grade: string; schoolYear?: str
   const profile = requirePracticeProfileForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
-  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!options.schoolYear || dataset.schoolYear === options.schoolYear))
+  const requestedSchoolYear = options.schoolYear ? schoolYearToken(options.schoolYear) : null
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!requestedSchoolYear || schoolYearToken(dataset.schoolYear) === requestedSchoolYear))
   const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
   const datasetsById = new Map(gradeDatasets.map((dataset) => [dataset.id, dataset]))
   const existingByWordId = new Map((options.existingStates || []).filter((state) => state.childId === options.childId).map((state) => [state.wordId, state]))
