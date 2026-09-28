@@ -426,6 +426,10 @@ refactor/canonical-source-boundary
         ↓ merge
 refactor/lifecycle-strategy-boundary
         ↓ merge
+refactor/acquisition-strategy-boundary
+        ↓ merge
+refactor/acquisition-transition-boundary
+        ↓ merge
 feature/grade5-source-profile
         ↓ merge
 feature/grade5-lifecycle-strategy
@@ -490,6 +494,34 @@ Goal: extract lifecycle assignment from `domain.ts` behind source-neutral contra
 - Document Grade 5's future validated progression-event requirement without implementing Grade 5 parsing, vocabulary, or behavior in this branch.
 
 Acceptance gate: the complete Grade 2 golden lifecycle output and object identity remain unchanged, unsupported or mixed scopes fail explicitly, all existing tests and the production build pass, and the branch adds no Google access, Firestore execution, Grade 5 parsing, Kindergarten parsing, or new child-facing behavior.
+
+### Acquisition strategy boundary
+
+Branch: `refactor/acquisition-strategy-boundary`, created from updated `main` after the lifecycle strategy boundary merged.
+
+Goal: extract the existing Acquisition teaching algorithm from `domain.ts` behind generic, source-neutral contracts without changing behavior, public APIs, or stored flow data.
+
+- Freeze the pre-extraction Grade 2 flow with checked-in golden fixtures covering serialized output, prompt and target IDs, timers, sequences, edge-case no-ops, resume behavior, exact public signatures, and the 50/50 DT boundary.
+- Move generic target, target-set, strategy, prompt, and flow contracts into `src/acquisition/contracts.ts`.
+- Move the pure teaching state machine and shuffle-bag behavior into `src/acquisition/engine.ts`; pass the strategy as an argument rather than importing a concrete grade.
+- Make `grade2AcquisitionStrategy` the single owner of its version, timers, sequences, DT observation mode, and complete Established DT targets with stable IDs and metadata.
+- Keep `src/domain.ts` as a compatibility facade over complete `Word` objects and retain scoring policy, including `shouldRecordAcquisitionAnswer`, outside the engine.
+- Keep the existing stored structure and application orchestration unchanged. Document the boundary in `docs/acquisition-strategy-boundary.md`.
+
+Acceptance gate: the extracted engine and compatibility wrappers reproduce the checked-in pre-extraction fixtures exactly; the Grade 2 practice profile references the canonical strategy by object identity; the engine and strategy import only neutral Acquisition contracts; all existing tests and the production build pass; and the final diff contains no changes to `App.tsx`, Firestore clients or rules, or persistence schemas.
+
+### Acquisition transition boundary
+
+Branch: `refactor/acquisition-transition-boundary`, created from updated `main` after the Acquisition strategy boundary merged.
+
+Goal: centralize how one reviewed answer becomes the next teaching flow and a storage-neutral optional assessment without redesigning persistence.
+
+- Return the next flow together with an optional assessment containing only prompt, target-occurrence, correctness, scoring classification, DT-pool classification, and reveal-method facts.
+- Keep child, family, session, timestamp, dataset-envelope, and storage details in an application coordinator rather than the pure engine.
+- Preserve existing public behavior, stored schemas, cloud writes, and exact flow compatibility.
+- Defer migrations, revision checks, atomic Firestore writes, malformed-record recovery, and concurrent-device conflict handling to `feature/persistent-acquisition`.
+
+Acceptance gate: every pre-extraction golden transition remains unchanged; weekly-target and DT classifications remain distinct through Earned-DT Correction; the existing stored representation and cloud behavior are unchanged; and all tests and the production build pass.
 
 ### Phase 2 — Grade 5 source profile
 
@@ -777,9 +809,9 @@ Rollout order:
 
 Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosting, family isolation, lifecycle-specific cross-device persistence, and a controlled dataset import for every grade included in the pilot must work first.
 
-## Next approved implementation — Grade 5 source profile
+## Next approved implementation — Acquisition transition boundary
 
-After the canonical source and lifecycle strategy boundaries merge, the next implementation is `feature/grade5-source-profile`. It adds and validates only the approved Grade 5 source structure and progression-event inputs. Grade 5 lifecycle behavior remains a separate reviewed strategy step, and Kindergarten, persistent Warmup, and persistent Acquisition follow only through the approved dependency sequence above.
+After the Acquisition strategy boundary merges, the next implementation is `refactor/acquisition-transition-boundary`. It centralizes the neutral answer-to-transition result while preserving existing persistence and application behavior. Grade 5 source work follows only after that structural boundary; persistence redesign remains deferred to `feature/persistent-acquisition`.
 
 ## Deferred features
 
@@ -820,6 +852,7 @@ Already implemented:
 - An idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck.
 - Replacement-driven Grade 2 lifecycle assignment that remains stable through weekends and source gaps, moves only older cohorts into Mastered, excludes Acquisition and Test Review words from Warmup, ignores writing-workshop and invalid source units as replacements, and preserves Firestore ownership rules in `firestore.rules`.
 - A source-neutral lifecycle strategy boundary with an explicit Grade 2 replacement-driven strategy, a compatibility wrapper for existing callers, and no cross-grade fallback. Grade 5 still requires its own validated progression-event strategy before activation; see `docs/lifecycle-strategy-boundary.md`.
+- A generic, pure Acquisition strategy boundary with a Grade 2 single-owner strategy, exact domain compatibility wrappers, frozen pre-extraction fixtures, and no persistence or child-facing changes; see `docs/acquisition-strategy-boundary.md`.
 - Grade 2 Acquisition strategy v2 with Established and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
 - Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, skippable Warmup, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 
