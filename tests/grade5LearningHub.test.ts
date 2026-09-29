@@ -8,6 +8,7 @@ import {
   type Grade5HubActivity,
   type Grade5HubSection,
 } from '../src/grade5Lab/learningHub.ts'
+import { grade5LearningHubView } from '../src/grade5Lab/learningHubView.ts'
 
 function loadFixture(): SlidesPresentationPayload {
   return JSON.parse(readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
@@ -172,4 +173,26 @@ test('unavailable cohorts remain visible with disabled activities and explanatio
   assert.ok(test1.unavailableReason)
   assert.ok(test2.activities.every((item) => item.availability === 'unavailable'))
   assert.ok(review.activities.every((item) => item.availability === 'unavailable'))
+})
+
+test('the Grade 5 adapter preserves content and launch requests in the shared Learning Hub contract', () => {
+  const view = grade5LearningHubView(model())
+
+  assert.equal(view.profileLabel, 'Grade 5')
+  assert.deepEqual(view.sections.map((item) => item.id), [
+    'homework',
+    'test-review-1',
+    'test-review-2',
+    'review',
+  ])
+  const homework = view.sections[0]
+  assert.equal(homework?.cohorts[0]?.groups[0]?.label, 'Tier 1 · Writing')
+  assert.equal(homework?.cohorts[0]?.groups[1]?.label, 'Tier 2 · Reading')
+  const writing = homework?.activities.find((item) => item.id === 'acquisition-writing')
+  assert.equal(writing?.action.kind, 'launch')
+  if (writing?.action.kind === 'launch') {
+    assert.equal(writing.action.launch.requests[0]?.learningChannel, 'tier-1-writing')
+  }
+  const reading = homework?.activities.find((item) => item.id === 'acquisition-reading')
+  assert.equal(reading?.action.kind, 'disabled')
 })

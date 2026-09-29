@@ -1,0 +1,80 @@
+.learning-hub-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 72px; border-bottom: 1px solid #e5e0d8; }
+.learning-hub-brand { display: inline-flex; align-items: center; gap: 9px; color: #29303a; font-size: 15px; font-weight: 800; }
+.learning-hub-brand > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; background: #e9826f; font-family: serif; font-size: 17px; }
+.learning-hub-profile { padding: 8px 13px; border: 1px solid #e5e0d8; border-radius: 999px; color: #655b71; background: #fff; font-size: 11px; font-weight: 800; }
+.learning-hub-eyebrow { margin: 0 0 8px; color: rgb(41 48 58 / 64%); font-size: .72rem; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+.learning-hub-welcome { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 46px 0 28px; }
+.learning-hub-welcome h1 { max-width: 800px; margin: 6px 0 14px; font-size: clamp(2.8rem, 7vw, 5.1rem); line-height: .96; letter-spacing: -.055em; }
+.learning-hub-welcome h1 em { color: #e06855; font-family: Georgia, serif; font-weight: 500; }
+.learning-hub-welcome > div > p:last-child { max-width: 640px; margin: 0; color: #69717e; line-height: 1.6; }
+.learning-hub-seal { display: grid; place-items: center; width: 116px; height: 116px; flex: 0 0 auto; border: 1px solid #e6d8ae; border-radius: 50%; color: #645c42; background: #fff7d7; box-shadow: inset 0 0 0 9px rgb(255 255 255 / 58%); font-family: serif; font-size: 43px; }
+.learning-hub-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 290px; padding: clamp(30px, 6vw, 58px); overflow: hidden; border-radius: 32px; color: #fff; background: linear-gradient(145deg, #6040a8, #9162d0 60%, #d084bd); box-shadow: 0 22px 54px rgb(84 47 132 / 20%); }
+.learning-hub-hero h2 { margin: 8px 0 14px; font-size: clamp(2.5rem, 6vw, 4.6rem); line-height: .98; letter-spacing: -.045em; }
+.learning-hub-hero h2 span { color: #fff0a9; }
+.learning-hub-hero p:last-child { max-width: 590px; margin: 0; line-height: 1.62; }
+.learning-hub-hero .learning-hub-eyebrow { color: rgb(255 255 255 / 76%); }
+.learning-hub-hero-mark { align-self: center; color: rgb(255 255 255 / 16%); font-family: serif; font-size: clamp(9rem, 23vw, 15rem); line-height: .8; }
+.learning-hub-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; margin: 48px 0 21px; }
+.learning-hub-section-heading h2, .learning-hub-activity-heading h2 { margin: 3px 0 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; letter-spacing: -.035em; }
+.learning-hub-section-heading > span { color: #737a84; font-size: .72rem; font-weight: 750; }
+.learning-hub-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.learning-hub-section-card { position: relative; display: flex; min-height: 300px; padding: 29px; overflow: hidden; flex-direction: column; align-items: flex-start; border: 0; border-radius: 27px; color: #29303a; text-align: left; cursor: pointer; box-shadow: 0 14px 32px rgb(60 48 65 / 10%); transition: transform .18s ease, box-shadow .18s ease; }
+.learning-hub-section-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 19px 38px rgb(60 48 65 / 14%); }
+.learning-hub-section-card:focus-visible, .learning-hub-action:focus-visible, .learning-hub-back:focus-visible { outline: 4px solid #f2bd3f; outline-offset: 3px; }
+.learning-hub-section-card:disabled { cursor: not-allowed; filter: saturate(.45); opacity: .68; }
+.learning-hub-theme-gold { background: linear-gradient(145deg, #fff0bd, #f5cd69); }
+.learning-hub-theme-blue { background: linear-gradient(145deg, #e4effb, #c9dcf2); }
+.learning-hub-theme-violet { background: linear-gradient(145deg, #f0e9fa, #c9b7ec); }
+.learning-hub-theme-green { background: linear-gradient(145deg, #e2f2e7, #c5e2cf); }
+.learning-hub-section-number, .learning-hub-activity-number { position: absolute; top: 21px; right: 22px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: rgb(255 255 255 / 58%); font-family: Georgia, serif; font-size: 19px; }
+.learning-hub-section-card > strong { max-width: 390px; margin-top: 8px; font-family: Georgia, serif; font-size: clamp(1.9rem, 4vw, 2.5rem); font-weight: 500; letter-spacing: -.045em; line-height: 1.03; }
+.learning-hub-section-card > span:not(.learning-hub-section-number):not(.learning-hub-eyebrow) { max-width: 430px; margin-top: 13px; color: rgb(41 48 58 / 72%); font-size: .78rem; line-height: 1.6; }
+.learning-hub-section-card > small { margin-top: auto; padding: 7px 10px; border-radius: 999px; background: rgb(255 255 255 / 55%); color: rgb(41 48 58 / 72%); font-size: .67rem; font-weight: 750; }
+.learning-hub-section-card > b { margin-top: 15px; font-size: .78rem; }
+.learning-hub-detail { padding-top: 34px; background: transparent; }
+.learning-hub-back { min-height: 40px; margin-bottom: 26px; padding: 8px 13px; border: 0; border-radius: 999px; color: #59417f; background: #eee6f7; cursor: pointer; font-weight: 850; }
+.learning-hub-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 25px; margin-bottom: 24px; }
+.learning-hub-detail-heading h1 { max-width: 780px; margin: 4px 0 8px; font-size: clamp(2.6rem, 6vw, 4rem); letter-spacing: -.05em; line-height: 1; }
+.learning-hub-detail-heading p:last-child { max-width: 680px; margin: 0; color: #69717e; line-height: 1.6; }
+.learning-hub-section-mark { display: grid; place-items: center; width: 70px; height: 70px; flex: 0 0 auto; border-radius: 50%; background: rgb(255 255 255 / 72%); font-family: Georgia, serif; font-size: 30px; }
+.learning-hub-cohorts { display: grid; gap: 14px; }
+.learning-hub-cohort { padding: 25px; border: 1px solid #e5e0d8; border-radius: 22px; background: #fff; box-shadow: 0 10px 25px rgb(35 49 57 / 5%); }
+.learning-hub-cohort-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.learning-hub-cohort-heading h2 { margin: 3px 0 0; font-family: Georgia, serif; font-size: 1.8rem; font-weight: 500; }
+.learning-hub-cohort-heading > span { padding: 7px 10px; border-radius: 999px; color: #695991; background: #f1ebfa; font-size: .66rem; font-weight: 800; }
+.learning-hub-word-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.learning-hub-word-group { padding: 15px; border-radius: 15px; background: #f8f5ef; }
+.learning-hub-word-label { margin: 0 0 10px; color: #69717e; font-size: .66rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.learning-hub-word-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.learning-hub-word-list span { display: grid; place-items: center; min-width: 45px; min-height: 45px; padding: 6px 10px; border-radius: 12px; background: #fff; font-family: serif; font-size: 1.45rem; box-shadow: 0 3px 9px rgb(35 49 57 / 4%); }
+.learning-hub-source-details { margin-top: 14px; color: #69717e; font-size: .68rem; }
+.learning-hub-source-details summary { cursor: pointer; font-weight: 750; }
+.learning-hub-source-details > p { overflow-wrap: anywhere; }
+.learning-hub-source-details .learning-hub-word-group { margin-top: 10px; }
+.learning-hub-unavailable { margin: 0; padding: 18px; border-radius: 15px; color: #69717e; background: #f1eee8; }
+.learning-hub-activity-heading { margin: 41px 0 18px; }
+.learning-hub-activity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.learning-hub-activity { position: relative; display: flex; min-height: 330px; padding: 28px; overflow: hidden; flex-direction: column; align-items: flex-start; border-radius: 24px; box-shadow: 0 14px 30px rgb(35 49 57 / 7%); }
+.learning-hub-activity-icon { font-size: 31px; line-height: 1; }
+.learning-hub-activity .learning-hub-eyebrow { margin-top: 15px; }
+.learning-hub-activity h3 { margin: 6px 0 10px; font-family: Georgia, serif; font-size: 1.95rem; font-weight: 500; letter-spacing: -.04em; }
+.learning-hub-activity > p:not(.learning-hub-eyebrow) { min-height: 58px; margin: 0 0 18px; color: rgb(41 48 58 / 72%); font-size: .78rem; line-height: 1.58; }
+.learning-hub-activity-note { display: block; margin: auto 0 10px; color: #5d6670; font-size: .68rem; line-height: 1.45; }
+.learning-hub-action { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 13px; color: #29303a; background: #fffdf9; cursor: pointer; font-weight: 850; text-align: center; text-decoration: none; box-shadow: 0 5px 14px rgb(35 49 57 / 8%); }
+.learning-hub-action:hover:not(:disabled) { transform: translateY(-1px); }
+.learning-hub-action:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 760px) {
+  .learning-hub-topbar { min-height: 62px; }
+  .learning-hub-welcome { padding-top: 30px; }
+  .learning-hub-seal, .learning-hub-section-mark, .learning-hub-section-heading > span { display: none; }
+  .learning-hub-hero { grid-template-columns: 1fr; min-height: 360px; border-radius: 24px; }
+  .learning-hub-hero-mark { position: absolute; right: 16px; bottom: 2px; }
+  .learning-hub-section-heading, .learning-hub-detail-heading, .learning-hub-cohort-heading { display: grid; }
+  .learning-hub-section-grid, .learning-hub-word-groups, .learning-hub-activity-grid { grid-template-columns: 1fr; }
+  .learning-hub-section-card { min-height: 270px; padding: 25px; }
+  .learning-hub-activity { min-height: 310px; padding: 25px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .learning-hub-section-card, .learning-hub-action { transition: none; }
+  .learning-hub-section-card:hover:not(:disabled), .learning-hub-action:hover:not(:disabled) { transform: none; }
+}

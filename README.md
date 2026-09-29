@@ -17,11 +17,11 @@ Without Firebase variables, the app runs only as a clearly local development/dem
 When the Vite development server is running, these isolated pages can be opened directly:
 
 - `/grade5-source-harness.html` — inspect the trusted Grade 5 source fixture.
-- `/grade5-learning-hub.html` — test the Grade 5 child lab.
+- `/grade5-learning-hub.html` — test the Grade 5 child lab through the shared Kindergarten-inspired Learning Hub UI.
 - `/kindergarten-source-harness.html` — inspect the trusted Kindergarten Sheets fixture and Monday–Sunday normalization.
 - `/kindergarten-learning-lab.html` — test **Enter the Dojo**, weekly Tier 1 writing, unscored Tier 2 reading, and the explicit Unit 1 review fixture.
 
-The lab pages are not linked from `index.html` or `App.tsx`, do not register production practice profiles, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only.
+The lab pages are not linked from `index.html` or `App.tsx`, do not register production practice profiles, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only. The grade-neutral Learning Hub presentation boundary is documented in [`docs/shared-learning-hub-ui.md`](./docs/shared-learning-hub-ui.md); grade lifecycle, source parsing, and practice engines remain outside it.
 
 ## Firebase setup
 
@@ -124,7 +124,7 @@ The current Warmup selection and transition algorithm has been mechanically extr
 
 The approved next model separates curriculum occurrences, mastery eligibility, child evidence, scheduling buckets, and visit progress. Repeated weekly occurrences will link to one long-term mastery term within the same activity module, vocabulary tier, and language; writing and reading remain separate skills. The approved scheduling buckets are Recent Entry, Needs Attention, and Mastery Rotation. Ordinary Warmups will use unique terms, prioritize shortage filling from Needs Attention, then Recent Entry, then Mastery Rotation, and complete with a shorter queue when the eligible pool is small.
 
-This model is planned, not active. The next implementation branch will build and test it as an unused pure model without changing `App.tsx`, local or cloud storage, Firestore rules, or child-facing behavior. A later persistent-visits branch will perform the versioned migration, activate durable queues and per-answer checkpoints, provide exact resumption and one graph point per visit, and expose standalone Warmup independently.
+This future model has been built and tested as an unused pure model without changing `App.tsx`, local or cloud storage, Firestore rules, or child-facing behavior. It is not active in production. A later persistent-visits branch will perform the versioned migration, activate durable queues and per-answer checkpoints, provide exact resumption and one graph point per visit, and expose standalone Warmup independently.
 
 ## Checks
 
