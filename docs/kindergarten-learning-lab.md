@@ -19,19 +19,19 @@ The lab creates an ephemeral target set whose ID starts with `__kindergarten-lab
 - belongs to the Kindergarten Sheets profile;
 - has an assigned Monday–Sunday week and canonical occurrence identities;
 - has at least one Tier 1 target; and
-- is blocked only by `kindergarten_activation_policy_unresolved`.
+- is a valid canonical source candidate with no error blockers.
 
-The original source candidate remains malformed. The ephemeral dataset is never sent through canonical import, application hydration, lifecycle resolution, or persistence.
+The original source candidate remains unchanged. The ephemeral dataset is never sent through application hydration or persistence.
 
 ## Deliberate limitations
 
-- No production Kindergarten practice or lifecycle profile is registered.
+- The production lifecycle and writing-practice profiles are registered, but the source release flag remains inactive.
 - No active week is inferred.
 - No Warmup policy is assumed or simulated.
 - No Tier 2 assessment engine, microphone capture, score, or progress record exists.
-- Unit 1 dates are a clearly named lab fixture, not a production unit-boundary source.
-- The Test Review timer and cumulative presentation are lab behavior, not an approved production lifecycle.
+- Unit 1 dates are explicit in both the lab fixture and the lifecycle profile; they are not inferred from workbook order.
+- The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
 - Refreshing or leaving discards all lab state.
 - The lab does not import Firebase/Firestore code or use browser storage.
 
-Production activation still requires an approved rollover event and timezone, empty-tab/no-instruction behavior, authoritative unit boundaries, Warmup rules, Tier 2 assessment policy, trusted sync deployment, and lifecycle matrices.
+The production path now has an explicit optional-Warmup profile, shared Tier 1 Acquisition, cumulative per-source-week Test Review persistence, Dojo presentation labels, an unscored Tier 2 teaching module, and child-facing integration tests. Activation still requires trusted sync deployment and a deliberate release review; empty tabs remain blocked until their machine-readable meaning is approved. A scored Tier 2 assessment remains a separate future capability.

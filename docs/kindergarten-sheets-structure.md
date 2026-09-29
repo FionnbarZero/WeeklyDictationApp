@@ -20,16 +20,18 @@ The observed Mandarin curriculum is stored in multiline cells. `Writing characte
 
 Every Kindergarten cycle starts Monday and ends the following Sunday. The adapter interprets the month/day in the tab title within the configured school year, moves backward to the previous-or-same Monday, and assigns the following Sunday as the end. Thus the Tuesday `09/08` tab after Labor Day belongs to the `09/07–09/13` cycle. The calculation does not inspect neighboring tabs.
 
-## Deliberately blocked activation
+## Validated source with an inactive release gate
 
-The adapter creates source-neutral candidates with workbook/tab provenance and normalized dates, then marks every candidate malformed with `kindergarten_activation_policy_unresolved`. Empty tabs additionally receive `kindergarten_no_instruction_unresolved`. Consequently, no candidate can pass canonical production import yet.
+Vocabulary-bearing tabs now become canonical source-neutral candidates with workbook/tab provenance and normalized dates. The Kindergarten lifecycle activates a vocabulary cycle on its Monday, holds the latest available teaching set across a missing replacement, and groups every arrived Unit 1 set into one cumulative review. Unit 1 is explicitly configured as August 31 through September 27; its boundary is never inferred from tab order or an empty tab.
+
+Validated vocabulary candidates can now become canonical source-neutral datasets that preserve Tier 1, Tier 2, Tier 3, workbook provenance, tab provenance, and the content fingerprint. Tier 1 remains the shared writing-practice compatibility view. The Kindergarten writing profile and child-facing integration are implemented, but the source registry entry remains inactive, so these datasets cannot yet enter normal child practice.
+
+Empty tabs still receive `kindergarten_no_instruction_unresolved` and remain malformed because the workbook has no approved machine-readable no-instruction marker.
 
 Still unresolved:
 
-- the trusted event and timezone that activate a new cycle;
-- how an empty newest tab affects the last vocabulary cohort;
-- where cumulative unit boundaries and end-of-unit review membership come from;
-- Kindergarten Warmup requirements and full Tier 2 assessment behavior;
+- an approved machine-readable meaning for empty tabs such as review or no instruction;
+- full Tier 2 assessment, recording, and scoring behavior beyond the unscored look-listen-say teaching module;
 - the trusted production sync deployment and administrator authorization.
 
 The authenticated Node inspector uses OAuth and Google Sheets read endpoints only. The browser source lab uses the checked-in fixture or a user-selected local JSON file; it never contacts Google, hydrates application state, or writes Firestore. The fixture transcribes observed tab metadata and relevant Mandarin cells and is not a production data seed.

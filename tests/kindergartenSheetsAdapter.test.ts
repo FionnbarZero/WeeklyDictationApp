@@ -26,7 +26,7 @@ test('the Kindergarten source is registered but cannot activate production pract
     sourceDocumentId: KINDERGARTEN_SHEETS_ID,
     parserProfileId: kindergartenSheetsProfile.id,
     sourceAdapterId: kindergartenSheetsProfile.sourceAdapterId,
-    practiceProfileId: 'kindergarten-unimplemented',
+    practiceProfileId: 'kindergarten-tier-1-writing-practice',
     active: false,
   })
   assert.equal(kindergartenSheetsSourceAdapter.sourceType, 'google-sheets')
@@ -72,12 +72,14 @@ test('weekly tab dates normalize to the containing Monday-through-Sunday cycle',
   })
 })
 
-test('normalized Kindergarten candidates remain non-activatable while lifecycle policy is unresolved', () => {
-  assert.ok(candidates.every((candidate) => candidate.status === 'malformed'))
+test('vocabulary candidates become canonical while empty tabs remain blocked and production stays inactive', () => {
   assert.ok(candidates.every((candidate) => candidate.datasetId !== null && candidate.assignedWeek !== null))
   assert.ok(candidates.every((candidate) => candidate.instructionalRole === 'unassigned'))
-  assert.ok(candidates.every((candidate) => candidate.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_activation_policy_unresolved')))
   assert.ok(candidates.every((candidate) => !candidate.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_date_policy_unresolved')))
+
+  const vocabularyUnits = candidates.filter((candidate) => candidate.tier1.length > 0 || candidate.tier2.length > 0)
+  assert.ok(vocabularyUnits.every((candidate) => candidate.status === 'valid'))
+  assert.ok(vocabularyUnits.every((candidate) => !candidate.validationOutcomes.some((outcome) => outcome.severity === 'error')))
 
   const emptyUnits = candidates.filter((candidate) => candidate.tier1.length === 0 && candidate.tier2.length === 0)
   assert.deepEqual(emptyUnits.map((candidate) => candidate.rawDate), ['Week 7 09/28', 'Week 2 08/24', 'Week 1 08/17'])
@@ -128,9 +130,10 @@ test('the dry-run summary exposes normalized dates, vocabulary, and activation b
   const summary = kindergartenSheetsDryRunSummary(candidates)
   assert.equal(summary.mode, 'read-only-dry-run')
   assert.equal(summary.datePolicy, 'monday-through-sunday')
-  assert.equal(summary.activation, 'blocked-pending-kindergarten-activation-policy')
+  assert.equal(summary.activation, 'inactive-source-registry')
   assert.equal(summary.sourceDocumentId, KINDERGARTEN_SHEETS_ID)
   assert.equal(summary.sourceUnitCount, 7)
   assert.equal(summary.vocabularyUnitCount, 4)
-  assert.ok(summary.units.every((unit) => unit.blockers.includes('kindergarten_activation_policy_unresolved')))
+  assert.ok(summary.units.filter((unit) => unit.tier1.length > 0).every((unit) => unit.blockers.length === 0))
+  assert.ok(summary.units.filter((unit) => unit.tier1.length === 0).every((unit) => unit.blockers.includes('kindergarten_no_instruction_unresolved')))
 })

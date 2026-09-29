@@ -7,7 +7,7 @@ import { isCanonicalDataset } from './slidesImporter.ts'
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
 export type FamilyRecord = { id: string; ownerParentId: string; createdAt: string; updatedAt: string }
 export type ChildProfile = { id: string; nickname: string; grade: string; schoolYear: string; active: boolean; gradeEffectiveDate: string; createdAt: string; updatedAt: string }
-export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
+export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
 export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete'; countsTowardWeeklyScore?: boolean; acquisitionKind?: string }
 export type CloudAdaptiveState = { childId: string; childWordStates: ChildWordState[]; monthlyRotationScores: MonthlyRotationScore[]; rotationCycleId: number; updatedAt: string }
 
@@ -21,7 +21,7 @@ function documentValue(value: unknown): FirestoreValue {
   if (typeof value === 'number') return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value }
   if (typeof value === 'string') return { stringValue: value }
   if (Array.isArray(value)) return { arrayValue: { values: value.map(documentValue) } }
-  return { mapValue: { fields: Object.fromEntries(Object.entries(value).map(([key, item]) => [key, documentValue(item)])) } }
+  return { mapValue: { fields: Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined).map(([key, item]) => [key, documentValue(item)])) } }
 }
 function plainValue(value: FirestoreValue): unknown {
   if ('stringValue' in value) return value.stringValue
@@ -32,7 +32,7 @@ function plainValue(value: FirestoreValue): unknown {
   if ('arrayValue' in value) return (value.arrayValue?.values || []).map(plainValue)
   return Object.fromEntries(Object.entries(value.mapValue?.fields || {}).map(([key, item]) => [key, plainValue(item)]))
 }
-function encodeFields(value: Record<string, unknown>) { return { fields: Object.fromEntries(Object.entries(value).map(([key, item]) => [key, documentValue(item)])) } }
+function encodeFields(value: Record<string, unknown>) { return { fields: Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined).map(([key, item]) => [key, documentValue(item)])) } }
 function decodeDocument<T>(document: FirestoreDocument): T { return Object.fromEntries(Object.entries(document.fields || {}).map(([key, item]) => [key, plainValue(item)])) as T }
 function docPath(parts: string[]) { return parts.map((part) => encodeURIComponent(part)).join('/') }
 
@@ -163,7 +163,7 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
   const distractorTargetObservations = rawDtObservations
     .filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (String(observation.poolType) === 'familiar' || String(observation.poolType) === 'established' || observation.poolType === 'earned'))
     .map(normalizeDistractorTargetObservation)
-  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions, distractorTargetObservations }
+  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions, distractorTargetObservations }
 }
 
 export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress'): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> { const now = new Date(); return { id, childId, sessionDate: now.toISOString(), localDate: new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIME_ZONE }).format(now), startedAt: now.toISOString(), primaryPhase, datasetId, warmupOnly: false, warmupStatus } }

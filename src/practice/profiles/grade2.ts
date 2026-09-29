@@ -5,6 +5,7 @@ export const grade2PracticeProfile = {
   id: 'grade-2-writing-practice',
   version: 2,
   grade: 'Grade 2',
+  preActivityWarmupRequirement: 'optional',
   lifecycle: {
     primaryWarmupTrials: 6,
     warmupTargetSize: 16,

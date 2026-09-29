@@ -14,6 +14,7 @@ import { classifyWeeklyDatasetCandidates, type CandidateClassificationDecision, 
 import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity.ts'
 import type { CandidateStatus, InstructionalRole, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import type { Dataset, Word } from './domain/contracts.ts'
+import { isSourceNeutralCanonicalDataset } from './curriculum/datasetProjection.ts'
 
 export type { ExistingDatasetReference } from './curriculum/classification.ts'
 
@@ -165,6 +166,7 @@ export function profileForDeckId(sourceDeckId: string) {
 }
 
 export function isCanonicalDataset(dataset: Dataset) {
+  if (dataset.source) return isSourceNeutralCanonicalDataset(dataset)
   const profile = profileForDataset(dataset)
   if (!profile || dataset.id !== datasetIdFor(profile, dataset)) return false
   if (dataset.sourceDeckId !== profile.sourceDeckId || !dataset.sourceSlideId || (dataset.importStatus !== 'valid' && dataset.importStatus !== 'writing-workshop') || typeof dataset.isWritingWorkshop !== 'boolean') return false

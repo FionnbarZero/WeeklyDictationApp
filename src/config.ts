@@ -1,6 +1,7 @@
 import { schoolYearToken } from './curriculum/identity.ts'
 import type { CurriculumSourceType } from './curriculum/model.ts'
 import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
+import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 
 export const APP_VERSION = '0.2.0-stage2'
@@ -35,9 +36,20 @@ export type DeckRegistryEntry = CurriculumSourceRegistryEntry
 export const SOURCE_REGISTRY: CurriculumSourceRegistryEntry[] = [
   { grade: 'Grade 2', displayName: 'Grade 2', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE2_DECK_ID, parserProfileId: 'grade-2-2026-27-weekly-focus', sourceAdapterId: 'grade-2-google-slides', practiceProfileId: grade2PracticeProfile.id, active: true },
   { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: 'grade-5-unimplemented', active: false },
-  { grade: 'Kindergarten', displayName: 'Kindergarten', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-sheets', sourceDocumentId: KINDERGARTEN_SHEETS_ID, parserProfileId: 'kindergarten-2026-27-weekly-focus', sourceAdapterId: 'kindergarten-google-sheets-v1', practiceProfileId: 'kindergarten-unimplemented', active: false },
+  { grade: 'Kindergarten', displayName: 'Kindergarten', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-sheets', sourceDocumentId: KINDERGARTEN_SHEETS_ID, parserProfileId: 'kindergarten-2026-27-weekly-focus', sourceAdapterId: 'kindergarten-google-sheets-v1', practiceProfileId: kindergartenWritingPracticeProfile.id, active: false },
 ]
 export const DECK_REGISTRY = SOURCE_REGISTRY
+
+export function productionSourceIsActive(grade: string | null | undefined, schoolYear: string | null | undefined) {
+  if (!grade || !schoolYear) return false
+  let requestedYear: string
+  try { requestedYear = schoolYearToken(schoolYear) } catch { return false }
+  return SOURCE_REGISTRY.some((source) =>
+    source.active
+      && source.grade === grade
+      && schoolYearToken(source.schoolYear) === requestedYear,
+  )
+}
 
 export { schoolYearToken }
 

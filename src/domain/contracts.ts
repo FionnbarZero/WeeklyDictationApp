@@ -11,6 +11,19 @@ export type Word = {
   audio?: { storagePath?: string; voice?: string; generatedAt?: string }
 }
 
+export type DatasetSourceMetadata = {
+  sourceType: 'google-slides' | 'google-sheets'
+  sourceDocumentId: string
+  sourceUnitId: string
+  adapterId: string
+}
+
+export type DatasetVocabulary = {
+  tier1: Word[]
+  tier2: Word[]
+  tier3: Word[]
+}
+
 export type Dataset = {
   id: string
   dateRange: string
@@ -26,4 +39,10 @@ export type Dataset = {
   isWritingWorkshop?: boolean
   importedAt?: string
   lifecycle?: { firstAvailableAt?: string; masteredAt?: string }
+  /** Source-neutral provenance for datasets created through the canonical boundary. */
+  source?: DatasetSourceMetadata
+  contentFingerprint?: string
+  instructionalRole?: 'weekly-acquisition' | 'current-confirmation' | 'next-week-preview' | 'unassigned'
+  /** All normalized source tiers. `words` remains the Tier 1 compatibility view. */
+  vocabulary?: DatasetVocabulary
 }

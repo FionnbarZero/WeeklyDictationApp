@@ -46,6 +46,11 @@ export type LifecycleAssignment = {
 export type LifecycleReviewAssignment = {
   datasetId: string
   cycle: number
+  /**
+   * Source-neutral identity for a cumulative review that contains more than
+   * one canonical dataset. Omitted for ordinary one-dataset review stages.
+   */
+  reviewGroupId?: string
 }
 
 export type LifecycleResolution = {

@@ -115,11 +115,6 @@ function activationBlockers(
       message: 'The sheet title does not contain a real date in the observed Kindergarten weekly-tab convention.',
     })
   }
-  outcomes.push({
-    code: 'kindergarten_activation_policy_unresolved',
-    severity: 'error',
-    message: 'The Monday–Sunday display cycle is normalized, but Kindergarten lifecycle activation is not approved.',
-  })
   if (tier1Count === 0 && tier2Count === 0) {
     outcomes.push({
       code: 'kindergarten_no_instruction_unresolved',
