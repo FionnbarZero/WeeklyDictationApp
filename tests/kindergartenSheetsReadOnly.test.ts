@@ -33,7 +33,8 @@ test('read-only Sheets inspection authenticates, fetches, and normalizes without
   assert.deepEqual(candidates[0].assignedWeek, { startDate: '2026-09-21', endDate: '2026-09-27' })
   assert.deepEqual(candidates[0].tier1.map((term) => term.text), ['九', '十', '白'])
   assert.deepEqual(candidates[0].tier2.map((term) => term.text), ['红色', '蓝色'])
-  assert.equal(candidates[0].status, 'malformed')
+  assert.equal(candidates[0].status, 'valid')
+  assert.ok(!candidates[0].validationOutcomes.some((outcome) => outcome.severity === 'error'))
 })
 
 test('read-only inspection rejects an unregistered spreadsheet before authentication', async () => {

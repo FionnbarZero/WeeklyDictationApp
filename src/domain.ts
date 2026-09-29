@@ -81,6 +81,8 @@ export type CompletedSession = {
   childId: string
   sessionDate: string
   primaryDatasetId: string
+  primaryDatasetIds?: string[]
+  reviewGroupId?: string
   primaryPhase: PrimaryPhase
   complete: boolean
   outcome?: 'completed' | 'skipped'
@@ -183,6 +185,8 @@ export type PracticeSession = {
   childId: string
   grade: string
   primaryDatasetId: string
+  primaryDatasetIds?: string[]
+  reviewGroupId?: string
   primaryPhase: PrimaryPhase
   segment: 'warmup' | 'primary'
   stage: 'warmup-intro' | 'interstitial' | 'dictation' | 'review' | 'complete'
@@ -202,6 +206,13 @@ export type PracticeSession = {
   testReviewSkipped?: boolean
   warmupOnly?: boolean
   cloudSessionId?: string
+}
+
+export type PracticeTarget = {
+  dataset: Dataset
+  phase: PrimaryPhase
+  reviewGroupId?: string
+  reviewDatasets?: Dataset[]
 }
 
 export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'acquisition' | 'queue' | 'index'>) {
@@ -270,6 +281,7 @@ export function dateIsBetween(date: Date, start: Date, end: Date) {
 export type DatasetLifecycleResolution = {
   acquisition: Dataset | null
   testReview: Dataset | null
+  testReviewGroups: Array<{ id: string; cycle: number; datasets: Dataset[] }>
   mastered: Dataset[]
   masteredAtByDatasetId: Record<string, string>
   future: Dataset[]
@@ -286,7 +298,7 @@ function uniqueCanonicalDatasets(datasets: Dataset[]) {
 }
 
 function emptyDatasetLifecycleResolution(): DatasetLifecycleResolution {
-  return { acquisition: null, testReview: null, mastered: [], masteredAtByDatasetId: {}, future: [], noInstruction: [], lifecycleByDatasetId: {} }
+  return { acquisition: null, testReview: null, testReviewGroups: [], mastered: [], masteredAtByDatasetId: {}, future: [], noInstruction: [], lifecycleByDatasetId: {} }
 }
 
 function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
@@ -331,10 +343,20 @@ export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date())
   const datasetsById = new Map(canonical.map((dataset) => [dataset.id, dataset]))
   const datasetsForIds = (ids: string[]) => ids.map((id) => datasetsById.get(id)).filter((dataset): dataset is Dataset => Boolean(dataset))
   const lifecycleByDatasetId = Object.fromEntries(Object.entries(resolution.assignmentByDatasetId).map(([datasetId, assignment]) => [datasetId, compatibilityLifecycle(assignment.stage)]))
+  const groupedReviews = new Map<string, { id: string; cycle: number; datasets: Dataset[] }>()
+  for (const review of resolution.testReviews) {
+    if (!review.reviewGroupId) continue
+    const dataset = datasetsById.get(review.datasetId)
+    if (!dataset) continue
+    const group = groupedReviews.get(review.reviewGroupId) || { id: review.reviewGroupId, cycle: review.cycle, datasets: [] }
+    group.datasets.push(dataset)
+    groupedReviews.set(review.reviewGroupId, group)
+  }
 
   return {
     acquisition: resolution.acquisitionDatasetId ? datasetsById.get(resolution.acquisitionDatasetId) || null : null,
     testReview: datasetsById.get(resolution.testReviews.find((review) => review.cycle === 1)?.datasetId || '') || null,
+    testReviewGroups: [...groupedReviews.values()],
     mastered: datasetsForIds(resolution.masteryDatasetIds),
     masteredAtByDatasetId: resolution.masteredAtByDatasetId,
     future: datasetsForIds(resolution.futureDatasetIds),
@@ -444,7 +466,7 @@ export function createPracticeSessionForTarget(options: {
   id: string
   childId: string
   grade: string
-  target: { dataset: Dataset; phase: PrimaryPhase } | null
+  target: PracticeTarget | null
   warmup: WarmupSelection
   startedAt: string
   cloudSessionId?: string
@@ -454,6 +476,13 @@ export function createPracticeSessionForTarget(options: {
   requirePracticeProfileForGrade(options.grade)
   const random = options.random || Math.random
   const target = options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop ? options.target : null
+  const reviewDatasets = target?.phase === 'test-review' && target.reviewDatasets?.length
+    ? target.reviewDatasets
+    : target ? [target.dataset] : []
+  const primaryDatasetIds = [...new Set(reviewDatasets.map((dataset) => dataset.id))]
+  const primaryQueue = target?.phase === 'test-review'
+    ? reviewDatasets.flatMap((dataset) => dataset.words)
+    : target?.dataset.words || []
   const primaryDatasetId = target?.dataset.id || options.warmup.words[0]?.datasetId || 'warmup-only'
   const warmupCategoryByWordId = Object.fromEntries(options.warmup.words.map((word) => [
     word.id,
@@ -464,12 +493,14 @@ export function createPracticeSessionForTarget(options: {
     childId: options.childId,
     grade: options.grade,
     primaryDatasetId,
+    primaryDatasetIds: primaryDatasetIds.length ? primaryDatasetIds : primaryDatasetId === 'warmup-only' ? [] : [primaryDatasetId],
+    reviewGroupId: target?.reviewGroupId,
     primaryPhase: target?.phase || 'acquisition',
     segment: 'warmup',
     stage: 'warmup-intro',
     queue: shuffleSessionWords(options.warmup.words, random),
     warmupQueue: options.warmup.words,
-    primaryQueue: target?.dataset.words || [],
+    primaryQueue,
     index: 0,
     startedAt: options.startedAt,
     warmupAnswers: [],
@@ -737,14 +768,22 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: true }
   }) : []
-  const primaryDataset = state.datasets.find((dataset) => dataset.id === session.primaryDatasetId)
   const scores: DatasetScore[] = []
+  const primaryDatasets = (session.primaryDatasetIds?.length ? session.primaryDatasetIds : [session.primaryDatasetId])
+    .map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId))
+    .filter((dataset): dataset is Dataset => Boolean(dataset))
+  const primaryDataset = primaryDatasets.find((dataset) => dataset.id === session.primaryDatasetId)
   if (complete && primaryDataset && primaryDataset.words.length > 0) {
     if (session.primaryPhase === 'acquisition' && session.acquisition?.complete && scoredPrimaryAnswers.length > 0) {
       scores.push(makeScore(session, primaryDataset, scoredPrimaryAnswers, session.primaryPhase, sessionDate))
     } else {
       const latestPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
-      if (latestPrimaryAnswers.length === primaryDataset.words.length && primaryDataset.words.every((word) => latestPrimaryAnswers.some((answer) => answer.word.id === word.id))) scores.push(makeScore(session, primaryDataset, latestPrimaryAnswers, session.primaryPhase, sessionDate))
+      for (const dataset of primaryDatasets) {
+        const datasetAnswers = latestPrimaryAnswers.filter((answer) => answer.word.datasetId === dataset.id)
+        if (datasetAnswers.length === dataset.words.length && dataset.words.every((word) => datasetAnswers.some((answer) => answer.word.id === word.id))) {
+          scores.push(makeScore(session, dataset, datasetAnswers, session.primaryPhase, sessionDate))
+        }
+      }
     }
   }
   const safeScores = scores.filter((score) => !state.scores.some((existing) => existing.id === score.id))
@@ -761,7 +800,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const datasetScope = datasetScopeById.get(item.datasetId)
     return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
-  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
+  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
 }
 
 function latestAnswerPerWord(answers: SessionAnswer[]) {
@@ -810,7 +849,7 @@ export function commitPartialSession(state: AppState, session: PracticeSession, 
     next = { ...next, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...next.rotationCycles, [session.childId]: materialized.rotationCycleId } }
   }
   if (!next.completedSessions.some((record) => record.id === session.id)) {
-    next = { ...next, completedSessions: [...next.completedSessions, { id: session.id, childId: session.childId, sessionDate: localDateKey(now), primaryDatasetId: session.primaryDatasetId, primaryPhase: 'acquisition', complete: true, outcome: 'completed' }] }
+    next = { ...next, completedSessions: [...next.completedSessions, { id: session.id, childId: session.childId, sessionDate: localDateKey(now), primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, primaryPhase: 'acquisition', complete: true, outcome: 'completed' }] }
   }
   return next
 }

@@ -18,6 +18,7 @@ import {
 } from '../src/kindergartenLab/acquisitionLab.ts'
 import { kindergartenWritingLabProfile } from '../src/kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab } from '../src/kindergartenLab/unitReview.ts'
+import { kindergartenWritingPracticeProfile } from '../src/practice/profiles/kindergarten.ts'
 import { practiceProfileForGrade } from '../src/practice/profiles/registry.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/kindergarten-workbook.json', import.meta.url), 'utf8')) as Omit<SheetsWorkbookPayload, 'sourceType'>
@@ -64,16 +65,18 @@ test('Kindergarten owns a distinct strategy with behavior equivalent to Grade 2 
   assert.deepEqual(semanticTrace(kindergartenAcquisitionStrategy), semanticTrace(grade2AcquisitionStrategy))
 })
 
-test('the Kindergarten profile is lab-owned and absent from the production registry', () => {
+test('the Kindergarten lab profile stays isolated from the registered production profile', () => {
   assert.equal(kindergartenWritingLabProfile.grade, 'Kindergarten')
   assert.equal(kindergartenWritingLabProfile.warmup, 'not-connected')
   assert.strictEqual(kindergartenWritingLabProfile.acquisition, kindergartenAcquisitionStrategy)
-  assert.equal(practiceProfileForGrade('Kindergarten'), null)
+  assert.strictEqual(practiceProfileForGrade('Kindergarten'), kindergartenWritingPracticeProfile)
+  assert.notStrictEqual(kindergartenWritingLabProfile, kindergartenWritingPracticeProfile)
+  assert.equal(kindergartenWritingPracticeProfile.preActivityWarmupRequirement, 'optional')
 })
 
-test('only a source-inspected vocabulary tab blocked solely by activation policy can enter the lab', () => {
+test('only a canonical source-inspected vocabulary tab can enter the lab', () => {
   const candidate = week6()
-  assert.equal(candidate.status, 'malformed')
+  assert.equal(candidate.status, 'valid')
   assert.equal(kindergartenCandidateIsUsableInLab(candidate), true)
 
   const targetSet = kindergartenAcquisitionTargetSet(candidate)

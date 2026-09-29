@@ -37,6 +37,36 @@ test('cloud hydration drops attempts that point outside canonical datasets or se
   assert.deepEqual(state.results.map((result) => result.id), ['valid'])
 })
 
+test('cloud hydration preserves validated cumulative-review scope and ignores malformed optional metadata', () => {
+  const grouped: CloudSession = {
+    id: 'grouped-review',
+    childId: 'maya',
+    familyId: 'family-maya',
+    sessionDate: '2026-09-27T12:00:00.000Z',
+    localDate: '2026-09-27',
+    startedAt: '2026-09-27T12:00:00.000Z',
+    primaryPhase: 'test-review',
+    datasetId: dataset.id,
+    datasetIds: [dataset.id, 'missing-dataset'],
+    reviewGroupId: 'unit-1',
+    status: 'completed',
+    warmupStatus: 'skipped',
+    applicationVersion: 'test',
+  }
+  const malformed: CloudSession = {
+    ...grouped,
+    id: 'malformed-review-metadata',
+    datasetIds: {} as never,
+    reviewGroupId: {} as never,
+  }
+  const state = cloudDataToAppState([dataset], [], [grouped, malformed], [], 'maya', 'Grade 2')
+
+  assert.deepEqual(state.completedSessions[0].primaryDatasetIds, [dataset.id])
+  assert.equal(state.completedSessions[0].reviewGroupId, 'unit-1')
+  assert.equal(state.completedSessions[1].primaryDatasetIds, undefined)
+  assert.equal(state.completedSessions[1].reviewGroupId, undefined)
+})
+
 test('cloud hydration restores owned Acquisition progression and DT observations', () => {
   const flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   const progression = { id: `maya::${dataset.id}::tier-1-writing`, childId: 'maya', datasetId: dataset.id, grade: 'Grade 2', flow, updatedAt: '2026-09-23T12:01:00.000Z' }

@@ -2,10 +2,12 @@ import { schoolYearToken } from '../curriculum/identity.ts'
 import type { LifecycleContext, LifecycleScope, LifecycleStrategy } from './contracts.ts'
 import { grade2ReplacementLifecycleStrategy } from './strategies/grade2ReplacementStrategy.ts'
 import { grade5ProgressionLifecycleStrategy } from './strategies/grade5ProgressionStrategy.ts'
+import { kindergartenUnitLifecycleStrategy } from './strategies/kindergartenUnitStrategy.ts'
 
 const lifecycleStrategies: readonly LifecycleStrategy[] = [
   grade2ReplacementLifecycleStrategy,
   grade5ProgressionLifecycleStrategy,
+  kindergartenUnitLifecycleStrategy,
 ]
 
 export function lifecycleStrategyForScope(scope: Pick<LifecycleScope, 'grade' | 'schoolYearKey'>) {

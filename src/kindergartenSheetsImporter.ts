@@ -57,7 +57,7 @@ export function kindergartenSheetsDryRunSummary(candidates: WeeklyDatasetCandida
     sourceType: 'google-sheets' as const,
     mode: 'read-only-dry-run' as const,
     datePolicy: 'monday-through-sunday' as const,
-    activation: 'blocked-pending-kindergarten-activation-policy' as const,
+    activation: 'inactive-source-registry' as const,
     sourceUnitCount: units.length,
     vocabularyUnitCount: units.filter((unit) => unit.tier1.length > 0 || unit.tier2.length > 0).length,
     units,

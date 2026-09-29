@@ -25,8 +25,6 @@ export type KindergartenAcquisitionLabState = {
   assessments: AcquisitionAssessment<AcquisitionTarget, KindergartenLabRevealMethod>[]
 }
 
-const permittedLabBlockers = new Set(['kindergarten_activation_policy_unresolved'])
-
 export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandidate) {
   const blockers = candidate.validationOutcomes
     .filter((outcome) => outcome.severity === 'error')
@@ -37,8 +35,8 @@ export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandi
     && Boolean(candidate.datasetId && candidate.assignedWeek)
     && candidate.tier1.length > 0
     && candidate.tier1.every((target) => Boolean(target.targetOccurrenceId))
-    && blockers.length > 0
-    && blockers.every((blocker) => permittedLabBlockers.has(blocker))
+    && candidate.status === 'valid'
+    && blockers.length === 0
 }
 
 function ephemeralDatasetId(candidate: WeeklyDatasetCandidate) {
@@ -47,7 +45,7 @@ function ephemeralDatasetId(candidate: WeeklyDatasetCandidate) {
 
 export function kindergartenAcquisitionTargetSet(candidate: WeeklyDatasetCandidate): AcquisitionTargetSet<AcquisitionTarget> {
   if (!kindergartenCandidateIsUsableInLab(candidate)) {
-    throw new Error('Kindergarten Acquisition lab requires one inspected vocabulary tab blocked only by production activation policy.')
+    throw new Error('Kindergarten Acquisition lab requires one canonical inspected vocabulary tab from the registered Sheets profile.')
   }
   const datasetId = ephemeralDatasetId(candidate)
   return {
