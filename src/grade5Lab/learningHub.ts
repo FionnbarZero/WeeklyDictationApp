@@ -18,7 +18,8 @@ export type Grade5ActivityLaunchRequest = {
   stage: Grade5HubStage
   learningChannel: Grade5LearningChannel
   activityKind: Grade5ActivityKind
-  requiredWarmup: boolean
+  warmupMaximum: number | null
+  preActivityWarmupRequirement: 'undecided' | 'not-applicable'
 }
 
 export type Grade5CohortSummary = {
@@ -83,7 +84,8 @@ function launchRequest(
     stage,
     learningChannel,
     activityKind,
-    requiredWarmup: true,
+    warmupMaximum: 6,
+    preActivityWarmupRequirement: 'undecided',
   }
 }
 
@@ -98,7 +100,8 @@ function masteryLaunchRequest(
     stage: 'mastery',
     learningChannel,
     activityKind,
-    requiredWarmup: false,
+    warmupMaximum: null,
+    preActivityWarmupRequirement: 'not-applicable',
   }
 }
 
@@ -227,7 +230,7 @@ export function resolveGrade5SourceLifecycle(
   extraction: Grade5SourceExtraction,
   currentDateKey = latestProgressionDate(extraction),
 ) {
-  const candidates = extraction.candidates.filter((candidate) =>
+  const candidates = extraction.classification.selectedCandidates.filter((candidate) =>
     candidate.datasetId
       && candidate.normalizedStartDate
       && candidate.normalizedEndDate
@@ -255,7 +258,7 @@ export function buildGrade5LearningHub(
   currentDateKey = latestProgressionDate(extraction),
 ): Grade5LearningHubModel {
   const candidateByDatasetId = new Map(
-    extraction.candidates
+    extraction.classification.selectedCandidates
       .filter((candidate) => candidate.datasetId && candidate.status === 'valid')
       .map((candidate) => [candidate.datasetId!, candidate]),
   )

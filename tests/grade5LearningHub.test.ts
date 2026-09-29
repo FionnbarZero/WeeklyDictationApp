@@ -93,7 +93,7 @@ test('book buttons use the resource from the cohort current-stage source section
   })
 })
 
-test('writing and reading launch requests remain distinct and require their own six-word Warmup', () => {
+test('writing and reading launch requests remain distinct and offer their own up-to-six-word Warmup', () => {
   const homework = section('homework')
   const writing = activity(homework, 'acquisition-writing').launchRequests[0]
   const reading = activity(homework, 'acquisition-reading').launchRequests[0]
@@ -103,8 +103,10 @@ test('writing and reading launch requests remain distinct and require their own 
   assert.equal(writing.cohortId, reading.cohortId)
   assert.equal(writing.stage, 'acquisition')
   assert.equal(reading.stage, 'acquisition')
-  assert.equal(writing.requiredWarmup, true)
-  assert.equal(reading.requiredWarmup, true)
+  assert.equal(writing.warmupMaximum, 6)
+  assert.equal(reading.warmupMaximum, 6)
+  assert.equal(writing.preActivityWarmupRequirement, 'undecided')
+  assert.equal(reading.preActivityWarmupRequirement, 'undecided')
 })
 
 test('Test Review 1 and Test Review 2 requests reference different cohorts', () => {
@@ -114,8 +116,10 @@ test('Test Review 1 and Test Review 2 requests reference different cohorts', () 
   assert.notEqual(test1.cohortId, test2.cohortId)
   assert.equal(test1.activityKind, 'test-review')
   assert.equal(test2.activityKind, 'test-review')
-  assert.equal(test1.requiredWarmup, true)
-  assert.equal(test2.requiredWarmup, true)
+  assert.equal(test1.warmupMaximum, 6)
+  assert.equal(test2.warmupMaximum, 6)
+  assert.equal(test1.preActivityWarmupRequirement, 'undecided')
+  assert.equal(test2.preActivityWarmupRequirement, 'undecided')
 })
 
 test('both Test Review stages can request Acquisition help without changing curriculum stage', () => {
@@ -128,7 +132,8 @@ test('both Test Review stages can request Acquisition help without changing curr
     ])
     assert.ok(requests.every((request) => request.stage === stage))
     assert.ok(requests.every((request) => request.activityKind === 'acquisition'))
-    assert.ok(requests.every((request) => request.requiredWarmup))
+    assert.ok(requests.every((request) => request.warmupMaximum === 6))
+    assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'undecided'))
     assert.equal(new Set(requests.map((request) => request.cohortId)).size, 1)
   }
 })
@@ -141,6 +146,10 @@ test('mastery requests preserve separate writing and reading queues', () => {
 
   assert.equal(writingWarmup.learningChannel, 'tier-1-writing')
   assert.equal(readingWarmup.learningChannel, 'tier-2-reading')
+  assert.equal(writingWarmup.warmupMaximum, null)
+  assert.equal(readingWarmup.warmupMaximum, null)
+  assert.equal(writingWarmup.preActivityWarmupRequirement, 'not-applicable')
+  assert.equal(readingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.deepEqual(reteach.map((request) => request.learningChannel), ['tier-1-writing', 'tier-2-reading'])
   assert.deepEqual(writingWarmup.eligibleCohortIds, ['grade-5__2026-27__2026-08-31__2026-09-04'])
   assert.equal(writingWarmup.cohortId, null)

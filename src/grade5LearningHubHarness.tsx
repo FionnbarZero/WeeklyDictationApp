@@ -314,6 +314,10 @@ function answerCurrentPrompt(correct: boolean) {
 
 function handlePracticeAnswer(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
   if (typeof answer === 'boolean') answerCurrentPrompt(answer)
+  else if (answer === 'skip-warmup' && activeSession?.stage === 'warmup-intro') {
+    activeSession = primaryStartState(activeSession)
+    renderPracticeView()
+  }
   else if (answer === 'skip-test-review') leavePractice('Test Review was abandoned. Its temporary answers were discarded and no score was created.')
   else if (answer === 'done') leavePractice('Acquisition stopped for today. This development lab does not save progress yet.')
 }
@@ -335,8 +339,7 @@ function renderPracticeView() {
       onSpeakWord={speakWord}
       onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
-      timerSecondsOverride={grade5WritingLabProfile.testReviewTimerSeconds}
-      warmupRequired
+      timerSecondsOverride={grade5WritingLabProfile.timers.testReview}
     />,
   )
 }
@@ -348,9 +351,6 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     activeDatasets = grade5LabDatasets(sourceExtraction)
     activeDataset = activeDatasets.find((dataset) => dataset.id === candidate.datasetId) || grade5LabDataset(candidate)
     const warmup = grade5LabWarmupSelection(sourceExtraction, latestProgressionDate(sourceExtraction))
-    if (warmup.words.length !== grade5WritingLabProfile.requiredWarmupTrials) {
-      throw new Error(`Grade 5 writing requires ${grade5WritingLabProfile.requiredWarmupTrials} mastery Warmup trials before this activity.`)
-    }
     activePractice = request.activityKind === 'acquisition' ? startGrade5AcquisitionLab(candidate) : null
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
     currentRevealMethod = 'timer'
@@ -361,7 +361,7 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     sectionsElement.hidden = true
     practicePanel.hidden = false
     document.body.classList.add('practice-active')
-    setStatus(`Running ${label} with a required six-item mastery Warmup and the shared Grade 5 Tier 1 writing flow. This lab run is not persisted.`)
+    setStatus(`Running ${label} with an up-to-six-item mastery Warmup preview and the shared Grade 5 Tier 1 writing flow. The production Warmup requirement is still undecided, and this lab run is not persisted.`)
     renderPracticeView()
     practicePanel.scrollTop = 0
   } catch (error) {
