@@ -53,6 +53,19 @@ type VocabularySections = {
 type ParsedGrade5SourceUnit = {
   candidate: WeeklyDatasetCandidate
   confirmation: VocabularySections
+  acquisitionBook: Grade5BookLink | null
+  confirmationBook: Grade5BookLink | null
+}
+
+type Grade5BookLink = {
+  title: string
+  url: string
+}
+
+export type Grade5BookResource = Grade5BookLink & {
+  datasetId: string
+  role: 'acquisition' | 'review'
+  sourceUnitId: string
 }
 
 export type Grade5SourceIssue = {
@@ -81,6 +94,7 @@ export type Grade5SourceExtraction = {
   candidates: WeeklyDatasetCandidate[]
   classification: CandidateClassificationBatch
   progressionEvents: LifecycleProgressionEvent[]
+  bookResources: Grade5BookResource[]
   issues: Grade5SourceIssue[]
 }
 
@@ -94,25 +108,54 @@ function textFromUnknown(value: unknown): string {
   return Object.values(record).map(textFromUnknown).filter(Boolean).join('')
 }
 
-function tableRowsFromSlide(slide: SlideLike) {
-  if (!Array.isArray(slide.pageElements)) return [] as string[][][]
+function tablesFromSlide(slide: SlideLike) {
+  if (!Array.isArray(slide.pageElements)) return [] as Array<{ rawRows: unknown[]; textRows: string[][] }>
   return slide.pageElements.flatMap((element) => {
     if (!element || typeof element !== 'object') return []
     const table = (element as Record<string, unknown>).table
     if (!table || typeof table !== 'object') return []
     const rows = (table as Record<string, unknown>).tableRows
     if (!Array.isArray(rows)) return []
-    return [rows.map((row) => {
+    return [{ rawRows: rows, textRows: rows.map((row) => {
       if (!row || typeof row !== 'object') return []
       const cells = (row as Record<string, unknown>).tableCells
       if (!Array.isArray(cells)) return []
       return cells.map((cell) => textFromUnknown(cell).trim())
-    })]
+    }) }]
   })
 }
 
-function mandarinTableRows(slide: SlideLike) {
-  return tableRowsFromSlide(slide).find((rows) => /\bMandarin\b/i.test(rows[0]?.join('\n') || '')) || null
+function mandarinTable(slide: SlideLike) {
+  return tablesFromSlide(slide).find(({ textRows }) => /\bMandarin\b/i.test(textRows[0]?.join('\n') || '')) || null
+}
+
+function linkedBookFromUnknown(value: unknown): Grade5BookLink | null {
+  if (!value || typeof value !== 'object') return null
+  if (Array.isArray(value)) {
+    for (const child of value) {
+      const linkedBook = linkedBookFromUnknown(child)
+      if (linkedBook) return linkedBook
+    }
+    return null
+  }
+  const record = value as Record<string, unknown>
+  const textRun = record.textRun
+  if (textRun && typeof textRun === 'object') {
+    const run = textRun as Record<string, unknown>
+    const style = run.style
+    const link = style && typeof style === 'object' ? (style as Record<string, unknown>).link : null
+    const url = link && typeof link === 'object' ? (link as Record<string, unknown>).url : null
+    const content = typeof run.content === 'string' ? run.content : ''
+    if (typeof url === 'string' && /^https:\/\//.test(url)) {
+      const title = content.match(/《[^》]+》/)?.[0] || content.trim()
+      if (title) return { title, url }
+    }
+  }
+  for (const child of Object.values(record)) {
+    const linkedBook = linkedBookFromUnknown(child)
+    if (linkedBook) return linkedBook
+  }
+  return null
 }
 
 function cleanVocabularyValue(value: string) {
@@ -200,11 +243,14 @@ function parseGrade5SourceUnit(
     return { issues }
   }
 
-  const rows = mandarinTableRows(slide)
+  const table = mandarinTable(slide)
+  const rows = table?.textRows || null
   const topText = rows?.[1]?.join('\n') || ''
   const bottomText = rows?.slice(2).flat().join('\n') || ''
   const confirmation = vocabularySections(topText)
   const acquisition = vocabularySections(bottomText)
+  const confirmationBook = linkedBookFromUnknown(table?.rawRows[1])
+  const acquisitionBook = linkedBookFromUnknown(table?.rawRows.slice(2))
   const validationOutcomes: ValidationOutcome[] = []
 
   if (sourceDocumentId !== profile.sourceDeckId) {
@@ -252,7 +298,39 @@ function parseGrade5SourceUnit(
     validationOutcomes,
   })
 
-  return { parsed: { candidate, confirmation }, issues }
+  return { parsed: { candidate, confirmation, acquisitionBook, confirmationBook }, issues }
+}
+
+function bookResourcesFor(
+  progressionEvents: LifecycleProgressionEvent[],
+  selectedCandidates: WeeklyDatasetCandidate[],
+  parsedBySourceUnitId: Map<string, ParsedGrade5SourceUnit>,
+) {
+  const selectedByDatasetId = new Map(selectedCandidates.map((candidate) => [candidate.datasetId, candidate]))
+  const resources: Grade5BookResource[] = []
+  for (const event of progressionEvents) {
+    const introducedCandidate = selectedByDatasetId.get(event.introducedDatasetId)
+    const parsed = introducedCandidate
+      ? parsedBySourceUnitId.get(introducedCandidate.source.sourceUnitId)
+      : undefined
+    if (introducedCandidate && parsed?.acquisitionBook) {
+      resources.push({
+        ...parsed.acquisitionBook,
+        datasetId: event.introducedDatasetId,
+        role: 'acquisition',
+        sourceUnitId: introducedCandidate.source.sourceUnitId,
+      })
+    }
+    if (event.confirmedDatasetId && introducedCandidate && parsed?.confirmationBook) {
+      resources.push({
+        ...parsed.confirmationBook,
+        datasetId: event.confirmedDatasetId,
+        role: 'review',
+        sourceUnitId: introducedCandidate.source.sourceUnitId,
+      })
+    }
+  }
+  return resources
 }
 
 function progressionEventsFor(
@@ -346,11 +424,17 @@ export function extractGrade5Presentation(
   const parsedBySourceUnitId = new Map(parsedUnits.map((parsed) => [parsed.candidate.source.sourceUnitId, parsed]))
   const progression = progressionEventsFor(classification.selectedCandidates, parsedBySourceUnitId, profile)
   issues.push(...progression.issues)
+  const bookResources = bookResourcesFor(
+    progression.events,
+    classification.selectedCandidates,
+    parsedBySourceUnitId,
+  )
 
   return {
     candidates,
     classification,
     progressionEvents: progression.events,
+    bookResources,
     issues,
   }
 }

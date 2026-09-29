@@ -94,6 +94,54 @@ test('Grade 5 emits one deterministic progression event per accepted source step
   assert.equal(new Set(extraction.progressionEvents.map((event) => event.eventId)).size, 4)
 })
 
+test('Grade 5 book links remain attached to the vocabulary cohort from the same source section', () => {
+  const extraction = extractGrade5Presentation(loadFixture())
+
+  assert.deepEqual(extraction.bookResources.map((resource) => ({
+    datasetId: resource.datasetId,
+    role: resource.role,
+    title: resource.title,
+    url: resource.url,
+  })), [
+    {
+      datasetId: 'grade-5__2026-27__2026-09-08__2026-09-11',
+      role: 'acquisition',
+      title: '《植物的光合作用》',
+      url: 'https://read.bookcreator.com/GPclK_add-_IhzIQYIm_h9o8fRZCg5qIcEXiy5swCv0/1pbWajYoTXicpABe7EIGrw/lcg0W43qS12klVG6Pc_qqQ',
+    },
+    {
+      datasetId: 'grade-5__2026-27__2026-08-31__2026-09-04',
+      role: 'review',
+      title: '《海洋食物链》',
+      url: 'https://read.bookcreator.com/aUUlFiDeMpTFq09bGXGtynfHaqk2/RjMIRe17QGWEmE0QojpExA/s3cAXWUcStawrRSCsLgq1g',
+    },
+    {
+      datasetId: 'grade-5__2026-27__2026-09-14__2026-09-18',
+      role: 'acquisition',
+      title: '《大象的沟通方式》',
+      url: 'https://read.bookcreator.com/aUUlFiDeMpTFq09bGXGtynfHaqk2/WCp_n0hSSWC01Ko-G2C27g/a-TmD2HyRZmyvtVGCIy1gA',
+    },
+    {
+      datasetId: 'grade-5__2026-27__2026-09-08__2026-09-11',
+      role: 'review',
+      title: '《植物的光合作用》',
+      url: 'https://read.bookcreator.com/GPclK_add-_IhzIQYIm_h9o8fRZCg5qIcEXiy5swCv0/1pbWajYoTXicpABe7EIGrw/lcg0W43qS12klVG6Pc_qqQ',
+    },
+    {
+      datasetId: 'grade-5__2026-27__2026-09-21__2026-09-25',
+      role: 'acquisition',
+      title: '《海水为什么是咸的》',
+      url: 'https://app.levellearning.com/v3/browse/1/?take-store=sourceId--book-why-the-ocean-is-salty',
+    },
+    {
+      datasetId: 'grade-5__2026-27__2026-09-14__2026-09-18',
+      role: 'review',
+      title: '《大象的沟通方式》',
+      url: 'https://read.bookcreator.com/aUUlFiDeMpTFq09bGXGtynfHaqk2/WCp_n0hSSWC01Ko-G2C27g/a-TmD2HyRZmyvtVGCIy1gA',
+    },
+  ])
+})
+
 test('an identical same-week source occurrence creates no duplicate progression event', () => {
   const fixture = cloneFixture()
   const duplicate = structuredClone(fixture.slides![0])
