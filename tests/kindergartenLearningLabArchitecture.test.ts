@@ -38,17 +38,27 @@ test('Kindergarten writing uses the shared PracticeView with an independent stra
   assert.doesNotMatch(`${harnessSource}\n${labAdapter}`, /from ['"].*(firebase|firestore)|localStorage\.|createScore|saveSession/i)
 })
 
-test('Tier 2 and the cumulative unit review remain explicit unpersisted lab paths', () => {
+test('Kindergarten uses the shared four-path hub with games, Final Boss review, adaptive mastery, and session scores', () => {
   const harnessSource = source('src/kindergartenLearningLabHarness.tsx')
+  const hubModel = source('src/kindergartenLab/learningHub.ts')
+  const games = source('src/kindergartenLab/games.tsx')
   const unitReview = source('src/kindergartenLab/unitReview.ts')
   const productionEntries = [source('src/main.tsx'), source('src/App.tsx'), source('src/practice/profiles/registry.ts')].join('\n')
 
-  assert.match(harnessSource, /unscored teaching prototype/)
-  assert.match(harnessSource, /Prepare for your test/)
+  assert.match(harnessSource, /<LearningHub model=\{hubModel\}/)
+  assert.match(harnessSource, /selectWarmupWords/)
+  assert.match(harnessSource, /NinjaRecord/)
+  assert.match(hubModel, /Enter the Dojo/)
+  assert.match(hubModel, /Practice your Ninja Skills/)
+  assert.match(hubModel, /The Final Boss Test/)
+  assert.match(hubModel, /Enter the Spirit Realm/)
+  assert.match(games, /Listening Lily Pads/)
+  assert.match(games, /Memory Lanterns/)
+  assert.match(games, /Sky Writing/)
   assert.match(unitReview, /explicit development fixture/i)
   assert.match(unitReview, /__kindergarten-unit-1-review-lab__/)
   assert.doesNotMatch(productionEntries, /KINDERGARTEN_UNIT_ONE_LAB_FIXTURE|kindergartenUnitReviewForLab/)
-  assert.doesNotMatch(`${harnessSource}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
+  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${games}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
 })
 
 test('the shared PracticeView timer override is optional and leaves production callers unchanged', () => {

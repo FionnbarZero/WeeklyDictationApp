@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, Check, Headphones, PencilLine, Sparkles, Volume2 } from 'lucide-react'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook } from './kindergartenSheetsImporter.ts'
 import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
@@ -13,16 +12,31 @@ import {
   type KindergartenAcquisitionLabState,
   type KindergartenLabRevealMethod,
 } from './kindergartenLab/acquisitionLab.ts'
+import {
+  CurrentWeekReading,
+  ListeningLilyPads,
+  MasteryWarmup,
+  MemoryLanterns,
+  NinjaRecord,
+  SkyWriting,
+  type KindergartenScoreRecord,
+} from './kindergartenLab/games.tsx'
+import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
+import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView } from './practice/PracticeView.tsx'
+import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
+import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
+import { selectWarmupWords } from './warmup/engine.ts'
 
 const fixtureUrl = '/tests/fixtures/kindergarten-workbook.json'
 const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
-type Screen = 'landing' | 'dojo' | 'reading'
 type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
+type StandaloneActivity = Exclude<KindergartenHubActivityKind, 'dojo-writing' | 'final-boss'>
+type ScoreInput = Omit<KindergartenScoreRecord, 'id' | 'completedAt'>
 
 function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceType'> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('The Kindergarten fixture must contain one workbook object.')
@@ -97,8 +111,35 @@ function testReviewSessionFor(dataset: Dataset): PracticeSession {
   }
 }
 
+function dayAfter(dateKey: string) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
+}
+
+function masteryDatasetFor(review: KindergartenUnitReviewLab | null): Dataset | null {
+  if (!review) return null
+  const id = '__kindergarten-unit-1-mastery-lab__'
+  const tier1 = review.dataset.words.map((word) => ({ ...word, id: `${id}:writing:${word.id}`, datasetId: id }))
+  const tier2 = review.tier2Words.map((text, index): Word => ({
+    id: `${id}:reading:${index + 1}`,
+    text,
+    sentence: '',
+    datasetId: id,
+    grade: 'Kindergarten',
+    language: 'mandarin',
+    tier: 'tier-2',
+    activityType: 'reading',
+  }))
+  return {
+    ...review.dataset,
+    id,
+    description: 'Development-only Kindergarten Unit 1 writing and reading mastery bank',
+    words: [...tier1, ...tier2],
+  }
+}
+
 function KindergartenLearningLab() {
-  const [screen, setScreen] = useState<Screen>('landing')
   const [candidates, setCandidates] = useState<WeeklyDatasetCandidate[]>([])
   const [selectedSourceUnitId, setSelectedSourceUnitId] = useState('')
   const [status, setStatus] = useState('Loading the trusted local Kindergarten fixture…')
@@ -106,7 +147,10 @@ function KindergartenLearningLab() {
   const [writingPractice, setWritingPractice] = useState<WritingPractice | null>(null)
   const [testReviewSession, setTestReviewSession] = useState<PracticeSession | null>(null)
   const [testReviewDataset, setTestReviewDataset] = useState<Dataset | null>(null)
-  const [readingIndex, setReadingIndex] = useState(0)
+  const [activeActivity, setActiveActivity] = useState<StandaloneActivity | null>(null)
+  const [scores, setScores] = useState<KindergartenScoreRecord[]>([])
+  const [masteryResults, setMasteryResults] = useState<WarmupResultEvidence[]>([])
+  const [masteryWords, setMasteryWords] = useState<Word[]>([])
 
   useEffect(() => {
     if (!import.meta.env.DEV) {
@@ -126,7 +170,7 @@ function KindergartenLearningLab() {
         if (!preferred) throw new Error('The fixture has no Kindergarten vocabulary tab usable by the lab.')
         setCandidates(inspected)
         setSelectedSourceUnitId(preferred.source.sourceUnitId)
-        setStatus('Trusted local fixture loaded. Choose Enter the Dojo to test the child experience.')
+        setStatus('Kindergarten paths loaded. Choose an adventure and your session scores will appear in the Ninja Record.')
       })
       .catch((loadError) => {
         setStatus(loadError instanceof Error ? loadError.message : 'The Kindergarten fixture could not be loaded.')
@@ -140,14 +184,37 @@ function KindergartenLearningLab() {
     if (!candidates.length) return null
     try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
   }, [candidates])
+  const masteryDataset = useMemo(() => masteryDatasetFor(unitReview), [unitReview])
+  const tier1Words = selectedCandidate?.tier1.map((word) => word.text) || []
   const tier2Words = selectedCandidate?.tier2.map((word) => word.text) || []
+  const choicePool = [...tier2Words, ...tier1Words]
+
+  function recordScore(score: ScoreInput) {
+    setScores((current) => [...current, {
+      ...score,
+      id: `kindergarten-score-${Date.now()}-${current.length + 1}`,
+      completedAt: new Date().toISOString(),
+    }])
+  }
+
+  function returnToHub(message = 'Returned to the Kindergarten paths.') {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    setActiveActivity(null)
+    setMasteryWords([])
+    setStatus(message)
+    setError(false)
+  }
+
+  function completeStandalone(score: ScoreInput) {
+    recordScore(score)
+    returnToHub(`${score.label} complete: ${score.correct}/${score.total}. The score is shown in this visit’s Ninja Record.`)
+  }
 
   function leavePractice(message: string) {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setWritingPractice(null)
     setTestReviewSession(null)
     setTestReviewDataset(null)
-    setScreen('dojo')
     setStatus(message)
     setError(false)
   }
@@ -160,7 +227,7 @@ function KindergartenLearningLab() {
         dataset: kindergartenWritingDatasetForLab(selectedCandidate),
         revealMethod: 'timer',
       })
-      setStatus('Running the Kindergarten-owned Acquisition strategy. This lab run is not saved.')
+      setStatus('Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.')
     } catch (startError) {
       setStatus(startError instanceof Error ? startError.message : 'Writing practice could not start.')
       setError(true)
@@ -171,11 +238,21 @@ function KindergartenLearningLab() {
     setWritingPractice((current) => current ? { ...current, state: revealKindergartenAcquisitionLab(current.state), revealMethod: method } : current)
   }
 
-  function answerWriting(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
-    if (answer === 'done') {
-      leavePractice('Returned to the Dojo. The unfinished in-memory writing run was discarded.')
-      return
+  function finishWriting() {
+    if (writingPractice) {
+      const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
+      if (scored.length) recordScore({
+        label: 'Writing characters',
+        kind: 'Current week',
+        correct: scored.filter((item) => item.correct).length,
+        total: scored.length,
+      })
     }
+    leavePractice('Returned to the paths. This visit’s writing score is shown in the Ninja Record.')
+  }
+
+  function answerWriting(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
+    if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
     setWritingPractice((current) => current ? {
       ...current,
@@ -188,7 +265,7 @@ function KindergartenLearningLab() {
     if (!unitReview) return
     setTestReviewDataset(unitReview.dataset)
     setTestReviewSession(testReviewSessionFor(unitReview.dataset))
-    setStatus('Running the cumulative Unit 1 writing review in memory. No answers or scores are saved.')
+    setStatus('Facing the Final Boss: the cumulative Unit 1 writing review is ready.')
   }
 
   function completeTestReviewDictation(method: 'timer' | 'skip_timer' = 'timer') {
@@ -203,7 +280,7 @@ function KindergartenLearningLab() {
     const current = testReviewSession
     if (!current) return
     if (answer === 'skip-test-review') {
-      leavePractice('Unit review skipped. The in-memory run was discarded and no score was created.')
+      leavePractice('Final Boss review skipped. No score was added.')
       return
     }
     if (typeof answer !== 'boolean' || current.stage !== 'review') return
@@ -215,17 +292,62 @@ function KindergartenLearningLab() {
       setTestReviewSession({ ...current, primaryAnswers, index: current.index + 1 })
       return
     }
-    leavePractice(`Unit 1 review complete in the lab: ${primaryAnswers.filter((item) => item.correct).length}/${primaryAnswers.length} self-checked correct. Nothing was saved.`)
+    const correct = primaryAnswers.filter((item) => item.correct).length
+    recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: primaryAnswers.length })
+    leavePractice(`Final Boss complete: ${correct}/${primaryAnswers.length}. The score is shown in the Ninja Record.`)
+  }
+
+  function startSpiritRealm() {
+    if (!masteryDataset || !unitReview) return
+    const masteredAt = dayAfter(unitReview.dataset.endDate)
+    const lifecycle: WarmupLifecycleSnapshot = {
+      masteredDatasetIds: [masteryDataset.id],
+      masteredAtByDatasetId: { [masteryDataset.id]: masteredAt },
+      lifecycleByDatasetId: { [masteryDataset.id]: 'mastered' },
+    }
+    const selection = selectWarmupWords({
+      datasets: [masteryDataset],
+      results: masteryResults,
+      childId: 'kindergarten-lab-child',
+      today: new Date(`${masteredAt}T12:00:00.000Z`),
+      rotationCycleId: 1,
+      lifecycle,
+      policy: kindergartenWritingPracticeProfile.lifecycle,
+      targetSize: 6,
+    })
+    setMasteryWords(selection.words)
+    setActiveActivity('spirit-realm')
+    setStatus('The Spirit Realm selected six adaptive mastery words. Missed words receive priority in a later visit.')
+  }
+
+  function recordMasteryAnswer(word: Word, correct: boolean) {
+    setMasteryResults((current) => [...current, {
+      id: `kindergarten-mastery-result-${Date.now()}-${current.length + 1}`,
+      childId: 'kindergarten-lab-child',
+      wordId: word.id,
+      completedAt: new Date().toISOString(),
+      correct,
+    }])
+  }
+
+  function launchFromHub(launch: KindergartenHubLaunch) {
+    if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'final-boss') { startUnitReview(); return }
+    if (launch.kind === 'spirit-realm') { startSpiritRealm(); return }
+    setActiveActivity(launch.kind)
+    setStatus(`${launch.label} started. Finish the activity to add its score to the Ninja Record.`)
   }
 
   if (writingPractice) {
     const promptWord = writingPractice.state.flow.prompt?.word
+    const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
+    const correct = scored.filter((item) => item.correct).length
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note">Development lab · No Warmup or persistence · Kindergarten-owned strategy · Shared PracticeView</p>
+      <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · Session-only development record</p>
       <PracticeView
         session={writingSessionFor(writingPractice)}
         datasets={[writingPractice.dataset]}
-        onExit={() => leavePractice('Returned to the Dojo. The in-memory writing run was discarded.')}
+        onExit={() => leavePractice('Writing practice exited. No score was added.')}
         onReplay={() => promptWord ? speakWord(promptWord) : undefined}
         onBeginWarmup={() => undefined}
         onInterstitialComplete={() => undefined}
@@ -242,12 +364,13 @@ function KindergartenLearningLab() {
 
   if (testReviewSession && testReviewDataset) {
     const activeWord = activePracticeWord(testReviewSession)
+    const correct = testReviewSession.primaryAnswers.filter((answer) => answer.correct).length
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note">Development lab · Unit 1 fixture · Shared Test Review presentation · No persistence or official score</p>
+      <p className="k-practice-note"><strong>Current score: {correct}/{testReviewSession.primaryAnswers.length}</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
       <PracticeView
         session={testReviewSession}
         datasets={[testReviewDataset]}
-        onExit={() => leavePractice('Returned to the Dojo. The in-memory unit review was discarded.')}
+        onExit={() => leavePractice('Final Boss exited. No score was added.')}
         onReplay={() => testReviewSession.stage === 'complete' ? speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9) : activeWord ? speakWord(activeWord) : undefined}
         onBeginWarmup={() => undefined}
         onInterstitialComplete={() => setTestReviewSession((current) => current?.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current)}
@@ -262,88 +385,29 @@ function KindergartenLearningLab() {
     </main>
   }
 
+  const speak = (text: string) => { speakText(text) }
+  if (activeActivity === 'dojo-reading') return <CurrentWeekReading words={tier2Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-sky-writing') return <SkyWriting words={tier1Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
+
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>
+  const hubModel = kindergartenLearningHubView(selectedCandidate, unitReview)
 
-  if (screen === 'reading') {
-    const word = tier2Words[readingIndex]
-    const complete = readingIndex >= tier2Words.length
-    return <main className="k-lab-shell k-reading-screen">
-      <p className="k-lab-safety">Development-only Tier 2 teaching prototype · Visible reading words · No recording, score, or saved progress</p>
-      <section className="k-reading-card">
-        <button className="k-back" type="button" onClick={() => { setScreen('dojo'); setReadingIndex(0) }}><ArrowLeft size={17} /> Back to the Dojo</button>
-        {complete ? <div className="k-reading-complete">
-          <div className="mark"><Check /></div>
-          <p className="k-eyebrow">Tier 2 reading</p>
-          <h1>Wonderful work!</h1>
-          <p className="k-reading-prompt">You looked, listened, and said every high-frequency word in this fixture week.</p>
-          <button className="k-primary" type="button" onClick={() => { setScreen('dojo'); setReadingIndex(0); setStatus('Tier 2 prototype complete. Nothing was scored or saved.') }}>Return to the Dojo</button>
-        </div> : <>
-          <p className="k-eyebrow">High-frequency reading · {readingIndex + 1} of {tier2Words.length}</p>
-          <h1>Look, listen, and say it</h1>
-          <div className="k-reading-word">{word}</div>
-          <p className="k-reading-prompt">Point to the word, listen to it, then say it aloud.</p>
-          <div className="k-reading-actions">
-            <button className="k-secondary" type="button" onClick={() => speakText(word)}><Volume2 size={18} /> Hear the word</button>
-            <button className="k-primary" type="button" onClick={() => setReadingIndex((index) => index + 1)}>I said it <ArrowLeft size={17} /></button>
-          </div>
-          <div className="k-reading-steps"><span>1 · Look</span><span>2 · Listen</span><span>3 · Say it</span></div>
-        </>}
-      </section>
-    </main>
-  }
-
-  return <main className="k-lab-shell">
-    <p className="k-lab-safety">Development-only child experience · Local fixture only · No Google request, Firestore write, saved progress, or production activation</p>
-    {screen === 'landing' ? <section className="k-lab-hero">
-      <p className="k-eyebrow">Kindergarten learning lab</p>
-      <h1>Your Mandarin adventure is ready.</h1>
-      <p>Practice this week’s writing characters and high-frequency reading words in two small, supported activities.</p>
-      <button className="k-primary" type="button" onClick={() => setScreen('dojo')}>Enter the Dojo <Sparkles size={18} /></button>
-    </section> : <>
-      <button className="k-back" type="button" onClick={() => setScreen('landing')}><ArrowLeft size={17} /> Back to entrance</button>
-      <header className="k-dojo-header">
-        <div>
-          <p className="k-eyebrow">Weekly teaching modules</p>
-          <h1>Welcome to the <em>Dojo</em></h1>
-          <p>First learn the writing characters through the shared Acquisition flow. Then practice reading the visible high-frequency words aloud.</p>
-        </div>
-        <label className="k-week-picker">Development fixture week
-          <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => { setSelectedSourceUnitId(event.target.value); setReadingIndex(0) }}>
-            {usableCandidates.map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
-          </select>
-          <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
-        </label>
-      </header>
-
-      <section className="k-module-grid">
-        <article className="k-module k-writing">
-          <span className="k-module-number">1</span>
-          <p className="k-eyebrow">Tier 1 · Writing</p>
-          <h2>Writing characters</h2>
-          <p>Listen, copy, write, and check each character with age-appropriate repetition.</p>
-          <div className="k-targets">{selectedCandidate.tier1.map((target) => <span key={target.targetOccurrenceId}>{target.text}</span>)}</div>
-          <button className="k-primary" type="button" onClick={startWriting}><PencilLine size={18} /> Start writing practice</button>
-        </article>
-        <article className="k-module k-reading">
-          <span className="k-module-number">2</span>
-          <p className="k-eyebrow">Tier 2 · Reading</p>
-          <h2>High-frequency words</h2>
-          <p>See each word, hear it in Mandarin, and say it aloud. This remains an unscored teaching prototype.</p>
-          <div className="k-targets">{tier2Words.length ? tier2Words.map((word, index) => <span key={`${word}-${index}`}>{word}</span>) : <span>—</span>}</div>
-          <button className="k-primary" type="button" disabled={!tier2Words.length} onClick={() => { setReadingIndex(0); setScreen('reading') }}><Headphones size={18} /> Start reading practice</button>
-        </article>
-      </section>
-
-      {unitReview && <section className="k-unit-review">
-        <div>
-          <p className="k-eyebrow">Cumulative lab fixture · {unitReview.label}</p>
-          <h2>Prepare for your test</h2>
-          <p>This lab review grows from every writing and high-frequency target found in the explicit Unit 1 fixture window. The shared Test Review presentation currently assesses Tier 1 writing only.</p>
-          <div className="k-unit-groups"><span>{unitReview.sourceWeekCount} teaching weeks</span><span>{unitReview.tier1Words.length} Tier 1 writing targets</span><span>{unitReview.tier2Words.length} Tier 2 words preserved</span></div>
-        </div>
-        <button className="k-secondary" type="button" onClick={startUnitReview}>Prepare for your test <Sparkles size={18} /></button>
-      </section>}
-    </>}
+  return <main className="k-lab-shell k-hub-shell">
+    <p className="k-lab-safety">Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write, saved progress, or production activation</p>
+    <details className="k-lab-settings">
+      <summary>Development fixture controls</summary>
+      <label className="k-week-picker">Current fixture week
+        <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => setSelectedSourceUnitId(event.target.value)}>
+          {usableCandidates.map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
+        </select>
+        <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
+      </label>
+    </details>
+    <LearningHub model={hubModel} onLaunch={launchFromHub} />
+    <NinjaRecord scores={scores} />
     <p className={`k-status${error ? ' error' : ''}`} role="status" aria-live="polite">{status}</p>
   </main>
 }

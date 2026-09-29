@@ -51,6 +51,59 @@ button, select { font: inherit; }
 .k-practice-note { margin: 0 0 15px; color: #786f7c; font-size: .75rem; text-align: center; }
 .k-lab-shell.practice { width: min(720px, calc(100% - 42px)); padding-top: 36px; }
 .k-loading { display: grid; place-items: center; min-height: 70vh; color: #5e5471; font-weight: 750; }
+.k-hub-shell { width: min(1080px, calc(100% - 40px)); padding-top: 0; }
+.k-hub-shell .k-lab-safety { margin-top: 12px; }
+.k-lab-settings { margin: 10px 0 0; padding: 10px 14px; border: 1px dashed #d8cec0; border-radius: 13px; color: #716879; background: rgb(255 255 255 / 54%); font-size: .72rem; }
+.k-lab-settings summary { cursor: pointer; font-weight: 800; }
+.k-lab-settings .k-week-picker { margin-top: 12px; }
+.k-scoreboard { margin-top: 42px; padding: 27px; border: 1px solid #d7e5dc; border-radius: 25px; background: linear-gradient(145deg, #f7fcf8, #e1f1e7); box-shadow: 0 14px 30px rgb(35 74 49 / 7%); }
+.k-scoreboard-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.k-scoreboard-heading h2 { margin: 4px 0 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; letter-spacing: -.035em; }
+.k-score-total { display: grid; min-width: 140px; text-align: right; }
+.k-score-total strong { color: #3d7754; font-family: Georgia, serif; font-size: 2.35rem; font-weight: 500; line-height: 1; }
+.k-score-total span { margin-top: 5px; color: #627269; font-size: .7rem; font-weight: 750; }
+.k-score-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+.k-score-list article { display: grid; grid-template-columns: 1fr auto; gap: 3px 14px; padding: 14px 15px; border-radius: 15px; background: rgb(255 255 255 / 74%); }
+.k-score-list article span { grid-column: 1; color: #718077; font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.k-score-list article strong { grid-column: 1; font-size: .83rem; }
+.k-score-list article b { grid-column: 2; grid-row: 1 / 3; align-self: center; color: #3d7754; font-size: 1.2rem; }
+.k-scoreboard > small { display: block; margin-top: 14px; color: #718077; font-size: .68rem; }
+.k-empty-score { margin: 19px 0 0; padding: 14px; border-radius: 14px; color: #68776f; background: rgb(255 255 255 / 65%); font-size: .82rem; line-height: 1.5; }
+.k-game-shell { width: min(760px, calc(100% - 34px)); margin: 0 auto; padding: 28px 0 70px; }
+.k-game-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.k-game-live-score { padding: 9px 13px; border-radius: 999px; color: #4d3e63; background: #eee6f7; font-size: .76rem; font-weight: 850; }
+.k-game-heading { margin: 28px 0 18px; text-align: center; }
+.k-game-heading h1 { margin: 4px 0 0; font-size: clamp(2.5rem, 8vw, 4.4rem); letter-spacing: -.055em; line-height: .95; }
+.k-game-card { min-height: 560px; padding: clamp(24px, 5vw, 42px); border: 1px solid #e3d9ec; border-radius: 30px; background: linear-gradient(155deg, #fff 48%, #f1ebfa); box-shadow: 0 18px 45px rgb(73 55 101 / 13%); text-align: center; }
+.k-game-card h2 { max-width: 560px; margin: 9px auto 13px; font-family: Georgia, serif; font-size: clamp(2rem, 6vw, 3rem); font-weight: 500; letter-spacing: -.04em; }
+.k-game-card > p:not(.k-eyebrow):not(.k-round-label) { color: #68717e; line-height: 1.55; }
+.k-round-label { margin: 0 0 20px; color: #746a7c; font-size: .72rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.k-game-mascot { display: grid; place-items: center; width: 90px; height: 90px; margin: 9px auto 18px; border-radius: 30px; background: rgb(255 255 255 / 72%); font-size: 3.3rem; box-shadow: 0 9px 22px rgb(75 54 111 / 9%); }
+.k-listen-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 56px; margin: 13px auto 25px; padding: 12px 22px; border: 0; border-radius: 999px; color: white; background: #6946ad; cursor: pointer; font-weight: 850; box-shadow: 0 8px 18px rgb(74 47 125 / 20%); }
+.k-choice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 7px; }
+.k-word-choice { min-height: 110px; padding: 15px; border: 3px solid transparent; border-radius: 22px; color: #3f3458; background: #fff; cursor: pointer; font-family: serif; font-size: clamp(2.1rem, 7vw, 3.4rem); box-shadow: 0 8px 20px rgb(75 54 111 / 9%); }
+.k-word-choice.correct, .k-word-choice.answer { border-color: #59a474; background: #e6f5ea; }
+.k-word-choice.wrong { border-color: #d8756a; background: #fff0ee; }
+.k-game-feedback { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 22px; padding: 14px 16px; border-radius: 17px; text-align: left; }
+.k-game-feedback.correct { color: #2f6945; background: #e1f3e7; }
+.k-game-feedback.wrong { color: #8a4038; background: #fff0ee; }
+.k-memory-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 27px auto 4px; }
+.k-memory-card { display: grid; min-height: 120px; place-items: center; border: 0; border-radius: 20px; color: #4a3c5f; background: linear-gradient(150deg, #f3c96b, #e9a862); cursor: pointer; font-size: clamp(2.2rem, 7vw, 3.5rem); box-shadow: 0 9px 20px rgb(86 55 21 / 14%); }
+.k-memory-card.visible { background: #fff; }
+.k-memory-card.matched { color: #316a46; background: #dff1e5; }
+.k-sky-game, .k-spirit-game, .k-weekly-reading { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.k-sky-game .k-primary, .k-spirit-game .k-primary { margin-top: 12px; }
+.k-reveal-word { display: grid; min-width: 210px; min-height: 170px; margin: 21px auto 14px; padding: 20px; place-items: center; border: 3px solid #d3c4ed; border-radius: 28px; color: #3f3458; background: #fff; font-family: serif; font-size: clamp(4.2rem, 15vw, 7rem); box-shadow: 0 15px 30px rgb(75 54 111 / 12%); }
+.k-self-check-prompt { margin-top: 8px; font-weight: 800; }
+.k-self-check-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 11px; margin-top: 15px; }
+.k-game-wrong, .k-game-right { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; padding: 11px 18px; border: 2px solid; border-radius: 999px; cursor: pointer; font-weight: 850; }
+.k-game-wrong { border-color: #d8756a; color: #8a4038; background: #fff5f3; }
+.k-game-right { border-color: #59a474; color: #2f6945; background: #eef9f1; }
+.k-game-complete { display: grid; place-items: center; align-content: center; }
+.k-game-complete .mark { display: grid; width: 84px; height: 84px; margin-bottom: 16px; place-items: center; border-radius: 28px; color: #36734d; background: #dff2e4; }
+.k-game-complete > strong { margin: 7px 0; color: #5c3e91; font-family: Georgia, serif; font-size: 2rem; }
+.k-game-complete .k-primary { margin-top: 13px; }
+.k-game-shell button:focus-visible, .k-lab-settings summary:focus-visible { outline: 4px solid #f2bd3f; outline-offset: 3px; }
 @media (max-width: 760px) {
   .k-lab-shell { width: min(100% - 18px, 1040px); padding-top: 9px; }
   .k-lab-hero { min-height: 390px; border-radius: 24px; }
@@ -62,4 +115,12 @@ button, select { font: inherit; }
   .k-reading-card { min-height: calc(100vh - 80px); padding: 23px; border-radius: 22px; }
   .k-reading-steps { gap: 9px; }
   .k-lab-shell.practice { width: calc(100% - 32px); padding-top: 24px; }
+  .k-hub-shell { width: min(100% - 22px, 1080px); }
+  .k-scoreboard-heading { display: grid; }
+  .k-score-total { text-align: left; }
+  .k-score-list, .k-choice-grid { grid-template-columns: 1fr; }
+  .k-memory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .k-game-card { min-height: calc(100vh - 180px); padding: 24px 18px; border-radius: 23px; }
+  .k-word-choice { min-height: 78px; }
+  .k-game-feedback { align-items: stretch; flex-direction: column; }
 }

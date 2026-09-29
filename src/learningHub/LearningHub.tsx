@@ -67,8 +67,8 @@ function SectionDetail<Launch>({
     <header className="learning-hub-detail-heading">
       <div>
         <p className="learning-hub-eyebrow">{section.kicker}</p>
-        <h1>{section.title}</h1>
-        <p>{section.subtitle}</p>
+        <h1>{section.detailTitle || section.title}</h1>
+        <p>{section.detailSubtitle || section.subtitle}</p>
       </div>
       <span className="learning-hub-section-mark">{section.number}</span>
     </header>

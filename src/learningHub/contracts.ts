@@ -34,6 +34,8 @@ export type LearningHubSection<Launch> = {
   kicker: string
   title: string
   subtitle: string
+  detailTitle?: string
+  detailSubtitle?: string
   actionLabel: string
   theme: LearningHubTheme
   available: boolean
