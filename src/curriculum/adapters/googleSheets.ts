@@ -1,4 +1,5 @@
 import { canonicalizeWeeklyDatasetCandidate } from '../canonical.ts'
+import { importResultFromCandidates } from '../importResult.ts'
 import type { SheetSourceUnit, SheetsWorkbookPayload, SourceAdapter, ValidationOutcome, WeeklyDatasetCandidate } from '../model.ts'
 
 export type SheetsParserProfile = {
@@ -176,14 +177,15 @@ export function candidatesFromWorkbook(
 }
 
 export function sheetsSourceAdapterFor(profile: SheetsParserProfile): SourceAdapter<SheetsWorkbookPayload> {
+  const extract = (payload: SheetsWorkbookPayload) =>
+    importResultFromCandidates(candidatesFromWorkbook(payload, profile))
   return {
     id: profile.sourceAdapterId,
     version: profile.version,
     sourceType: 'google-sheets',
     grade: profile.grade,
     schoolYear: profile.schoolYear,
-    adapt(payload) {
-      return candidatesFromWorkbook(payload, profile)
-    },
+    extract,
+    adapt: (payload) => extract(payload).candidates,
   }
 }

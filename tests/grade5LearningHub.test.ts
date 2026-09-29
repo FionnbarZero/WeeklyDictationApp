@@ -148,9 +148,9 @@ test('mastery requests preserve separate writing and reading queues', () => {
 
 test('unavailable cohorts remain visible with disabled activities and explanations', () => {
   const extraction = extractGrade5Presentation(loadFixture())
-  extraction.progressionEvents = extraction.progressionEvents.slice(0, 1)
-  extraction.bookResources = extraction.bookResources.filter((resource) =>
-    resource.datasetId === extraction.progressionEvents[0]?.introducedDatasetId)
+  extraction.progressionEvidence = extraction.progressionEvidence.slice(0, 1)
+  extraction.resources = extraction.resources.filter((resource) =>
+    resource.datasetId === extraction.progressionEvidence[0]?.introducedDatasetId)
   const hub = buildGrade5LearningHub(extraction)
 
   assert.equal(hub.sections.length, 4)

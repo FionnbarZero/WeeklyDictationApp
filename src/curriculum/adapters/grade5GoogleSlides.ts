@@ -1,5 +1,4 @@
 import { DEFAULT_SCHOOL_YEAR, GRADE5_DECK_ID } from '../../config.ts'
-import type { LifecycleProgressionEvent } from '../../lifecycle/contracts.ts'
 import { canonicalizeWeeklyDatasetCandidate } from '../canonical.ts'
 import {
   classifyWeeklyDatasetCandidates,
@@ -7,6 +6,10 @@ import {
 } from '../classification.ts'
 import { schoolYearToken } from '../identity.ts'
 import type {
+  CurriculumImportResult,
+  CurriculumProgressionEvidence,
+  CurriculumResource,
+  CurriculumSourceIssue,
   SlidesPresentationPayload,
   SourceAdapter,
   ValidationOutcome,
@@ -63,12 +66,14 @@ type Grade5BookLink = {
 }
 
 export type Grade5BookResource = Grade5BookLink & {
+  resourceId: string
+  kind: 'book-link'
   datasetId: string
-  role: 'acquisition' | 'review'
-  sourceUnitId: string
+  relationship: 'acquisition' | 'review'
+  source: CurriculumResource['source']
 }
 
-export type Grade5SourceIssue = {
+export type Grade5SourceIssue = CurriculumSourceIssue & {
   code:
     | 'source_identity_mismatch'
     | 'missing_source_unit_id'
@@ -91,12 +96,8 @@ export type Grade5SourceIssue = {
 }
 
 export type Grade5SourceExtraction = {
-  candidates: WeeklyDatasetCandidate[]
   classification: CandidateClassificationBatch
-  progressionEvents: LifecycleProgressionEvent[]
-  bookResources: Grade5BookResource[]
-  issues: Grade5SourceIssue[]
-}
+} & CurriculumImportResult<Grade5SourceIssue, CurriculumProgressionEvidence, Grade5BookResource>
 
 function textFromUnknown(value: unknown): string {
   if (typeof value === 'string') return value
@@ -196,8 +197,12 @@ function candidateVocabulary(candidate: WeeklyDatasetCandidate): VocabularySecti
   }
 }
 
-function progressionEventId(candidate: WeeklyDatasetCandidate) {
+function progressionEvidenceId(candidate: WeeklyDatasetCandidate) {
   return `${candidate.datasetId}__progression__${candidate.source.sourceUnitId}`.replace(/[^a-zA-Z0-9_-]/g, '-')
+}
+
+function resourceId(datasetId: string, relationship: Grade5BookResource['relationship'], sourceUnitId: string) {
+  return `${datasetId}__${relationship}__book__${sourceUnitId}`.replace(/[^a-zA-Z0-9_-]/g, '-')
 }
 
 function issueForCandidate(
@@ -302,43 +307,47 @@ function parseGrade5SourceUnit(
 }
 
 function bookResourcesFor(
-  progressionEvents: LifecycleProgressionEvent[],
+  progressionEvidence: CurriculumProgressionEvidence[],
   selectedCandidates: WeeklyDatasetCandidate[],
   parsedBySourceUnitId: Map<string, ParsedGrade5SourceUnit>,
 ) {
   const selectedByDatasetId = new Map(selectedCandidates.map((candidate) => [candidate.datasetId, candidate]))
   const resources: Grade5BookResource[] = []
-  for (const event of progressionEvents) {
-    const introducedCandidate = selectedByDatasetId.get(event.introducedDatasetId)
+  for (const evidence of progressionEvidence) {
+    const introducedCandidate = selectedByDatasetId.get(evidence.introducedDatasetId)
     const parsed = introducedCandidate
       ? parsedBySourceUnitId.get(introducedCandidate.source.sourceUnitId)
       : undefined
     if (introducedCandidate && parsed?.acquisitionBook) {
       resources.push({
         ...parsed.acquisitionBook,
-        datasetId: event.introducedDatasetId,
-        role: 'acquisition',
-        sourceUnitId: introducedCandidate.source.sourceUnitId,
+        resourceId: resourceId(evidence.introducedDatasetId, 'acquisition', introducedCandidate.source.sourceUnitId),
+        kind: 'book-link',
+        datasetId: evidence.introducedDatasetId,
+        relationship: 'acquisition',
+        source: introducedCandidate.source,
       })
     }
-    if (event.confirmedDatasetId && introducedCandidate && parsed?.confirmationBook) {
+    if (evidence.confirmedDatasetId && introducedCandidate && parsed?.confirmationBook) {
       resources.push({
         ...parsed.confirmationBook,
-        datasetId: event.confirmedDatasetId,
-        role: 'review',
-        sourceUnitId: introducedCandidate.source.sourceUnitId,
+        resourceId: resourceId(evidence.confirmedDatasetId, 'review', introducedCandidate.source.sourceUnitId),
+        kind: 'book-link',
+        datasetId: evidence.confirmedDatasetId,
+        relationship: 'review',
+        source: introducedCandidate.source,
       })
     }
   }
   return resources
 }
 
-function progressionEventsFor(
+function progressionEvidenceFor(
   selectedCandidates: WeeklyDatasetCandidate[],
   parsedBySourceUnitId: Map<string, ParsedGrade5SourceUnit>,
   profile: Grade5SlidesSourceProfile,
 ) {
-  const events: LifecycleProgressionEvent[] = []
+  const evidence: CurriculumProgressionEvidence[] = []
   const issues: Grade5SourceIssue[] = []
   const ordered = [...selectedCandidates].sort((left, right) =>
     (left.assignedWeek?.startDate || '').localeCompare(right.assignedWeek?.startDate || ''))
@@ -350,16 +359,18 @@ function progressionEventsFor(
       severity: 'error',
       message: `No valid Grade 5 candidate establishes the approved ${profile.baselineStartDate} activation baseline.`,
     })
-    return { events, issues }
+    return { evidence, issues }
   }
 
   const baseline = ordered[baselineIndex]
-  events.push({
-    eventId: progressionEventId(baseline),
+  evidence.push({
+    evidenceId: progressionEvidenceId(baseline),
+    kind: 'cohort-progression',
     grade: profile.grade,
     schoolYearKey: schoolYearToken(profile.schoolYear),
     effectiveDate: baseline.assignedWeek!.startDate,
     introducedDatasetId: baseline.datasetId!,
+    source: baseline.source,
   })
 
   let previousAccepted = baseline
@@ -380,17 +391,19 @@ function progressionEventsFor(
       chainBlocked = true
       continue
     }
-    events.push({
-      eventId: progressionEventId(candidate),
+    evidence.push({
+      evidenceId: progressionEvidenceId(candidate),
+      kind: 'cohort-progression',
       grade: profile.grade,
       schoolYearKey: schoolYearToken(profile.schoolYear),
       effectiveDate: candidate.assignedWeek!.startDate,
       introducedDatasetId: candidate.datasetId!,
       confirmedDatasetId: previousAccepted.datasetId!,
+      source: candidate.source,
     })
     previousAccepted = candidate
   }
-  return { events, issues }
+  return { evidence, issues }
 }
 
 export function extractGrade5Presentation(
@@ -422,10 +435,10 @@ export function extractGrade5Presentation(
   }
 
   const parsedBySourceUnitId = new Map(parsedUnits.map((parsed) => [parsed.candidate.source.sourceUnitId, parsed]))
-  const progression = progressionEventsFor(classification.selectedCandidates, parsedBySourceUnitId, profile)
+  const progression = progressionEvidenceFor(classification.selectedCandidates, parsedBySourceUnitId, profile)
   issues.push(...progression.issues)
-  const bookResources = bookResourcesFor(
-    progression.events,
+  const resources = bookResourcesFor(
+    progression.evidence,
     classification.selectedCandidates,
     parsedBySourceUnitId,
   )
@@ -433,8 +446,8 @@ export function extractGrade5Presentation(
   return {
     candidates,
     classification,
-    progressionEvents: progression.events,
-    bookResources,
+    progressionEvidence: progression.evidence,
+    resources,
     issues,
   }
 }
@@ -445,7 +458,8 @@ export const grade5SlidesSourceAdapter: SourceAdapter<SlidesPresentationPayload>
   sourceType: 'google-slides',
   grade: grade5SlidesSourceProfile.grade,
   schoolYear: grade5SlidesSourceProfile.schoolYear,
+  extract: extractGrade5Presentation,
   adapt(payload) {
-    return extractGrade5Presentation(payload).candidates
+    return this.extract(payload).candidates
   },
 }

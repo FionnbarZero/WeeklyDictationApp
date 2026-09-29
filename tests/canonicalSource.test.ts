@@ -234,6 +234,14 @@ test('the source adapter contract also accepts a Google Sheets workbook payload'
     sourceType: 'google-sheets',
     grade: 'Fixture Grade',
     schoolYear: '2026–2027',
+    extract(payload) {
+      return {
+        candidates: this.adapt(payload),
+        issues: [],
+        progressionEvidence: [],
+        resources: [],
+      }
+    },
     adapt(payload) {
       const sheet = payload.sheets?.[0]
       return [canonicalizeWeeklyDatasetCandidate({

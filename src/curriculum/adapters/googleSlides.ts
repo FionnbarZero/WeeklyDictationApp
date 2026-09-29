@@ -1,4 +1,5 @@
 import { canonicalizeWeeklyDatasetCandidate } from '../canonical.ts'
+import { importResultFromCandidates } from '../importResult.ts'
 import type { SlidesPresentationPayload, SourceAdapter, WeeklyDatasetCandidate } from '../model.ts'
 
 export type SlidesParserProfile = {
@@ -149,14 +150,15 @@ export function candidatesFromPresentation(presentation: PresentationLike, profi
 }
 
 export function slidesSourceAdapterFor(profile: SlidesParserProfile): SourceAdapter<SlidesPresentationPayload> {
+  const extract = (payload: SlidesPresentationPayload) =>
+    importResultFromCandidates(candidatesFromPresentation(payload, profile))
   return {
     id: profile.sourceAdapterId,
     version: profile.version,
     sourceType: 'google-slides',
     grade: profile.grade,
     schoolYear: profile.schoolYear,
-    adapt(payload) {
-      return candidatesFromPresentation(payload, profile)
-    },
+    extract,
+    adapt: (payload) => extract(payload).candidates,
   }
 }

@@ -18,7 +18,7 @@ function fixture(): SlidesPresentationPayload {
 
 function acquisitionCandidate() {
   const extraction = extractGrade5Presentation(fixture())
-  const datasetId = extraction.progressionEvents.at(-1)?.introducedDatasetId
+  const datasetId = extraction.progressionEvidence.at(-1)?.introducedDatasetId
   const candidate = extraction.candidates.find((item) => item.datasetId === datasetId && item.status === 'valid')
   assert.ok(candidate)
   return candidate

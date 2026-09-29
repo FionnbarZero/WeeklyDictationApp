@@ -39,7 +39,7 @@ test('Grade 5 progression assigns Acquisition, both Test Reviews, and Mastery fr
 
 test('calendar gaps do not advance Grade 5 without another accepted progression event', () => {
   const source = extraction()
-  const frozen = { ...source, progressionEvents: source.progressionEvents.slice(0, 3) }
+  const frozen = { ...source, progressionEvidence: source.progressionEvidence.slice(0, 3) }
   const resolution = resolveGrade5SourceLifecycle(frozen, '2026-10-12')
 
   assert.equal(resolution.acquisitionDatasetId, week0914)
@@ -53,10 +53,10 @@ test('calendar gaps do not advance Grade 5 without another accepted progression 
 
 test('a broken confirmation chain freezes later Grade 5 cohorts', () => {
   const source = extraction()
-  const brokenEvents = source.progressionEvents.map((event, index) => index === 2
+  const brokenEvents = source.progressionEvidence.map((event, index) => index === 2
     ? { ...event, confirmedDatasetId: week0831 }
     : event)
-  const resolution = resolveGrade5SourceLifecycle({ ...source, progressionEvents: brokenEvents }, '2026-09-29')
+  const resolution = resolveGrade5SourceLifecycle({ ...source, progressionEvidence: brokenEvents }, '2026-09-29')
 
   assert.equal(resolution.acquisitionDatasetId, week0908)
   assert.deepEqual(resolution.testReviews, [{ datasetId: week0831, cycle: 1 }])

@@ -145,7 +145,8 @@ function speakCurrentWord() {
 }
 
 function latestProgressionDate(extraction: Grade5SourceExtraction) {
-  return extraction.progressionEvents.reduce((latest, event) => event.effectiveDate > latest ? event.effectiveDate : latest, '0000-00-00')
+  return extraction.progressionEvidence.reduce((latest, evidence) =>
+    evidence.effectiveDate > latest ? evidence.effectiveDate : latest, '0000-00-00')
 }
 
 function renderAssessmentSummary() {

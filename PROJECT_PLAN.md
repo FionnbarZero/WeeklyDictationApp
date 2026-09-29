@@ -55,6 +55,18 @@ WeeklyDatasetCandidate
 └── validationOutcomes[]
 ```
 
+Every adapter returns one source-neutral import result rather than a grade-specific loose collection:
+
+```text
+CurriculumImportResult
+├── candidates[]
+├── issues[]
+├── progressionEvidence[]
+└── resources[]
+```
+
+`candidates` contain normalized possible datasets. `issues` retain source problems without hiding valid units. `progressionEvidence` records source proof that a cohort may advance but does not assign a lifecycle stage. `resources` attach books or other supporting material to a canonical dataset and source unit. Adapters may preserve a candidate-only compatibility method, but new consumers use the complete result. Curriculum adapters must not import lifecycle, React, application orchestration, or persistence modules. A lifecycle-owned projection converts accepted progression evidence into lifecycle events.
+
 All grades conceptually preserve Tier 1, Tier 2, and Tier 3, even when a source uses different labels or a tier is empty. Tier 1 supplies the current writing/dictation module. Tier 2 and Tier 3 are stored as structured metadata and do not automatically enter Tier 1 dictation. Tier 2 will later supply the shared character-reading module without reparsing the original source. Tier 3 remains available for a later activity definition.
 
 Source labels and application meaning must remain separate. `sourceSectionLabel` records what the teacher-authored source visibly calls a section. `instructionalRole` records how the application uses that section. A misleading or forward-looking source label must not silently determine the lifecycle.
@@ -519,6 +531,7 @@ Goal: separate shared canonical identity and validation from Grade 2 source and 
 
 - Introduce the normalized `WeeklyDatasetCandidate` boundary with Tier 1–3 arrays, source metadata, source labels, instructional roles, assigned week, fingerprint, status, and validation outcomes.
 - Define a source-adapter contract that accepts both Slides and Sheets payloads without making Google API calls in this branch.
+- Give every adapter one shared result containing candidates, issues, progression evidence, and resources. Keep candidate-only adapter access as a compatibility view rather than a second extraction path.
 - Define stable ordered target-occurrence identity so identical text from two authoritative source positions remains two practice targets without breaking lexical mastery summaries. Preserve all existing Grade 2 IDs and normalized output where its source terms are unique; introduce occurrence disambiguation without rewriting established identities.
 - Preserve the existing Grade 2 importer output, dataset IDs, practice behavior, and tests exactly.
 - Move Grade 2-specific parsing and teaching parameters behind named, versioned profiles.

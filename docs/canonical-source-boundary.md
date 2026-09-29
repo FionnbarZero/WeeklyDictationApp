@@ -5,7 +5,11 @@ Curriculum input now follows one explicit, pure pipeline:
 ```text
 raw source payload
 → source-specific adapter
-→ WeeklyDatasetCandidate
+→ CurriculumImportResult
+   ├── WeeklyDatasetCandidate[]
+   ├── issues[]
+   ├── progression evidence[]
+   └── resources[]
 → shared canonical identity and validation
 → compatibility Dataset[] / Word[] output
 ```
@@ -16,7 +20,9 @@ No layer in this pipeline fetches Google data, reads or writes Firestore, or per
 
 `src/curriculum/adapters/googleSlides.ts` understands a Google Slides-shaped payload. It extracts source text, dates, vocabulary tiers, workshop markers, source order, and source provenance according to a supplied Slides parser profile. It produces candidates rather than application datasets.
 
-`src/curriculum/model.ts` defines source-neutral payload, provenance, vocabulary-occurrence, and weekly-candidate types. Slides use the presentation ID and slide/page ID as source identity. A later Sheets adapter can use the spreadsheet ID and tab/range identity without pretending that a row is a slide.
+`src/curriculum/model.ts` defines source-neutral payload, provenance, vocabulary-occurrence, weekly-candidate, issue, progression-evidence, resource, and complete import-result types. Slides use the presentation ID and slide/page ID as source identity. Sheets use the spreadsheet ID and tab/range identity without pretending that a row is a slide.
+
+`src/curriculum/importResult.ts` constructs the complete four-part result for adapters that currently produce only canonical candidates. Their `adapt` method remains as a candidate-only compatibility view. Grade 5 supplies real progression evidence and book resources through the same result. Curriculum extraction does not import lifecycle contracts; `src/lifecycle/curriculumProgression.ts` explicitly projects accepted evidence into lifecycle events.
 
 `src/curriculum/identity.ts` owns school-year normalization, canonical dataset IDs, ordered vocabulary-occurrence IDs, and versioned vocabulary-content fingerprints. Ordered occurrences remain separate even when their text is identical. The fingerprint intentionally excludes the instructional role so the same vocabulary can move from preview to current confirmation without appearing to be different content.
 
@@ -54,12 +60,13 @@ The refactor must preserve:
 
 ## Adding a future source adapter
 
-1. Add a source-specific adapter that implements `SourceAdapter<Payload>` and produces `WeeklyDatasetCandidate[]`.
+1. Add a source-specific adapter that implements `SourceAdapter<Payload>` and produces one `CurriculumImportResult` containing candidates, issues, progression evidence, and resources. Preserve `adapt` only as a candidate-only compatibility view.
 2. Give the adapter and its extraction rules explicit versioned IDs.
 3. Preserve source order and neutral provenance (`sourceType`, `sourceDocumentId`, and `sourceUnitId`).
 4. Route every candidate through `canonicalizeWeeklyDatasetCandidate`; do not generate final dataset or word IDs in the adapter.
 5. Register one authoritative source for the grade and school year.
 6. Add source fixtures and golden tests before activating the profile.
 7. Keep source-profile rules separate from the grade's practice profile.
+8. Never import lifecycle, UI, or persistence modules from the curriculum adapter. Emit neutral evidence and let a lifecycle-owned projection consume it.
 
-Grade 5 and Kindergarten extraction are intentionally not implemented by this refactor. Their later branches may add adapters and profiles only after the Grade 2 golden compatibility tests remain green.
+Grade 5 and Kindergarten now use this boundary while remaining inactive for production practice. Grade 5 emits table-derived cohort progression evidence and book resources; Kindergarten emits blocked weekly candidates and issues until its deferred lifecycle rules are approved. Neither adapter may activate practice or write child data.

@@ -97,7 +97,7 @@ function renderCandidates(candidates: WeeklyDatasetCandidate[]) {
   }
 }
 
-function renderEvents(events: ReturnType<typeof extractGrade5Presentation>['progressionEvents']) {
+function renderEvents(events: ReturnType<typeof extractGrade5Presentation>['progressionEvidence']) {
   clear(eventsElement)
   if (events.length === 0) {
     eventsElement.append(createElement('p', 'empty', 'No accepted progression events.'))
@@ -108,7 +108,7 @@ function renderEvents(events: ReturnType<typeof extractGrade5Presentation>['prog
     item.append(createElement('strong', undefined, index === 0 ? `Baseline · ${event.effectiveDate}` : `Accepted step · ${event.effectiveDate}`))
     item.append(createElement('p', 'metadata', `Introduced: ${event.introducedDatasetId}`))
     item.append(createElement('p', 'metadata', event.confirmedDatasetId ? `Confirmed: ${event.confirmedDatasetId}` : 'Confirmed: baseline does not reconstruct an earlier cohort'))
-    item.append(createElement('code', undefined, event.eventId))
+    item.append(createElement('code', undefined, event.evidenceId))
     eventsElement.append(item)
   }
 }
@@ -161,14 +161,14 @@ function renderPayload(payload: SlidesPresentationPayload, sourceLabel: string) 
   renderSummary([
     { label: 'Source slides considered', value: payload.slides?.length || 0 },
     { label: 'Canonical candidates', value: extraction.candidates.length },
-    { label: 'Accepted events', value: extraction.progressionEvents.length },
+    { label: 'Accepted events', value: extraction.progressionEvidence.length },
     { label: 'Duplicates', value: counts.duplicate || 0 },
     { label: 'Conflicts', value: counts.conflict || 0 },
     { label: 'Errors', value: extraction.issues.filter((issue) => issue.severity === 'error').length },
   ])
-  renderStagePreview(extraction.candidates, extraction.progressionEvents.map((event) => event.introducedDatasetId))
+  renderStagePreview(extraction.candidates, extraction.progressionEvidence.map((event) => event.introducedDatasetId))
   renderCandidates(extraction.candidates)
-  renderEvents(extraction.progressionEvents)
+  renderEvents(extraction.progressionEvidence)
   renderIssues(extraction.issues)
   resultsElement.hidden = false
   setStatus(`Loaded ${sourceLabel}. Nothing was written or activated.`)
