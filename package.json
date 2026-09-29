@@ -10,6 +10,7 @@
     "import:slides": "node --experimental-strip-types scripts/import-slides.ts",
     "hydrate:local": "node --experimental-strip-types scripts/hydrate-local.ts",
     "hydrate:slides": "node --experimental-strip-types scripts/hydrate-google-slides.ts",
+    "inspect:kindergarten": "node --experimental-strip-types scripts/inspect-kindergarten-sheets.ts",
     "import:server": "node --experimental-strip-types backend/server.ts",
     "preview": "vite preview"
   },

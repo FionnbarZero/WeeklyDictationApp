@@ -15,6 +15,7 @@ export function primaryLifecycleWarmupTrialsFor(grade: string) {
 }
 export const GRADE2_DECK_ID = '10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4'
 export const GRADE5_DECK_ID = '1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI'
+export const KINDERGARTEN_SHEETS_ID = '1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA'
 export const ACTIVE_DECK_ID = GRADE2_DECK_ID
 
 export type CurriculumSourceRegistryEntry = {
@@ -34,6 +35,7 @@ export type DeckRegistryEntry = CurriculumSourceRegistryEntry
 export const SOURCE_REGISTRY: CurriculumSourceRegistryEntry[] = [
   { grade: 'Grade 2', displayName: 'Grade 2', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE2_DECK_ID, parserProfileId: 'grade-2-2026-27-weekly-focus', sourceAdapterId: 'grade-2-google-slides', practiceProfileId: grade2PracticeProfile.id, active: true },
   { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: 'grade-5-unimplemented', active: false },
+  { grade: 'Kindergarten', displayName: 'Kindergarten', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-sheets', sourceDocumentId: KINDERGARTEN_SHEETS_ID, parserProfileId: 'kindergarten-2026-27-weekly-focus', sourceAdapterId: 'kindergarten-google-sheets-v1', practiceProfileId: 'kindergarten-unimplemented', active: false },
 ]
 export const DECK_REGISTRY = SOURCE_REGISTRY
 

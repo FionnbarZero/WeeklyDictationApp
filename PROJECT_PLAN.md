@@ -119,9 +119,9 @@ The notification layers are a permanent server-only structured import log, an `a
 
 A malformed source is not treated as a transient server failure. Scheduled execution may finish with `success_with_warnings`, emit the alert once for the unresolved source condition, and avoid repeated automatic rewrites or noisy retries.
 
-### Deferred source rules
+### Partially approved and deferred source rules
 
-Kindergarten displayed end dates and activation rollover rules are deferred. The eventual rule must distinguish the weekly tab’s activation interval from the child-facing school-day date range, handle the newest tab without relying on a future tab, and never infer dates from tab position alone.
+Kindergarten weekly cycles are Monday through Sunday. The date displayed in a weekly tab title maps to the containing cycle: normalize backward to the previous-or-same Monday, then forward six days to Sunday. For example, `Week 4 09/08` maps to `2026-09-07` through `2026-09-13`, and `Week 6 09/21` maps to `2026-09-21` through `2026-09-27`. This rule never uses tab position or a future tab. Production activation rollover, newest-empty-tab fallback, unit boundaries, and child-facing lifecycle behavior remain deferred.
 
 Grade 5 and Kindergarten writing-workshop or intentional no-instruction markers are also deferred. Each profile keeps an explicit extension point, but an empty source unit is malformed until a trusted marker is defined. It must never be guessed to be a workshop.
 
@@ -150,7 +150,7 @@ Newest valid activated vocabulary dataset: Acquisition
 → every older valid vocabulary dataset: Mastered and Warmup-eligible
 ```
 
-Grade 2 Acquisition uses the routine-specific timers in the Shared Acquisition contract below; it does not use one generic Acquisition timer. Grade 2 uses a 10-second Test Review timer. A dataset remains in its current assignment through the weekend and whenever no valid later vocabulary dataset activates. Kindergarten is intended to use the same high-level Acquisition → Test Review → Mastered path, but its date activation and display-range rules remain deferred until the Sheets date policy is approved.
+Grade 2 Acquisition uses the routine-specific timers in the Shared Acquisition contract below; it does not use one generic Acquisition timer. Grade 2 uses a 10-second Test Review timer. A dataset remains in its current assignment through the weekend and whenever no valid later vocabulary dataset activates. Kindergarten weekly display ranges now follow the approved Monday–Sunday rule, but its activation event, cumulative unit-review boundaries, number of Test Review stages, and empty-tab behavior remain deferred.
 
 Grade 5 uses an additional review stage:
 
@@ -691,24 +691,26 @@ Acceptance gate: each valid event advances exactly one stage; a conference gap a
 
 Branch: `feature/kindergarten-sheets-adapter`
 
-Goal: adapt the authoritative Kindergarten workbook into normalized candidates without inventing date or workshop rules.
+Goal: adapt the authoritative Kindergarten workbook into normalized candidates using the approved Monday–Sunday date rule without inventing activation, unit, or workshop rules.
 
 - Treat the spreadsheet ID as the yearly source identity and each weekly tab as a source unit.
 - Map `Writing character` to Tier 1, `High frequency word` to Tier 2, and Tier 3 to an empty array.
 - Preserve tab title, tab identity, source order, raw date, and source provenance.
-- Leave displayed end dates, newest-tab fallback, activation rollover, and writing-workshop recognition explicitly unresolved.
+- Normalize the tab date to the containing Monday–Sunday cycle, including a Tuesday tab after a Monday holiday.
+- Leave newest-tab fallback, activation rollover, cumulative unit boundaries, and writing-workshop recognition explicitly unresolved.
+- Keep every candidate malformed/non-activatable while any activation blocker remains; a normalized date alone does not authorize production practice.
 - Produce reviewed local dry-run output only; do not write Firestore.
 
-Acceptance gate: observed weekly-tab fixtures normalize tiers without mixing labels, no `gid` is treated as the yearly source ID, deferred date fields fail closed rather than being guessed, and Grade 2 and Grade 5 tests remain unchanged.
+Acceptance gate: observed weekly-tab fixtures normalize tiers without mixing labels, no `gid` is treated as the yearly source ID, Monday–Sunday date matrices pass, unresolved activation and no-instruction rules fail closed, and Grade 2 and Grade 5 tests remain unchanged.
 
 ### Kindergarten lifecycle profile
 
 Branch: `feature/kindergarten-lifecycle-profile`, created from updated `main` after the Kindergarten Sheets adapter merges.
 
-Goal: register Kindergarten lifecycle behavior only after the deferred date, rollover, and no-instruction decisions are approved.
+Goal: register Kindergarten lifecycle behavior only after the deferred rollover, unit-review, and no-instruction decisions are approved.
 
 - Keep Kindergarten rules explicit; never inherit Grade 2 or Grade 5 lifecycle behavior through a fallback.
-- Convert the approved tab-date and rollover policy into source-neutral lifecycle inputs.
+- Consume the approved Monday–Sunday assigned week and convert the future approved rollover policy into source-neutral lifecycle inputs.
 - Define the number of Test Review stages, progression event, Warmup eligibility boundary, and no-instruction handling before enabling child practice.
 - Preserve the Grade 2 and Grade 5 golden lifecycle results unchanged.
 
@@ -831,7 +833,7 @@ Trusted Slides or Sheets source payload
 - Make duplicate-only imports deterministic and idempotent.
 - Compare normalized local and backend importer output before any staging write.
 - Run one explicitly authorized staging import per configured grade, inspect the result, run it again, and prove that the second run creates no duplicate records.
-- Keep Kindergarten dry-run-only until its deferred date policy is approved; do not let that unresolved grade cause Grade 2 or Grade 5 data to be guessed or rewritten.
+- Keep Kindergarten dry-run-only until activation, unit-review, and no-instruction policies are approved; do not let that unresolved grade cause Grade 2 or Grade 5 data to be guessed or rewritten.
 
 Acceptance gate: each grade is activated independently only after its source and date policy pass. Activated staging users read only their grade- and school-year-matched server-imported datasets; local and backend normalized outputs match; repeated imports preserve identical Firestore state; no manually invented, guessed, or placeholder production vocabulary exists.
 
@@ -983,7 +985,7 @@ Required revisions before a production pilot:
 - Implement the approved Adaptive Warmup state model as a pure, unused boundary before activating it: long-term mastery-term identity, separate evidence and scheduling state, active-term suppression, exactly-once occurrence integration, approved allocation and no-repeat rules, and a deterministic reported v2-to-v3 migration.
 - After the pure model is merged, activate it through revision-aware persistent Warmup visits. Replace the remaining incomplete-Warmup cleanup behavior with durable materialized queues and atomic attempt, mastery, visit, and graph-point transitions. Exact Acquisition resumption and abandoned/skipped Test Review isolation are already implemented.
 - Add the full Warmup history line graph with target, attempted, correct, percentage, and partial/completed data.
-- Introduce the canonical source boundary, validate the latest Grade 5 table roles, and add the Kindergarten Sheets adapter without guessing deferred date rules.
+- Introduce the canonical source boundary, validate the latest Grade 5 table roles, and add the Kindergarten Sheets adapter with the approved Monday–Sunday normalization while leaving activation decisions blocked.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
 - Add emulator tests for module-specific Warmup visits, Acquisition progressions, stable attempt IDs, exact next-position updates, DT observations, and Test Review 1 and 2 provisional data. The corresponding rule paths now exist but remain unverified in the Emulator Suite.
 - Move the related Acquisition attempt, DT observation, and next-position writes into one transaction or trusted batch, and add a server-managed DT profile that Firestore rules can validate.
@@ -993,6 +995,6 @@ Required revisions before a production pilot:
 - Keep official browser-created scores identified as client-trusted until a trusted server boundary or equivalent authoritative validation is implemented.
 - Deploy no Cloud Run importer or Monday Cloud Scheduler until manual and shadow validation gates pass.
 
-The active Grade 2 source deck was inspected read-only; its structure and page IDs are in `docs/grade2-deck-structure.md`. The Grade 5 observed structure is in `docs/grade5-deck-structure.md`, and the existing partial Grade 5 parser profile must be validated and extended against the latest approved table-role rules rather than replaced blindly. Kindergarten uses one authoritative Sheets workbook with weekly tabs; its source adapter must preserve the inspected `Writing character` and `High frequency word` mappings while its date policy remains deferred.
+The active Grade 2 source deck was inspected read-only; its structure and page IDs are in `docs/grade2-deck-structure.md`. The Grade 5 observed structure is in `docs/grade5-deck-structure.md`, and the existing partial Grade 5 parser profile must be validated and extended against the latest approved table-role rules rather than replaced blindly. Kindergarten uses one authoritative Sheets workbook with weekly tabs; its source adapter preserves the inspected `Writing character` and `High frequency word` mappings and the approved Monday–Sunday cycle while production activation remains blocked.
 
-Remaining product decisions include Grade 5's standalone-Warmup target size, bucket quotas, and promotion thresholds; which users or environments may disable Tier 1 DT observation collection; how DT performance should be displayed; the minimum evidence needed to change Familiar DT status; the future standard Tier 1 and Tier 2 baseline-list sources and versions; baseline assessment set size; whether future baseline remediation uses a consecutive or cumulative error window; the exact Warmup correction and reacquisition sequences; Kindergarten displayed end dates and activation rollover; trusted Grade 5 and Kindergarten no-instruction/workshop markers; whether the first Tier 2 release stores voice recordings; whether parent registration is invitation-only or open; whether email verification is required; the account and practice-data retention/deletion policy; how existing local profiles are mapped during migration; whether the handwriting pad replaces paper or remains optional; and the Kindergarten reward award/redemption/parent-control model. Each decision must be recorded before the phase whose security, privacy, migration, source identity, or child experience depends on it.
+Remaining product decisions include Grade 5's standalone-Warmup target size, bucket quotas, and promotion thresholds; which users or environments may disable Tier 1 DT observation collection; how DT performance should be displayed; the minimum evidence needed to change Familiar DT status; the future standard Tier 1 and Tier 2 baseline-list sources and versions; baseline assessment set size; whether future baseline remediation uses a consecutive or cumulative error window; the exact Warmup correction and reacquisition sequences; Kindergarten activation rollover, unit-boundary source, and cumulative-review lifecycle; trusted Grade 5 and Kindergarten no-instruction/workshop markers; whether the first Tier 2 release stores voice recordings; whether parent registration is invitation-only or open; whether email verification is required; the account and practice-data retention/deletion policy; how existing local profiles are mapped during migration; whether the handwriting pad replaces paper or remains optional; and the Kindergarten reward award/redemption/parent-control model. Each decision must be recorded before the phase whose security, privacy, migration, source identity, or child experience depends on it.
