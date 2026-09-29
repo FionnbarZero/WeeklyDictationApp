@@ -480,6 +480,8 @@ feature/grade5-lifecycle-strategy
         ↓ merge
 feature/kindergarten-sheets-adapter
         ↓ merge
+feature/kindergarten-learning-lab
+        ↓ merge
 feature/kindergarten-lifecycle-profile
         ↓ merge
 feature/persistent-acquisition
@@ -702,6 +704,21 @@ Goal: adapt the authoritative Kindergarten workbook into normalized candidates u
 - Produce reviewed local dry-run output only; do not write Firestore.
 
 Acceptance gate: observed weekly-tab fixtures normalize tiers without mixing labels, no `gid` is treated as the yearly source ID, Monday–Sunday date matrices pass, unresolved activation and no-instruction rules fail closed, and Grade 2 and Grade 5 tests remain unchanged.
+
+### Kindergarten learning lab
+
+Branch: `feature/kindergarten-learning-lab`, created from updated `main` after the Kindergarten Sheets adapter merges.
+
+Goal: preserve and test the Kindergarten Dojo experience without registering a production lifecycle, accepting a blocked candidate, or writing child progress.
+
+- Give Kindergarten an explicit Acquisition strategy ID, version, timers, sequences, and separate Familiar-DT target objects. Its current semantic prompt trace matches Grade 2 v3, but future Grade 2 changes cannot alter it by object identity.
+- Use the shared `PracticeView` for Tier 1 writing while keeping the lab profile out of the production practice registry.
+- Require a deliberately selected local fixture week. Never infer the active week from the current date, an empty newest tab, or source order.
+- Keep Tier 2 reading visible, separate, unscored, unrecorded, and clearly identified as a teaching prototype until the shared Tier 2 engine is approved.
+- Represent the August 31–September 27 Unit 1 cumulative review as an explicit lab fixture only. Aggregate its observed Tier 1 and Tier 2 terms, send only Tier 1 writing through the shared Test Review presentation, and persist nothing.
+- Keep the lab outside `index.html`, `main.tsx`, `App.tsx`, lifecycle registries, practice registries, Firebase, Firestore, and browser storage.
+
+Acceptance gate: Kindergarten and Grade 2 produce equal semantic Acquisition traces under the current approved values while sharing no strategy or Familiar-DT object identity; the Dojo uses the checked-in fixture and shared writing UI; Tier 1 and Tier 2 remain separate; the cumulative review is lab-only; all existing tests and the production build pass; and production Kindergarten stays inactive.
 
 ### Kindergarten lifecycle profile
 

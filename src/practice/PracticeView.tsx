@@ -25,6 +25,7 @@ export type PracticeViewProps = {
   onSpeakWord: (word: Word, warmup: boolean) => StopSpeech
   onSpeakReviewInstruction: () => StopSpeech
   reviewInstruction: string
+  timerSecondsOverride?: number
 }
 
 function phaseLabel(phase: LifecyclePhase) {
@@ -55,13 +56,14 @@ export function PracticeView({
   onSpeakWord,
   onSpeakReviewInstruction,
   reviewInstruction,
+  timerSecondsOverride,
 }: PracticeViewProps) {
   const term = activePracticeWord(session)
   const dataset = datasets.find((item) => item.id === term?.datasetId) || datasets.find((item) => item.id === session.primaryDatasetId)
   const isWarmup = session.segment === 'warmup'
   const acquisitionPrompt = session.segment === 'primary' ? session.acquisition?.prompt : undefined
   const showCopy = wordIsVisibleDuringWriting(acquisitionPrompt?.kind)
-  const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
+  const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsOverride || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
   const stageKey = `${session.id}:${session.segment}:${session.stage}:${session.index}:${acquisitionPrompt?.id || ''}`
   useEffect(() => {
     if (session.stage === 'warmup-intro') return

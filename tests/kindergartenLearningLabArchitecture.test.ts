@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+
+function source(path: string) {
+  return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+}
+
+test('the Kindergarten learning lab is development-only and outside production entry points', () => {
+  const productionEntries = [source('index.html'), source('src/main.tsx'), source('src/App.tsx')].join('\n')
+  const harnessHtml = source('kindergarten-learning-lab.html')
+  const harnessSource = source('src/kindergartenLearningLabHarness.tsx')
+
+  assert.doesNotMatch(productionEntries, /kindergarten-learning-lab|kindergartenLearningLabHarness|kindergartenLab\//)
+  assert.match(harnessHtml, /kindergarten-lab-root/)
+  assert.match(harnessHtml, /src\/kindergartenLearningLabHarness\.tsx/)
+  assert.match(harnessSource, /import\.meta\.env\.DEV/)
+  assert.match(harnessSource, /tests\/fixtures\/kindergarten-workbook\.json/)
+  assert.match(harnessSource, /Manual selection only—this lab does not infer the active week/)
+  assert.doesNotMatch(harnessSource, /from ['"].*(firebase|firestore)|localStorage\.|googleapis|fetch\(['"]https:/i)
+})
+
+test('Kindergarten writing uses the shared PracticeView with an independent strategy', () => {
+  const appSource = source('src/App.tsx')
+  const harnessSource = source('src/kindergartenLearningLabHarness.tsx')
+  const strategySource = source('src/acquisition/strategies/kindergarten.ts')
+  const labAdapter = source('src/kindergartenLab/acquisitionLab.ts')
+  const registry = source('src/practice/profiles/registry.ts')
+
+  assert.match(appSource, /import \{ PracticeView \} from '\.\/practice\/PracticeView'/)
+  assert.match(harnessSource, /import \{ PracticeView \} from '\.\/practice\/PracticeView\.tsx'/)
+  assert.match(harnessSource, /<PracticeView/)
+  assert.match(labAdapter, /startAcquisition/)
+  assert.match(labAdapter, /transitionAcquisition/)
+  assert.doesNotMatch(strategySource, /strategies\/grade2|grade2AcquisitionStrategy/)
+  assert.doesNotMatch(registry, /kindergarten/i)
+  assert.doesNotMatch(`${harnessSource}\n${labAdapter}`, /from ['"].*(firebase|firestore)|localStorage\.|createScore|saveSession/i)
+})
+
+test('Tier 2 and the cumulative unit review remain explicit unpersisted lab paths', () => {
+  const harnessSource = source('src/kindergartenLearningLabHarness.tsx')
+  const unitReview = source('src/kindergartenLab/unitReview.ts')
+  const productionEntries = [source('src/main.tsx'), source('src/App.tsx'), source('src/practice/profiles/registry.ts')].join('\n')
+
+  assert.match(harnessSource, /unscored teaching prototype/)
+  assert.match(harnessSource, /Prepare for your test/)
+  assert.match(unitReview, /explicit development fixture/i)
+  assert.match(unitReview, /__kindergarten-unit-1-review-lab__/)
+  assert.doesNotMatch(productionEntries, /KINDERGARTEN_UNIT_ONE_LAB_FIXTURE|kindergartenUnitReviewForLab/)
+  assert.doesNotMatch(`${harnessSource}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
+})
+
+test('the shared PracticeView timer override is optional and leaves production callers unchanged', () => {
+  const practiceView = source('src/practice/PracticeView.tsx')
+  const appSource = source('src/App.tsx')
+
+  assert.match(practiceView, /timerSecondsOverride\?: number/)
+  assert.match(practiceView, /acquisitionPrompt\?\.timerSeconds \|\| timerSecondsOverride \|\| timerSecondsFor/)
+  assert.doesNotMatch(appSource, /timerSecondsOverride/)
+})

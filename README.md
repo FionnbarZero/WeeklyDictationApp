@@ -12,6 +12,17 @@ npm run dev
 
 Without Firebase variables, the app runs only as a clearly local development/demo mode. Legacy localStorage data is never uploaded to a parent account. Authenticated practice requires Firebase and an active internet connection; official cloud scores are not created when Firestore cannot confirm the write.
 
+### Development-only curriculum labs
+
+When the Vite development server is running, these isolated pages can be opened directly:
+
+- `/grade5-source-harness.html` — inspect the trusted Grade 5 source fixture.
+- `/grade5-learning-hub.html` — test the Grade 5 child lab.
+- `/kindergarten-source-harness.html` — inspect the trusted Kindergarten Sheets fixture and Monday–Sunday normalization.
+- `/kindergarten-learning-lab.html` — test **Enter the Dojo**, weekly Tier 1 writing, unscored Tier 2 reading, and the explicit Unit 1 review fixture.
+
+The lab pages are not linked from `index.html` or `App.tsx`, do not register production practice profiles, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only.
+
 ## Firebase setup
 
 1. Create a Firebase project and a web app.
@@ -74,6 +85,14 @@ npm run hydrate:slides -- [--state=path/to/app-state.json] [--deck-id=PRESENTATI
 
 Export `GOOGLE_SLIDES_PRESENTATION_ID`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REFRESH_TOKEN` in the invoking shell. The command prints the import summary and hydrated state to stdout. It has no Firestore dependency, does not write a local state file, and is not imported by the browser application.
 
+The registered Kindergarten workbook can be inspected from a trusted Node-only environment through Google Sheets read requests:
+
+```bash
+npm run inspect:kindergarten
+```
+
+This command uses the same OAuth variables, defaults to the registered Kindergarten spreadsheet ID, prints blocked canonical candidates and their date/vocabulary mapping, and has no application-state or Firestore write path.
+
 The command is idempotent when existing dataset IDs are supplied, imports every valid weekly slide as its own dataset, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. Before an authorized write, it reads the stored fingerprint references so changed same-week content is treated as a conflict rather than an ID-only duplicate. The command is dry-run by default:
 
 ```bash
@@ -95,7 +114,7 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets but does not replace or advance the current Acquisition and Test Review assignments. A future writing-workshop remediation activity may draw from repeatedly incorrect Mastered words only after its rules are explicitly approved.
 - The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
-- Grade 2 is the only active source configuration. Grade 5 and Kindergarten are registered but inactive; their development-only source labs do not create production datasets or child practice. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
+- Grade 2 is the only active source configuration. Grade 5 and Kindergarten are registered but inactive; their development-only source and learning labs do not create production datasets or production child practice. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Familiar DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Familiar and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
 
