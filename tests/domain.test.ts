@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   AUDIO_PAUSE_MS,
-  ESTABLISHED_DT_WORDS,
+  FAMILIAR_DT_WORDS,
   acquisitionTimerConfigFor,
   activePracticeWord,
   audioPartsForWord,
@@ -32,6 +32,7 @@ import {
   sortDatasetsNewestFirst,
   timerSecondsFor,
   type AppState,
+  type AcquisitionFlow,
   type ChildWordState,
   type PracticeSession,
   type WordResult,
@@ -296,7 +297,7 @@ test('audio sequence and warmup rate are stable', () => {
 test('Acquisition audio follows the active prompt instead of the flat primary queue', () => {
   const flow = startAcquisitionFlow(currentDataset, 'Grade 2', () => 0)
   const promptWord = activePracticeWord({ segment: 'primary', acquisition: flow, queue: currentDataset.words, index: 0 })
-  assert.equal(promptWord?.datasetId, '__established-dt__')
+  assert.equal(promptWord?.datasetId, '__familiar-dt__')
   assert.equal(promptWord?.sentence, '')
   assert.equal(activePracticeWord({ segment: 'warmup', acquisition: flow, queue: currentDataset.words, index: 0 })?.id, currentDataset.words[0].id)
 })
@@ -396,10 +397,10 @@ function enterExpandedTrials(dataset: typeof currentDataset, random: () => numbe
   return flow
 }
 
-test('Acquisition uses the approved Established DT pool and Introduction sequence', () => {
-  assert.deepEqual(ESTABLISHED_DT_WORDS.map((word) => word.text), ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '大', '小', '上', '下', '人', '水'])
+test('Acquisition uses the approved Familiar DT pool and Introduction sequence', () => {
+  assert.deepEqual(FAMILIAR_DT_WORDS.map((word) => word.text), ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '大', '小', '上', '下', '人', '水'])
   const config = acquisitionTimerConfigFor('Grade 2')
-  assert.equal(config.establishedDtSeconds, 5)
+  assert.equal(config.familiarDtSeconds, 5)
   assert.equal(config.introductionShowCopySeconds, 10)
   assert.equal(config.introductionHiddenTargetSeconds, 10)
   assert.equal(config.correctionHiddenSeconds, 10)
@@ -407,11 +408,11 @@ test('Acquisition uses the approved Established DT pool and Introduction sequenc
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   assert.equal(flow.phase, 'introduction')
-  assert.equal(flow.prompt?.kind, 'established-dt')
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
   assert.equal(flow.prompt?.timerSeconds, 5)
   const firstDt = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset)
-  assert.equal(flow.prompt?.kind, 'established-dt')
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
   assert.notEqual(flow.prompt?.word.id, firstDt)
   flow = answerPrompt(flow, dataset)
   assert.equal(flow.prompt?.kind, 'show-copy')
@@ -425,59 +426,57 @@ test('Acquisition uses the approved Established DT pool and Introduction sequenc
   assert.equal(flow.step, 0)
 })
 
-test('Expanded Trials use the exact 11-position sequence and five target timers', () => {
+test('Expanded Trials use the approved 10-position sequence and four target timers', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
-  const expectedKinds = ['target', 'target', 'established-dt', 'target', 'established-dt', 'established-dt', 'target', 'established-dt', 'established-dt', 'established-dt', 'target']
+  const expectedKinds = ['target', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'familiar-dt', 'target']
   const targetTimers: number[] = []
   for (const expectedKind of expectedKinds) {
     assert.equal(flow.prompt?.kind, expectedKind)
     if (flow.prompt?.kind === 'target') targetTimers.push(flow.prompt.timerSeconds)
     flow = answerPrompt(flow, dataset)
   }
-  assert.deepEqual(targetTimers, [10, 9, 8, 7, 6])
+  assert.deepEqual(targetTimers, [10, 9, 8, 7])
   assert.equal(flow.targetIndex, 1)
   assert.equal(flow.phase, 'introduction')
   assert.deepEqual(flow.earnedDtPool.map((word) => word.id), [dataset.words[0].id])
 })
 
-test('DT positions use Established DTs until an Earned DT exists, then honor the 50/50 choice', () => {
+test('DT positions use Familiar DTs until an Earned DT exists, then honor the 50/50 choice', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
-  flow = answerPrompt(flow, dataset, true, () => 0.75)
-  assert.equal(flow.step, 2)
-  assert.equal(flow.prompt?.kind, 'established-dt')
+  assert.equal(flow.step, 1)
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
 
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
-  for (let index = 0; index < 4; index += 1) flow = answerPrompt(flow, dataset)
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
-  flow = answerPrompt(flow, dataset, true, () => 0.75)
-  assert.equal(flow.step, 2)
+  assert.equal(flow.step, 1)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   assert.equal(flow.prompt?.word.id, dataset.words[0].id)
   assert.equal(flow.prompt?.timerSeconds, 5)
 })
 
-test('Established DT shuffle bags exhaust the approved pool before reuse and avoid consecutive repeats', () => {
+test('Familiar DT shuffle bags exhaust the approved pool before reuse and avoid consecutive repeats', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 3) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   const presented: string[] = []
   while (!flow.complete && flow.targetIndex < 2) {
-    if (flow.prompt?.kind === 'established-dt') presented.push(flow.prompt.word.id)
+    if (flow.prompt?.kind === 'familiar-dt') presented.push(flow.prompt.word.id)
     flow = answerPrompt(flow, dataset)
   }
-  assert.equal(new Set(presented.slice(0, ESTABLISHED_DT_WORDS.length)).size, ESTABLISHED_DT_WORDS.length)
+  assert.equal(new Set(presented.slice(0, FAMILIAR_DT_WORDS.length)).size, FAMILIAR_DT_WORDS.length)
   assert.ok(presented.every((wordId, index) => index === 0 || wordId !== presented[index - 1]))
 })
 
-test('Correction uses two copies, hidden target, new Established DT, and final hidden target', () => {
+test('Correction uses three copies, hidden target, new Familiar DT, and final hidden target', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.phase, 'correction')
-  for (let index = 0; index < 2; index += 1) {
+  for (let index = 0; index < 3; index += 1) {
     assert.equal(flow.prompt?.kind, 'show-copy')
     assert.equal(flow.prompt?.timerSeconds, 10)
     flow = answerPrompt(flow, dataset, false)
@@ -485,7 +484,7 @@ test('Correction uses two copies, hidden target, new Established DT, and final h
   assert.equal(flow.prompt?.kind, 'target')
   assert.equal(flow.prompt?.timerSeconds, 10)
   flow = answerPrompt(flow, dataset, true)
-  assert.equal(flow.prompt?.kind, 'established-dt')
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.prompt?.kind, 'target')
   assert.equal(flow.prompt?.timerSeconds, 10)
@@ -495,12 +494,38 @@ test('Correction uses two copies, hidden target, new Established DT, and final h
   assert.equal(flow.prompt?.timerSeconds, 10)
 })
 
+test('successful weekly-target Correction resumes the next unfinished Expanded Trials position', () => {
+  const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
+  let flow = enterExpandedTrials(dataset)
+  flow = answerPrompt(flow, dataset, true)
+  flow = answerPrompt(flow, dataset, true)
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 2)
+  assert.equal(flow.prompt?.kind, 'target')
+
+  flow = answerPrompt(flow, dataset, false)
+  assert.equal(flow.phase, 'correction')
+  assert.equal(flow.resumePosition?.step, 3)
+  assert.equal(flow.resumePosition?.expandedTargetAttempts, 2)
+
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true)
+  flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true)
+
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 3)
+  assert.equal(flow.expandedTargetAttempts, 2)
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
+  assert.equal(flow.prompt?.timerSeconds, 5)
+})
+
 test('three consecutive hidden-target errors restart the affected word from Introduction', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
-  for (let index = 0; index < 2; index += 1) flow = answerPrompt(flow, dataset)
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
   flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
@@ -513,16 +538,15 @@ test('Earned DT checks are recorded separately and resume the interrupted target
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
-  for (let index = 0; index < 4; index += 1) flow = answerPrompt(flow, dataset)
-  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   assert.equal(shouldRecordAcquisitionAnswer(flow.prompt!), true)
-  assert.equal(flow.prompt?.countsTowardWeeklyScore, false)
+  assert.equal(flow.prompt?.countsTowardWeeklyScore, true)
   flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.currentTarget?.id, dataset.words[1].id)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 3)
+  assert.equal(flow.step, 2)
   assert.equal(flow.prompt?.kind, 'target')
 })
 
@@ -530,33 +554,31 @@ test('incorrect Earned DT checks complete Correction, return to the pool, and re
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
-  for (let index = 0; index < 4; index += 1) flow = answerPrompt(flow, dataset)
-  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   const earnedWordId = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.phase, 'correction')
   assert.equal(flow.currentTarget?.id, earnedWordId)
-  for (let index = 0; index < 2; index += 1) flow = answerPrompt(flow, dataset)
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true)
   flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true)
   assert.ok(flow.earnedDtPool.some((word) => word.id === earnedWordId))
   assert.equal(flow.currentTarget?.id, dataset.words[1].id)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 3)
+  assert.equal(flow.step, 2)
 })
 
 test('three Earned DT errors remove earned status and restart that word from Introduction', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
-  for (let index = 0; index < 4; index += 1) flow = answerPrompt(flow, dataset)
-  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   const earnedWordId = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset, false)
-  for (let index = 0; index < 2; index += 1) flow = answerPrompt(flow, dataset)
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
   flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, false)
@@ -568,27 +590,28 @@ test('three Earned DT errors remove earned status and restart that word from Int
 })
 
 test('DT responses are recorded while show-copy responses are discarded', () => {
-  assert.equal(shouldRecordAcquisitionAnswer({ kind: 'established-dt' }), true)
+  assert.equal(shouldRecordAcquisitionAnswer({ kind: 'familiar-dt' }), true)
   assert.equal(shouldRecordAcquisitionAnswer({ kind: 'earned-dt' }), true)
   assert.equal(shouldRecordAcquisitionAnswer({ kind: 'show-copy' }), false)
 })
 
-test('Done for today scores every weekly-target trial and excludes DT responses', () => {
+test('Done for today includes Earned-DT trials in the official score and excludes Familiar-DT responses', () => {
   const warmup = { words: [], randomRotationWordIds: [], recentReviewWordIds: [], erroredWordIds: [], rotationCycleId: 1 }
   const started = createPracticeSessionForTarget({ id: 'trial-score-session', childId: 'maya', grade: 'Grade 2', target: { dataset: currentDataset, phase: 'acquisition' }, warmup, startedAt: '2026-09-18T12:00:00.000Z', random: () => 0 })
   const answers = [
     { word: currentDataset.words[0], correct: false, revealMethod: 'timer' as const, countsTowardWeeklyScore: true },
     { word: currentDataset.words[0], correct: true, revealMethod: 'timer' as const, countsTowardWeeklyScore: true },
-    { word: ESTABLISHED_DT_WORDS[0], correct: true, revealMethod: 'timer' as const, countsTowardWeeklyScore: false, dtPoolType: 'established' as const },
+    { word: FAMILIAR_DT_WORDS[0], correct: true, revealMethod: 'timer' as const, countsTowardWeeklyScore: false, dtPoolType: 'familiar' as const },
+    { word: currentDataset.words[0], correct: true, revealMethod: 'timer' as const, acquisitionKind: 'earned-dt' as const, countsTowardWeeklyScore: true, dtPoolType: 'earned' as const },
     { word: currentDataset.words[1], correct: true, revealMethod: 'timer' as const, countsTowardWeeklyScore: true },
   ]
   const finished: PracticeSession = { ...started, segment: 'primary', stage: 'dictation', primaryAnswers: answers }
   const committed = commitPartialSession(initialState(), finished, today)
   assert.equal(committed.scores.length, 1)
   assert.equal(committed.scores[0].phase, 'acquisition')
-  assert.equal(committed.scores[0].wordCount, 3)
-  assert.equal(committed.scores[0].correct, 2)
-  assert.equal(committed.scores[0].percent, 67)
+  assert.equal(committed.scores[0].wordCount, 4)
+  assert.equal(committed.scores[0].correct, 3)
+  assert.equal(committed.scores[0].percent, 75)
 })
 
 test('reviewed DTs and the exact next Acquisition position persist idempotently through reload', () => {
@@ -596,7 +619,7 @@ test('reviewed DTs and the exact next Acquisition position persist idempotently 
   const started = createPracticeSessionForTarget({ id: 'checkpoint-session', childId: 'maya', grade: 'Grade 2', target: { dataset: currentDataset, phase: 'acquisition' }, warmup, startedAt: '2026-09-18T12:00:00.000Z', random: () => 0 })
   const prompt = started.acquisition!.prompt!
   const nextFlow = answerPrompt(started.acquisition!, currentDataset, true, () => 0)
-  const response = { word: prompt.word, correct: true, revealMethod: 'skip_timer' as const, acquisitionKind: prompt.kind, promptId: prompt.id, countsTowardWeeklyScore: false, dtPoolType: 'established' as const }
+  const response = { word: prompt.word, correct: true, revealMethod: 'skip_timer' as const, acquisitionKind: prompt.kind, promptId: prompt.id, countsTowardWeeklyScore: false, dtPoolType: 'familiar' as const }
   const nextSession = { ...started, segment: 'primary' as const, stage: 'dictation' as const, acquisition: nextFlow, primaryAnswers: [response] }
   const checkpointed = checkpointAcquisitionSession(initialState(), nextSession, response, new Date('2026-09-18T12:01:00.000Z'))
   const idempotent = checkpointAcquisitionSession(checkpointed, nextSession, response, new Date('2026-09-18T12:01:01.000Z'))
@@ -606,6 +629,56 @@ test('reviewed DTs and the exact next Acquisition position persist idempotently 
   const reloaded = loadState(JSON.stringify(idempotent))
   assert.equal(acquisitionProgressFor(reloaded, 'maya', currentDataset.id)?.flow.prompt?.id, nextFlow.prompt?.id)
   assert.equal(reloaded.distractorTargetObservations.length, 1)
+})
+
+test('legacy Established-DT local state hydrates and resumes with Familiar-DT fields without losing position', () => {
+  const started = startAcquisitionFlow(currentDataset, 'Grade 2', () => 0)
+  const pendingPromptId = started.prompt!.id.replaceAll('familiar-dt', 'established-dt')
+  const pendingWordId = started.prompt!.word.id
+  const remainingBagIds = started.familiarDtBag.map((word) => word.id)
+  const legacyTarget = (word: typeof FAMILIAR_DT_WORDS[number]) => ({
+    ...word,
+    id: word.id.replace('familiar-dt-', 'established-dt-'),
+    datasetId: '__established-dt__',
+  })
+  const { familiarDtBag, strategyId: _strategyId, strategyVersion: _strategyVersion, ...legacyFields } = started
+  const legacyFlow = {
+    ...legacyFields,
+    establishedDtBag: familiarDtBag.map(legacyTarget),
+    lastDtWordId: started.lastDtWordId?.replace('familiar-dt-', 'established-dt-'),
+    prompt: started.prompt ? {
+      ...started.prompt,
+      id: pendingPromptId,
+      kind: 'established-dt',
+      dtPoolType: 'established',
+      word: legacyTarget(started.prompt.word),
+      revealed: true,
+    } : null,
+  } as unknown as AcquisitionFlow
+
+  const legacyState: AppState = {
+    ...initialState(),
+    acquisitionProgressions: [{ id: `maya::${currentDataset.id}::tier-1-writing`, childId: 'maya', datasetId: currentDataset.id, grade: 'Grade 2', flow: legacyFlow, updatedAt: '2026-09-18T12:00:00.000Z' }],
+    distractorTargetObservations: [{ id: 'legacy-local-dt', childId: 'maya', sessionId: 'legacy-session', datasetId: currentDataset.id, wordId: 'established-dt-1', text: '一', poolType: 'established' as never, correct: true, revealMethod: 'timer', reviewedAt: '2026-09-18T12:00:00.000Z' }],
+  }
+  const reloaded = loadState(JSON.stringify(legacyState))
+  const resumed = resumeAcquisitionFlow(acquisitionProgressFor(reloaded, 'maya', currentDataset.id)?.flow, currentDataset, 'Grade 2', () => 0)
+  assert.equal(reloaded.distractorTargetObservations[0].poolType, 'familiar')
+  assert.equal(reloaded.distractorTargetObservations[0].wordId, 'familiar-dt-1')
+  assert.equal(resumed.strategyId, 'grade2-acquisition-v3')
+  assert.equal(resumed.strategyVersion, 3)
+  assert.equal(resumed.targetIndex, started.targetIndex)
+  assert.equal(resumed.phase, started.phase)
+  assert.equal(resumed.step, started.step)
+  assert.equal(resumed.prompt?.kind, 'familiar-dt')
+  assert.equal(resumed.prompt?.dtPoolType, 'familiar')
+  assert.equal(resumed.prompt?.id, pendingPromptId)
+  assert.equal(resumed.prompt?.word.id, pendingWordId)
+  assert.equal(resumed.prompt?.word.datasetId, '__familiar-dt__')
+  assert.equal(resumed.prompt?.revealed, false)
+  assert.equal(resumed.trialNumber, started.trialNumber)
+  assert.deepEqual(resumed.familiarDtBag.map((word) => word.id), remainingBagIds)
+  assert.equal('establishedDtBag' in resumed, false)
 })
 
 test('a completed teaching progression reopens as ongoing 50/50 DT practice', () => {

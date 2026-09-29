@@ -11,6 +11,7 @@ import type {
   AcquisitionTargetSet,
   AcquisitionTimerConfig as EngineAcquisitionTimerConfig,
   AcquisitionTransition as EngineAcquisitionTransition,
+  DistractorTrialPoolType,
   EngineAcquisitionFlow,
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
@@ -92,10 +93,18 @@ export type DistractorTargetObservation = {
   datasetId: string
   wordId: string
   text: string
-  poolType: 'established' | 'earned'
+  poolType: DistractorTrialPoolType
   correct: boolean
   revealMethod: RevealMethod
   reviewedAt: string
+}
+
+export function normalizeDistractorTargetObservation(observation: DistractorTargetObservation): DistractorTargetObservation {
+  return {
+    ...observation,
+    wordId: observation.wordId.replace(/^established-dt-(\d+)$/, 'familiar-dt-$1'),
+    poolType: String(observation.poolType) === 'established' ? 'familiar' : observation.poolType,
+  }
 }
 
 export type MonthlyRotationScore = {
@@ -145,7 +154,7 @@ export type SessionAnswer = {
   acquisitionKind?: AcquisitionPromptKind
   promptId?: string
   countsTowardWeeklyScore?: boolean
-  dtPoolType?: 'established' | 'earned'
+  dtPoolType?: DistractorTrialPoolType
 }
 
 export type AcquisitionPhase = EngineAcquisitionPhase
@@ -211,7 +220,9 @@ export function acquisitionTimerConfigFor(grade: string) {
   return { ...profile.acquisition.timers }
 }
 
-export const ESTABLISHED_DT_WORDS: Word[] = grade2AcquisitionStrategy.establishedDtTargets
+export const FAMILIAR_DT_WORDS: Word[] = grade2AcquisitionStrategy.familiarDtTargets
+/** @deprecated Read-only compatibility alias for pre-v3 callers. */
+export const ESTABLISHED_DT_WORDS = FAMILIAR_DT_WORDS
 
 export type AudioPart = { text: string; rate: number }
 
@@ -487,7 +498,6 @@ export function startAcquisitionFlow(dataset: Dataset, grade = dataset.grade, ra
 
 export function resumeAcquisitionFlow(saved: AcquisitionFlow | undefined, dataset: Dataset, grade = dataset.grade, random = Math.random) {
   if (!saved || saved.datasetId !== dataset.id) return startAcquisitionFlow(dataset, grade, random)
-  if (!saved.complete && !saved.teachingComplete) return saved
   return resumeAcquisition<Word>(saved, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), random)
 }
 
@@ -591,7 +601,7 @@ export function isAppState(value: unknown): value is AppState {
   const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
   const datasetReferencesValid = !('datasetImportReferences' in value) || (Array.isArray(value.datasetImportReferences) && value.datasetImportReferences.every((reference) => isRecord(reference) && typeof reference.datasetId === 'string' && (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') && (!('candidateStatus' in reference) || ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) && (!('instructionalRole' in reference) || ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(String(reference.instructionalRole)))))
   const progressionsValid = !('acquisitionProgressions' in value) || (Array.isArray(value.acquisitionProgressions) && value.acquisitionProgressions.every((progression) => isRecord(progression) && typeof progression.id === 'string' && typeof progression.childId === 'string' && typeof progression.datasetId === 'string' && typeof progression.grade === 'string' && isRecord(progression.flow) && typeof progression.updatedAt === 'string'))
-  const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
+  const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'familiar' || observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
   return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && dtObservationsValid
 }
 
@@ -599,7 +609,10 @@ export function loadState(rawState: string | null, legacyRaw?: string | null, im
   try {
     const parsed: unknown = rawState ? JSON.parse(rawState) : null
     if (isAppState(parsed)) {
-      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], distractorTargetObservations: Array.isArray(parsed.distractorTargetObservations) ? parsed.distractorTargetObservations : [] }
+      const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
+        ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
+        : []
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {

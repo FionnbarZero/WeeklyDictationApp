@@ -40,11 +40,19 @@ test('cloud hydration drops attempts that point outside canonical datasets or se
 test('cloud hydration restores owned Acquisition progression and DT observations', () => {
   const flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   const progression = { id: `maya::${dataset.id}::tier-1-writing`, childId: 'maya', datasetId: dataset.id, grade: 'Grade 2', flow, updatedAt: '2026-09-23T12:01:00.000Z' }
-  const observation = { id: 'dt-observation', childId: 'maya', sessionId: 'session', datasetId: dataset.id, wordId: flow.prompt!.word.id, text: flow.prompt!.word.text, poolType: 'established' as const, correct: true, revealMethod: 'timer' as const, reviewedAt: '2026-09-23T12:01:00.000Z' }
+  const observation = { id: 'dt-observation', childId: 'maya', sessionId: 'session', datasetId: dataset.id, wordId: flow.prompt!.word.id, text: flow.prompt!.word.text, poolType: 'familiar' as const, correct: true, revealMethod: 'timer' as const, reviewedAt: '2026-09-23T12:01:00.000Z' }
   const foreignObservation = { ...observation, id: 'foreign', childId: 'other-child' }
   const state = cloudDataToAppState([dataset], [], [], [], 'maya', 'Grade 2', null, [progression], [observation, foreignObservation])
   assert.equal(state.acquisitionProgressions[0].flow.prompt?.id, flow.prompt?.id)
   assert.deepEqual(state.distractorTargetObservations, [observation])
+})
+
+test('cloud hydration migrates legacy Established-DT observations to Familiar-DT terminology', () => {
+  const flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  const legacyObservation = { id: 'legacy-dt-observation', childId: 'maya', sessionId: 'session', datasetId: dataset.id, wordId: 'established-dt-1', text: '一', poolType: 'established' as never, correct: true, revealMethod: 'timer' as const, reviewedAt: '2026-09-23T12:01:00.000Z' }
+  const state = cloudDataToAppState([dataset], [], [], [], 'maya', 'Grade 2', null, [], [legacyObservation])
+  assert.equal(state.distractorTargetObservations[0].poolType, 'familiar')
+  assert.equal(state.distractorTargetObservations[0].wordId, 'familiar-dt-1')
 })
 
 test('mixed-grade cloud adaptive state survives Grade 2 hydration', () => {

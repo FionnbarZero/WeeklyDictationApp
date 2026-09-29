@@ -1,6 +1,6 @@
 import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { getIdToken, type AuthUser } from './firebaseClient.ts'
-import { deriveChildWordStates, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
+import { deriveChildWordStates, normalizeDistractorTargetObservation, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
 
@@ -160,7 +160,9 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
   const monthlyRotationScores = trustedMonthlyScores || []
   const rotationCycles = { [childId]: trustedCycle }
   const acquisitionProgressions = rawProgressions.filter((progression) => progression.childId === childId && datasetsById.has(progression.datasetId) && progression.flow?.datasetId === progression.datasetId)
-  const distractorTargetObservations = rawDtObservations.filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (observation.poolType === 'established' || observation.poolType === 'earned'))
+  const distractorTargetObservations = rawDtObservations
+    .filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (String(observation.poolType) === 'familiar' || String(observation.poolType) === 'established' || observation.poolType === 'earned'))
+    .map(normalizeDistractorTargetObservation)
   return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions, distractorTargetObservations }
 }
 

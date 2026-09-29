@@ -139,7 +139,8 @@ service cloud.firestore {
             && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
             && request.resource.data.wordId is string
             && request.resource.data.text is string
-            && request.resource.data.poolType in ['established', 'earned']
+            // Keep legacy Established writes valid while pre-v3 clients are being retired.
+            && request.resource.data.poolType in ['familiar', 'earned', 'established']
             && request.resource.data.correct is bool
             && request.resource.data.revealMethod in ['timer', 'skip_timer', 'show_answer']
             && request.resource.data.reviewedAt is string;

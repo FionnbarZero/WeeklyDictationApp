@@ -4,7 +4,7 @@ import { join, relative, sep } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
-import { ESTABLISHED_DT_WORDS } from '../src/domain.ts'
+import { ESTABLISHED_DT_WORDS, FAMILIAR_DT_WORDS } from '../src/domain.ts'
 import { grade2PracticeProfile } from '../src/practice/profiles/grade2.ts'
 
 function source(relativePath: string) {
@@ -41,7 +41,8 @@ test('the Acquisition engine boundary has only its approved dependencies', () =>
 
 test('the Grade 2 profile and domain compatibility export share the canonical strategy objects', () => {
   assert.equal(grade2PracticeProfile.acquisition, grade2AcquisitionStrategy)
-  assert.equal(ESTABLISHED_DT_WORDS, grade2AcquisitionStrategy.establishedDtTargets)
+  assert.equal(FAMILIAR_DT_WORDS, grade2AcquisitionStrategy.familiarDtTargets)
+  assert.equal(ESTABLISHED_DT_WORDS, FAMILIAR_DT_WORDS)
 })
 
 test('scoring policy remains outside the pure Acquisition engine', () => {
