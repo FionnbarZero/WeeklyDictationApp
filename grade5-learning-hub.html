@@ -5,30 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#314a91" />
     <title>Grade 5 Learning Hub Lab</title>
+    <link rel="stylesheet" href="/src/styles.css" />
     <link rel="stylesheet" href="/src/grade5Lab/learningHub.css" />
   </head>
   <body>
     <main class="lab-shell">
-      <header class="lab-banner">
-        <div>
-          <p class="eyebrow">Development-only child experience</p>
-          <h1>Grade 5 Learning Hub</h1>
-          <p>Choose this week’s homework, prepare for either test, or review older vocabulary.</p>
-        </div>
-        <div class="lab-mark" aria-hidden="true">五</div>
-      </header>
+      <div id="hub-intro">
+        <header class="lab-banner">
+          <div>
+            <p class="eyebrow">Development-only child experience</p>
+            <h1>Grade 5 Learning Hub</h1>
+            <p>Choose this week’s homework, prepare for either test, or review older vocabulary.</p>
+          </div>
+          <div class="lab-mark" aria-hidden="true">五</div>
+        </header>
 
-      <p class="lab-notice">Test lab: books can open, but learning engines, scores, progress, and cloud services are not connected.</p>
+        <p class="lab-notice">Test lab: Tier 1 writing Acquisition uses the shared engine. Required Warmup, saved progress, Tier 2 reading, Test Review, and cloud services remain disconnected.</p>
+      </div>
       <p id="hub-status" class="status" role="status" aria-live="polite"></p>
       <div id="hub-sections" class="hub-sections"></div>
+
+      <section id="practice-panel" hidden aria-live="polite">
+        <p class="lab-mode-note">Development lab only · This run is not saved · Required Warmup is not connected yet</p>
+        <div id="grade5-practice-root"></div>
+        <details class="practice-summary-panel">
+          <summary>View lab scoring details</summary>
+          <p id="practice-summary"></p>
+        </details>
+      </section>
 
       <aside id="request-panel" class="request-panel" hidden aria-live="polite">
         <h2 id="request-title">Activity request</h2>
         <p id="request-message"></p>
         <pre id="request-output"></pre>
+        <div id="request-actions" class="request-actions"></div>
         <button id="dismiss-request" class="dismiss-button" type="button">Close Preview</button>
       </aside>
     </main>
-    <script type="module" src="/src/grade5LearningHubHarness.ts"></script>
+    <script type="module" src="/src/grade5LearningHubHarness.tsx"></script>
   </body>
 </html>

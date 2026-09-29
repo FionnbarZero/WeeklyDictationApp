@@ -64,7 +64,10 @@ test('lifecycle classification is independent from practice availability and has
 })
 
 test('Acquisition UI reveals every trial and visibly distinguishes only show-and-copy prompts', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/practice/PracticeView.tsx'), 'utf8'),
+  ].join('\n')
   assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\), currentRevealMethod: revealMethod, stage: 'review'/)
   assert.match(source, /session\.segment === 'primary' \? session\.acquisition\?\.prompt : undefined/)
   assert.match(source, /wordIsVisibleDuringWriting\(acquisitionPrompt\?\.kind\)/)
@@ -86,7 +89,10 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
 })
 
 test('practice UI exposes the approved skip, resume, and Done for today controls', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/practice/PracticeView.tsx'), 'utf8'),
+  ].join('\n')
   assert.match(source, />Skip Warmup</)
   assert.match(source, />Skip Test Review</)
   assert.match(source, />Skip Timer</)
