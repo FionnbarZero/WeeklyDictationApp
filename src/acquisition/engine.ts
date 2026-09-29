@@ -37,7 +37,7 @@ function bagCanAvoidRepeat<TTarget extends AcquisitionTarget>(targets: readonly 
   return candidates.some((target) => target.id !== lastDtWordId)
 }
 
-function acquisitionPromptTimer<TTarget extends AcquisitionTarget>(strategy: AcquisitionStrategy<TTarget>, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
+export function acquisitionPromptTimer<TTarget extends AcquisitionTarget>(strategy: AcquisitionStrategy<TTarget>, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
   const config = strategy.timers
   if (kind === 'familiar-dt') return config.familiarDtSeconds
   if (kind === 'earned-dt') return config.earnedDtSeconds
@@ -124,7 +124,7 @@ export function startAcquisition<TTarget extends AcquisitionTarget>(targetSet: A
 
 export function resumeAcquisition<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget> | undefined, targetSet: AcquisitionTargetSet<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   if (!saved || saved.datasetId !== targetSet.id) return startAcquisition(targetSet, strategy, random)
-  const normalized = normalizeAcquisitionFlow(saved, strategy, random)
+  const normalized = normalizePersistedAcquisitionFlow(saved, strategy, random)
   if (normalized.complete || normalized.teachingComplete) return coreAcquisitionPrompt({ ...normalized, mode: 'dt-practice', currentTarget: null, prompt: null, teachingComplete: true, complete: false, correctionRole: undefined, resumePosition: undefined }, strategy, random)
   return normalized
 }
@@ -187,7 +187,7 @@ function migratePendingPrompt<TTarget extends AcquisitionTarget>(saved: EngineAc
   } satisfies EngineAcquisitionPrompt<TTarget>
 }
 
-function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
+export function normalizePersistedAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   if (saved.strategyId === strategy.id && saved.strategyVersion === strategy.version && Array.isArray(saved.familiarDtBag)) return saved
   const legacy = saved as EngineAcquisitionFlow<TTarget> & { establishedDtBag?: TTarget[] }
   const step = saved.phase === 'expanded-trials'
