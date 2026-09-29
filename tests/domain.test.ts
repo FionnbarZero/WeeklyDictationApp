@@ -494,6 +494,32 @@ test('Correction uses three copies, hidden target, new Familiar DT, and final hi
   assert.equal(flow.prompt?.timerSeconds, 10)
 })
 
+test('successful weekly-target Correction resumes the next unfinished Expanded Trials position', () => {
+  const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
+  let flow = enterExpandedTrials(dataset)
+  flow = answerPrompt(flow, dataset, true)
+  flow = answerPrompt(flow, dataset, true)
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 2)
+  assert.equal(flow.prompt?.kind, 'target')
+
+  flow = answerPrompt(flow, dataset, false)
+  assert.equal(flow.phase, 'correction')
+  assert.equal(flow.resumePosition?.step, 3)
+  assert.equal(flow.resumePosition?.expandedTargetAttempts, 2)
+
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true)
+  flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true)
+
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 3)
+  assert.equal(flow.expandedTargetAttempts, 2)
+  assert.equal(flow.prompt?.kind, 'familiar-dt')
+  assert.equal(flow.prompt?.timerSeconds, 5)
+})
+
 test('three consecutive hidden-target errors restart the affected word from Introduction', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
@@ -607,6 +633,9 @@ test('reviewed DTs and the exact next Acquisition position persist idempotently 
 
 test('legacy Established-DT local state hydrates and resumes with Familiar-DT fields without losing position', () => {
   const started = startAcquisitionFlow(currentDataset, 'Grade 2', () => 0)
+  const pendingPromptId = started.prompt!.id.replaceAll('familiar-dt', 'established-dt')
+  const pendingWordId = started.prompt!.word.id
+  const remainingBagIds = started.familiarDtBag.map((word) => word.id)
   const legacyTarget = (word: typeof FAMILIAR_DT_WORDS[number]) => ({
     ...word,
     id: word.id.replace('familiar-dt-', 'established-dt-'),
@@ -619,9 +648,11 @@ test('legacy Established-DT local state hydrates and resumes with Familiar-DT fi
     lastDtWordId: started.lastDtWordId?.replace('familiar-dt-', 'established-dt-'),
     prompt: started.prompt ? {
       ...started.prompt,
+      id: pendingPromptId,
       kind: 'established-dt',
       dtPoolType: 'established',
       word: legacyTarget(started.prompt.word),
+      revealed: true,
     } : null,
   } as unknown as AcquisitionFlow
 
@@ -633,6 +664,7 @@ test('legacy Established-DT local state hydrates and resumes with Familiar-DT fi
   const reloaded = loadState(JSON.stringify(legacyState))
   const resumed = resumeAcquisitionFlow(acquisitionProgressFor(reloaded, 'maya', currentDataset.id)?.flow, currentDataset, 'Grade 2', () => 0)
   assert.equal(reloaded.distractorTargetObservations[0].poolType, 'familiar')
+  assert.equal(reloaded.distractorTargetObservations[0].wordId, 'familiar-dt-1')
   assert.equal(resumed.strategyId, 'grade2-acquisition-v3')
   assert.equal(resumed.strategyVersion, 3)
   assert.equal(resumed.targetIndex, started.targetIndex)
@@ -640,7 +672,12 @@ test('legacy Established-DT local state hydrates and resumes with Familiar-DT fi
   assert.equal(resumed.step, started.step)
   assert.equal(resumed.prompt?.kind, 'familiar-dt')
   assert.equal(resumed.prompt?.dtPoolType, 'familiar')
+  assert.equal(resumed.prompt?.id, pendingPromptId)
+  assert.equal(resumed.prompt?.word.id, pendingWordId)
   assert.equal(resumed.prompt?.word.datasetId, '__familiar-dt__')
+  assert.equal(resumed.prompt?.revealed, false)
+  assert.equal(resumed.trialNumber, started.trialNumber)
+  assert.deepEqual(resumed.familiarDtBag.map((word) => word.id), remainingBagIds)
   assert.equal('establishedDtBag' in resumed, false)
 })
 

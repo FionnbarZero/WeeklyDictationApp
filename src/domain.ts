@@ -99,6 +99,14 @@ export type DistractorTargetObservation = {
   reviewedAt: string
 }
 
+export function normalizeDistractorTargetObservation(observation: DistractorTargetObservation): DistractorTargetObservation {
+  return {
+    ...observation,
+    wordId: observation.wordId.replace(/^established-dt-(\d+)$/, 'familiar-dt-$1'),
+    poolType: String(observation.poolType) === 'established' ? 'familiar' : observation.poolType,
+  }
+}
+
 export type MonthlyRotationScore = {
   id: string
   childId: string
@@ -602,7 +610,7 @@ export function loadState(rawState: string | null, legacyRaw?: string | null, im
     const parsed: unknown = rawState ? JSON.parse(rawState) : null
     if (isAppState(parsed)) {
       const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
-        ? parsed.distractorTargetObservations.map((observation) => ({ ...observation, poolType: String(observation.poolType) === 'established' ? 'familiar' as const : observation.poolType }))
+        ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
         : []
       const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)

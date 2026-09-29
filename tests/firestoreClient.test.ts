@@ -52,6 +52,7 @@ test('cloud hydration migrates legacy Established-DT observations to Familiar-DT
   const legacyObservation = { id: 'legacy-dt-observation', childId: 'maya', sessionId: 'session', datasetId: dataset.id, wordId: 'established-dt-1', text: '一', poolType: 'established' as never, correct: true, revealMethod: 'timer' as const, reviewedAt: '2026-09-23T12:01:00.000Z' }
   const state = cloudDataToAppState([dataset], [], [], [], 'maya', 'Grade 2', null, [], [legacyObservation])
   assert.equal(state.distractorTargetObservations[0].poolType, 'familiar')
+  assert.equal(state.distractorTargetObservations[0].wordId, 'familiar-dt-1')
 })
 
 test('mixed-grade cloud adaptive state survives Grade 2 hydration', () => {

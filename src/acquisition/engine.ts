@@ -1,10 +1,12 @@
 import type {
   AcquisitionPhase,
   AcquisitionPromptKind,
+  AcquisitionSequenceToken,
   AcquisitionStrategy,
   AcquisitionTarget,
   AcquisitionTargetSet,
   EngineAcquisitionFlow,
+  EngineAcquisitionPrompt,
 } from './contracts.ts'
 
 function shuffleTargets<TTarget>(targets: readonly TTarget[], random: () => number) {
@@ -151,6 +153,40 @@ function canonicalFamiliarId<TTarget extends AcquisitionTarget>(wordId: string |
   return strategy.familiarDtTargets.find((candidate) => candidate.id.endsWith(`-${suffix}`))?.id || wordId
 }
 
+type LegacyAcquisitionPrompt<TTarget extends AcquisitionTarget> = Omit<EngineAcquisitionPrompt<TTarget>, 'kind' | 'dtPoolType'> & {
+  kind: AcquisitionPromptKind | 'established-dt'
+  dtPoolType?: EngineAcquisitionPrompt<TTarget>['dtPoolType'] | 'established'
+}
+
+function sequenceTokenAt<TTarget extends AcquisitionTarget>(phase: AcquisitionPhase, step: number, strategy: AcquisitionStrategy<TTarget>) {
+  return phase === 'introduction'
+    ? strategy.introductionSequence[step]
+    : phase === 'expanded-trials'
+      ? strategy.expandedSequence[step]
+      : strategy.correctionSequence[step]
+}
+
+function promptMatchesToken(kind: AcquisitionPromptKind, token: AcquisitionSequenceToken | undefined) {
+  if (token === 'dt') return kind === 'familiar-dt' || kind === 'earned-dt'
+  return kind === token
+}
+
+function migratePendingPrompt<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget>, phase: AcquisitionPhase, step: number, expandedTargetAttempts: number, strategy: AcquisitionStrategy<TTarget>) {
+  if (!saved.prompt) return null
+  const legacyPrompt = saved.prompt as LegacyAcquisitionPrompt<TTarget>
+  const kind = legacyPrompt.kind === 'established-dt' ? 'familiar-dt' : legacyPrompt.kind
+  if (!promptMatchesToken(kind, sequenceTokenAt(phase, step, strategy))) return null
+  return {
+    ...legacyPrompt,
+    kind,
+    word: canonicalFamiliarTarget(legacyPrompt.word, strategy),
+    targetWordId: canonicalFamiliarId(legacyPrompt.targetWordId, strategy),
+    dtPoolType: legacyPrompt.dtPoolType === 'established' ? 'familiar' as const : legacyPrompt.dtPoolType,
+    timerSeconds: acquisitionPromptTimer(strategy, phase, kind, expandedTargetAttempts),
+    revealed: false,
+  } satisfies EngineAcquisitionPrompt<TTarget>
+}
+
 function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   if (saved.strategyId === strategy.id && saved.strategyVersion === strategy.version && Array.isArray(saved.familiarDtBag)) return saved
   const legacy = saved as EngineAcquisitionFlow<TTarget> & { establishedDtBag?: TTarget[] }
@@ -164,6 +200,8 @@ function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: Engi
     step: migratedExpandedStep(saved.resumePosition.step),
     expandedTargetAttempts: completedExpandedTargets(strategy, migratedExpandedStep(saved.resumePosition.step)),
   } : undefined
+  const expandedTargetAttempts = saved.phase === 'expanded-trials' ? completedExpandedTargets(strategy, step) : 0
+  const prompt = migratePendingPrompt(saved, saved.phase, step, expandedTargetAttempts, strategy)
   const migrated: EngineAcquisitionFlow<TTarget> = {
     datasetId: saved.datasetId,
     strategyId: strategy.id,
@@ -174,7 +212,7 @@ function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: Engi
     phase: saved.phase,
     step,
     trialNumber: saved.trialNumber,
-    expandedTargetAttempts: saved.phase === 'expanded-trials' ? completedExpandedTargets(strategy, step) : 0,
+    expandedTargetAttempts,
     earnedDtPool: saved.earnedDtPool,
     familiarDtBag: (saved.familiarDtBag || legacy.establishedDtBag || []).map((target) => canonicalFamiliarTarget(target, strategy)),
     earnedDtBag: saved.earnedDtBag,
@@ -182,11 +220,12 @@ function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: Engi
     consecutiveErrors: saved.consecutiveErrors,
     correctionRole: saved.correctionRole,
     resumePosition,
-    prompt: null,
+    prompt,
     teachingComplete: saved.teachingComplete,
     complete: saved.complete,
   }
   if (migrated.complete || migrated.teachingComplete) return migrated
+  if (migrated.prompt) return migrated
   return coreAcquisitionPrompt(migrated, strategy, random)
 }
 
@@ -278,7 +317,12 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
   if (flow.step < finalCorrectionStep) return coreAcquisitionPrompt({ ...updated, step: flow.step + 1, prompt: null }, strategy, random)
   if (correct) {
     if (flow.correctionRole === 'earned-dt') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), strategy, random)
-    return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumePosition: undefined, prompt: null }, strategy, random)
+    const resume = updated.resumePosition
+    if (!resume) return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, prompt: null }, strategy, random)
+    if (resume.step >= strategy.expandedSequence.length) {
+      return completeCurrentTarget({ ...updated, targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, phase: resume.phase, step: resume.step, expandedTargetAttempts: resume.expandedTargetAttempts, correctionRole: undefined, resumePosition: undefined, prompt: null }, targetSet, strategy, random)
+    }
+    return resumeInterruptedTarget(updated, strategy, random)
   }
   return coreAcquisitionPrompt({ ...updated, step: 0, prompt: null }, strategy, random)
 }
