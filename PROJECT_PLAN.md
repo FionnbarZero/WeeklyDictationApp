@@ -55,6 +55,18 @@ WeeklyDatasetCandidate
 └── validationOutcomes[]
 ```
 
+Every adapter returns one source-neutral import result rather than a grade-specific loose collection:
+
+```text
+CurriculumImportResult
+├── candidates[]
+├── issues[]
+├── progressionEvidence[]
+└── resources[]
+```
+
+`candidates` contain normalized possible datasets. `issues` retain source problems without hiding valid units. `progressionEvidence` records source proof that a cohort may advance but does not assign a lifecycle stage. `resources` attach books or other supporting material to a canonical dataset and source unit. Adapters may preserve a candidate-only compatibility method, but new consumers use the complete result. Curriculum adapters must not import lifecycle, React, application orchestration, or persistence modules. A lifecycle-owned projection converts accepted progression evidence into lifecycle events.
+
 All grades conceptually preserve Tier 1, Tier 2, and Tier 3, even when a source uses different labels or a tier is empty. Tier 1 supplies the current writing/dictation module. Tier 2 and Tier 3 are stored as structured metadata and do not automatically enter Tier 1 dictation. Tier 2 will later supply the shared character-reading module without reparsing the original source. Tier 3 remains available for a later activity definition.
 
 Source labels and application meaning must remain separate. `sourceSectionLabel` records what the teacher-authored source visibly calls a section. `instructionalRole` records how the application uses that section. A misleading or forward-looking source label must not silently determine the lifecycle.
@@ -183,7 +195,7 @@ Grade 5 transitions are driven only by validated instructional source progressio
 - If the top `This week` confirmation differs from the prior bottom-row source, preserve the prior canonical vocabulary and lifecycle stage. Do not activate the new bottom-row cohort or advance any dependent cohort until an administrator corrects the source or explicitly activates a reviewed revision.
 - Test Review 1 and Test Review 2 use the same timer, prompt sequence, scoring rules, completion rules, and abandonment behavior. Only their lifecycle labels and selected cohorts differ. The child may explicitly skip the entire activity; that choice is recorded as skipped and creates no Test Review answers or score. Any completed Warmup results remain saved.
 - Grade 5 Test Review 1 and Test Review 2 each use a 10-second timer. A visible Skip Timer control may end the remaining countdown and move directly to that word's review frame; it never skips the word, its self-assessment, or its scoring obligation.
-- Acquisition, Test Review 1, and Test Review 2 each offer a separate six-word Warmup. Completing one pathway's Warmup does not satisfy another pathway's Warmup. If Grade 5 is later approved as `optional`, skipping one pathway's Warmup likewise will not satisfy another pathway.
+- Acquisition, Test Review 1, and Test Review 2 each offer a separate Warmup containing up to six unique terms. Completing one pathway's Warmup does not satisfy another pathway's Warmup. If Grade 5 is later approved as `optional`, skipping one pathway's Warmup likewise will not satisfy another pathway.
 
 The observed sequence is:
 
@@ -372,7 +384,7 @@ The child-facing response changes from writing to reading aloud:
 3. Provide canonical Mandarin audio through a separate control for review or comparison.
 4. Collect an explicit child self-assessment.
 
-Tier 2 uses the same high-level grade lifecycle as Tier 1: Acquisition with Familiar and Earned DTs, Expanded Trials, and Correction; the grade’s configured Test Review stages; and an offered or standalone Tier 2 Warmup using already learned Tier 2 words. Grade 5 therefore uses Acquisition, Test Review 1, and Test Review 2 for both Tier 1 writing and Tier 2 reading, and each pathway offers its own six-word Tier 2 Warmup. Tier 1 and Tier 2 maintain separate progressions, attempts, adaptive state, Warmup graphs, and scores.
+Tier 2 uses the same high-level grade lifecycle as Tier 1: Acquisition with Familiar and Earned DTs, Expanded Trials, and Correction; the grade’s configured Test Review stages; and an offered or standalone Tier 2 Warmup using already learned Tier 2 words. Grade 5 therefore uses Acquisition, Test Review 1, and Test Review 2 for both Tier 1 writing and Tier 2 reading, and each pathway offers its own up-to-six-term Tier 2 Warmup. Tier 1 and Tier 2 maintain separate progressions, attempts, adaptive state, Warmup graphs, and scores.
 
 Tier 2 Familiar DT trials use a separate per-child pool of easy displayed characters or words that the child reads aloud. The interim Tier 2 pool is seeded from the approved bootstrap terms listed above; it uses the same term text as Tier 1 but never shares Tier 1 attempts or performance state. Earned Tier 2 DT items come only from completed Tier 2 reading targets. The future imported standard list and individualized baseline replace the bootstrap configuration only through the dedicated DT-baseline branch.
 
@@ -529,6 +541,7 @@ Goal: separate shared canonical identity and validation from Grade 2 source and 
 
 - Introduce the normalized `WeeklyDatasetCandidate` boundary with Tier 1–3 arrays, source metadata, source labels, instructional roles, assigned week, fingerprint, status, and validation outcomes.
 - Define a source-adapter contract that accepts both Slides and Sheets payloads without making Google API calls in this branch.
+- Give every adapter one shared result containing candidates, issues, progression evidence, and resources. Keep candidate-only adapter access as a compatibility view rather than a second extraction path.
 - Define stable ordered target-occurrence identity so identical text from two authoritative source positions remains two practice targets without breaking lexical mastery summaries. Preserve all existing Grade 2 IDs and normalized output where its source terms are unique; introduce occurrence disambiguation without rewriting established identities.
 - Preserve the existing Grade 2 importer output, dataset IDs, practice behavior, and tests exactly.
 - Move Grade 2-specific parsing and teaching parameters behind named, versioned profiles.
@@ -693,11 +706,13 @@ Goal: consume validated Grade 5 progression events through the source-neutral li
 - Register a Grade 5 strategy with Acquisition, Test Review 1, Test Review 2, and Mastery stages.
 - Advance every active cohort exactly once for each accepted progression event.
 - Freeze every cohort during no-slide weeks and after malformed, duplicate-only, or conflicting source steps.
+- Resolve inputs deterministically under permutation. Identical duplicate set or evidence records are idempotent; conflicting reuse of a dataset ID or evidence ID fails closed, remains Future, and cannot be resolved by array order.
+- Require the Week 4 baseline, require each evidence date to match its canonical set activation date, and stop the accepted chain at the first missing, reused, or mismatched step.
 - Use Week 4 as the activation baseline without inventing earlier review cohorts.
 - Keep Test Review 1 and Test Review 2 behaviorally identical except for lifecycle label and selected cohort.
-- Configure each Grade 5 primary pathway to offer its own six-word Warmup and configure both Test Review stages with the approved 10-second timer and Skip Timer behavior. Grade 5's `preActivityWarmupRequirement` remains undecided and must be approved explicitly before activation; it must not inherit Grade 2's development-time `optional` setting.
+- Configure each Grade 5 primary pathway to offer its own Warmup containing up to six unique terms and configure both Test Review stages with the approved 10-second timer and Skip Timer behavior. A short eligible pool produces a shorter completed Warmup; ordinary terms are not repeated merely to reach six. Grade 5's `preActivityWarmupRequirement` remains undecided and must be approved explicitly before activation; it must not inherit Grade 2's development-time `optional` setting.
 
-Acceptance gate: each valid event advances exactly one stage; a conference gap advances zero stages; the next valid event advances only once; a mismatched confirmation freezes progression; all three primary paths offer distinct six-word Warmups; Test Review 1 and 2 differ only by label and cohort; the Grade 2 golden matrix remains unchanged.
+Acceptance gate: each valid event advances exactly one stage; a conference gap advances zero stages; the next valid event advances only once; a mismatched confirmation freezes progression; duplicate and conflicting identifiers are deterministic and fail closed; all three primary paths offer distinct up-to-six-term unique Warmups; Test Review 1 and 2 differ only by label and cohort; the Grade 2 golden matrix remains unchanged.
 
 ### Kindergarten Sheets adapter
 

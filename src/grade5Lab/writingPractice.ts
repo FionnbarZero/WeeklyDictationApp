@@ -1,16 +1,9 @@
 import type { Grade5SourceExtraction } from '../curriculum/adapters/grade5GoogleSlides.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import type { Dataset } from '../domain/contracts.ts'
-import type { WarmupLifecycle } from '../warmup/contracts.ts'
-import { selectWarmupWords } from '../warmup/engine.ts'
 import { grade5AcquisitionTargetSet } from './acquisitionLab.ts'
 import { resolveGrade5SourceLifecycle, type Grade5ActivityLaunchRequest } from './learningHub.ts'
 import { grade5WritingLabProfile } from './practiceProfile.ts'
-
-function localDate(dateKey: string) {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  return new Date(year, month - 1, day, 12)
-}
 
 export function grade5LabDataset(candidate: WeeklyDatasetCandidate): Dataset {
   if (!candidate.datasetId || !candidate.dateRangeLabel || !candidate.normalizedStartDate || !candidate.normalizedEndDate) {
@@ -37,7 +30,7 @@ export function grade5LabDataset(candidate: WeeklyDatasetCandidate): Dataset {
 }
 
 export function grade5LabDatasets(extraction: Grade5SourceExtraction) {
-  return extraction.candidates
+  return extraction.classification.selectedCandidates
     .filter((candidate) => candidate.status === 'valid' && Boolean(candidate.datasetId))
     .map(grade5LabDataset)
 }
@@ -48,12 +41,15 @@ export function grade5LabWritingRequestIsConnected(request: Grade5ActivityLaunch
     && Boolean(request.cohortId)
 }
 
-function warmupLifecycle(kind: string): WarmupLifecycle {
-  if (kind === 'mastery') return 'mastered'
-  if (kind === 'test-review') return 'test-review'
-  if (kind === 'acquisition') return 'acquisition'
-  if (kind === 'no-instruction') return 'no-instruction'
-  return 'future'
+function shuffled<T>(values: readonly T[], random: () => number) {
+  const result = [...values]
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1))
+    const current = result[index]
+    result[index] = result[swapIndex]
+    result[swapIndex] = current
+  }
+  return result
 }
 
 export function grade5LabWarmupSelection(
@@ -63,29 +59,14 @@ export function grade5LabWarmupSelection(
 ) {
   const datasets = grade5LabDatasets(extraction)
   const lifecycle = resolveGrade5SourceLifecycle(extraction, currentDateKey)
-  const selection = selectWarmupWords({
-    datasets,
-    results: [],
-    childId: 'grade5-lab-child',
-    today: localDate(currentDateKey),
-    rotationCycleId: 1,
-    lifecycle: {
-      masteredDatasetIds: lifecycle.masteryDatasetIds,
-      masteredAtByDatasetId: lifecycle.masteredAtByDatasetId,
-      lifecycleByDatasetId: Object.fromEntries(
-        Object.entries(lifecycle.assignmentByDatasetId).map(([datasetId, assignment]) => [datasetId, warmupLifecycle(assignment.stage.kind)]),
-      ),
-    },
-    policy: grade5WritingLabProfile.lifecycle,
-    targetSize: grade5WritingLabProfile.lifecycle.primaryWarmupTrials,
-    random,
-  })
-  const words = [...selection.words]
-  const exhaustedPool = [...selection.words]
-  let repeatIndex = 0
-  while (words.length < grade5WritingLabProfile.lifecycle.primaryWarmupTrials && exhaustedPool.length > 0) {
-    words.push(exhaustedPool[repeatIndex % exhaustedPool.length])
-    repeatIndex += 1
-  }
-  return { ...selection, words }
+  const masteredIds = new Set(lifecycle.masteryDatasetIds)
+  const seenTerms = new Set<string>()
+  const eligibleWords = datasets.filter((dataset) => masteredIds.has(dataset.id)).flatMap((dataset) => dataset.words)
+  const words = shuffled(eligibleWords, random).filter((word) => {
+    const term = word.text.normalize('NFC').trim().replace(/\s+/g, ' ')
+    if (seenTerms.has(term)) return false
+    seenTerms.add(term)
+    return true
+  }).slice(0, grade5WritingLabProfile.warmupPreview.preActivityMaximum)
+  return { words }
 }

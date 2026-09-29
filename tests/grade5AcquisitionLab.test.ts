@@ -18,7 +18,7 @@ function fixture(): SlidesPresentationPayload {
 
 function acquisitionCandidate() {
   const extraction = extractGrade5Presentation(fixture())
-  const datasetId = extraction.progressionEvents.at(-1)?.introducedDatasetId
+  const datasetId = extraction.progressionEvidence.at(-1)?.introducedDatasetId
   const candidate = extraction.candidates.find((item) => item.datasetId === datasetId && item.status === 'valid')
   assert.ok(candidate)
   return candidate
@@ -32,8 +32,9 @@ test('the Grade 5 lab owns a separate profile while sharing the approved Acquisi
   const strategy = grade5WritingLabProfile.acquisition
 
   assert.equal(grade5WritingLabProfile.grade, 'Grade 5')
-  assert.equal(grade5WritingLabProfile.requiredWarmupTrials, 6)
-  assert.equal(grade5WritingLabProfile.testReviewTimerSeconds, 10)
+  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityMaximum, 6)
+  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'undecided')
+  assert.equal(grade5WritingLabProfile.timers.testReview, 10)
   assert.equal(strategy.id, 'grade5-acquisition-v1')
   assert.equal(strategy.version, 1)
   assert.deepEqual(strategy.introductionSequence, ['familiar-dt', 'familiar-dt', 'show-copy', 'target'])

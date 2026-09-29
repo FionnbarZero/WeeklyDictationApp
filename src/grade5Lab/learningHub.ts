@@ -4,6 +4,7 @@ import type {
 } from '../curriculum/adapters/grade5GoogleSlides.ts'
 import { schoolYearToken } from '../curriculum/identity.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
+import { lifecycleProgressionEventsFrom } from '../lifecycle/curriculumProgression.ts'
 import { resolveLifecycle } from '../lifecycle/registry.ts'
 
 export type Grade5HubStage = 'acquisition' | 'test-review-1' | 'test-review-2' | 'mastery'
@@ -17,7 +18,8 @@ export type Grade5ActivityLaunchRequest = {
   stage: Grade5HubStage
   learningChannel: Grade5LearningChannel
   activityKind: Grade5ActivityKind
-  requiredWarmup: boolean
+  warmupMaximum: number | null
+  preActivityWarmupRequirement: 'undecided' | 'not-applicable'
 }
 
 export type Grade5CohortSummary = {
@@ -31,7 +33,7 @@ export type Grade5CohortSummary = {
 export type Grade5BookActivityResource = {
   title: string
   url: string
-  sourceRole: Grade5BookResource['role']
+  sourceRole: Grade5BookResource['relationship']
 }
 
 export type Grade5HubActivity = {
@@ -82,7 +84,8 @@ function launchRequest(
     stage,
     learningChannel,
     activityKind,
-    requiredWarmup: true,
+    warmupMaximum: 6,
+    preActivityWarmupRequirement: 'undecided',
   }
 }
 
@@ -97,17 +100,18 @@ function masteryLaunchRequest(
     stage: 'mastery',
     learningChannel,
     activityKind,
-    requiredWarmup: false,
+    warmupMaximum: null,
+    preActivityWarmupRequirement: 'not-applicable',
   }
 }
 
 function exactBookResource(
   extraction: Grade5SourceExtraction,
   datasetId: string,
-  role: Grade5BookResource['role'],
+  relationship: Grade5BookResource['relationship'],
 ) {
-  return extraction.bookResources.find((resource) =>
-    resource.datasetId === datasetId && resource.role === role)
+  return extraction.resources.find((resource) =>
+    resource.datasetId === datasetId && resource.relationship === relationship)
 }
 
 function cohortActivities(
@@ -134,7 +138,7 @@ function cohortActivities(
         ? `${book.title} opens in a separate tab.`
         : 'The book link for this cohort and stage is not available.',
       availability: book ? 'ready' : 'unavailable',
-      ...(book ? { book: { title: book.title, url: book.url, sourceRole: book.role } } : {}),
+      ...(book ? { book: { title: book.title, url: book.url, sourceRole: book.relationship } } : {}),
       ...(!book ? { unavailableReason: candidate ? 'The teacher source has no book link for this stage.' : unavailableReason } : {}),
       launchRequests: [],
     },
@@ -218,14 +222,15 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
 }
 
 function latestProgressionDate(extraction: Grade5SourceExtraction) {
-  return extraction.progressionEvents.reduce((latest, event) => event.effectiveDate > latest ? event.effectiveDate : latest, '0000-00-00')
+  return extraction.progressionEvidence.reduce((latest, evidence) =>
+    evidence.effectiveDate > latest ? evidence.effectiveDate : latest, '0000-00-00')
 }
 
 export function resolveGrade5SourceLifecycle(
   extraction: Grade5SourceExtraction,
   currentDateKey = latestProgressionDate(extraction),
 ) {
-  const candidates = extraction.candidates.filter((candidate) =>
+  const candidates = extraction.classification.selectedCandidates.filter((candidate) =>
     candidate.datasetId
       && candidate.normalizedStartDate
       && candidate.normalizedEndDate
@@ -244,7 +249,7 @@ export function resolveGrade5SourceLifecycle(
       instructionalEndDate: candidate.normalizedEndDate!,
       kind: candidate.status === 'no-instruction' ? 'no-instruction' : 'vocabulary',
     })),
-    progressionEvents: extraction.progressionEvents,
+    progressionEvents: lifecycleProgressionEventsFrom(extraction.progressionEvidence),
   })
 }
 
@@ -253,7 +258,7 @@ export function buildGrade5LearningHub(
   currentDateKey = latestProgressionDate(extraction),
 ): Grade5LearningHubModel {
   const candidateByDatasetId = new Map(
-    extraction.candidates
+    extraction.classification.selectedCandidates
       .filter((candidate) => candidate.datasetId && candidate.status === 'valid')
       .map((candidate) => [candidate.datasetId!, candidate]),
   )

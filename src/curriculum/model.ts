@@ -71,11 +71,53 @@ export type SheetsWorkbookPayload = {
 
 export type CurriculumSourcePayload = SlidesPresentationPayload | SheetsWorkbookPayload
 
+export type CurriculumSourceIssue = {
+  code: string
+  severity: 'info' | 'warning' | 'error'
+  message: string
+  source?: SourceMetadata
+  datasetId?: string
+}
+
+export type CurriculumProgressionEvidence = {
+  evidenceId: string
+  kind: 'cohort-progression'
+  grade: string
+  schoolYearKey: string
+  effectiveDate: string
+  introducedDatasetId: string
+  confirmedDatasetId?: string
+  source: SourceMetadata
+}
+
+export type CurriculumResource = {
+  resourceId: string
+  kind: 'book-link'
+  datasetId: string
+  relationship: 'acquisition' | 'review' | 'support'
+  title: string
+  url: string
+  source: SourceMetadata
+}
+
+export type CurriculumImportResult<
+  Issue extends CurriculumSourceIssue = CurriculumSourceIssue,
+  ProgressionEvidence extends CurriculumProgressionEvidence = CurriculumProgressionEvidence,
+  Resource extends CurriculumResource = CurriculumResource,
+> = {
+  candidates: WeeklyDatasetCandidate[]
+  issues: Issue[]
+  progressionEvidence: ProgressionEvidence[]
+  resources: Resource[]
+}
+
 export interface SourceAdapter<Payload extends CurriculumSourcePayload = CurriculumSourcePayload> {
   readonly id: string
   readonly version: number
   readonly sourceType: Payload['sourceType']
   readonly grade: string
   readonly schoolYear: string
+  extract(payload: Payload): CurriculumImportResult
+  /** Compatibility view for callers that consume only canonical candidates. */
   adapt(payload: Payload): WeeklyDatasetCandidate[]
 }

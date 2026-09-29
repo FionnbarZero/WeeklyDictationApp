@@ -7,13 +7,9 @@ export const grade5WritingLabProfile = {
   id: 'grade-5-writing-lab-v1',
   version: 1,
   grade: 'Grade 5',
-  requiredWarmupTrials: 6,
-  testReviewTimerSeconds: 10,
-  lifecycle: {
-    primaryWarmupTrials: 6,
-    warmupTargetSize: 16,
-    recentReviewPromotionStreak: 2,
-    erroredWordPromotionStreak: 3,
+  warmupPreview: {
+    preActivityMaximum: 6,
+    preActivityWarmupRequirement: 'undecided',
   },
   timers: {
     warmup: 10,

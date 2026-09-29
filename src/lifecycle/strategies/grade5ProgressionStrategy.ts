@@ -7,51 +7,95 @@ import type {
   LifecycleStrategy,
 } from '../contracts.ts'
 
+const GRADE5_ACTIVATION_BASELINE = '2026-08-31'
+
+function setSignature(set: LifecycleSet) {
+  return JSON.stringify({
+    grade: set.grade,
+    schoolYearKey: set.schoolYearKey,
+    activationDate: set.activationDate,
+    instructionalEndDate: set.instructionalEndDate,
+    kind: set.kind,
+  })
+}
+
 function scopedSets(context: LifecycleContext) {
-  const byId = new Map<string, LifecycleSet>()
+  const grouped = new Map<string, LifecycleSet[]>()
   for (const set of context.sets) {
-    if (set.grade !== context.scope.grade || set.schoolYearKey !== context.scope.schoolYearKey || byId.has(set.datasetId)) continue
-    byId.set(set.datasetId, set)
+    if (set.grade !== context.scope.grade || set.schoolYearKey !== context.scope.schoolYearKey) continue
+    grouped.set(set.datasetId, [...(grouped.get(set.datasetId) || []), set])
   }
-  return [...byId.values()].sort((left, right) =>
+  const conflictedDatasetIds: string[] = []
+  const sets = [...grouped.entries()].flatMap(([datasetId, candidates]) => {
+    if (new Set(candidates.map(setSignature)).size === 1) return [candidates[0]]
+    conflictedDatasetIds.push(datasetId)
+    return []
+  }).sort((left, right) =>
     left.activationDate.localeCompare(right.activationDate)
       || left.instructionalEndDate.localeCompare(right.instructionalEndDate)
-      || left.datasetId.localeCompare(right.datasetId),
-  )
+      || left.datasetId.localeCompare(right.datasetId))
+  return { sets, conflictedDatasetIds: conflictedDatasetIds.sort() }
+}
+
+function eventSignature(event: LifecycleProgressionEvent) {
+  return JSON.stringify({
+    grade: event.grade,
+    schoolYearKey: event.schoolYearKey,
+    effectiveDate: event.effectiveDate,
+    introducedDatasetId: event.introducedDatasetId,
+    confirmedDatasetId: event.confirmedDatasetId || null,
+  })
 }
 
 function acceptedProgressionEvents(context: LifecycleContext, setsById: Map<string, LifecycleSet>) {
-  const ordered = context.progressionEvents
+  const relevant = context.progressionEvents
     .filter((event) =>
       event.grade === context.scope.grade
       && event.schoolYearKey === context.scope.schoolYearKey
       && event.effectiveDate <= context.scope.currentDateKey)
-    .sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate) || left.eventId.localeCompare(right.eventId))
+  const grouped = new Map<string, LifecycleProgressionEvent[]>()
+  for (const event of relevant) {
+    grouped.set(event.eventId, [...(grouped.get(event.eventId) || []), event])
+  }
+  const ordered = [...grouped.entries()].map(([eventId, events]) => ({
+    eventId,
+    events,
+    effectiveDate: [...events].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate))[0].effectiveDate,
+    conflicted: new Set(events.map(eventSignature)).size > 1,
+  })).sort((left, right) =>
+    left.effectiveDate.localeCompare(right.effectiveDate) || left.eventId.localeCompare(right.eventId))
 
   const accepted: LifecycleProgressionEvent[] = []
   const introduced = new Set<string>()
-  const eventIds = new Set<string>()
-  for (const event of ordered) {
+  for (const group of ordered) {
+    if (group.conflicted) break
+    const event = group.events[0]
     const set = setsById.get(event.introducedDatasetId)
-    if (!set || set.kind !== 'vocabulary' || eventIds.has(event.eventId) || introduced.has(event.introducedDatasetId)) continue
     const prior = accepted[accepted.length - 1]
-    if (!prior && event.confirmedDatasetId) continue
-    if (prior && event.confirmedDatasetId !== prior.introducedDatasetId) continue
+    const isBaseline = accepted.length === 0
+    const valid = Boolean(set)
+      && set!.kind === 'vocabulary'
+      && set!.activationDate === event.effectiveDate
+      && !introduced.has(event.introducedDatasetId)
+      && (isBaseline
+        ? event.effectiveDate === GRADE5_ACTIVATION_BASELINE && !event.confirmedDatasetId
+        : event.confirmedDatasetId === prior!.introducedDatasetId)
+    if (!valid) break
     accepted.push(event)
-    eventIds.add(event.eventId)
     introduced.add(event.introducedDatasetId)
   }
   return accepted
 }
 
 export function resolveGrade5ProgressionLifecycle(context: LifecycleContext): LifecycleResolution {
-  const sets = scopedSets(context)
+  const { sets, conflictedDatasetIds } = scopedSets(context)
   const setsById = new Map(sets.map((set) => [set.datasetId, set]))
   const events = acceptedProgressionEvents(context, setsById)
   const acceptedIds = events.map((event) => event.introducedDatasetId)
   const acceptedIdSet = new Set(acceptedIds)
   const noInstruction = sets.filter((set) => set.kind === 'no-instruction' && set.activationDate <= context.scope.currentDateKey)
-  const future = sets.filter((set) => set.kind === 'vocabulary' && !acceptedIdSet.has(set.datasetId))
+  const future = sets.filter((set) => !acceptedIdSet.has(set.datasetId)
+    && !(set.kind === 'no-instruction' && set.activationDate <= context.scope.currentDateKey))
   const acquisitionDatasetId = acceptedIds[acceptedIds.length - 1] || null
   const testReviews = [1, 2].flatMap((cycle) => {
     const datasetId = acceptedIds[acceptedIds.length - 1 - cycle]
@@ -67,6 +111,9 @@ export function resolveGrade5ProgressionLifecycle(context: LifecycleContext): Li
         ? { kind: 'no-instruction' }
         : { kind: 'future' },
     }
+  }
+  for (const datasetId of conflictedDatasetIds) {
+    assignmentByDatasetId[datasetId] = { datasetId, stage: { kind: 'future' } }
   }
 
   const masteredAtByDatasetId: Record<string, string> = {}
@@ -97,7 +144,7 @@ export function resolveGrade5ProgressionLifecycle(context: LifecycleContext): Li
     testReviews,
     masteryDatasetIds,
     masteredAtByDatasetId,
-    futureDatasetIds: future.map((set) => set.datasetId),
+    futureDatasetIds: [...future.map((set) => set.datasetId), ...conflictedDatasetIds].sort(),
     noInstructionDatasetIds: noInstruction.map((set) => set.datasetId),
     assignmentByDatasetId,
   }

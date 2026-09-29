@@ -65,7 +65,7 @@ test('Grade 5 table roles produce one canonical Acquisition candidate per observ
 test('Grade 5 emits one deterministic progression event per accepted source step', () => {
   const extraction = extractGrade5Presentation(loadFixture())
 
-  assert.deepEqual(extraction.progressionEvents.map((event) => ({
+  assert.deepEqual(extraction.progressionEvidence.map((event) => ({
     effectiveDate: event.effectiveDate,
     introducedDatasetId: event.introducedDatasetId,
     confirmedDatasetId: event.confirmedDatasetId,
@@ -91,15 +91,15 @@ test('Grade 5 emits one deterministic progression event per accepted source step
       confirmedDatasetId: 'grade-5__2026-27__2026-09-14__2026-09-18',
     },
   ])
-  assert.equal(new Set(extraction.progressionEvents.map((event) => event.eventId)).size, 4)
+  assert.equal(new Set(extraction.progressionEvidence.map((event) => event.evidenceId)).size, 4)
 })
 
 test('Grade 5 book links remain attached to the vocabulary cohort from the same source section', () => {
   const extraction = extractGrade5Presentation(loadFixture())
 
-  assert.deepEqual(extraction.bookResources.map((resource) => ({
+  assert.deepEqual(extraction.resources.map((resource) => ({
     datasetId: resource.datasetId,
-    role: resource.role,
+    role: resource.relationship,
     title: resource.title,
     url: resource.url,
   })), [
@@ -152,7 +152,7 @@ test('an identical same-week source occurrence creates no duplicate progression 
 
   assert.equal(extraction.candidates.length, 5)
   assert.equal(extraction.classification.decisions.filter((decision) => decision.status === 'duplicate').length, 1)
-  assert.equal(extraction.progressionEvents.length, 4)
+  assert.equal(extraction.progressionEvidence.length, 4)
   assert.ok(extraction.issues.some((issue) => issue.code === 'duplicate_source_unit'))
 })
 
@@ -165,10 +165,10 @@ test('different bottom-row vocabulary for one week blocks that week without repl
 
   const extraction = extractGrade5Presentation(fixture)
 
-  assert.equal(extraction.progressionEvents.length, 3)
+  assert.equal(extraction.progressionEvidence.length, 3)
   assert.ok(extraction.classification.decisions.filter((decision) => decision.status === 'conflict').length >= 2)
   assert.ok(extraction.issues.some((issue) => issue.code === 'same_week_conflict'))
-  assert.ok(!extraction.progressionEvents.some((event) => event.effectiveDate === '2026-09-21'))
+  assert.ok(!extraction.progressionEvidence.some((event) => event.effectiveDate === '2026-09-21'))
 })
 
 test('a top-row mismatch preserves the accepted chain and leaves later cohorts pending', () => {
@@ -177,13 +177,13 @@ test('a top-row mismatch preserves the accepted chain and leaves later cohorts p
 
   const extraction = extractGrade5Presentation(fixture)
 
-  assert.equal(extraction.progressionEvents.length, 2)
+  assert.equal(extraction.progressionEvidence.length, 2)
   assert.ok(extraction.issues.some((issue) => issue.code === 'confirmation_mismatch'))
   assert.ok(extraction.issues.some((issue) => issue.code === 'progression_chain_blocked'))
   assert.ok(extraction.candidates.some((candidate) => candidate.normalizedStartDate === '2026-09-14' && candidate.status === 'valid'))
   assert.ok(extraction.candidates.some((candidate) => candidate.normalizedStartDate === '2026-09-21' && candidate.status === 'valid'))
-  assert.ok(!extraction.progressionEvents.some((event) => event.effectiveDate === '2026-09-14'))
-  assert.ok(!extraction.progressionEvents.some((event) => event.effectiveDate === '2026-09-21'))
+  assert.ok(!extraction.progressionEvidence.some((event) => event.effectiveDate === '2026-09-14'))
+  assert.ok(!extraction.progressionEvidence.some((event) => event.effectiveDate === '2026-09-21'))
 })
 
 test('missing intermediate source evidence never causes calendar-based catch-up', () => {
@@ -192,7 +192,7 @@ test('missing intermediate source evidence never causes calendar-based catch-up'
 
   const extraction = extractGrade5Presentation(fixture)
 
-  assert.deepEqual(extraction.progressionEvents.map((event) => event.effectiveDate), ['2026-08-31', '2026-09-08'])
+  assert.deepEqual(extraction.progressionEvidence.map((event) => event.effectiveDate), ['2026-08-31', '2026-09-08'])
   assert.ok(extraction.issues.some((issue) => issue.code === 'confirmation_mismatch'))
 })
 
@@ -205,8 +205,8 @@ test('a valid source step after a calendar gap advances exactly once', () => {
 
   const extraction = extractGrade5Presentation(fixture)
 
-  assert.deepEqual(extraction.progressionEvents.map((event) => event.effectiveDate), ['2026-08-31', '2026-09-08', '2026-09-21'])
-  assert.equal(extraction.progressionEvents.at(-1)?.confirmedDatasetId, 'grade-5__2026-27__2026-09-08__2026-09-11')
+  assert.deepEqual(extraction.progressionEvidence.map((event) => event.effectiveDate), ['2026-08-31', '2026-09-08', '2026-09-21'])
+  assert.equal(extraction.progressionEvidence.at(-1)?.confirmedDatasetId, 'grade-5__2026-27__2026-09-08__2026-09-11')
   assert.ok(!extraction.issues.some((issue) => issue.code === 'confirmation_mismatch'))
 })
 
@@ -230,7 +230,7 @@ test('Grade 5 enforces its Tier 1 count range while preserving repeated source o
 
   assert.equal(oversized.status, 'malformed')
   assert.ok(oversized.validationOutcomes.some((outcome) => outcome.code === 'grade5_tier1_count_out_of_range'))
-  assert.ok(!oversizedExtraction.progressionEvents.some((event) => event.effectiveDate === '2026-09-21'))
+  assert.ok(!oversizedExtraction.progressionEvidence.some((event) => event.effectiveDate === '2026-09-21'))
 })
 
 test('pre-baseline Grade 5 slides remain provenance issues and do not become candidates', () => {
