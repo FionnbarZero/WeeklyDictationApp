@@ -2,7 +2,9 @@ import type {
   Grade5BookResource,
   Grade5SourceExtraction,
 } from '../curriculum/adapters/grade5GoogleSlides.ts'
+import { schoolYearToken } from '../curriculum/identity.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
+import { resolveLifecycle } from '../lifecycle/registry.ts'
 
 export type Grade5HubStage = 'acquisition' | 'test-review-1' | 'test-review-2' | 'mastery'
 export type Grade5LearningChannel = 'tier-1-writing' | 'tier-2-reading'
@@ -215,19 +217,53 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
   ] satisfies Grade5HubActivity[]
 }
 
-export function buildGrade5LearningHub(extraction: Grade5SourceExtraction): Grade5LearningHubModel {
+function latestProgressionDate(extraction: Grade5SourceExtraction) {
+  return extraction.progressionEvents.reduce((latest, event) => event.effectiveDate > latest ? event.effectiveDate : latest, '0000-00-00')
+}
+
+export function resolveGrade5SourceLifecycle(
+  extraction: Grade5SourceExtraction,
+  currentDateKey = latestProgressionDate(extraction),
+) {
+  const candidates = extraction.candidates.filter((candidate) =>
+    candidate.datasetId
+      && candidate.normalizedStartDate
+      && candidate.normalizedEndDate
+      && (candidate.status === 'valid' || candidate.status === 'no-instruction'))
+  return resolveLifecycle({
+    scope: {
+      grade: 'Grade 5',
+      schoolYearKey: schoolYearToken(candidates[0]?.schoolYear || '2026–2027'),
+      currentDateKey,
+    },
+    sets: candidates.map((candidate) => ({
+      datasetId: candidate.datasetId!,
+      grade: candidate.grade,
+      schoolYearKey: schoolYearToken(candidate.schoolYear),
+      activationDate: candidate.normalizedStartDate!,
+      instructionalEndDate: candidate.normalizedEndDate!,
+      kind: candidate.status === 'no-instruction' ? 'no-instruction' : 'vocabulary',
+    })),
+    progressionEvents: extraction.progressionEvents,
+  })
+}
+
+export function buildGrade5LearningHub(
+  extraction: Grade5SourceExtraction,
+  currentDateKey = latestProgressionDate(extraction),
+): Grade5LearningHubModel {
   const candidateByDatasetId = new Map(
     extraction.candidates
       .filter((candidate) => candidate.datasetId && candidate.status === 'valid')
       .map((candidate) => [candidate.datasetId!, candidate]),
   )
-  const accepted = extraction.progressionEvents
-    .map((event) => candidateByDatasetId.get(event.introducedDatasetId))
+  const lifecycle = resolveGrade5SourceLifecycle(extraction, currentDateKey)
+  const acquisition = candidateByDatasetId.get(lifecycle.acquisitionDatasetId || '')
+  const testReview1 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 1)?.datasetId || '')
+  const testReview2 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 2)?.datasetId || '')
+  const mastery = lifecycle.masteryDatasetIds
+    .map((datasetId) => candidateByDatasetId.get(datasetId))
     .filter((candidate): candidate is WeeklyDatasetCandidate => Boolean(candidate))
-  const acquisition = accepted[accepted.length - 1]
-  const testReview1 = accepted[accepted.length - 2]
-  const testReview2 = accepted[accepted.length - 3]
-  const mastery = accepted.slice(0, Math.max(0, accepted.length - 3))
 
   const sections: Grade5HubSection[] = [
     {
