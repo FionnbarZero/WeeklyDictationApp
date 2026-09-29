@@ -13,12 +13,28 @@ test('the Grade 5 learning hub remains development-only and outside production e
   const hubModel = source('src/grade5Lab/learningHub.ts')
 
   assert.doesNotMatch(productionEntries, /grade5-learning-hub|grade5LearningHubHarness|grade5Lab\/learningHub/)
-  assert.match(harnessHtml, /Development-only child experience/)
+  assert.match(harnessHtml, /Ready for your next/)
+  assert.match(harnessHtml, /id="lab-details" class="lab-details"/)
   assert.match(harnessHtml, /src\/grade5LearningHubHarness\.tsx/)
   assert.match(harnessSource, /import\.meta\.env\.DEV/)
   assert.match(harnessSource, /tests\/fixtures\/grade5-presentation\.json/)
   assert.doesNotMatch(`${harnessSource}\n${hubModel}`, /firebase|firestore|localStorage|googleapis/i)
   assert.doesNotMatch(hubModel, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
+})
+
+test('the Grade 5 landing experience uses the shared child-facing visual language', () => {
+  const harnessHtml = source('grade5-learning-hub.html')
+  const harnessSource = source('src/grade5LearningHubHarness.tsx')
+  const labStyles = source('src/grade5Lab/learningHub.css')
+
+  assert.match(harnessHtml, /class="hero-card grade5-hero"/)
+  assert.match(harnessHtml, /Choose your path/)
+  assert.match(harnessSource, /renderHubHome/)
+  assert.match(harnessSource, /renderSectionDetail/)
+  assert.match(harnessSource, /cohort-source-details/)
+  assert.match(labStyles, /\.challenge-grid/)
+  assert.match(labStyles, /\.path-card/)
+  assert.match(labStyles, /\.training-module/)
 })
 
 test('the Grade 5 learning hub connects only Tier 1 writing Acquisition to the shared engine', () => {

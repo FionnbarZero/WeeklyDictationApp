@@ -115,8 +115,8 @@ function cohortActivities(
 ) {
   const isAcquisition = stage === 'acquisition'
   const unavailableReason = isAcquisition
-    ? 'No accepted Acquisition cohort is available yet.'
-    : `${stage === 'test-review-1' ? 'Test 1' : 'Test 2'} becomes available after another accepted weekly cohort advances.`
+    ? 'This week’s training words are not ready yet.'
+    : `${stage === 'test-review-1' ? 'Ninja Skills' : 'The Final Boss'} becomes available when that word set reaches this stage.`
   const book = candidate
     ? exactBookResource(extraction, candidate.datasetId!, isAcquisition ? 'acquisition' : 'review')
     : undefined
@@ -140,8 +140,8 @@ function cohortActivities(
       id: `${stage}-writing`,
       label: writingLabel,
       description: isAcquisition
-        ? 'Six-word Tier 1 Warmup, followed by writing Acquisition.'
-        : 'Six-word Tier 1 Warmup, followed by the complete writing test.',
+        ? 'Warm up, then learn to write this week’s Tier 1 words.'
+        : 'Warm up, then practice the complete writing test.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
       launchRequests: candidate
@@ -152,8 +152,8 @@ function cohortActivities(
       id: `${stage}-reading`,
       label: readingLabel,
       description: isAcquisition
-        ? 'Six-word Tier 2 Warmup, followed by reading Acquisition.'
-        : 'Six-word Tier 2 Warmup, followed by the complete reading test.',
+        ? 'Warm up, then learn to read this week’s Tier 2 words.'
+        : 'Warm up, then practice the complete reading test.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
       launchRequests: candidate
@@ -233,31 +233,31 @@ export function buildGrade5LearningHub(extraction: Grade5SourceExtraction): Grad
     {
       id: 'homework',
       title: 'Enter the Training Dojo',
-      subtitle: 'Learn the newest accepted Grade 5 vocabulary cohort.',
+      subtitle: 'Learn this week’s newest writing and reading words.',
       stage: 'acquisition',
       cohorts: acquisition ? [summary(acquisition)] : [],
       available: Boolean(acquisition),
-      ...(!acquisition ? { unavailableReason: 'No accepted Acquisition cohort is available yet.' } : {}),
+      ...(!acquisition ? { unavailableReason: 'This week’s training words are not ready yet.' } : {}),
       activities: cohortActivities(extraction, acquisition, 'acquisition'),
     },
     {
       id: 'test-review-1',
       title: 'Practice your Ninja Skills',
-      subtitle: 'Practice the cohort immediately before this week’s homework.',
+      subtitle: 'Build confidence with your first test-practice word set.',
       stage: 'test-review-1',
       cohorts: testReview1 ? [summary(testReview1)] : [],
       available: Boolean(testReview1),
-      ...(!testReview1 ? { unavailableReason: 'Test 1 is not available until another accepted cohort advances.' } : {}),
+      ...(!testReview1 ? { unavailableReason: 'Ninja Skills will unlock when a word set reaches Test Review 1.' } : {}),
       activities: cohortActivities(extraction, testReview1, 'test-review-1'),
     },
     {
       id: 'test-review-2',
       title: 'The Final Boss Test!',
-      subtitle: 'Practice the cohort two accepted progression steps behind Acquisition.',
+      subtitle: 'Get ready to face the older word set one more time.',
       stage: 'test-review-2',
       cohorts: testReview2 ? [summary(testReview2)] : [],
       available: Boolean(testReview2),
-      ...(!testReview2 ? { unavailableReason: 'Test 2 is not available until two earlier cohorts exist.' } : {}),
+      ...(!testReview2 ? { unavailableReason: 'The Final Boss will unlock when a word set reaches Test Review 2.' } : {}),
       activities: cohortActivities(extraction, testReview2, 'test-review-2'),
     },
     {

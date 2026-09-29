@@ -14,6 +14,7 @@ import {
   type Grade5ActivityLaunchRequest,
   type Grade5HubActivity,
   type Grade5HubSection,
+  type Grade5LearningHubModel,
 } from './grade5Lab/learningHub.ts'
 import { PracticeView } from './practice/PracticeView.tsx'
 
@@ -35,12 +36,15 @@ const requestMessage = requiredElement<HTMLParagraphElement>('request-message')
 const requestOutput = requiredElement<HTMLElement>('request-output')
 const requestActions = requiredElement<HTMLElement>('request-actions')
 const dismissButton = requiredElement<HTMLButtonElement>('dismiss-request')
+const labDetails = requiredElement<HTMLDetailsElement>('lab-details')
 const practicePanel = requiredElement<HTMLElement>('practice-panel')
 const practiceRootElement = requiredElement<HTMLElement>('grade5-practice-root')
 const practiceSummary = requiredElement<HTMLElement>('practice-summary')
 const practiceRoot = createRoot(practiceRootElement)
 
 let sourceExtraction: Grade5SourceExtraction | null = null
+let learningHubModel: Grade5LearningHubModel | null = null
+let selectedSectionId: Grade5HubSection['id'] | null = null
 let activePractice: Grade5AcquisitionLabState | null = null
 let activeDataset: Dataset | null = null
 let currentRevealMethod: Grade5LabRevealMethod = 'timer'
@@ -55,6 +59,7 @@ function createElement<K extends keyof HTMLElementTagNameMap>(tag: K, className?
 function setStatus(message: string, error = false) {
   statusElement.textContent = message
   statusElement.classList.toggle('error', error)
+  if (error) labDetails.open = true
 }
 
 function normalizePayload(value: unknown): SlidesPresentationPayload {
@@ -71,25 +76,38 @@ function normalizePayload(value: unknown): SlidesPresentationPayload {
 }
 
 function wordsElement(label: string, words: string[]) {
-  const group = createElement('div', 'word-group')
-  group.append(createElement('span', 'word-label', label))
-  const values = createElement('span', 'word-values', words.length ? words.join('、') : 'None')
+  const group = createElement('div', 'training-word-group')
+  group.append(createElement('p', 'training-word-label', label))
+  const values = createElement('div', 'training-word-list')
+  if (words.length) {
+    for (const word of words) values.append(createElement('span', undefined, word))
+  } else {
+    values.append(createElement('small', undefined, 'No words listed'))
+  }
   group.append(values)
   return group
 }
 
 function cohortElement(section: Grade5HubSection) {
-  const wrapper = createElement('div', 'cohort-summary')
+  const wrapper = createElement('section', 'cohort-focus')
   if (!section.cohorts.length) {
     wrapper.append(createElement('p', 'unavailable-message', section.unavailableReason || 'No cohort is available.'))
     return wrapper
   }
   for (const cohort of section.cohorts) {
-    const cohortCard = createElement('div', 'cohort')
-    cohortCard.append(createElement('strong', undefined, cohort.dateRangeLabel))
-    cohortCard.append(wordsElement('Tier 1', cohort.tier1Words))
-    cohortCard.append(wordsElement('Tier 2', cohort.tier2Words))
-    cohortCard.append(createElement('small', undefined, `Cohort: ${cohort.cohortId}`))
+    const cohortCard = createElement('article', 'cohort-card')
+    const heading = createElement('div', 'cohort-card-heading')
+    const copy = createElement('div')
+    copy.append(createElement('p', 'eyebrow', cohort.dateRangeLabel), createElement('h2', undefined, 'Words in this challenge'))
+    heading.append(copy, createElement('span', 'word-count-pill', `${cohort.tier1Words.length} writing · ${cohort.tier2Words.length} reading`))
+    const groups = createElement('div', 'training-word-groups')
+    groups.append(wordsElement('Tier 1 · Writing', cohort.tier1Words), wordsElement('Tier 2 · Reading', cohort.tier2Words))
+    const details = createElement('details', 'cohort-source-details')
+    const summary = createElement('summary', undefined, 'Source details')
+    const sourceCopy = createElement('p', undefined, `Cohort: ${cohort.cohortId}`)
+    details.append(summary, sourceCopy)
+    if (cohort.tier3Words.length) details.append(wordsElement('Tier 3 · Preserved', cohort.tier3Words))
+    cohortCard.append(heading, groups, details)
     wrapper.append(cohortCard)
   }
   return wrapper
@@ -204,9 +222,12 @@ function leavePractice() {
   activeDataset = null
   practiceRoot.render(null)
   practicePanel.hidden = true
-  hubIntro.hidden = false
+  labDetails.hidden = false
   statusElement.hidden = false
   sectionsElement.hidden = false
+  const selectedSection = learningHubModel?.sections.find((section) => section.id === selectedSectionId)
+  if (selectedSection) renderSectionDetail(selectedSection)
+  else renderHubHome()
   document.body.classList.remove('practice-active')
   setStatus('Returned to the Grade 5 hub. The development-only Acquisition run was discarded.')
 }
@@ -245,6 +266,7 @@ function startWritingAcquisition(request: Grade5ActivityLaunchRequest, label: st
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
     hubIntro.hidden = true
+    labDetails.hidden = true
     statusElement.hidden = true
     sectionsElement.hidden = true
     practicePanel.hidden = false
@@ -280,38 +302,60 @@ function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[
   requestPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
-function activityElement(activity: Grade5HubActivity) {
+const sectionVisuals: Record<Grade5HubSection['id'], { number: string; kicker: string; action: string; theme: string }> = {
+  homework: { number: '1', kicker: 'This week', action: 'Enter the Dojo', theme: 'gold' },
+  'test-review-1': { number: '2', kicker: 'Test practice 1', action: 'Practice my skills', theme: 'blue' },
+  'test-review-2': { number: '3', kicker: 'Test practice 2', action: 'Face the Final Boss', theme: 'violet' },
+  review: { number: '4', kicker: 'Older words', action: 'Enter the Spirit realm', theme: 'green' },
+}
+
+function activityLabel(activity: Grade5HubActivity) {
+  if (activity.book) return 'Read together'
+  if (activity.id.includes('reading')) return 'Tier 2 · Reading'
+  if (activity.id.includes('writing')) return 'Tier 1 · Writing'
+  if (activity.id.includes('reenter')) return 'Need more help?'
+  if (activity.id.includes('reteach')) return 'Future training'
+  return 'Mastery practice'
+}
+
+function activityElement(activity: Grade5HubActivity, index: number, theme: string) {
   const connectedRequests = activity.launchRequests.filter(isConnectedWritingAcquisition)
   const effectiveAvailability = connectedRequests.length ? 'ready' : activity.availability
-  const card = createElement('article', `activity activity-${effectiveAvailability}`)
+  const card = createElement('article', `training-module module-${theme} activity-${effectiveAvailability}`)
   const icon = activity.book ? '📖' : activity.id.includes('reading') ? '🗣️' : activity.id.includes('writing') ? '✍️' : '🌱'
+  card.append(createElement('span', 'training-module-number', String(index + 1)))
   card.append(createElement('span', 'activity-icon', icon))
+  card.append(createElement('p', 'eyebrow', activityLabel(activity)))
   card.append(createElement('h3', undefined, activity.label))
   card.append(createElement('p', undefined, activity.description))
 
   if (activity.book) {
-    const link = createElement('a', 'activity-action', activity.label)
+    const link = createElement('a', 'activity-action', 'Open the Book')
     link.href = activity.book.url
     link.target = '_blank'
     link.rel = 'noopener noreferrer'
     link.setAttribute('aria-label', `${activity.label}: ${activity.book.title} (opens in a new tab)`)
     card.append(link)
   } else {
-    const button = createElement('button', 'activity-action', activity.availability === 'unavailable' ? 'Not Available Yet' : activity.label)
+    const button = createElement('button', 'activity-action')
     button.type = 'button'
     if (activity.availability === 'unavailable') {
+      button.textContent = 'Not Available Yet'
       button.disabled = true
       button.title = activity.unavailableReason || 'This activity is unavailable.'
       card.append(createElement('small', 'availability-note', activity.unavailableReason || 'This activity is unavailable.'))
     } else if (activity.launchRequests.length === 1 && connectedRequests.length === 1) {
+      button.textContent = activity.label
       button.addEventListener('click', () => startWritingAcquisition(connectedRequests[0], activity.label))
-      card.append(createElement('small', 'availability-note', 'Shared Acquisition v3 engine connected for this lab.'))
-    } else {
+      card.append(createElement('small', 'availability-note ready-note', 'Ready to practice in this test lab.'))
+    } else if (connectedRequests.length) {
+      button.textContent = activity.label
       button.addEventListener('click', () => showLaunchRequest(activity.label, activity.launchRequests))
-      const note = connectedRequests.length
-        ? 'Writing Acquisition is connected; reading is still unavailable.'
-        : 'Learning engine not connected yet.'
-      card.append(createElement('small', 'availability-note', note))
+      card.append(createElement('small', 'availability-note ready-note', 'Writing is ready; reading is still being built.'))
+    } else {
+      button.textContent = 'Coming Soon'
+      button.disabled = true
+      card.append(createElement('small', 'availability-note', 'This learning engine is not connected yet.'))
     }
     card.append(button)
   }
@@ -319,18 +363,59 @@ function activityElement(activity: Grade5HubActivity) {
 }
 
 function sectionElement(section: Grade5HubSection) {
-  const element = createElement('section', `hub-section section-${section.id}`)
+  const visual = sectionVisuals[section.id]
+  const element = createElement('section', `challenge-page section-${section.id} theme-${visual.theme}`)
   if (!section.available) element.classList.add('section-unavailable')
-  const heading = createElement('div', 'section-heading')
+  const back = createElement('button', 'back-link', '← Back to all challenges')
+  back.type = 'button'
+  back.addEventListener('click', renderHubHome)
+  const heading = createElement('div', 'challenge-heading')
   const text = createElement('div')
-  text.append(createElement('p', 'section-kicker', section.stage.replace(/-/g, ' ')))
+  text.append(createElement('p', 'eyebrow', visual.kicker))
   text.append(createElement('h2', undefined, section.title), createElement('p', undefined, section.subtitle))
-  heading.append(text, createElement('span', `stage-badge ${section.available ? 'available' : 'unavailable'}`, section.available ? 'Available' : 'Waiting'))
-  element.append(heading, cohortElement(section))
+  const mark = createElement('div', 'challenge-mark', visual.number)
+  heading.append(text, mark)
+  element.append(back, heading, cohortElement(section))
+  const activityHeading = createElement('div', 'activity-heading')
+  activityHeading.append(createElement('p', 'eyebrow', 'Choose an activity'), createElement('h2', undefined, 'How do you want to train?'))
+  element.append(activityHeading)
   const activityGrid = createElement('div', 'activity-grid')
-  for (const activity of section.activities) activityGrid.append(activityElement(activity))
+  section.activities.forEach((activity, index) => activityGrid.append(activityElement(activity, index, visual.theme)))
   element.append(activityGrid)
   return element
+}
+
+function sectionCard(section: Grade5HubSection) {
+  const visual = sectionVisuals[section.id]
+  const card = createElement('button', `path-card path-${visual.theme}`)
+  card.type = 'button'
+  card.disabled = !section.available
+  card.append(createElement('span', 'path-number', visual.number), createElement('span', 'eyebrow', visual.kicker), createElement('span', 'path-title', section.title), createElement('span', 'path-description', section.subtitle))
+  const date = section.cohorts[0]?.dateRangeLabel
+  card.append(createElement('span', 'path-date', date || section.unavailableReason || 'Waiting for this challenge'))
+  card.append(createElement('span', 'path-action', section.available ? `${visual.action} →` : 'Not available yet'))
+  if (!section.available && section.unavailableReason) card.title = section.unavailableReason
+  else card.addEventListener('click', () => renderSectionDetail(section))
+  return card
+}
+
+function renderHubHome() {
+  if (!learningHubModel) return
+  selectedSectionId = null
+  requestPanel.hidden = true
+  hubIntro.hidden = false
+  sectionsElement.className = 'hub-sections challenge-grid'
+  sectionsElement.replaceChildren(...learningHubModel.sections.map(sectionCard))
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function renderSectionDetail(section: Grade5HubSection) {
+  selectedSectionId = section.id
+  requestPanel.hidden = true
+  hubIntro.hidden = true
+  sectionsElement.className = 'hub-sections section-detail-container'
+  sectionsElement.replaceChildren(sectionElement(section))
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function loadHub() {
@@ -339,8 +424,8 @@ async function loadHub() {
     const response = await fetch(fixtureUrl, { cache: 'no-store' })
     if (!response.ok) throw new Error(`Fixture request failed with HTTP ${response.status}.`)
     sourceExtraction = extractGrade5Presentation(normalizePayload(await response.json()))
-    const model = buildGrade5LearningHub(sourceExtraction)
-    sectionsElement.replaceChildren(...model.sections.map(sectionElement))
+    learningHubModel = buildGrade5LearningHub(sourceExtraction)
+    renderHubHome()
     setStatus('Loaded the validated Grade 5 fixture. Tier 1 writing Acquisition is ready for local testing.')
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'The Grade 5 hub could not be loaded.', true)
