@@ -132,7 +132,7 @@ test('an external replay action does not reset or complete the countdown', () =>
 
 test('only show-and-copy prompts expose a word during the writing frame', () => {
   assert.equal(wordIsVisibleDuringWriting('show-copy'), true)
-  assert.equal(wordIsVisibleDuringWriting('established-dt'), false)
+  assert.equal(wordIsVisibleDuringWriting('familiar-dt'), false)
   assert.equal(wordIsVisibleDuringWriting('earned-dt'), false)
   assert.equal(wordIsVisibleDuringWriting('target'), false)
   assert.equal(wordIsVisibleDuringWriting(undefined), false)

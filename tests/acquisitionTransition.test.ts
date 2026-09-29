@@ -57,10 +57,10 @@ test('an assessment describes the answered prompt rather than the next prompt', 
   assert.equal(transition.assessment?.promptId, answeredPrompt.id)
   assert.equal(transition.assessment?.targetOccurrenceId, answeredPrompt.word.id)
   assert.equal(transition.assessment?.target, answeredPrompt.word)
-  assert.equal(transition.assessment?.kind, 'established-dt')
+  assert.equal(transition.assessment?.kind, 'familiar-dt')
   assert.equal(transition.assessment?.correct, false)
   assert.equal(transition.assessment?.countsTowardWeeklyScore, false)
-  assert.equal(transition.assessment?.dtPoolType, 'established')
+  assert.equal(transition.assessment?.dtPoolType, 'familiar')
   assert.equal(transition.assessment?.revealMethod, 'skip_timer')
   assert.notEqual(transition.nextFlow.prompt?.id, answeredPrompt.id)
 })
@@ -92,6 +92,7 @@ test('weekly hidden targets remain weekly-scored through Correction', () => {
 
   flow = advance(transition.nextFlow)
   flow = advance(flow)
+  flow = advance(flow)
   assert.equal(flow.phase, 'correction')
   assert.equal(flow.prompt?.kind, 'target')
   const correctionAssessment = review(flow, true)
@@ -100,20 +101,20 @@ test('weekly hidden targets remain weekly-scored through Correction', () => {
   assert.equal(correctionAssessment.assessment?.dtPoolType, undefined)
 })
 
-test('Earned-DT Correction targets remain DT assessments rather than weekly trials', () => {
+test('Earned-DT trials and their Correction targets count toward the official Acquisition score', () => {
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   while (flow.targetIndex === 0) flow = advance(flow)
-  for (let index = 0; index < 4; index += 1) flow = advance(flow)
-  flow = advance(flow, true, () => 0.75)
+  while (flow.phase === 'introduction') flow = advance(flow)
   flow = advance(flow, true, () => 0.75)
   assert.equal(flow.prompt?.kind, 'earned-dt')
 
   const earnedAssessment = review(flow, false)
   assert.equal(earnedAssessment.assessment?.kind, 'earned-dt')
-  assert.equal(earnedAssessment.assessment?.countsTowardWeeklyScore, false)
+  assert.equal(earnedAssessment.assessment?.countsTowardWeeklyScore, true)
   assert.equal(earnedAssessment.assessment?.dtPoolType, 'earned')
   flow = earnedAssessment.nextFlow
 
+  flow = advance(flow)
   flow = advance(flow)
   flow = advance(flow)
   assert.equal(flow.phase, 'correction')
@@ -122,7 +123,7 @@ test('Earned-DT Correction targets remain DT assessments rather than weekly tria
   const correctionAssessment = review(flow, true)
   assert.equal(correctionAssessment.assessment?.kind, 'target')
   assert.equal(correctionAssessment.assessment?.target, flow.prompt?.word)
-  assert.equal(correctionAssessment.assessment?.countsTowardWeeklyScore, false)
+  assert.equal(correctionAssessment.assessment?.countsTowardWeeklyScore, true)
   assert.equal(correctionAssessment.assessment?.dtPoolType, 'earned')
 })
 

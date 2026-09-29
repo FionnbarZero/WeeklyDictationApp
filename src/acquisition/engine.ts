@@ -37,7 +37,7 @@ function bagCanAvoidRepeat<TTarget extends AcquisitionTarget>(targets: readonly 
 
 function acquisitionPromptTimer<TTarget extends AcquisitionTarget>(strategy: AcquisitionStrategy<TTarget>, phase: AcquisitionPhase, kind: AcquisitionPromptKind, expandedTargetAttempts: number) {
   const config = strategy.timers
-  if (kind === 'established-dt') return config.establishedDtSeconds
+  if (kind === 'familiar-dt') return config.familiarDtSeconds
   if (kind === 'earned-dt') return config.earnedDtSeconds
   if (kind === 'show-copy') return phase === 'correction' ? config.correctionShowCopySeconds : config.introductionShowCopySeconds
   if (phase === 'introduction') return config.introductionHiddenTargetSeconds
@@ -47,8 +47,9 @@ function acquisitionPromptTimer<TTarget extends AcquisitionTarget>(strategy: Acq
 
 function makeAcquisitionPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, kind: AcquisitionPromptKind, word: TTarget, targetWordId?: string): EngineAcquisitionFlow<TTarget> {
   const trialNumber = flow.trialNumber + 1
-  const weeklyTarget = kind === 'target' && flow.correctionRole !== 'earned-dt'
-  const dtPoolType = kind === 'established-dt' ? 'established' as const : kind === 'earned-dt' || (kind === 'target' && flow.correctionRole === 'earned-dt') ? 'earned' as const : undefined
+  const earnedDtTrial = kind === 'earned-dt' || (kind === 'target' && flow.correctionRole === 'earned-dt')
+  const weeklyTarget = kind === 'target' || earnedDtTrial
+  const dtPoolType = kind === 'familiar-dt' ? 'familiar' as const : earnedDtTrial ? 'earned' as const : undefined
   return {
     ...flow,
     trialNumber,
@@ -67,9 +68,9 @@ function makeAcquisitionPrompt<TTarget extends AcquisitionTarget>(flow: EngineAc
   }
 }
 
-function establishedDtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
-  const drawn = drawFromBag(strategy.establishedDtTargets, flow.establishedDtBag, flow.lastDtWordId, random)
-  return makeAcquisitionPrompt({ ...flow, establishedDtBag: drawn.bag, lastDtWordId: drawn.word.id }, strategy, 'established-dt', drawn.word)
+function familiarDtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
+  const drawn = drawFromBag(strategy.familiarDtTargets, flow.familiarDtBag, flow.lastDtWordId, random)
+  return makeAcquisitionPrompt({ ...flow, familiarDtBag: drawn.bag, lastDtWordId: drawn.word.id }, strategy, 'familiar-dt', drawn.word)
 }
 
 function dtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
@@ -82,7 +83,7 @@ function dtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow
       : flow.resumePosition
     return makeAcquisitionPrompt({ ...flow, earnedDtBag: drawn.bag, lastDtWordId: drawn.word.id, resumePosition }, strategy, 'earned-dt', drawn.word, drawn.word.id)
   }
-  return establishedDtPrompt(flow, strategy, random)
+  return familiarDtPrompt(flow, strategy, random)
 }
 
 function coreAcquisitionPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number): EngineAcquisitionFlow<TTarget> {
@@ -90,7 +91,7 @@ function coreAcquisitionPrompt<TTarget extends AcquisitionTarget>(flow: EngineAc
   if (!flow.currentTarget) return { ...flow, prompt: null, complete: true }
   const token = flow.phase === 'introduction' ? strategy.introductionSequence[flow.step] : flow.phase === 'expanded-trials' ? strategy.expandedSequence[flow.step] : strategy.correctionSequence[flow.step]
   if (!token) return flow
-  if (token === 'established-dt') return establishedDtPrompt(flow, strategy, random)
+  if (token === 'familiar-dt') return familiarDtPrompt(flow, strategy, random)
   if (token === 'dt') return dtPrompt(flow, strategy, random)
   if (token === 'show-copy') return makeAcquisitionPrompt(flow, strategy, 'show-copy', flow.currentTarget, flow.currentTarget.id)
   return makeAcquisitionPrompt(flow, strategy, 'target', flow.currentTarget, flow.currentTarget.id)
@@ -100,6 +101,8 @@ export function startAcquisition<TTarget extends AcquisitionTarget>(targetSet: A
   const currentTarget = targetSet.targets[0] || null
   return coreAcquisitionPrompt({
     datasetId: targetSet.id,
+    strategyId: strategy.id,
+    strategyVersion: strategy.version,
     mode: 'teaching',
     targetIndex: 0,
     currentTarget,
@@ -108,7 +111,7 @@ export function startAcquisition<TTarget extends AcquisitionTarget>(targetSet: A
     trialNumber: 0,
     expandedTargetAttempts: 0,
     earnedDtPool: [],
-    establishedDtBag: [],
+    familiarDtBag: [],
     earnedDtBag: [],
     consecutiveErrors: {},
     prompt: null,
@@ -119,8 +122,72 @@ export function startAcquisition<TTarget extends AcquisitionTarget>(targetSet: A
 
 export function resumeAcquisition<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget> | undefined, targetSet: AcquisitionTargetSet<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   if (!saved || saved.datasetId !== targetSet.id) return startAcquisition(targetSet, strategy, random)
-  if (saved.complete || saved.teachingComplete) return coreAcquisitionPrompt({ ...saved, mode: 'dt-practice', currentTarget: null, prompt: null, teachingComplete: true, complete: false, correctionRole: undefined, resumePosition: undefined }, strategy, random)
-  return saved
+  const normalized = normalizeAcquisitionFlow(saved, strategy, random)
+  if (normalized.complete || normalized.teachingComplete) return coreAcquisitionPrompt({ ...normalized, mode: 'dt-practice', currentTarget: null, prompt: null, teachingComplete: true, complete: false, correctionRole: undefined, resumePosition: undefined }, strategy, random)
+  return normalized
+}
+
+const legacyExpandedStepMap = [0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const
+
+function migratedExpandedStep(step: number) {
+  return legacyExpandedStepMap[Math.max(0, Math.min(step, legacyExpandedStepMap.length - 1))]
+}
+
+function completedExpandedTargets<TTarget extends AcquisitionTarget>(strategy: AcquisitionStrategy<TTarget>, step: number) {
+  return strategy.expandedSequence.slice(0, step).filter((token) => token === 'target').length
+}
+
+function canonicalFamiliarTarget<TTarget extends AcquisitionTarget>(target: TTarget, strategy: AcquisitionStrategy<TTarget>) {
+  if (target.datasetId !== '__established-dt__' && !target.id.startsWith('established-dt-')) return target
+  const byText = strategy.familiarDtTargets.find((candidate) => candidate.text === target.text)
+  if (byText) return byText
+  const suffix = target.id.match(/(\d+)$/)?.[1]
+  return (strategy.familiarDtTargets.find((candidate) => candidate.id.endsWith(`-${suffix}`)) || target) as TTarget
+}
+
+function canonicalFamiliarId<TTarget extends AcquisitionTarget>(wordId: string | undefined, strategy: AcquisitionStrategy<TTarget>) {
+  if (!wordId?.startsWith('established-dt-')) return wordId
+  const suffix = wordId.match(/(\d+)$/)?.[1]
+  return strategy.familiarDtTargets.find((candidate) => candidate.id.endsWith(`-${suffix}`))?.id || wordId
+}
+
+function normalizeAcquisitionFlow<TTarget extends AcquisitionTarget>(saved: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
+  if (saved.strategyId === strategy.id && saved.strategyVersion === strategy.version && Array.isArray(saved.familiarDtBag)) return saved
+  const legacy = saved as EngineAcquisitionFlow<TTarget> & { establishedDtBag?: TTarget[] }
+  const step = saved.phase === 'expanded-trials'
+    ? migratedExpandedStep(saved.step)
+    : saved.phase === 'correction'
+      ? 0
+      : Math.max(0, Math.min(saved.step, strategy.introductionSequence.length - 1))
+  const resumePosition = saved.resumePosition ? {
+    ...saved.resumePosition,
+    step: migratedExpandedStep(saved.resumePosition.step),
+    expandedTargetAttempts: completedExpandedTargets(strategy, migratedExpandedStep(saved.resumePosition.step)),
+  } : undefined
+  const migrated: EngineAcquisitionFlow<TTarget> = {
+    datasetId: saved.datasetId,
+    strategyId: strategy.id,
+    strategyVersion: strategy.version,
+    mode: saved.mode,
+    targetIndex: saved.targetIndex,
+    currentTarget: saved.currentTarget,
+    phase: saved.phase,
+    step,
+    trialNumber: saved.trialNumber,
+    expandedTargetAttempts: saved.phase === 'expanded-trials' ? completedExpandedTargets(strategy, step) : 0,
+    earnedDtPool: saved.earnedDtPool,
+    familiarDtBag: (saved.familiarDtBag || legacy.establishedDtBag || []).map((target) => canonicalFamiliarTarget(target, strategy)),
+    earnedDtBag: saved.earnedDtBag,
+    lastDtWordId: canonicalFamiliarId(saved.lastDtWordId, strategy),
+    consecutiveErrors: saved.consecutiveErrors,
+    correctionRole: saved.correctionRole,
+    resumePosition,
+    prompt: null,
+    teachingComplete: saved.teachingComplete,
+    complete: saved.complete,
+  }
+  if (migrated.complete || migrated.teachingComplete) return migrated
+  return coreAcquisitionPrompt(migrated, strategy, random)
 }
 
 function withEarnedWord<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, word: TTarget) {
@@ -163,7 +230,7 @@ function enterCorrection<TTarget extends AcquisitionTarget>(flow: EngineAcquisit
   return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, resumePosition, prompt: null }, strategy, random)
 }
 
-function advanceUnscoredOrEstablishedDt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
+function advanceUnscoredOrFamiliarDt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   if (flow.mode === 'dt-practice') return coreAcquisitionPrompt({ ...flow, prompt: null }, strategy, random)
   return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, strategy, random)
 }
@@ -176,7 +243,7 @@ export function revealAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
 export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, targetSet: AcquisitionTargetSet<TTarget>, strategy: AcquisitionStrategy<TTarget>, correct: boolean, random: () => number): EngineAcquisitionFlow<TTarget> {
   const prompt = flow.prompt
   if (!prompt || !prompt.revealed) return flow
-  if (prompt.kind === 'show-copy' || prompt.kind === 'established-dt') return advanceUnscoredOrEstablishedDt(flow, strategy, random)
+  if (prompt.kind === 'show-copy' || prompt.kind === 'familiar-dt') return advanceUnscoredOrFamiliarDt(flow, strategy, random)
 
   const consecutiveErrors = errorsAfter(flow, prompt.word.id, correct)
   const updated = { ...flow, consecutiveErrors }
@@ -211,11 +278,7 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
   if (flow.step < finalCorrectionStep) return coreAcquisitionPrompt({ ...updated, step: flow.step + 1, prompt: null }, strategy, random)
   if (correct) {
     if (flow.correctionRole === 'earned-dt') return resumeInterruptedTarget(withEarnedWord(updated, prompt.word), strategy, random)
-    const resume = updated.resumePosition
-    if (resume && resume.step >= strategy.expandedSequence.length) {
-      return completeCurrentTarget({ ...updated, targetIndex: resume.targetIndex, currentTarget: resume.currentTarget, correctionRole: undefined, resumePosition: undefined, prompt: null }, targetSet, strategy, random)
-    }
-    return resumeInterruptedTarget(updated, strategy, random)
+    return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, correctionRole: undefined, resumePosition: undefined, prompt: null }, strategy, random)
   }
   return coreAcquisitionPrompt({ ...updated, step: 0, prompt: null }, strategy, random)
 }

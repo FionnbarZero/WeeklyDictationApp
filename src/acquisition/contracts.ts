@@ -13,12 +13,13 @@ export type AcquisitionTargetSet<TTarget extends AcquisitionTarget = Acquisition
   targets: readonly TTarget[]
 }
 
-export type AcquisitionSequenceToken = 'established-dt' | 'dt' | 'show-copy' | 'target'
+export type AcquisitionSequenceToken = 'familiar-dt' | 'dt' | 'show-copy' | 'target'
 export type AcquisitionPhase = 'introduction' | 'expanded-trials' | 'correction'
-export type AcquisitionPromptKind = 'established-dt' | 'earned-dt' | 'show-copy' | 'target'
+export type AcquisitionPromptKind = 'familiar-dt' | 'earned-dt' | 'show-copy' | 'target'
+export type DistractorTrialPoolType = 'familiar' | 'earned'
 
 export type AcquisitionTimerConfig = {
-  establishedDtSeconds: number
+  familiarDtSeconds: number
   earnedDtSeconds: number
   introductionShowCopySeconds: number
   introductionHiddenTargetSeconds: number
@@ -37,13 +38,15 @@ export type EngineAcquisitionPrompt<TTarget extends AcquisitionTarget = Acquisit
   targetWordId?: string
   scored: boolean
   countsTowardWeeklyScore: boolean
-  dtPoolType?: 'established' | 'earned'
+  dtPoolType?: DistractorTrialPoolType
   timerSeconds: number
   revealed: boolean
 }
 
 export type EngineAcquisitionFlow<TTarget extends AcquisitionTarget = AcquisitionTarget> = {
   datasetId: string
+  strategyId: string
+  strategyVersion: number
   mode: 'teaching' | 'dt-practice'
   targetIndex: number
   currentTarget: TTarget | null
@@ -52,7 +55,9 @@ export type EngineAcquisitionFlow<TTarget extends AcquisitionTarget = Acquisitio
   trialNumber: number
   expandedTargetAttempts: number
   earnedDtPool: TTarget[]
-  establishedDtBag: TTarget[]
+  familiarDtBag: TTarget[]
+  /** Legacy persisted field accepted only while migrating pre-v3 progress. */
+  establishedDtBag?: TTarget[]
   earnedDtBag: TTarget[]
   lastDtWordId?: string
   consecutiveErrors: Record<string, number>
@@ -68,7 +73,7 @@ export type AcquisitionStrategy<TTarget extends AcquisitionTarget = AcquisitionT
   readonly version: number
   readonly timers: AcquisitionTimerConfig
   readonly dtObservationMode: 'collect' | 'discard'
-  readonly establishedDtTargets: readonly TTarget[]
+  readonly familiarDtTargets: readonly TTarget[]
   readonly introductionSequence: readonly AcquisitionSequenceToken[]
   readonly expandedSequence: readonly AcquisitionSequenceToken[]
   readonly correctionSequence: readonly AcquisitionSequenceToken[]
@@ -89,7 +94,7 @@ export type AcquisitionAssessment<
   readonly kind: AcquisitionPromptKind
   readonly correct: boolean
   readonly countsTowardWeeklyScore: boolean
-  readonly dtPoolType?: 'established' | 'earned'
+  readonly dtPoolType?: DistractorTrialPoolType
   readonly revealMethod: TRevealMethod
 }
 

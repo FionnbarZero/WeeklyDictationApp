@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
-  ESTABLISHED_DT_WORDS,
+  FAMILIAR_DT_WORDS,
   answerAcquisitionPrompt,
   revealAcquisitionPrompt,
   resumeAcquisitionFlow,
@@ -23,6 +23,8 @@ type GoldenTrace = {
 }
 
 type GoldenFixture = {
+  strategyId: string
+  strategyVersion: number
   startedFlowSha256: string
   correctionFlowSha256: string
   earnedDtRecoveryFlowSha256: string
@@ -30,8 +32,8 @@ type GoldenFixture = {
   dtOnlyFlowSha256: string
   mismatchedResumeSha256: string
   emptyUnsupportedSha256: string
-  establishedTargetsSha256: string
-  establishedTargetIds: string[]
+  familiarTargetsSha256: string
+  familiarTargetIds: string[]
   trace: GoldenTrace[]
   belowHalfKind: string
   atHalfKind: string
@@ -102,11 +104,13 @@ function traceFrom(flow: AcquisitionFlow, count: number) {
   return trace
 }
 
-test('the pre-extraction Grade 2 Acquisition JSON and prompt trace stay fixed', () => {
+test('the approved Grade 2 Acquisition v3 JSON and prompt trace stay fixed', () => {
   const started = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  assert.equal(started.strategyId, golden.strategyId)
+  assert.equal(started.strategyVersion, golden.strategyVersion)
   assert.equal(hashJson(started), golden.startedFlowSha256)
-  assert.equal(hashJson(ESTABLISHED_DT_WORDS), golden.establishedTargetsSha256)
-  assert.deepEqual(ESTABLISHED_DT_WORDS.map((word) => word.id), golden.establishedTargetIds)
+  assert.equal(hashJson(FAMILIAR_DT_WORDS), golden.familiarTargetsSha256)
+  assert.deepEqual(FAMILIAR_DT_WORDS.map((word) => word.id), golden.familiarTargetIds)
   assert.deepEqual(traceFrom(started, golden.trace.length), golden.trace)
 })
 
@@ -119,13 +123,12 @@ test('serialized Correction, Earned-DT recovery, completion, and DT-only states 
 
   let earnedDtRecovery = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   while (earnedDtRecovery.targetIndex === 0) earnedDtRecovery = answer(earnedDtRecovery)
-  for (let index = 0; index < 4; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
-  earnedDtRecovery = answer(earnedDtRecovery, true, () => 0.75)
+  while (earnedDtRecovery.phase === 'introduction') earnedDtRecovery = answer(earnedDtRecovery)
   earnedDtRecovery = answer(earnedDtRecovery, true, () => 0.75)
   earnedDtRecovery = answer(earnedDtRecovery, false)
-  for (let index = 0; index < 5; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
+  for (let index = 0; index < 6; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
   assert.equal(earnedDtRecovery.phase, 'expanded-trials')
-  assert.equal(earnedDtRecovery.step, 3)
+  assert.equal(earnedDtRecovery.step, 2)
   assert.equal(hashJson(earnedDtRecovery), golden.earnedDtRecoveryFlowSha256)
 
   let completedTeaching = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
@@ -157,11 +160,10 @@ test('the extraction preserves no-op, mismatch, empty-set, and public signature 
   assert.deepEqual(startAcquisitionFlow(dataset, undefined, () => 0), startAcquisitionFlow(dataset, dataset.grade, () => 0))
 })
 
-test('the extraction preserves the exact 50/50 DT boundary', () => {
+test('the engine preserves the exact 50/50 DT boundary', () => {
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   while (flow.targetIndex === 0) flow = answer(flow)
-  for (let index = 0; index < 4; index += 1) flow = answer(flow)
-  flow = answer(flow)
+  while (flow.phase === 'introduction') flow = answer(flow)
 
   const belowHalf = answer(flow, true, () => 0.499999)
   const atHalf = answer(flow, true, () => 0.5)
@@ -170,7 +172,7 @@ test('the extraction preserves the exact 50/50 DT boundary', () => {
   assert.equal(atHalf.prompt?.word.id, golden.atHalfWordId)
 })
 
-test('show-copy and Established-DT correctness remain irrelevant to progression', () => {
+test('show-copy and Familiar-DT correctness remain irrelevant to progression', () => {
   const started = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   assert.deepEqual(answer(started, true), answer(started, false))
 
