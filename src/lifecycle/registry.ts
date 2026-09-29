@@ -1,8 +1,12 @@
 import { schoolYearToken } from '../curriculum/identity.ts'
 import type { LifecycleContext, LifecycleScope, LifecycleStrategy } from './contracts.ts'
 import { grade2ReplacementLifecycleStrategy } from './strategies/grade2ReplacementStrategy.ts'
+import { kindergartenUnitLifecycleStrategy } from './strategies/kindergartenUnitStrategy.ts'
 
-const lifecycleStrategies: readonly LifecycleStrategy[] = [grade2ReplacementLifecycleStrategy]
+const lifecycleStrategies: readonly LifecycleStrategy[] = [
+  grade2ReplacementLifecycleStrategy,
+  kindergartenUnitLifecycleStrategy,
+]
 
 export function lifecycleStrategyForScope(scope: Pick<LifecycleScope, 'grade' | 'schoolYearKey'>) {
   return lifecycleStrategies.find((strategy) => strategy.grade === scope.grade && strategy.schoolYearKey === scope.schoolYearKey) || null

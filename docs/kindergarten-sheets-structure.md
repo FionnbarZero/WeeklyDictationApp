@@ -20,15 +20,15 @@ The observed Mandarin curriculum is stored in multiline cells. `Writing characte
 
 Every Kindergarten cycle starts Monday and ends the following Sunday. The adapter interprets the month/day in the tab title within the configured school year, moves backward to the previous-or-same Monday, and assigns the following Sunday as the end. Thus the Tuesday `09/08` tab after Labor Day belongs to the `09/07–09/13` cycle. The calculation does not inspect neighboring tabs.
 
-## Deliberately blocked activation
+## Validated source with inactive production registration
 
-The adapter creates source-neutral candidates with workbook/tab provenance and normalized dates, then marks every candidate malformed with `kindergarten_activation_policy_unresolved`. Empty tabs additionally receive `kindergarten_no_instruction_unresolved`. Consequently, no candidate can pass canonical production import yet.
+Vocabulary-bearing tabs now become canonical source-neutral candidates with workbook/tab provenance and normalized dates. The Kindergarten lifecycle activates a vocabulary cycle on its Monday, holds the latest available teaching set across a missing replacement, and groups every arrived Unit 1 set into one cumulative review. Unit 1 is explicitly configured as August 31 through September 27; its boundary is never inferred from tab order or an empty tab.
+
+Empty tabs still receive `kindergarten_no_instruction_unresolved` and remain malformed because the workbook has no approved machine-readable no-instruction marker. The Kindergarten source registry entry and production practice profile remain inactive, so valid source candidates still cannot enter the child application.
 
 Still unresolved:
 
-- the trusted event and timezone that activate a new cycle;
-- how an empty newest tab affects the last vocabulary cohort;
-- where cumulative unit boundaries and end-of-unit review membership come from;
+- an approved machine-readable meaning for empty tabs such as review or no instruction;
 - Kindergarten Warmup requirements and full Tier 2 assessment behavior;
 - the trusted production sync deployment and administrator authorization.
 

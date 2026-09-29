@@ -91,7 +91,7 @@ The registered Kindergarten workbook can be inspected from a trusted Node-only e
 npm run inspect:kindergarten
 ```
 
-This command uses the same OAuth variables, defaults to the registered Kindergarten spreadsheet ID, prints blocked canonical candidates and their date/vocabulary mapping, and has no application-state or Firestore write path.
+This command uses the same OAuth variables, defaults to the registered Kindergarten spreadsheet ID, prints canonical vocabulary candidates and any blocked empty tabs with their date/vocabulary mapping, and has no application-state or Firestore write path.
 
 The command is idempotent when existing dataset IDs are supplied, imports every valid weekly slide as its own dataset, preserves multi-character Tier 1 terms, splits only the separators used by the deck, preserves available Mandarin context, distinguishes writing-workshop markers from extraction errors, and rejects incomplete slides without replacing a valid dataset. Before an authorized write, it reads the stored fingerprint references so changed same-week content is treated as a conflict rather than an ID-only duplicate. The command is dry-run by default:
 
@@ -114,7 +114,7 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets but does not replace or advance the current Acquisition and Test Review assignments. A future writing-workshop remediation activity may draw from repeatedly incorrect Mastered words only after its rules are explicitly approved.
 - The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
-- Grade 2 is the only active source configuration. Grade 5 and Kindergarten are registered but inactive; their development-only source and learning labs do not create production datasets or production child practice. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
+- Grade 2 is the only active source configuration. Grade 5 and Kindergarten sources remain inactive; their development-only source and learning labs do not create production datasets or production child practice. Kindergarten now has a registered, isolated Unit 1 lifecycle strategy, but no production writing-practice profile. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Familiar DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Familiar and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
 

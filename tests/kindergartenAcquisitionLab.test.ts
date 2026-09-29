@@ -71,9 +71,9 @@ test('the Kindergarten profile is lab-owned and absent from the production regis
   assert.equal(practiceProfileForGrade('Kindergarten'), null)
 })
 
-test('only a source-inspected vocabulary tab blocked solely by activation policy can enter the lab', () => {
+test('only a canonical source-inspected vocabulary tab can enter the lab', () => {
   const candidate = week6()
-  assert.equal(candidate.status, 'malformed')
+  assert.equal(candidate.status, 'valid')
   assert.equal(kindergartenCandidateIsUsableInLab(candidate), true)
 
   const targetSet = kindergartenAcquisitionTargetSet(candidate)
