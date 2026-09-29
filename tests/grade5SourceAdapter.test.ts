@@ -246,7 +246,7 @@ test('pre-baseline Grade 5 slides remain provenance issues and do not become can
   assert.ok(extraction.issues.some((issue) => issue.code === 'pre_baseline_source_unit' && issue.sourceUnitId === 'observed-week-3'))
 })
 
-test('the Grade 5 source profile remains inactive until lifecycle and practice profiles are implemented', () => {
+test('the Grade 5 source profile remains inactive while production practice registration is deferred', () => {
   const registryEntry = SOURCE_REGISTRY.find((entry) => entry.grade === 'Grade 5')
 
   assert.equal(registryEntry?.sourceAdapterId, grade5SlidesSourceProfile.sourceAdapterId)

@@ -268,16 +268,19 @@ test('Grade 2 compatibility wrapper rejects an unresolved mixed scope', () => {
 
 test('lifecycle registry requires the exact grade and normalized school year', () => {
   const grade2 = lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2026–2027')
+  const grade5 = lifecycleStrategyForGradeAndSchoolYear('Grade 5', '2026–2027')
   assert.equal(grade2?.profileId, 'grade-2-replacement-2026-27')
   assert.equal(grade2?.version, 1)
   assert.strictEqual(lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2026-2027'), grade2)
+  assert.equal(grade5?.profileId, 'grade-5-progression-2026-27')
+  assert.equal(grade5?.version, 1)
+  assert.strictEqual(lifecycleStrategyForGradeAndSchoolYear('Grade 5', '2026-2027'), grade5)
   assert.equal(lifecycleStrategyForGradeAndSchoolYear('Grade 2', '2025–2026'), null)
-  assert.equal(lifecycleStrategyForGradeAndSchoolYear('Grade 5', '2026–2027'), null)
   assert.throws(() => resolveLifecycle({
-    scope: { grade: 'Grade 5', schoolYearKey: '2026-27', currentDateKey: '2026-09-28' },
+    scope: { grade: 'Grade 5', schoolYearKey: '2025-26', currentDateKey: '2026-09-28' },
     sets: [],
     progressionEvents: [],
-  }), /not configured for Grade 5 in 2026-27/)
+  }), /not configured for Grade 5 in 2025-26/)
 })
 
 test('strategy resolution excludes mixed-grade and mixed-year inputs from the requested scope', () => {

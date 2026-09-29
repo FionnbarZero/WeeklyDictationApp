@@ -117,8 +117,20 @@ button, a { font: inherit; }
 .request-panel pre { max-height: 250px; margin: 12px 0 0; padding: 13px; overflow: auto; border-radius: 11px; color: #e8ebff; background: #252b48; font-size: 10px; }
 
 body.practice-active { background: var(--cream, #f7f4ee); }
+body.practice-active { overflow: hidden; }
 body.practice-active .lab-shell { width: min(720px, calc(100% - 48px)); padding-top: 42px; }
 body.practice-active .grade5-topbar { display: none; }
+.grade5-home[hidden], .hub-sections[hidden], .lab-details[hidden], .request-panel[hidden], .grade5-practice-stage[hidden] { display: none !important; }
+.grade5-practice-stage { display: block; }
+body.practice-active .grade5-practice-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  padding: 34px max(22px, calc((100vw - 720px) / 2)) 70px;
+  background: var(--cream, #f7f4ee);
+}
+body.practice-active .grade5-practice-stage > * { width: min(100%, 720px); margin-right: auto; margin-left: auto; }
 .lab-mode-note { margin: 0 0 18px; color: var(--muted, #697178); font-size: 10px; text-align: center; }
 .practice-summary-panel { margin-top: 10px; padding: 10px 13px; border: 1px solid var(--line, #e5e0d8); border-radius: 11px; color: var(--muted, #697178); background: #fffdf9; font-size: 10px; }
 .practice-summary-panel summary { cursor: pointer; color: var(--ink, #233139); font-weight: 700; }
@@ -140,6 +152,7 @@ body.practice-active .grade5-topbar { display: none; }
   .word-count-pill { justify-self: start; }
   .training-module { min-height: 310px; padding: 25px; }
   body.practice-active .lab-shell { width: calc(100% - 34px); padding-top: 26px; }
+  body.practice-active .grade5-practice-stage { padding: 22px 17px 48px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
