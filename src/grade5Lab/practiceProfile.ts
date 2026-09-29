@@ -9,5 +9,15 @@ export const grade5WritingLabProfile = {
   grade: 'Grade 5',
   requiredWarmupTrials: 6,
   testReviewTimerSeconds: 10,
+  lifecycle: {
+    primaryWarmupTrials: 6,
+    warmupTargetSize: 16,
+    recentReviewPromotionStreak: 2,
+    erroredWordPromotionStreak: 3,
+  },
+  timers: {
+    warmup: 10,
+    testReview: 10,
+  },
   acquisition: grade5AcquisitionStrategy,
 } as const

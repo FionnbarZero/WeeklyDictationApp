@@ -37,18 +37,23 @@ test('the Grade 5 landing experience uses the shared child-facing visual languag
   assert.match(labStyles, /\.training-module/)
 })
 
-test('the Grade 5 learning hub connects only Tier 1 writing Acquisition to the shared engine', () => {
+test('the Grade 5 learning hub connects Tier 1 Acquisition and Test Review without persistence', () => {
   const harnessSource = source('src/grade5LearningHubHarness.tsx')
   const hubModel = source('src/grade5Lab/learningHub.ts')
   const labAdapter = source('src/grade5Lab/acquisitionLab.ts')
+  const writingPractice = source('src/grade5Lab/writingPractice.ts')
   const profile = source('src/grade5Lab/practiceProfile.ts')
 
   assert.match(harnessSource, /not connected yet/i)
   assert.match(harnessSource, /startGrade5AcquisitionLab/)
+  assert.match(harnessSource, /grade5LabWarmupSelection/)
+  assert.match(harnessSource, /warmupRequired/)
   assert.match(labAdapter, /startAcquisition/)
   assert.match(labAdapter, /transitionAcquisition/)
+  assert.match(writingPractice, /selectWarmupWords/)
+  assert.match(writingPractice, /activityKind === 'test-review'/)
   assert.match(profile, /grade5AcquisitionStrategy/)
-  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
+  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
   assert.doesNotMatch(`${hubModel}\n${labAdapter}`, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
 })
 
@@ -59,6 +64,7 @@ test('Grade 2 and the Grade 5 lab render the same shared PracticeView component'
   const practiceView = source('src/practice/PracticeView.tsx')
 
   assert.match(harnessHtml, /href="\/src\/styles\.css"/)
+  assert.match(harnessHtml, /id="practice-panel" class="grade5-practice-stage" hidden/)
   assert.match(harnessHtml, /id="grade5-practice-root"/)
   assert.match(appSource, /import \{ PracticeView \} from '\.\/practice\/PracticeView'/)
   assert.match(harnessSource, /import \{ PracticeView \} from '\.\/practice\/PracticeView\.tsx'/)
@@ -69,7 +75,10 @@ test('Grade 2 and the Grade 5 lab render the same shared PracticeView component'
   assert.doesNotMatch(appSource, /function PracticeView/)
   assert.doesNotMatch(harnessHtml, /class="prompt-card"|class="speaker-orb"|class="answer-actions"/)
   assert.match(harnessSource, /hubIntro\.hidden = true/)
-  assert.match(harnessSource, /session=\{practiceSessionFor\(activePractice, activeDataset\)\}/)
+  assert.match(harnessSource, /session=\{activeSession\}/)
+  assert.match(harnessSource, /warmupRequired/)
+  assert.match(source('src/grade5Lab/learningHub.css'), /body\.practice-active \.grade5-practice-stage/)
+  assert.match(source('src/grade5Lab/learningHub.css'), /position: fixed/)
 })
 
 test('every Grade 5 harness element lookup has a matching unique HTML element', () => {
