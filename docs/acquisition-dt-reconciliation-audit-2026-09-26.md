@@ -8,11 +8,11 @@ The project plan and Grade 2 implementation now use Distractor Target terminolog
 
 Implemented and reviewed:
 
-- Established DT placeholder pool: `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`.
-- Independent Established and Earned DT shuffle bags with repeat avoidance.
-- Introduction: two different Established DTs, one 10-second copy, one 10-second hidden weekly target.
+- Familiar DT placeholder pool: `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`.
+- Independent Familiar and Earned DT shuffle bags with repeat avoidance.
+- Introduction: two different Familiar DTs, one 10-second copy, one 10-second hidden weekly target.
 - Expanded Trials: `target, target, DT, target, DT, DT, target, DT, DT, DT, target` with target timers `10, 9, 8, 7, 6`.
-- Correction: two 10-second copies, one 10-second hidden target, one new 5-second Established DT, and one final 10-second hidden target.
+- Correction: two 10-second copies, one 10-second hidden target, one new 5-second Familiar DT, and one final 10-second hidden target.
 - Three consecutive scored errors restart the affected weekly target or Earned DT at Introduction.
 - Successful Correction resumes the next unfinished teaching-sequence position.
 - Weekly targets become Earned DTs only after completing the teaching sequence.
@@ -31,7 +31,7 @@ The supplied rules left a few transition details implicit. The implementation us
 1. “After three errors” means three consecutive assessed errors for the affected weekly target or Earned DT; a correct assessed response resets that word's count.
 2. Successful Correction resumes the next unfinished position. A failed Expanded target therefore does not repeat already completed Expanded positions.
 3. An Introduction error resumes at the first Expanded target after successful Correction.
-4. The DT inside Correction is a new Established DT. This avoids recursively interrupting one Correction with another Earned DT Correction.
+4. The DT inside Correction is a new Familiar DT. This avoids recursively interrupting one Correction with another Earned DT Correction.
 5. **Done for today** scores only responses completed in that visit. It does not recompute one cumulative score from earlier visits.
 6. Once teaching is complete, the same Acquisition entry becomes open-ended DT practice and ends through **Done for today**.
 
@@ -52,7 +52,7 @@ These interpretations are recorded in `PROJECT_PLAN.md` so code and documentatio
 
 1. Add Firebase Emulator Suite tests for the new session statuses, temporary-attempt deletion, Acquisition progression documents, DT observations, cross-family denial, and duplicate-ID behavior. The rule changes are statically reviewed but have not been executed against an emulator in this workspace.
 2. Make “save assessed trial/DT observation/next Acquisition position” one Firestore transaction or trusted batched server operation. The IDs are idempotent, but the browser currently issues related writes in parallel; a partial network failure can temporarily save one side without the other.
-3. Validate Established DT identity against a server-managed, versioned DT profile. Current rules validate family ownership and the canonical Acquisition dataset, but cannot prove that a submitted Established DT ID/text belongs to the approved profile because that profile is not yet stored as shared server data.
+3. Validate Familiar DT identity against a server-managed, versioned DT profile. Current rules validate family ownership and the canonical Acquisition dataset, but cannot prove that a submitted Familiar DT ID/text belongs to the approved profile because that profile is not yet stored as shared server data.
 
 ### Priority 2 — preserve the adaptive Warmup feature fully
 

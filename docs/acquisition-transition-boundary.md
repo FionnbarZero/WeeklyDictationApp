@@ -9,13 +9,13 @@ This boundary centralizes how one reviewed Acquisition prompt becomes the exact 
 - `nextFlow`, which is identical to the flow returned by the existing compatibility API; and
 - `assessment`, when the reviewed prompt represents a recordable response.
 
-The assessment retains the complete generic target object and the answered prompt's stable identity. This is necessary because Established DT targets are not members of the weekly dataset. Child, family, session, dataset-envelope, timestamp, cloud-path, and repository details remain outside the transition.
+The assessment retains the complete generic target object and the answered prompt's stable identity. This is necessary because Familiar DT targets are not members of the weekly dataset. Child, family, session, dataset-envelope, timestamp, cloud-path, and repository details remain outside the transition.
 
 ## Classification rules
 
 - Show-copy advances the teaching flow without producing an assessment.
 - A weekly hidden target produces a weekly-scored assessment.
-- An Established DT produces an unscored Established-DT assessment.
+- A Familiar DT produces an unscored Familiar-DT assessment.
 - An Earned DT produces an unscored Earned-DT assessment.
 - A target prompt inside Earned-DT Correction remains an unscored Earned-DT assessment.
 - A target prompt inside weekly-target Correction remains weekly-scored.

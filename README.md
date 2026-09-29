@@ -97,7 +97,7 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
 - Grade 2 is the only active deck configuration. Grade 5 remains registered but inactive and without newly imported datasets; Kindergarten and Grades 1, 3, and 4 remain supported by the grade model without deck configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
-- Acquisition uses the explicitly approved Established DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Established and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
+- Acquisition uses the explicitly approved Familiar DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Familiar and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
 
 ## Adaptive Warmup architecture status
 

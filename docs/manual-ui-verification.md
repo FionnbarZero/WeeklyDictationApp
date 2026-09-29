@@ -28,12 +28,12 @@ The canonical fixture is test-only input. It is not production seed data and mus
 
 1. Start Acquisition. Confirm its six-word adaptive Warmup is offered first and may be completed or skipped.
 2. Confirm every Acquisition prompt has its own timed writing frame, reveal frame, and Yes/No self-assessment without an extra transition screen.
-3. Confirm Introduction presents two different 5-second Established DTs, one 10-second show/say/copy target, and one 10-second hidden weekly target.
+3. Confirm Introduction presents two different 5-second Familiar DTs, one 10-second show/say/copy target, and one 10-second hidden weekly target.
 4. Mark the Introduction target correct and confirm Expanded Trials use exactly `target, target, DT, target, DT, DT, target, DT, DT, DT, target`.
 5. Confirm the five hidden weekly-target timers are `10, 9, 8, 7, 6` seconds.
 6. Confirm Replay uses the active prompt and Skip Timer opens that prompt's review without skipping its self-assessment.
-7. Complete the first target. Confirm it becomes an Earned DT and later DT positions can draw from both Established and Earned pools without immediate repetition when an alternative exists.
-8. Mark a hidden weekly target incorrect. Confirm Correction uses `copy, copy, hidden target, new Established DT, final hidden target`, then resumes the next unfinished teaching position after success.
+7. Complete the first target. Confirm it becomes an Earned DT and later DT positions can draw from both Familiar and Earned pools without immediate repetition when an alternative exists.
+8. Mark a hidden weekly target incorrect. Confirm Correction uses `copy, copy, hidden target, new Familiar DT, final hidden target`, then resumes the next unfinished teaching position after success.
 9. Confirm an incorrect Earned DT enters Correction and returns to the exact interrupted weekly-target position after success.
 10. Confirm three consecutive assessed errors restart the affected weekly target or Earned DT at Introduction.
 11. Select `Done for today`, refresh, and reenter Acquisition. Confirm the exact next prompt, timers, bags, Earned DT pool, and error state resume without duplicating the completed trial.
@@ -43,7 +43,7 @@ The canonical fixture is test-only input. It is not production seed data and mus
 ## Scoring and separation
 
 1. Confirm `Done for today` creates a visit score only from that visit's hidden weekly-target responses.
-2. Confirm Established DT, Earned DT, and show/copy responses never change the weekly Acquisition percentage.
+2. Confirm Familiar DT, Earned DT, and show/copy responses never change the weekly Acquisition percentage.
 3. Confirm reviewed DTs do not change the displayed weekly score and a DT-only visit creates no weekly score. The stored DT-observation stream is covered by automated tests until a dedicated child-facing DT report exists.
 4. Start Test Review separately. Confirm its offered Warmup and primary `9/14–9/18` dataset remain independent from Acquisition and use the 10-second Test Review timer.
 5. Confirm skipping or abandoning Test Review creates no Test Review score and does not count provisional answers.
