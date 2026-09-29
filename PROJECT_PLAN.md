@@ -246,7 +246,7 @@ Mastery Rotation is persistent per child and activity module. Correct and incorr
 
 The legacy occurrence-keyed state maps to the new model as follows: `recent-review` becomes `recent-entry`; `errored-word` becomes `needs-attention` with `support-needed` evidence; `random-rotation` becomes `mastery-rotation`; and `acquisition` is not a Warmup bucket. When several occurrence records collapse into one mastery term, Needs Attention wins over Recent Entry, and Recent Entry wins over Mastery Rotation. Conflicting streaks reset to zero, occurrence links are combined, the latest review and error timestamps are retained, and migration never invents demonstrated evidence when the stored history cannot prove it. Existing monthly aggregates remain preserved as legacy reports.
 
-Every enabled grade and activity module whose primary teaching strategy uses Distractor Trials must have at least six eligible Distractor Targets (DTs) before that primary activity is activated. The approved interim **Familiar DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds separate Tier 1 writing and Tier 2 reading DT pools for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Familiar DT pools will be derived from that child's demonstrated and mastered words over successive years. Whether a bootstrap DT also receives a mastery-term record must be explicit; it cannot bypass the approved Warmup identity and evidence rules.
+Every enabled grade and activity module whose primary teaching strategy uses Distractor Trials must have at least six eligible Familiar DT terms before that primary activity is activated. The approved interim **Familiar DT** pool contains `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`—numbers one through ten, big, little, up, down, person, and water. This same easy term list seeds separate Tier 1 writing and Tier 2 reading DT pools for every grade, but the two modules maintain separate per-child performance state and attempts. The list is a versioned DT bootstrap profile, not handwritten weekly curriculum, a canonical weekly dataset, or a fallback that may hide a failed source import. It is intentionally replaceable: future child-specific Familiar DT pools will be derived from that child's demonstrated and mastered words over successive years. Whether a bootstrap DT also receives a mastery-term record must be explicit; it cannot bypass the approved Warmup identity and evidence rules.
 
 If a configuration or data error leaves a DT-dependent primary teaching activity with fewer than six eligible DT terms, fail that activity closed with an administrator/setup state. Never borrow active Acquisition or Test Review targets to fill a DT pool or a Warmup. This DT safety rule does not create a six-term minimum Warmup: an ordinary Warmup completes successfully with however many unique mastery-eligible terms were assigned.
 
@@ -278,35 +278,35 @@ The full standard lists, assessment-set size, error-window semantics, correction
 
 ### Shared Acquisition contract
 
-The intended Acquisition structure for every grade includes Introduction, Familiar DT and Earned DT opportunities, Expanded Trials, Correction, and promotion of learned weekly targets into the Earned DT pool. “Distractor Target” or “DT” is the only canonical product and code terminology; remove all legacy terminology from documentation, types, field names, and child-facing copy. The response modality comes from the activity module: Tier 1 dictation hides the target during assessed writing trials, while Tier 2 reading shows the character or word for the child to say aloud.
+The intended Acquisition structure for every grade includes Introduction, Familiar DT and Earned DT opportunities, Expanded Trials, Correction, and promotion of learned weekly targets into the Earned DT pool. “Distractor Trial,” abbreviated DT, is the canonical product and code terminology. Familiar and Earned describe the target presented during that trial. `established` remains accepted only while reading legacy persisted records and normalizes to `familiar`; new code and writes use Familiar DT terminology. The response modality comes from the activity module: Tier 1 dictation hides the target during assessed writing trials, while Tier 2 reading shows the character or word for the child to say aloud.
 
 Each progression stores a `practiceStrategyId` and strategy version. The exact pool, sequence, timers, scoring events, and correction rules below are the canonical Grade 2 reference strategy. Kindergarten and Grade 5 may explicitly reuse or override individual parameters after review; they must never receive Grade 2 behavior through an undocumented fallback.
 
-#### Grade 2 Acquisition strategy v2
+#### Grade 2 Acquisition strategy v3
 
-Every Acquisition trial uses the same child-facing cycle: timed writing prompt, reveal/review frame, Yes/No response, then the next writing prompt without an extra transition screen. Show/copy prompts visibly show the word; all other writing prompts hide it. Familiar DTs use the approved placeholder pool `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`. Show/copy responses may receive a Yes/No response for interaction consistency, but no copy-trial correctness data is saved. Hidden weekly-target trials, Familiar DT trials, and Earned DT trials are recorded. Only hidden weekly-target trials contribute to the weekly Acquisition score; DT performance is stored in the separate DT-observation stream below.
+Every Acquisition trial uses the same child-facing cycle: timed writing prompt, reveal/review frame, Yes/No response, then the next writing prompt without an extra transition screen. Show/copy prompts visibly show the word; all other writing prompts hide it. Familiar DTs use the approved placeholder pool `一、二、三、四、五、六、七、八、九、十、大、小、上、下、人、水`. Show/copy responses may receive a Yes/No response for interaction consistency, but no copy-trial correctness data is saved. Hidden weekly-target trials, Familiar DT trials, and Earned DT trials are recorded. Hidden weekly-target and Earned DT trials contribute to the official Acquisition visit score; Familiar DT performance remains outside that score and is stored in the separate DT-observation stream below.
 
 Introduction presents two different Familiar DTs for 5 seconds each, one 10-second show/say/copy target trial, then one 10-second hidden weekly-target trial. The two DTs follow shuffle-bag rules and cannot repeat when an alternative is available. A correct hidden response starts Expanded Trials; an incorrect response starts Correction.
 
-Expanded Trials use the exact 11-position sequence `target, target, DT, target, DT, DT, target, DT, DT, DT, target`. Its five hidden weekly-target timers are exactly 10, 9, 8, 7, and 6 seconds. Every DT position independently chooses 50% Familiar DT and 50% Earned DT when both pools are available; while the Earned DT pool is empty it uses Familiar DT. Familiar and Earned pools each use shuffle-bag rotation, exhaust their eligible members before reuse, and prevent consecutive DT repetition when an alternative exists. An incorrect weekly-target response immediately enters Correction. Completing the sequence promotes that current-week target into the Earned DT pool and starts Introduction for the next target.
+Expanded Trials use the exact 10-position sequence `target, DT, target, DT, DT, target, DT, DT, DT, target`. Its four hidden weekly-target timers are exactly 10, 9, 8, and 7 seconds. Every DT position independently chooses 50% Familiar DT and 50% Earned DT when both pools are available; while the Earned DT pool is empty it uses Familiar DT. Familiar and Earned pools each use shuffle-bag rotation, exhaust their eligible members before reuse, and prevent consecutive DT repetition when an alternative exists. An incorrect weekly-target response immediately enters Correction. Completing the sequence promotes that current-week target into the Earned DT pool and starts Introduction for the next target.
 
-Correction uses the exact sequence `visible copy, visible copy, hidden target, new Familiar DT, final hidden target`. Copy and hidden-target trials use 10 seconds; the Familiar DT uses 5 seconds. Copy responses are not saved, the DT response is saved separately, and both hidden weekly-target responses are saved for the visit's weekly score. The final hidden response determines success. After successful Correction, the child returns to the next unfinished position in the interrupted teaching sequence; Correction does not silently complete the weekly target or restart completed Expanded positions. An incorrect final response repeats Correction. Three consecutive scored errors for a weekly target or Earned DT restart that word at Introduction. Any correct scored response resets that word's consecutive-error count. Familiar DT errors are recorded but do not turn the placeholder DT into a weekly Acquisition target.
+Correction uses the exact sequence `visible copy, visible copy, visible copy, hidden target, new Familiar DT, final hidden target`. Copy and hidden-target trials use 10 seconds; the Familiar DT uses 5 seconds. Copy responses are not saved, the DT response is saved separately, and both hidden target responses are saved for the visit's Acquisition score. The final hidden response determines success. After successful Correction, the child returns to the next unfinished position in the interrupted teaching sequence; Correction does not silently complete the weekly target or restart completed Expanded positions. An incorrect final response repeats Correction. Three consecutive scored errors for a weekly target or Earned DT restart that word at Introduction. Any correct scored response resets that word's consecutive-error count. Familiar DT errors are recorded but do not turn the placeholder DT into a weekly Acquisition target.
 
-The Grade 2 Acquisition score is visit- and trial-based. When the child selects **Done for today**, create that visit's score from every hidden weekly-target response completed during the visit, including Introduction, Expanded Trials, and Correction. Repeated attempts remain separate scored trials and must not be collapsed to one final answer per vocabulary word. Familiar DT, Earned DT, and show/copy responses never contribute to the weekly dataset score. If the visit contains no hidden weekly-target response, create no weekly dataset score; any assessed DT responses are still saved.
+The Grade 2 Acquisition score is visit- and trial-based. When the child selects **Done for today**, create that visit's score from every scored hidden weekly-target or Earned DT response completed during the visit, including Introduction, Expanded Trials, Correction, and ongoing Earned-DT practice. Repeated attempts remain separate scored trials and must not be collapsed to one final answer per vocabulary word. Familiar DT and show/copy responses never contribute to the Acquisition score. If the visit contains no scored hidden weekly-target or Earned DT response, create no Acquisition dataset score; any assessed Familiar DT responses are still saved.
 
-After every weekly target completes its teaching sequence, Acquisition remains available as ongoing DT-only practice. Each new DT-only opportunity uses the same 50% Familiar DT and 50% Earned DT choice and shuffle-bag rules. The child ends this open-ended practice with **Done for today**. DT-only practice creates no weekly score because it contains no weekly-target response.
+After every weekly target completes its teaching sequence, Acquisition remains available as ongoing DT-only practice. Each new DT-only opportunity uses the same 50% Familiar DT and 50% Earned DT choice and shuffle-bag rules. The child ends this open-ended practice with **Done for today**. A visit containing Earned DT responses creates an Acquisition score from those scored trials; a Familiar-DT-only visit creates no Acquisition score.
 
 ### Tier 1 DT observation and scoring boundary
 
 Tier 1 Acquisition supports a versioned practice-profile option such as `dtObservationMode: collect | discard`. The approved forward configuration is `collect`; `discard` remains available only for controlled compatibility testing or an explicitly configured environment. In collect mode, every reviewed Familiar DT and Earned DT creates a durable correctness observation for that individual DT.
 
-DT correctness is a separate learning signal, not part of the current weekly dataset score. A Familiar DT error does not interrupt the current Acquisition sequence, enter Correction, remove DT status, or add the term to a reacquisition set. Those consequences remain disabled until the baseline/remediation branch defines and tests the policy. An incorrect Earned DT does enter the same Correction routine, then returns to the exact interrupted weekly-target position. Earned DT attempts also appear once in longitudinal DT history; reuse or link their stable attempt record rather than creating a duplicate correctness event.
+Every DT response remains available as a separate longitudinal learning signal. Familiar DT correctness is not part of the Acquisition dataset score, and a Familiar DT error does not interrupt the current Acquisition sequence, enter Correction, remove DT status, or add the term to a reacquisition set. Those consequences remain disabled until the baseline/remediation branch defines and tests the policy. Earned DT responses also count as scored Acquisition trials; an incorrect Earned DT enters the same Correction routine, then returns to the exact interrupted weekly-target position. Each Earned DT response appears once in longitudinal DT history; reuse or link its stable attempt record rather than creating a duplicate correctness event.
 
 Each collected DT observation must include:
 
 - Stable, idempotent observation ID derived from the Acquisition progression, trial position, and DT identity.
 - Child ID, activity module, tier, grade, school year, and application version.
-- Stable DT term ID, normalized term text, pool type (`established`, future `standard-list`, or `earned`), and pool/list version.
+- Stable DT term ID, normalized term text, pool type (`familiar`, future `standard-list`, or `earned`), and pool/list version. Legacy `established` values are read only for migration and normalized to `familiar`.
 - Acquisition dataset and progression context, lifecycle stage, routine, and exact trial position.
 - Whether the term was a Familiar DT or Earned DT.
 - Right/wrong self-assessment, presentation time, review time, and whether Skip Timer was used.
@@ -326,7 +326,7 @@ The durable progress record must preserve enough state to reproduce the next ste
 - Activity module, vocabulary tier, lifecycle stage, practice strategy ID, and strategy version.
 - Ordered target list and current target index.
 - Current routine: Introduction, Expanded Trials, or Correction.
-- Exact step within the current routine, including the eleven-position Expanded Trials sequence.
+- Exact step within the current routine, including the ten-position Expanded Trials sequence.
 - Current hidden-target timer value.
 - Completed target words and the Earned DT pool.
 - Familiar DT and Earned DT shuffle-bag state, including the most recently used DT.
@@ -473,41 +473,19 @@ Activate the preserved Tier 2 data through a shared character-reading module wit
 
 ## Approved implementation dependency roadmap
 
-The immediate source and persistence foundation follows this approved sequence. Each branch starts from updated `main` after the preceding branch merges; no grade branch is created from another unmerged grade branch.
+The canonical source, lifecycle, Acquisition engine/transition, domain-contract, Warmup extraction, pure Adaptive Warmup model, Grade 5 source/lifecycle, Kindergarten source/lifecycle/production-practice scaffold, curriculum import result, and shared Learning Hub boundaries are complete on `main`. Grade 5 and Kindergarten production sources remain deliberately inactive even though their isolated architecture exists.
+
+The remaining persistence work is independent and must not be represented as one long grade-branch chain:
 
 ```text
-docs/cloud-launch-roadmap
-        ↓ approve and merge
-refactor/canonical-source-boundary
-        ↓ merge
-refactor/lifecycle-strategy-boundary
-        ↓ merge
-refactor/acquisition-strategy-boundary
-        ↓ merge
-refactor/acquisition-transition-boundary
-        ↓ merge
-refactor/domain-contracts-boundary
-        ↓ merge
-refactor/warmup-boundary
-        ↓ merge
-docs/adaptive-warmup-model-plan
-        ↓ merge
-refactor/adaptive-warmup-model
-        ↓ merge
-feature/persistent-warmup-visits
-        ↓ merge
-feature/grade5-source-profile
-        ↓ merge
-feature/grade5-lifecycle-strategy
-        ↓ merge
-feature/kindergarten-sheets-adapter
-        ↓ merge
-feature/kindergarten-learning-lab
-        ↓ merge
-feature/kindergarten-lifecycle-profile
-        ↓ merge
-feature/persistent-acquisition
+updated main after PRs #15 and #16
+├── feature/persistent-warmup-visits
+└── refactor/acquisition-persistence-contract
+            ↓ merge
+    feature/persistent-acquisition
 ```
+
+Persistent Warmup visits and persistent Acquisition own different stored models. Either initiative may proceed first when it stays within its boundary, but they must not be combined in one branch. Every branch starts from updated `main`; no grade branch is created from another unmerged grade branch.
 
 Warmup compatibility cleanup is deliberately not the next automatic branch after activation. After the migration window and operational gates described below have passed, create `refactor/warmup-facade-cleanup` from the then-current `main` to retire dormant compatibility code and supported legacy reads.
 
@@ -685,6 +663,8 @@ Acceptance gate: production telemetry and restore evidence satisfy every prerequ
 
 Branch: `feature/grade5-source-profile`
 
+Status: completed and hardened on `main` through PR #16. The Grade 5 source registry entry remains inactive, so this architecture does not expose Grade 5 production practice.
+
 Goal: parse and validate the latest Grade 5 structure without changing Grade 2 behavior or writing cloud data.
 
 - Validate the latest consecutive Grade 5 slide structure through the approved read-only source path.
@@ -700,6 +680,8 @@ Acceptance gate: fixtures for the latest validated pattern produce the approved 
 ### Grade 5 lifecycle strategy
 
 Branch: `feature/grade5-lifecycle-strategy`, created from updated `main` after the Grade 5 source profile merges.
+
+Status: completed and registered on `main` through PR #16. The strategy is exercised through isolated Grade 5 models and tests while the production source and practice profile remain inactive.
 
 Goal: consume validated Grade 5 progression events through the source-neutral lifecycle boundary without changing Grade 2 behavior.
 
@@ -718,6 +700,8 @@ Acceptance gate: each valid event advances exactly one stage; a conference gap a
 
 Branch: `feature/kindergarten-sheets-adapter`
 
+Status: completed on `main`. The source registry entry remains inactive.
+
 Goal: adapt the authoritative Kindergarten workbook into normalized candidates using the approved Monday–Sunday date rule without inventing activation, unit, or workshop rules.
 
 - Treat the spreadsheet ID as the yearly source identity and each weekly tab as a source unit.
@@ -734,6 +718,8 @@ Acceptance gate: observed weekly-tab fixtures normalize tiers without mixing lab
 
 Branch: `feature/kindergarten-learning-lab`, created from updated `main` after the Kindergarten Sheets adapter merges.
 
+Status: completed as historical prototype work. Its visual design now informs the shared Learning Hub boundary. Later Kindergarten lifecycle and production-practice work supersedes statements below that describe the lab as the only Kindergarten integration.
+
 Goal: preserve and test the Kindergarten Dojo experience without registering a production practice profile or writing child progress.
 
 - Give Kindergarten an explicit Acquisition strategy ID, version, timers, sequences, and separate Familiar-DT target objects. Its current semantic prompt trace matches Grade 2 v3, but future Grade 2 changes cannot alter it by object identity.
@@ -748,6 +734,8 @@ Acceptance gate: Kindergarten and Grade 2 produce equal semantic Acquisition tra
 ### Kindergarten lifecycle profile
 
 Branch: `feature/kindergarten-lifecycle-profile`, created from updated `main` after the Kindergarten Sheets adapter merges.
+
+Status: completed and registered on `main` through PR #15. The explicit unit behavior remains protected by the inactive Kindergarten source gate.
 
 Goal: register the approved Kindergarten vocabulary lifecycle while unresolved source states continue to fail closed.
 
@@ -766,6 +754,8 @@ Acceptance gate: the approved Kindergarten date and progression matrices pass, u
 
 Branch: `feature/kindergarten-production-practice`, created from the completed Kindergarten lifecycle profile.
 
+Status: completed as a production-practice scaffold on `main` through PR #15. It does not activate the Kindergarten source.
+
 Goal: connect only validated Kindergarten vocabulary to shared production practice without turning on the source release flag.
 
 - Project valid canonical candidates into source-neutral datasets that preserve every tier and content fingerprint; `words` remains the Tier 1 writing view.
@@ -778,24 +768,38 @@ Goal: connect only validated Kindergarten vocabulary to shared production practi
 
 Acceptance gate: source-neutral projection rejects changed content, the inactive source cannot appear in production, one complete Unit 1 review produces 14 Tier 1 results and four source-week scores, Tier 2 does not enter writing queues, and the complete test suite and production build pass.
 
-### Persistent Acquisition and grade lifecycle strategies
+### Acquisition persistence contract
 
-Branch: `feature/persistent-acquisition`
+Branch: `refactor/acquisition-persistence-contract`
 
-Goal: preserve the exact teaching point while supporting versioned grade lifecycle and activity strategies.
+Goal: define and prove the versioned, persistence-neutral checkpoint contract without activating a new stored format or changing child-facing behavior.
 
-- Persist the strategy ID and version, activity module, tier, lifecycle stage, exact routine step, timers, pools, counters, completed trials, and next position.
-- Resume after refresh, sign-out, a new day, and application restart without replaying completed work.
-- Preserve the exact Grade 2 Acquisition strategy above as `grade2-acquisition-v2`.
-- Support Grade 5's source-sequence lifecycle, Week 4 baseline, Test Review 1, Test Review 2, confirmation-conflict freezes, and no-slide freezes without changing Grade 2 lifecycle behavior.
-- Ensure Test Review 1 and Test Review 2 share one behavioral strategy and differ only by lifecycle label and cohort selection.
-- Apply the shared 10-second Grade 5 Test Review timer and ensure Skip Timer reaches the required review frame without dropping or auto-scoring the occurrence.
-- Add the versioned Tier 1 `dtObservationMode` profile option. In collect mode, persist reviewed Familiar and Earned DT right/wrong observations through the same idempotent checkpoint as Acquisition progression; in discard mode, preserve compatibility without fabricating observations.
-- Keep DT observations separate from the weekly-target Acquisition score. Familiar DT errors do not trigger Correction, demotion, or reacquisition; Earned DT errors follow the approved Correction routine.
-- Keep abandoned Test Review 1 and 2 answers provisional and unscored.
-- Migrate or safely interpret existing local records without fabricating completed progress.
+- Define a versioned Acquisition progress envelope containing stable progression identity, child, dataset, grade, school year, activity module, tier, lifecycle context, strategy ID/version, ordered-target fingerprint, revision, exact engine flow, completion state, and timestamps.
+- Define one deterministic transition/checkpoint command containing transition ID, expected and next revision, answered prompt identity, optional neutral assessment, next flow, and the scored-attempt or DT-observation facts derived from that assessment.
+- Treat the same transition ID and identical payload as an idempotent no-op; reject the same transition ID with different content and reject stale expected revisions.
+- Add strict nested-flow validation against the supplied strategy and canonical ordered targets. Do not accept a record merely because its dataset ID matches.
+- Add a pure, idempotent migration from the existing unversioned `AcquisitionProgressRecord`. Normalize legacy `establishedDtBag` data to Familiar DT terminology, preserve valid exact positions, and quarantine malformed or mismatched records individually without inventing completed work.
+- Add a pure local reducer and storage-neutral repository interface. Keep `App.tsx`, local storage activation, Firestore clients, Firestore rules, source gates, lifecycle strategies, scoring behavior, and UI unchanged.
+- Preserve the complete Grade 2 Acquisition v3 golden trace, prompt IDs, target IDs, timers, scoring flags, and serialized engine flow. Kindergarten and Grade 5 strategy ownership remains unchanged.
 
-Acceptance gate: Grade 2 uses the exact 11-position Expanded Trials sequence, five target timers, and five-step Correction routine; partial Acquisition resumes at the exact next step without duplicate attempts; **Done for today** scores only that visit's hidden weekly-target responses; collect mode saves one idempotent DT observation for each reviewed DT trial while discard mode saves none; Earned DT attempts appear once in longitudinal DT history without weekly-score contamination; collected observations survive serialization and reload; Grade 5 advances only on validated instructional source progression; no-slide weeks freeze positions; both Grade 5 Test Review stages use 10 seconds; Skip Timer always reaches review without skipping or auto-scoring an occurrence; and abandoned or skipped Test Reviews create no result or score.
+Acceptance gate: fixed fixtures validate and migrate every Introduction, Expanded Trials, Correction, and DT-practice position; target-set or strategy mismatches fail closed; retries are idempotent; stale revisions fail; unrelated valid records survive one malformed record; architecture tests prevent the pure boundary from importing React, `App.tsx`, Firebase, Firestore, local storage, or `domain.ts`; all existing tests and the production build pass with no stored-format or child-facing change.
+
+### Persistent Acquisition activation
+
+Branch: `feature/persistent-acquisition`, created from updated `main` after the Acquisition persistence contract merges.
+
+Goal: activate the approved checkpoint contract locally and in Firestore so each completed Acquisition response and its exact next position are saved as one recoverable operation.
+
+- Replace independently assembled progression, attempt, and DT-observation writes with one application coordinator and repository commit operation.
+- Atomically commit or idempotently recover the progression revision, scored attempt, DT observation, and exact next flow. A partial cloud failure may not advance one record while losing another.
+- Preserve a durable local pending transition for offline or interrupted writes and retry it by stable transition ID without advancing the engine twice.
+- Resume after refresh, sign-out, a new day, application restart, and another device without replaying completed work.
+- Migrate successfully validated legacy records before writing the new version; retain the original recovery artifact when conversion fails.
+- Update local/cloud validators and Firestore rules to enforce family/child ownership, immutable progression identity, allowed versions and statuses, expected-to-next revision changes, idempotent duplicates, stale-write rejection, and cross-family denial.
+- Add Firebase Emulator and rendered-browser coverage before claiming cloud and cross-device acceptance.
+- Do not change Acquisition sequences, scoring, lifecycle strategies, source activation, Adaptive Warmup, Test Review behavior, the shared Learning Hub, Tier 2, handwriting, rewards, or baseline/remediation behavior.
+
+Acceptance gate: Grade 2 retains the exact v3 10-position Expanded Trials sequence and six-position Correction routine; partial Acquisition resumes at the exact next step without duplicate attempts; **Done for today** scores that visit's hidden weekly-target and Earned DT responses while excluding Familiar DT and show/copy responses; collect mode saves one idempotent DT observation for each reviewed DT trial while discard mode saves none; local retry, cloud retry, stale-device conflict, malformed-record isolation, backup/restore, family ownership, and cross-family rejection pass; Kindergarten cumulative review and Grade 5 lifecycle matrices remain unchanged; no inactive source is activated.
 
 ### Deferred branch — Baseline DT assessment and remediation
 
@@ -992,9 +996,9 @@ Rollout order:
 
 Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosting, family isolation, lifecycle-specific cross-device persistence, and a controlled dataset import for every grade included in the pilot must work first.
 
-## Next approved implementation — Grade 5 source profile
+## Next approved implementation — Acquisition persistence contract
 
-After the Acquisition strategy and transition boundaries merge, the next implementation is `feature/grade5-source-profile`. It adds and validates only the approved Grade 5 source structure and progression-event inputs. Grade 5 lifecycle behavior remains a separate reviewed strategy step, and persistence redesign remains deferred to `feature/persistent-acquisition`.
+After reconciling the roadmap with PRs #15 and #16, the next implementation is `refactor/acquisition-persistence-contract`. It defines and proves the versioned checkpoint envelope, strict validation, legacy migration, revision/idempotency semantics, pure reducer, and repository interface without changing `App.tsx`, stored production data, Firestore, lifecycle behavior, scoring, or child-facing behavior. Activation follows only in the separately reviewed `feature/persistent-acquisition` branch.
 
 ## Deferred features
 
@@ -1009,7 +1013,7 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Save completed Warmup and Acquisition work according to their durable progress rules; never erase it merely because a visit ends.
 - Never count provisional answers from an abandoned Test Review in results, adaptive state, or official scores.
 - Never represent partial Acquisition progress as a completed teaching progression; a **Done for today** score is explicitly a visit score.
-- Never merge DT observation accuracy into the weekly-target Acquisition score.
+- Never count Familiar DT accuracy in the Acquisition dataset score. Earned DT responses remain both scored Acquisition trials and single longitudinal DT observations under the approved v3 contract.
 - Never use a collected Familiar DT error to trigger Correction, remove DT status, or create a reacquisition target until a versioned DT transition policy is explicitly approved and tested.
 - Never discard or duplicate a reviewed DT observation because of refresh, retry, or cross-device synchronization.
 - Do not delete historical weekly sets or completed attempts.
@@ -1021,7 +1025,7 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Treat child voice recordings as private personal data; restrict access to the authorized family and define retention/deletion behavior before production.
 - Do not use automatic speech recognition as the official pronunciation score without a separately validated feature; the child’s explicit self-assessment is the initial reading result.
 
-## Current implementation baseline and required revisions — 2026-09-27
+## Current implementation baseline and required revisions — 2026-09-29
 
 The repository contains Stage 2 foundations as a Firebase REST-backed browser flow with safe configuration placeholders. They have not been deployed, validated with the Firebase Emulator Suite, or approved for production data collection. The approved requirements in this plan supersede any existing implementation behavior that treats every incomplete lifecycle in the same way.
 
@@ -1029,25 +1033,27 @@ Already implemented:
 
 - Email/password sign-up, sign-in, sign-out, password reset, persistent signed-in sessions, loading state, and readable authentication errors.
 - One private family per parent, multiple active/inactive children, child switching, nickname editing, grade editing, reactivation, and non-destructive inactivity.
-- A grade model for Kindergarten through Grade 5, currently with Grade 2 as the active Slides configuration and Grade 5 registered but inactive.
+- A grade model for Kindergarten through Grade 5. Grade 2 is the active source configuration; Grade 5 and Kindergarten source entries remain registered but inactive.
 - August 1 America/Los_Angeles grade-promotion suggestions with parent confirmation; historical datasets retain their original grade and school year.
 - Grade/school-year filtering, stable date-range dataset identities, cloud session primitives, temporary and completed attempts, dataset-level scores, and stale-session cleanup.
 - An idempotent, configurable Google Slides parser and local dry-run/write command for the supplied Grade 2 deck.
 - Replacement-driven Grade 2 lifecycle assignment that remains stable through weekends and source gaps, moves only older cohorts into Mastered, excludes Acquisition and Test Review words from Warmup, ignores writing-workshop and invalid source units as replacements, and preserves Firestore ownership rules in `firestore.rules`.
-- A source-neutral lifecycle strategy boundary with an explicit Grade 2 replacement-driven strategy, a compatibility wrapper for existing callers, and no cross-grade fallback. Grade 5 still requires its own validated progression-event strategy before activation; see `docs/lifecycle-strategy-boundary.md`.
+- A source-neutral lifecycle strategy boundary with explicit Grade 2 replacement-driven, Grade 5 progression-event, and Kindergarten unit strategies, a compatibility wrapper for existing callers, and no cross-grade fallback; see `docs/lifecycle-strategy-boundary.md`.
 - A generic, pure Acquisition strategy boundary with a Grade 2 single-owner strategy, exact domain compatibility wrappers, frozen pre-extraction fixtures, and no persistence or child-facing changes; see `docs/acquisition-strategy-boundary.md`.
 - A persistence-neutral Acquisition transition boundary that captures the answered prompt and returns the exact next flow plus an optional classified assessment, while preserving existing session answers, local checkpoints, cloud payloads, stored schemas, scoring, and child-facing behavior; see `docs/acquisition-transition-boundary.md`.
 - A dependency-light foundational contract boundary for `Word` and `Dataset`, with compatibility re-exports and an architecture gate covering TypeScript-family files under `src/domain/`.
 - A mechanically extracted Warmup compatibility boundary in `src/warmup/`. It preserves the current Grade 2 runtime and stored shapes; its legacy categories, shortage order, and repetition behavior are extraction evidence rather than the approved future Adaptive Warmup contract.
-- Grade 2 Acquisition strategy v2 with Familiar and Earned DTs, independent shuffle bags, the exact 11-position Expanded Trials sequence, five target timers, five-step Correction, three-error restart, and ongoing DT-only practice.
-- Durable local and cloud Acquisition progression records, separate DT observations, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
+- Grade 2 Acquisition strategy v3 with Familiar and Earned DTs, independent shuffle bags, the exact 10-position Expanded Trials sequence, four target timers, six-position Correction, three-error restart, and ongoing DT-only practice. Kindergarten and Grade 5 own explicit strategy identities rather than inheriting a Grade 2 fallback.
+- Basic local and cloud Acquisition checkpoints, separate DT observations, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review. The current cloud writes are independent last-write-wins operations, not yet a revision-aware atomic checkpoint.
+- The pure Adaptive Warmup model, migration, profile-upgrade, evidence-replay, and lifecycle-reconciliation boundaries, still isolated from production state version 2 and child-facing behavior.
+- Source-neutral `CurriculumImportResult` contracts, the hardened Grade 5 source/lifecycle integration, the Kindergarten lifecycle and production-practice scaffold behind an inactive source gate, and the shared Learning Hub presentation boundary added through PRs #15 and #16.
 
 Required revisions before a production pilot:
 
-- Implement the approved Adaptive Warmup state model as a pure, unused boundary before activating it: long-term mastery-term identity, separate evidence and scheduling state, active-term suppression, exactly-once occurrence integration, approved allocation and no-repeat rules, and a deterministic reported v2-to-v3 migration.
-- After the pure model is merged, activate it through revision-aware persistent Warmup visits. Replace the remaining incomplete-Warmup cleanup behavior with durable materialized queues and atomic attempt, mastery, visit, and graph-point transitions. Exact Acquisition resumption and abandoned/skipped Test Review isolation are already implemented.
+- Activate the approved pure Adaptive Warmup model through revision-aware persistent Warmup visits. Replace the remaining incomplete-Warmup cleanup behavior with durable materialized queues and atomic attempt, mastery, visit, and graph-point transitions.
+- Define the Acquisition persistence contract, then activate it through one revision-aware checkpoint that atomically or idempotently preserves the scored attempt, DT observation, and exact next engine position across retry and multiple devices.
 - Add the full Warmup history line graph with target, attempted, correct, percentage, and partial/completed data.
-- Keep the completed canonical source boundary and Kindergarten Monday–Sunday Sheets adapter stable; validate the latest Grade 5 table roles while Kindergarten activation remains deliberately blocked.
+- Keep the completed canonical source boundary, Grade 5 table-role adapter/lifecycle, Kindergarten Monday–Sunday Sheets adapter/unit lifecycle, and shared Learning Hub boundary stable while Grade 5 and Kindergarten source activation remains deliberately blocked.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
 - Add emulator tests for module-specific Warmup visits, Acquisition progressions, stable attempt IDs, exact next-position updates, DT observations, and Test Review 1 and 2 provisional data. The corresponding rule paths now exist but remain unverified in the Emulator Suite.
 - Move the related Acquisition attempt, DT observation, and next-position writes into one transaction or trusted batch, and add a server-managed DT profile that Firestore rules can validate.
@@ -1057,6 +1063,6 @@ Required revisions before a production pilot:
 - Keep official browser-created scores identified as client-trusted until a trusted server boundary or equivalent authoritative validation is implemented.
 - Deploy no Cloud Run importer or Monday Cloud Scheduler until manual and shadow validation gates pass.
 
-The active Grade 2 source deck was inspected read-only; its structure and page IDs are in `docs/grade2-deck-structure.md`. The Grade 5 observed structure is in `docs/grade5-deck-structure.md`, and the existing partial Grade 5 parser profile must be validated and extended against the latest approved table-role rules rather than replaced blindly. Kindergarten uses one authoritative Sheets workbook with weekly tabs; its source adapter preserves the inspected `Writing character` and `High frequency word` mappings and the approved Monday–Sunday cycle while production activation remains blocked.
+The active Grade 2 source deck was inspected read-only; its structure and page IDs are in `docs/grade2-deck-structure.md`. The Grade 5 observed structure is in `docs/grade5-deck-structure.md`, and its validated table-role adapter and progression lifecycle remain behind the inactive production source gate. Kindergarten uses one authoritative Sheets workbook with weekly tabs; its source adapter preserves the inspected `Writing character` and `High frequency word` mappings and the approved Monday–Sunday/unit behavior while production activation remains blocked.
 
 Remaining product decisions include Grade 5's standalone-Warmup target size, bucket quotas, and promotion thresholds; which users or environments may disable Tier 1 DT observation collection; how DT performance should be displayed; the minimum evidence needed to change Familiar DT status; the future standard Tier 1 and Tier 2 baseline-list sources and versions; baseline assessment set size; whether future baseline remediation uses a consecutive or cumulative error window; the exact Warmup correction and reacquisition sequences; the source of future Kindergarten unit boundaries after the explicitly configured Unit 1; trusted Grade 5 and Kindergarten no-instruction/workshop markers; whether the first scored Tier 2 release stores voice recordings; whether parent registration is invitation-only or open; whether email verification is required; the account and practice-data retention/deletion policy; how existing local profiles are mapped during migration; whether the handwriting pad replaces paper or remains optional; and the Kindergarten reward award/redemption/parent-control model. Each decision must be recorded before the phase whose security, privacy, migration, source identity, or child experience depends on it.
