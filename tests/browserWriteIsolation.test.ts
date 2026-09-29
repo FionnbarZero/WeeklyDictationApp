@@ -32,8 +32,9 @@ test('dashboard exposes separate Acquisition and Test Review start controls', ()
   assert.match(source, /'Start Acquisition'/)
   assert.match(source, /'Start Test Review'/)
   assert.match(source, /onClick=\{\(\) => onStart\(target\)\}/)
-  assert.match(source, /acquisitionDataset && <PracticeLaneCard/)
-  assert.match(source, /testReviewDataset && <PracticeLaneCard/)
+  assert.match(source, /acquisitionTarget && <PracticeLaneCard/)
+  assert.match(source, /testReviewTarget && <PracticeLaneCard/)
+  assert.match(source, /target\.reviewDatasets \|\| \[target\.dataset\]/)
 })
 
 test('Acquisition and Test Review use the configured six-trial adaptive Warmup', () => {
@@ -97,8 +98,8 @@ test('practice UI exposes the approved skip, resume, and Done for today controls
   assert.match(source, />Skip Test Review</)
   assert.match(source, />Skip Timer</)
   assert.match(source, />Done for today/)
-  assert.match(source, />Learn \{resumeAcquisitionDataset\.dateRange\} words/)
-  assert.match(source, /Choose your activity\. Warmup is offered first and may be skipped\./)
+  assert.match(source, /Return to \{profile\.presentation\?\.acquisitionLabel/)
+  assert.match(source, /profile\.preActivityWarmupRequirement === 'optional'/)
 })
 
 test('header navigation preserves Acquisition as partial and abandons provisional Test Review', () => {

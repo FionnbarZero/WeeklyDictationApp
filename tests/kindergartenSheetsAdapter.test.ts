@@ -26,7 +26,7 @@ test('the Kindergarten source is registered but cannot activate production pract
     sourceDocumentId: KINDERGARTEN_SHEETS_ID,
     parserProfileId: kindergartenSheetsProfile.id,
     sourceAdapterId: kindergartenSheetsProfile.sourceAdapterId,
-    practiceProfileId: 'kindergarten-unimplemented',
+    practiceProfileId: 'kindergarten-tier-1-writing-practice',
     active: false,
   })
   assert.equal(kindergartenSheetsSourceAdapter.sourceType, 'google-sheets')

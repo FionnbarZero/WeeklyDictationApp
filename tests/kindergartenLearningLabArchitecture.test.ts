@@ -33,7 +33,8 @@ test('Kindergarten writing uses the shared PracticeView with an independent stra
   assert.match(labAdapter, /startAcquisition/)
   assert.match(labAdapter, /transitionAcquisition/)
   assert.doesNotMatch(strategySource, /strategies\/grade2|grade2AcquisitionStrategy/)
-  assert.doesNotMatch(registry, /kindergarten/i)
+  assert.match(registry, /kindergartenWritingPracticeProfile/)
+  assert.match(appSource, /productionSourceIsActive\(selectedChild\?\.grade, selectedChild\?\.schoolYear\)/)
   assert.doesNotMatch(`${harnessSource}\n${labAdapter}`, /from ['"].*(firebase|firestore)|localStorage\.|createScore|saveSession/i)
 })
 

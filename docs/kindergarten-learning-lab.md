@@ -25,7 +25,7 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 
 ## Deliberate limitations
 
-- The production lifecycle profile is registered, but the source and writing-practice profiles remain inactive.
+- The production lifecycle and writing-practice profiles are registered, but the source release flag remains inactive.
 - No active week is inferred.
 - No Warmup policy is assumed or simulated.
 - No Tier 2 assessment engine, microphone capture, score, or progress record exists.
@@ -34,4 +34,4 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - Refreshing or leaving discards all lab state.
 - The lab does not import Firebase/Firestore code or use browser storage.
 
-Production activation still requires an empty-tab/no-instruction policy, Warmup rules, Tier 2 assessment policy, trusted sync deployment, a production writing-practice profile, and child-facing integration tests.
+The production path now has an explicit optional-Warmup profile, shared Tier 1 Acquisition, cumulative per-source-week Test Review persistence, Dojo presentation labels, an unscored Tier 2 teaching module, and child-facing integration tests. Activation still requires trusted sync deployment and a deliberate release review; empty tabs remain blocked until their machine-readable meaning is approved. A scored Tier 2 assessment remains a separate future capability.

@@ -21,7 +21,7 @@ When the Vite development server is running, these isolated pages can be opened 
 - `/kindergarten-source-harness.html` — inspect the trusted Kindergarten Sheets fixture and Monday–Sunday normalization.
 - `/kindergarten-learning-lab.html` — test **Enter the Dojo**, weekly Tier 1 writing, unscored Tier 2 reading, and the explicit Unit 1 review fixture.
 
-The lab pages are not linked from `index.html` or `App.tsx`, do not register production practice profiles, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only.
+The lab pages are not linked from `index.html` or `App.tsx`, do not activate a curriculum source, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only. Kindergarten now also has a separately owned production-practice profile, but its source-registry release flag remains off.
 
 ## Firebase setup
 
@@ -57,6 +57,7 @@ When no valid vocabulary dataset has ever activated, the child is offered a Warm
 ## Practice contract
 
 - Acquisition is the newest valid vocabulary dataset whose activation date has arrived, and Test Review is its immediate valid predecessor. Both remain assigned through weekends and source gaps until a valid replacement activates, and both must be separately visible and startable.
+- Kindergarten uses its explicit unit lifecycle instead: the newest arrived Unit 1 set is available for weekly Acquisition while all arrived Unit 1 sets form one cumulative Test Review. A completed cumulative review writes one score for each canonical source week rather than inventing a combined dataset.
 - Every Acquisition or Test Review path offers its own adaptive Warmup. Grade 2 currently includes a **Skip Warmup** development option; whether Warmup is required is a grade-profile policy rather than a universal rule.
 - Warmup is a practice segment assembled only from canonical Mastered words. Active Acquisition, active Test Review, Future, writing-workshop, and malformed datasets are excluded regardless of persisted adaptive category, and no fallback dataset is created.
 - Acquisition checkpoints every reviewed trial and resumes from the exact next teaching step; leaving during an unanswered trial restarts only that trial. Test Review answers remain provisional and are discarded if the review is abandoned, producing no Test Review score. Durable partial-Warmup visits are not implemented yet, so unfinished Warmup work does not currently survive restart.
@@ -114,7 +115,7 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.
 - An explicitly classified writing-workshop dataset is stored with zero vocabulary targets but does not replace or advance the current Acquisition and Test Review assignments. A future writing-workshop remediation activity may draw from repeatedly incorrect Mastered words only after its rules are explicitly approved.
 - The independent Standalone Warmup control and durable partial-Warmup resumption remain unfinished. If no valid vocabulary dataset exists, the app shows a clear setup state instead of fabricating words.
-- Grade 2 is the only active source configuration. Grade 5 and Kindergarten sources remain inactive; their development-only source and learning labs do not create production datasets or production child practice. Kindergarten now has a registered, isolated Unit 1 lifecycle strategy, but no production writing-practice profile. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
+- Grade 2 is the only active source configuration. Grade 5 and Kindergarten sources remain inactive, and the development-only labs do not create production datasets or child progress. Kindergarten now has an isolated lifecycle, source-neutral candidate-to-dataset projection, writing-practice profile, cumulative per-week review persistence, Dojo labels, and an unscored Tier 2 teaching module ready behind the inactive release gate. Grades 1, 3, and 4 remain supported by the grade model without source configuration.
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Familiar DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Familiar and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and only hidden weekly-target responses contribute to the weekly Acquisition visit score.
 
