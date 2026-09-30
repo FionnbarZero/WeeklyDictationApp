@@ -9,7 +9,8 @@ export const TIER2_READING_RESPONSE_RULE = {
   targetPresentation: 'visible',
   response: 'read-aloud',
   assessment: 'self-assessment',
-  recording: 'none',
+  recording: 'prompted-ephemeral',
+  comparisonOrder: 'child-then-model',
 } as const
 
 export type Tier2ReadingTarget = Word & {

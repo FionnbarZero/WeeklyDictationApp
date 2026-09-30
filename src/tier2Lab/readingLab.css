@@ -1,4 +1,4 @@
-:root { color: #292d3d; background: #f8f5ee; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; }
+:root { color: #292d3d; background: #f8f5ee; font-family: 'DM Sans', sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: radial-gradient(circle at 12% 0, #dfe6ff 0, transparent 28rem), radial-gradient(circle at 90% 5%, #f7dcca 0, transparent 24rem), #f8f5ee; }
 button, select { font: inherit; }
@@ -54,10 +54,32 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .t2-complete-mark { display: grid; place-items: center; width: 82px; height: 82px; border-radius: 25px; color: #33714b; background: #dcefe2; }
 .t2-complete h2 { margin: 18px 0 7px; font-family: Georgia, serif; font-size: 2.6rem; font-weight: 500; }
 .t2-complete p { max-width: 530px; margin: 5px 0; color: #676b78; line-height: 1.5; }
+.reading-response { max-width: 470px; margin: 0 auto; }
+.reading-response .review-heading { margin-top: 68px; }
+.reading-answer-word { min-height: 88px; font-size: clamp(4.2rem, 16vw, 7rem); line-height: 1; }
+.record-reading-button, .stop-recording-button, .compare-reading-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: min(280px, 100%); min-height: 48px; padding: 11px 18px; border-radius: 12px; font-size: .82rem; font-weight: 800; }
+.record-reading-button, .compare-reading-button { color: #fff; background: var(--coral); box-shadow: 0 8px 18px rgb(176 76 60 / 18%); }
+.stop-recording-button { color: #9b3f3f; background: #fae8e4; }
+.recording-status { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 11px 16px; border-radius: 12px; color: #555a69; background: #f3efe7; font-size: .78rem; font-weight: 750; }
+.recording-live { margin-bottom: 12px; color: #9b3f3f; background: #fae8e4; }
+.recording-dot { width: 10px; height: 10px; border-radius: 50%; background: #c94f4f; box-shadow: 0 0 0 0 rgb(201 79 79 / 45%); animation: recording-pulse 1.3s infinite; }
+.recording-fallback { margin: 18px auto 0; padding: 16px; border: 1px solid #e1c7b1; border-radius: 13px; color: #634d3e; background: #fff5e9; }
+.recording-fallback p { margin: 6px 0 13px; font-size: .76rem; line-height: 1.5; }
+.reading-secondary-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.reading-retake { margin: 12px 0 0 8px; }
+.recording-error { margin: 14px 0 0; color: #a54848; font-size: .76rem; font-weight: 700; }
+.reading-assessment { margin-top: 20px; }
+.reading-assessment .answer-actions { margin-top: 24px; }
+.reading-continue-button { margin-top: 24px; }
+.reading-response audio { display: none; }
+@keyframes recording-pulse { 70% { box-shadow: 0 0 0 9px rgb(201 79 79 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(201 79 79 / 0%); } }
+@media (prefers-reduced-motion: reduce) { .recording-dot { animation: none; } }
 @media (max-width: 760px) {
   .t2-shell { width: min(100% - 18px, 1120px); padding-top: 9px; }
   .t2-hero { border-radius: 23px; }
   .t2-snapshot-panel { align-items: stretch; flex-direction: column; }
   .t2-pathway-grid { grid-template-columns: 1fr; }
   .t2-practice-card { min-height: calc(100vh - 76px); padding: 22px 17px; border-radius: 22px; }
+  .reading-response .review-heading { margin-top: 48px; }
+  .reading-retake { margin-left: 0; }
 }

@@ -66,7 +66,8 @@ test('every smoke target remains a separate Tier 2 Mandarin reading occurrence',
   for (const grade of ['Kindergarten', 'Grade 2', 'Grade 5'] as const) {
     const snapshot = buildTier2SmokeSnapshot(grade)
     assert.equal(snapshot.profile.releaseStatus, 'inactive')
-    assert.equal(snapshot.profile.responseRule.recording, 'none')
+    assert.equal(snapshot.profile.responseRule.recording, 'prompted-ephemeral')
+    assert.equal(snapshot.profile.responseRule.comparisonOrder, 'child-then-model')
     for (const pathway of tier2SmokePathways(snapshot)) {
       for (const target of tier2SmokePathwayTargets(pathway)) {
         assert.equal(target.language, 'mandarin')
@@ -101,5 +102,7 @@ test('the Tier 2 smoke screen is development-only and disconnected from producti
   assert.match(harness, /startAcquisition/)
   assert.match(harness, /transitionAcquisition/)
   assert.match(harness, /buildTier2SmokeSnapshot/)
+  assert.match(harness, /ReadingResponsePanel/)
+  assert.match(harness, /recording-comparison/)
   assert.doesNotMatch(`${harness}\n${fixtures}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis|fetch\(['"]https:/i)
 })
