@@ -39,8 +39,8 @@ test('Ninja Skills offers three distinct Kindergarten games', () => {
 })
 
 test('Final Boss owns cumulative review and Spirit Realm owns mastery warmup', () => {
-  assert.deepEqual(hub.sections[2].activities.map((activity) => activity.title), ['Prepare for your test'])
-  assert.deepEqual(hub.sections[3].activities.map((activity) => activity.title), ['Mastery warmup'])
+  assert.deepEqual(hub.sections[2].activities.map((activity) => activity.title), ['Writing Test', 'Reading Test'])
+  assert.deepEqual(hub.sections[3].activities.map((activity) => activity.title), ['Writing mastery warmup', 'Reading mastery'])
   assert.equal(hub.sections[2].cohorts[0].groups[0].words.length, 14)
   assert.equal(hub.sections[3].cohorts[0].groups[1].words.length, 9)
 })
