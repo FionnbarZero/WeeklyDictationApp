@@ -133,3 +133,7 @@ This future model has been built and tested as an unused pure model without chan
 npm test
 npm run build
 ```
+
+## Current execution roadmap
+
+The audited product state and the approved next branch sequence are recorded in [`docs/current-product-execution-roadmap.md`](./docs/current-product-execution-roadmap.md). Grade 2 remains the only active production source; the public Grade 5 and Kindergarten experiences are testing labs, while the approved Acquisition persistence and Adaptive Warmup models still require production activation work.

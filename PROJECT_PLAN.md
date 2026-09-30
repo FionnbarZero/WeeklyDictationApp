@@ -473,19 +473,19 @@ Activate the preserved Tier 2 data through a shared character-reading module wit
 
 ## Approved implementation dependency roadmap
 
-The canonical source, lifecycle, Acquisition engine/transition, domain-contract, Warmup extraction, pure Adaptive Warmup model, Grade 5 source/lifecycle, Kindergarten source/lifecycle/production-practice scaffold, curriculum import result, and shared Learning Hub boundaries are complete on `main`. Grade 5 and Kindergarten production sources remain deliberately inactive even though their isolated architecture exists.
+The canonical source, lifecycle, Acquisition engine/transition, domain-contract, Warmup extraction, pure Adaptive Warmup model, Grade 5 source/lifecycle, Kindergarten source/lifecycle/production-practice scaffold, curriculum import result, shared Learning Hub, Acquisition persistence contract, Tier 2 reading boundary, and recorded Tier 2 self-assessment boundaries are complete on `main`. Grade 5 and Kindergarten production sources remain deliberately inactive even though their isolated architecture exists. The invited-testing GitHub Pages deployment is a separate fixture/local-state preview rather than a production-data release. The audited execution sequence is recorded in `docs/current-product-execution-roadmap.md`.
 
 The remaining persistence work is independent and must not be represented as one long grade-branch chain:
 
 ```text
-updated main after PRs #15 and #16
+updated main after PRs #15–#21
 ├── feature/persistent-warmup-visits
-└── refactor/acquisition-persistence-contract
+└── fix/acquisition-earned-dt-recovery
             ↓ merge
     feature/persistent-acquisition
 ```
 
-Persistent Warmup visits and persistent Acquisition own different stored models. Either initiative may proceed first when it stays within its boundary, but they must not be combined in one branch. Every branch starts from updated `main`; no grade branch is created from another unmerged grade branch.
+Persistent Warmup visits and persistent Acquisition own different stored models. The Acquisition persistence contract is already merged; its focused Earned-DT runtime prerequisite must merge before persistent Acquisition activation. Persistent Warmup may proceed independently when it stays within its boundary, but the two persistence activations must not be combined in one branch. Every branch starts from updated `main`; no grade branch is created from another unmerged grade branch.
 
 Warmup compatibility cleanup is deliberately not the next automatic branch after activation. After the migration window and operational gates described below have passed, create `refactor/warmup-facade-cleanup` from the then-current `main` to retire dormant compatibility code and supported legacy reads.
 
