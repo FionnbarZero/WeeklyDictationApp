@@ -1,0 +1,63 @@
+:root { color: #292d3d; background: #f8f5ee; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at 12% 0, #dfe6ff 0, transparent 28rem), radial-gradient(circle at 90% 5%, #f7dcca 0, transparent 24rem), #f8f5ee; }
+button, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .52; }
+.t2-shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 22px 0 70px; }
+.t2-safety { margin: 0 0 15px; padding: 11px 15px; border: 1px solid #d7b65b; border-radius: 14px; color: #604b09; background: #fff5c6; font-size: .78rem; font-weight: 800; }
+.t2-hero { overflow: hidden; padding: clamp(30px, 6vw, 64px); border-radius: 32px; color: #fff; background: linear-gradient(135deg, #34366e, #5b4e96 56%, #a55e89); box-shadow: 0 24px 58px rgb(48 43 91 / 22%); }
+.t2-eyebrow { margin: 0 0 8px; font-size: .73rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.t2-hero h1 { max-width: 760px; margin: 0; font-size: clamp(2.6rem, 7vw, 5.2rem); line-height: .95; letter-spacing: -.055em; }
+.t2-hero > p:last-child { max-width: 670px; margin: 20px 0 0; color: rgb(255 255 255 / 82%); line-height: 1.6; }
+.t2-grade-tabs { display: flex; flex-wrap: wrap; gap: 9px; margin: 22px 0; padding: 7px; border: 1px solid #ded9d0; border-radius: 18px; background: rgb(255 255 255 / 72%); }
+.t2-grade-tabs button { flex: 1 1 160px; min-height: 46px; border: 0; border-radius: 12px; color: #575b68; background: transparent; font-weight: 850; }
+.t2-grade-tabs button.active { color: white; background: #49457d; box-shadow: 0 7px 16px rgb(60 55 112 / 20%); }
+.t2-snapshot-panel { display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 18px; padding: 20px 22px; border: 1px solid #ded9d0; border-radius: 20px; background: rgb(255 255 255 / 72%); }
+.t2-snapshot-panel h2 { margin: 3px 0 7px; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; }
+.t2-snapshot-panel p:not(.t2-eyebrow) { max-width: 720px; margin: 0; color: #696d78; line-height: 1.55; }
+.t2-snapshot-panel label { display: grid; gap: 7px; min-width: min(360px, 100%); color: #555a69; font-size: .76rem; font-weight: 850; }
+.t2-snapshot-panel select { padding: 10px 12px; border: 1px solid #cfc8d5; border-radius: 11px; color: #303443; background: white; }
+.t2-pathway-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
+.t2-pathway { display: flex; flex-direction: column; min-height: 310px; padding: 25px; border: 1px solid rgb(68 63 88 / 9%); border-radius: 25px; box-shadow: 0 14px 30px rgb(58 52 75 / 8%); }
+.t2-pathway h2 { margin: 8px 0; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; letter-spacing: -.025em; }
+.t2-pathway > p:not(.t2-eyebrow) { margin: 0 0 17px; color: rgb(41 45 61 / 72%); line-height: 1.55; }
+.t2-acquisition { background: #f4cf72; }
+.t2-test-review { background: #b9d8ed; }
+.t2-mastery { background: #cbbbea; }
+.t2-cohort-list { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+.t2-cohort-list span { padding: 7px 9px; border-radius: 9px; background: rgb(255 255 255 / 58%); font-size: .7rem; font-weight: 750; }
+.t2-primary, .t2-secondary, .t2-audio, .t2-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; font-weight: 850; }
+.t2-primary, .t2-secondary, .t2-audio { min-height: 47px; padding: 11px 17px; border-radius: 999px; }
+.t2-primary { margin-top: auto; color: #fff; background: #413e76; box-shadow: 0 8px 18px rgb(54 50 104 / 20%); }
+.t2-secondary { color: #403c71; background: #ebe8f7; }
+.t2-audio { color: #4d4b67; background: #efedf4; }
+.t2-primary:focus-visible, .t2-secondary:focus-visible, .t2-audio:focus-visible, .t2-icon-button:focus-visible, .t2-grade-tabs button:focus-visible, select:focus-visible { outline: 4px solid #e6a83e; outline-offset: 3px; }
+.t2-debug { margin-top: 20px; padding: 13px 15px; border: 1px dashed #c9c2cc; border-radius: 13px; color: #696d78; background: rgb(255 255 255 / 55%); font-size: .74rem; }
+.t2-debug summary { cursor: pointer; color: #343746; font-weight: 850; }
+.t2-debug li { margin: 6px 0; }
+.t2-boundary-details { margin-top: 19px; }
+.t2-boundary-details li { line-height: 1.55; }
+.t2-practice-shell { width: min(760px, calc(100% - 30px)); }
+.t2-practice-card { min-height: 690px; padding: clamp(22px, 5vw, 42px); border: 1px solid #dad4df; border-radius: 30px; background: linear-gradient(155deg, #fff 56%, #f0edf9); box-shadow: 0 22px 55px rgb(54 48 86 / 14%); }
+.t2-practice-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.t2-practice-header h1 { margin: 3px 0; font-family: Georgia, serif; font-size: clamp(2rem, 7vw, 3.3rem); font-weight: 500; }
+.t2-icon-button { width: 42px; height: 42px; border-radius: 50%; color: #57526b; background: #ece8f3; }
+.t2-prompt { display: grid; place-items: center; padding-top: 31px; text-align: center; }
+.t2-prompt-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
+.t2-prompt-meta span { padding: 6px 9px; border-radius: 999px; color: #5c5870; background: #efedf5; font-size: .69rem; font-weight: 800; text-transform: capitalize; }
+.t2-instruction { margin: 22px 0 0; color: #676b78; }
+.t2-reading-target { display: grid; place-items: center; width: min(340px, 92%); min-height: 210px; margin: 24px 0 17px; padding: 20px; border: 3px solid #cbc3e2; border-radius: 32px; color: #39355f; background: #fff; box-shadow: 0 16px 34px rgb(59 51 94 / 10%); font-family: serif; font-size: clamp(4.4rem, 17vw, 7.6rem); }
+.t2-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 23px; }
+.t2-actions .t2-primary { margin-top: 0; }
+.t2-complete { display: grid; place-items: center; min-height: 485px; text-align: center; }
+.t2-complete-mark { display: grid; place-items: center; width: 82px; height: 82px; border-radius: 25px; color: #33714b; background: #dcefe2; }
+.t2-complete h2 { margin: 18px 0 7px; font-family: Georgia, serif; font-size: 2.6rem; font-weight: 500; }
+.t2-complete p { max-width: 530px; margin: 5px 0; color: #676b78; line-height: 1.5; }
+@media (max-width: 760px) {
+  .t2-shell { width: min(100% - 18px, 1120px); padding-top: 9px; }
+  .t2-hero { border-radius: 23px; }
+  .t2-snapshot-panel { align-items: stretch; flex-direction: column; }
+  .t2-pathway-grid { grid-template-columns: 1fr; }
+  .t2-practice-card { min-height: calc(100vh - 76px); padding: 22px 17px; border-radius: 22px; }
+}
