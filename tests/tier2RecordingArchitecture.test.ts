@@ -35,12 +35,23 @@ test('Tier 1 and Tier 2 use the same red and green self-assessment component', (
 
 test('the smoke presentation records before comparison and comparison before assessment', () => {
   const panel = source('src/readingPractice/ReadingResponsePanel.tsx')
+  assert.match(panel, /Tap Record, then read the word aloud/)
+  assert.match(panel, /Say the word\. Tap Stop when you finish/)
+  assert.match(panel, /teachingPrompt/)
+  assert.match(panel, /onPlayTeachingIntroduction/)
+  assert.match(panel, /Listen, then read this word aloud/)
   assert.match(panel, /Record my reading/)
+  assert.match(panel, /You’ll hear your voice first, then the example/)
   assert.match(panel, /Compare my reading/)
+  assert.match(panel, /Did your reading match the example/)
+  assert.match(panel, /incorrectLabel="Not yet"/)
+  assert.match(panel, /correctLabel="Yes"/)
   assert.match(panel, /comparison !== 'complete'/)
   assert.match(panel, /comparison === 'complete'/)
   assert.match(panel, /Continue without recording/)
   assert.match(source('src/tier2ReadingLabHarness.tsx'), /Recordings stay in this prompt|recording is temporary/i)
+  assert.match(source('src/tier2ReadingLabHarness.tsx'), /teachingPrompt=\{showContinue\}/)
+  assert.match(source('src/tier2ReadingLabHarness.tsx'), /readingShowCopyInstruction/)
 })
 
 test('the recording feature remains confined to the development Tier 2 entry point', () => {
