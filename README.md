@@ -46,7 +46,7 @@ The browser uses Firebase's public REST endpoints. The API key is client configu
 
 Firestore rules keep one parent restricted to one family, preserve inactive child history, prevent parent edits to shared datasets, and reject sessions for children outside the parent's family.
 
-The repository does not currently include Firebase Emulator configuration. Security rules should be exercised in a Firebase project/emulator setup before production use; the local test suite covers the pure domain and importer logic only.
+The repository includes Firebase Emulator and Playwright gates for the versioned Acquisition checkpoint. Run `npm run test:firestore` with Java 21+ and `npm run test:browser` after installing Playwright Chromium. These supplement the pure domain/importer suite and production build; they do not authorize deployment or production-data writes.
 
 ## Google Slides importer
 
@@ -60,7 +60,7 @@ When no valid vocabulary dataset has ever activated, the child is offered a Warm
 - Kindergarten uses its explicit unit lifecycle instead: the newest arrived Unit 1 set is available for weekly Acquisition while all arrived Unit 1 sets form one cumulative Test Review. A completed cumulative review writes one score for each canonical source week rather than inventing a combined dataset.
 - Every Acquisition or Test Review path offers its own adaptive Warmup. Grade 2 currently includes a **Skip Warmup** development option; whether Warmup is required is a grade-profile policy rather than a universal rule.
 - Warmup is a practice segment assembled only from canonical Mastered words. Active Acquisition, active Test Review, Future, writing-workshop, and malformed datasets are excluded regardless of persisted adaptive category, and no fallback dataset is created.
-- Acquisition currently checkpoints every reviewed trial and resumes from the exact next teaching step; leaving during an unanswered trial restarts only that trial. Its existing cloud progression, scored-attempt, and DT-observation writes are still independent last-write-wins operations rather than one revision-aware atomic checkpoint, so retry and cross-device hardening remains pending. Test Review answers remain provisional and are discarded if the review is abandoned, producing no Test Review score. Durable partial-Warmup visits are not implemented yet, so unfinished Warmup work does not currently survive restart.
+- Acquisition checkpoints every reviewed trial and resumes from the exact next teaching step; leaving during an unanswered trial restarts only that trial. The progression revision, immutable transition receipt, scored attempt, and DT observation now use one revision-aware atomic cloud commit, with an on-device pending journal for interrupted retries. Legacy progression records remain readable during the migration window and malformed records fail closed without being replaced. Test Review answers remain provisional and are discarded if the review is abandoned, producing no Test Review score. Durable partial-Warmup visits are not implemented yet, so unfinished Warmup work does not currently survive restart.
 - A context sentence is used only when it comes from an approved `word.sentence` source. Sentence Frames, example writing, and unrelated slide prose are never inferred as target-word context.
 - Google Slides OAuth and importer credentials remain in trusted backend or Node-only code and are never exposed to the browser.
 

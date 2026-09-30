@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:browser": "playwright test",
+    "test:firestore": "firebase emulators:exec --only firestore --project weekly-dictation-test \"node --experimental-strip-types --test tests/firestoreEmulator.emulator.ts\"",
     "import:slides": "node --experimental-strip-types scripts/import-slides.ts",
     "hydrate:local": "node --experimental-strip-types scripts/hydrate-local.ts",
     "hydrate:slides": "node --experimental-strip-types scripts/hydrate-google-slides.ts",
@@ -16,15 +18,19 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "typescript": "latest",
-    "vite": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.63.0",
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.32.0"
   }
 }

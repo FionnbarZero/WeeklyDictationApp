@@ -1,12 +1,12 @@
 # Acquisition persistence contract
 
-Status: pure boundary implemented on `refactor/acquisition-persistence-contract`; not activated by production orchestration or storage.
+Status: pure boundary and production activation implemented on `feature/persistent-acquisition`; automated Emulator, rendered-browser resume, backup/restore, unit, and build gates pass. Final diff review and merge remain required.
 
 ## Purpose
 
-The existing application can save an Acquisition flow, but its progression, scored attempt, and DT observation are separate last-write-wins operations. This boundary defines one versioned checkpoint that a later local or Firestore repository can commit atomically or recover idempotently.
+The earlier application could save an Acquisition flow, but its progression, scored attempt, and DT observation were separate last-write-wins operations. The pure boundary defines one versioned checkpoint; the activation layer now commits it atomically in Firestore or recovers it idempotently from the browser journal.
 
-This branch does not change the Grade 2 v3 engine, scoring, lifecycle assignment, source activation, UI, local storage, Firestore, or security rules.
+The pure contract extraction did not change the Grade 2 v3 engine, scoring, lifecycle assignment, source activation, UI, local storage, Firestore, or security rules. The separate activation changes orchestration and storage only; it preserves the engine, scoring policy, lifecycle/source gates, and child-facing teaching behavior.
 
 ## Identity
 
@@ -80,18 +80,26 @@ Finishing the weekly teaching sequence leaves one exact terminal teaching flow. 
 
 Collection migration resolves each record independently, preserves unrelated valid progress when one record is malformed, and quarantines conflicting reuse of one deterministic progression identity rather than choosing by input order.
 
-## Activation deferred
+## Production activation
 
-The later `feature/persistent-acquisition` branch owns:
+`feature/persistent-acquisition` now provides:
 
-- Application coordination.
-- Durable local pending transitions.
-- Atomic or idempotently recoverable cloud commits.
-- Revision preconditions and cross-device conflict handling.
-- Local/cloud validators and Firestore rules.
-- Backup, restore, Emulator, and rendered-browser testing.
+- An application coordinator that migrates or creates one versioned progression and fails closed when saved progress is malformed.
+- A durable browser journal containing both the checkpoint and its exact base envelope, allowing a brand-new or offline progression to recover after interruption.
+- One Firestore REST commit for the progression revision, immutable transition receipt, optional scored attempt, and optional DT observation.
+- Revision and immutable-identity enforcement in Firestore rules, with migration-era legacy reads and writes retained until the cleanup window.
+- Idempotent retries by stable transition ID and stale-revision rejection.
+- Immediate local commits plus ordered startup recovery, without changing the outer version-2 application-state container.
 
-Production files deliberately do not import this boundary yet.
+The branch includes repeatable acceptance gates:
+
+- `npm run test:firestore` proves owned atomic commits, revision updates, receipt-linked attempts, stale-write rejection, immutable identity, duplicate-receipt rejection, and cross-family isolation.
+- `npm run test:browser` imports the canonical Grade 2 fixture, reviews one Acquisition response, reloads, and proves exact prompt/revision resumption without duplicate state.
+- The unit suite verifies a JSON-storable application backup and restore containing application state plus the pending Acquisition journal, without authentication tokens.
+
+These gates establish implementation readiness; deployment and production-data migration still require their own reviewed rollout.
+
+Production orchestration now imports the boundary only through the application coordinator. The engine and pure persistence modules remain independent of React, local storage, Firebase, and Firestore.
 
 ## Runtime prerequisite resolved after contract testing
 

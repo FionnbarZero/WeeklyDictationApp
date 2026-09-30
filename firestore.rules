@@ -17,8 +17,10 @@ service cloud.firestore {
     function validSessionStatus() {
       return request.resource.data.status in ['in_progress', 'partial', 'completed', 'skipped', 'abandoned'];
     }
-    function validAttempt(familyId, childId, sessionId) {
-      return request.resource.data.sessionId is string
+    function validAttempt(familyId, childId, sessionId, attemptId) {
+      return request.resource.data.id is string
+        && request.resource.data.id == attemptId
+        && request.resource.data.sessionId is string
         && request.resource.data.sessionId == sessionId
         && request.resource.data.wordId is string
         && request.resource.data.sourceDatasetId is string
@@ -28,6 +30,66 @@ service cloud.firestore {
         && request.resource.data.correct is bool
         && request.resource.data.reviewedAt is string
         && request.resource.data.completionStatus in ['temporary', 'complete'];
+    }
+    function validAcquisitionReceiptShape(progressionId, transitionId) {
+      return request.resource.data.progressionId == progressionId
+        && request.resource.data.transitionId == transitionId
+        && request.resource.data.payloadFingerprint is string
+        && request.resource.data.operation in ['answer', 'resume-dt-practice']
+        && request.resource.data.promptId is string
+        && request.resource.data.expectedRevision is int
+        && request.resource.data.expectedRevision >= 0
+        && request.resource.data.appliedRevision == request.resource.data.expectedRevision + 1
+        && request.resource.data.appliedAt is string;
+    }
+    function validOptionalAcquisitionTransition(familyId, childId) {
+      return !('transitionId' in request.resource.data)
+        || (request.resource.data.transitionId is string
+          && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionTransitions/$(request.resource.data.transitionId)).data.transitionId == request.resource.data.transitionId);
+    }
+    function validVersionedAcquisitionProgress(familyId, childId, progressionId) {
+      return request.resource.data.schemaVersion == 1
+        && request.resource.data.contractId == 'acquisition-persistence-v1'
+        && request.resource.data.id == progressionId
+        && request.resource.data.childId == childId
+        && request.resource.data.datasetId is string
+        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+        && request.resource.data.grade is string
+        && request.resource.data.schoolYear is string
+        && request.resource.data.activityModule is string
+        && request.resource.data.tier in ['tier-1', 'tier-2', 'tier-3']
+        && request.resource.data.strategyId is string
+        && request.resource.data.strategyVersion is int
+        && request.resource.data.strategyFingerprint is string
+        && request.resource.data.targetSetFingerprint is string
+        && request.resource.data.targetOccurrenceIds is list
+        && request.resource.data.revision is int
+        && request.resource.data.revision > 0
+        && request.resource.data.status in ['in-progress', 'teaching-complete']
+        && request.resource.data.flow is map
+        && request.resource.data.flow.datasetId == request.resource.data.datasetId
+        && request.resource.data.lastAppliedTransition is map
+        && request.resource.data.lastAppliedTransition.progressionId == progressionId
+        && request.resource.data.lastAppliedTransition.transitionId is string
+        && request.resource.data.lastAppliedTransition.payloadFingerprint is string
+        && request.resource.data.lastAppliedTransition.operation in ['answer', 'resume-dt-practice']
+        && request.resource.data.lastAppliedTransition.promptId is string
+        && request.resource.data.lastAppliedTransition.expectedRevision == request.resource.data.revision - 1
+        && request.resource.data.lastAppliedTransition.appliedRevision == request.resource.data.revision
+        && request.resource.data.lastAppliedTransition.appliedAt == request.resource.data.updatedAt
+        && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionTransitions/$(request.resource.data.lastAppliedTransition.transitionId)).data.payloadFingerprint == request.resource.data.lastAppliedTransition.payloadFingerprint
+        && request.resource.data.updatedAt is string;
+    }
+    function validLegacyAcquisitionProgress(childId, progressionId) {
+      return !('contractId' in request.resource.data)
+        && request.resource.data.id == progressionId
+        && request.resource.data.childId == childId
+        && request.resource.data.datasetId is string
+        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+        && request.resource.data.grade is string
+        && request.resource.data.flow is map
+        && request.resource.data.flow.datasetId == request.resource.data.datasetId
+        && request.resource.data.updatedAt is string;
     }
     function validScore(familyId, childId) {
       return request.resource.data.childId is string
@@ -90,7 +152,9 @@ service cloud.firestore {
           match /attempts/{attemptId} {
             allow read: if childExists(familyId, childId);
             allow create, update: if ownsActiveChild(familyId, childId)
-              && validAttempt(familyId, childId, sessionId);
+              && validAttempt(familyId, childId, sessionId, attemptId)
+              && validOptionalAcquisitionTransition(familyId, childId)
+              && (!('transitionId' in request.resource.data) || !exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)/attempts/$(attemptId)) || request.resource.data == resource.data);
             allow delete: if ownsActiveChild(familyId, childId)
               && resource.data.completionStatus == 'temporary';
           }
@@ -117,16 +181,41 @@ service cloud.firestore {
 
         match /acquisitionProgressions/{progressionId} {
           allow read: if childExists(familyId, childId);
-          allow create, update: if ownsActiveChild(familyId, childId)
-            && request.resource.data.id == progressionId
-            && request.resource.data.childId == childId
-            && request.resource.data.datasetId is string
-            && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
-            && request.resource.data.grade is string
-            && request.resource.data.flow is map
-            && request.resource.data.flow.datasetId == request.resource.data.datasetId
-            && request.resource.data.updatedAt is string;
+          allow create: if ownsActiveChild(familyId, childId)
+            && ((validVersionedAcquisitionProgress(familyId, childId, progressionId)
+                && request.resource.data.revision == 1)
+              || validLegacyAcquisitionProgress(childId, progressionId));
+          allow update: if ownsActiveChild(familyId, childId)
+            && ((validVersionedAcquisitionProgress(familyId, childId, progressionId)
+                && resource.data.contractId == 'acquisition-persistence-v1'
+                && request.resource.data.revision == resource.data.revision + 1
+                && request.resource.data.childId == resource.data.childId
+                && request.resource.data.datasetId == resource.data.datasetId
+                && request.resource.data.grade == resource.data.grade
+                && request.resource.data.schoolYear == resource.data.schoolYear
+                && request.resource.data.activityModule == resource.data.activityModule
+                && request.resource.data.tier == resource.data.tier
+                && request.resource.data.createdAt == resource.data.createdAt
+                && request.resource.data.strategyId == resource.data.strategyId
+                && request.resource.data.strategyVersion == resource.data.strategyVersion
+                && request.resource.data.strategyFingerprint == resource.data.strategyFingerprint
+                && request.resource.data.targetSetFingerprint == resource.data.targetSetFingerprint
+                && request.resource.data.targetOccurrenceIds == resource.data.targetOccurrenceIds)
+              || (validLegacyAcquisitionProgress(childId, progressionId)
+                && !('contractId' in resource.data)
+                && request.resource.data.childId == resource.data.childId
+                && request.resource.data.datasetId == resource.data.datasetId));
           allow delete: if false;
+        }
+
+        match /acquisitionTransitions/{transitionId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validAcquisitionReceiptShape(request.resource.data.progressionId, transitionId)
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(request.resource.data.progressionId)).data.lastAppliedTransition.transitionId == transitionId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(request.resource.data.progressionId)).data.lastAppliedTransition.payloadFingerprint == request.resource.data.payloadFingerprint
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(request.resource.data.progressionId)).data.revision == request.resource.data.appliedRevision;
+          allow update, delete: if false;
         }
 
         match /dtObservations/{observationId} {
@@ -143,7 +232,9 @@ service cloud.firestore {
             && request.resource.data.poolType in ['familiar', 'earned', 'established']
             && request.resource.data.correct is bool
             && request.resource.data.revealMethod in ['timer', 'skip_timer', 'show_answer']
-            && request.resource.data.reviewedAt is string;
+            && request.resource.data.reviewedAt is string
+            && validOptionalAcquisitionTransition(familyId, childId)
+            && (!('transitionId' in request.resource.data) || !exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/dtObservations/$(observationId)) || request.resource.data == resource.data);
           allow delete: if false;
         }
       }

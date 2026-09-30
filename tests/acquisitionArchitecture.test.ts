@@ -77,9 +77,9 @@ test('scoring policy remains outside the pure Acquisition engine', () => {
   assert.match(source('../src/domain.ts'), /export function shouldRecordAcquisitionAnswer/)
 })
 
-test('the pure Acquisition persistence contract is not activated by production orchestration or storage', () => {
+test('Acquisition persistence activation is limited to the approved application and storage boundaries', () => {
   const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
-  const productionFiles = ['src', 'backend', 'scripts'].flatMap((root) => {
+  const activationFiles = ['src', 'backend', 'scripts'].flatMap((root) => {
     const visit = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
       const entryPath = join(directory, entry.name)
       if (entry.isDirectory()) return visit(entryPath)
@@ -88,10 +88,15 @@ test('the pure Acquisition persistence contract is not activated by production o
       return repositoryPath.startsWith('src/acquisition/persistence/') ? [] : [entryPath]
     })
     return visit(join(repositoryRoot, root))
-  })
-  for (const file of productionFiles) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /acquisition\/persistence/, relative(repositoryRoot, file))
-  }
+  }).filter((file) => /acquisition\/persistence/.test(readFileSync(file, 'utf8')))
+  assert.deepEqual(activationFiles.map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort(), [
+    'src/application/acquisitionPersistence.ts',
+    'src/domain.ts',
+    'src/firestoreClient.ts',
+    'src/persistence/acquisitionPendingJournal.ts',
+  ])
+  assert.match(source('../src/App.tsx'), /from '.\/application\/acquisitionPersistence\.ts'/)
+  assert.doesNotMatch(source('../src/App.tsx'), /from '.\/acquisition\/persistence/)
   for (const file of acquisitionTypeScriptFiles().filter((entry) => entry.startsWith('persistence/'))) {
     const contents = source(`../src/acquisition/${file}`)
     assert.doesNotMatch(contents, /from\s+['"][^'"]*(?:App|domain|firestoreClient|firebaseClient|react)[^'"]*['"]/i)
