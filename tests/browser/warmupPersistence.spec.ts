@@ -71,3 +71,45 @@ test('a started pre-activity Warmup can finalize one partial graph point and con
   }, APP_STATE_KEY)
   expect(visitStatus).toBe('partial')
 })
+
+test('restored monthly Mastery totals remain visible without becoming invented visit graph points', async ({ page }) => {
+  await page.goto('/?testDate=2026-09-29')
+  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
+  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+
+  const legacyMonthlyScore = {
+    id: 'rhys-random-rotation-2026-09',
+    childId: 'rhys',
+    month: '2026-09',
+    correct: 7,
+    total: 10,
+    percent: 70,
+    status: 'finalized',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+    finalizedAt: '2026-10-01T00:00:00.000Z',
+  }
+  await page.evaluate(({ stateKey, score }) => {
+    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+    state.monthlyRotationScores = [score]
+    state.warmupGraphPointsV1 = []
+    window.localStorage.setItem(stateKey, JSON.stringify(state))
+  }, { stateKey: APP_STATE_KEY, score: legacyMonthlyScore })
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Progress' }).click()
+  const legacyHistory = page.getByRole('region', { name: 'Earlier Mastery history' })
+  await expect(legacyHistory).toContainText('September 2026')
+  await expect(legacyHistory).toContainText('7/10 correct')
+  await expect(legacyHistory).toContainText('70%')
+  await expect(page.getByText('Complete at least one Warmup answer to begin this graph.')).toBeVisible()
+
+  const stored = await page.evaluate((stateKey) => {
+    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+    return {
+      monthlyRotationScores: state.monthlyRotationScores,
+      warmupGraphPointsV1: state.warmupGraphPointsV1,
+    }
+  }, APP_STATE_KEY)
+  expect(stored.monthlyRotationScores).toEqual([legacyMonthlyScore])
+  expect(stored.warmupGraphPointsV1).toEqual([])
+})

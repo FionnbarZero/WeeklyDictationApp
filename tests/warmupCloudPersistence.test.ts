@@ -11,7 +11,7 @@ import {
   synchronizeAdaptiveWarmupCloud,
   wordsForWarmupVisit,
 } from '../src/application/warmup/index.ts'
-import { createInitialState, resolveDatasetLifecycles } from '../src/domain.ts'
+import { createInitialState, loadState, resolveDatasetLifecycles, type MonthlyRotationScore } from '../src/domain.ts'
 import { decodeCloudWarmupVisits, encodeCloudWarmupVisit } from '../src/persistence/warmup/cloudCodec.ts'
 import { buildWarmupSeedRecordWrites, buildWarmupTransitionRecordWrites, reconcileWarmupSeedRecord, warmupReceiptMatchesTransition } from '../src/persistence/warmup/cloudWrites.ts'
 import type { PendingWarmupCommit } from '../src/persistence/warmup/pendingJournal.ts'
@@ -235,6 +235,32 @@ test('the application backup restores a pending Warmup checkpoint with its exact
   const restored = restoreApplicationBackup(serialized)
   assert.deepEqual(restored.pendingWarmup, [pending])
   assert.deepEqual(restored.state.warmupVisitsV1, prepared.state.warmupVisitsV1)
+})
+
+test('backup restore and local loading preserve earlier monthly Mastery history without inventing visit graph points', () => {
+  const legacyMonthlyScore: MonthlyRotationScore = {
+    id: 'maya-random-rotation-2026-09',
+    childId: 'maya',
+    month: '2026-09',
+    correct: 7,
+    total: 10,
+    percent: 70,
+    status: 'finalized',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+    finalizedAt: '2026-10-01T00:00:00.000Z',
+  }
+  const state = {
+    ...createInitialState(datasets),
+    monthlyRotationScores: [legacyMonthlyScore],
+  }
+
+  const backup = createApplicationBackup(state, [], [], '2026-10-01T01:00:00.000Z')
+  const restored = restoreApplicationBackup(backup)
+  const loaded = loadState(JSON.stringify(restored.state))
+
+  assert.deepEqual(restored.state.monthlyRotationScores, [legacyMonthlyScore])
+  assert.deepEqual(loaded.monthlyRotationScores, [legacyMonthlyScore])
+  assert.deepEqual(loaded.warmupGraphPointsV1, [])
 })
 
 test('the cloud coordinator reconstructs records and replays one pending transition through an injected transport', async () => {
