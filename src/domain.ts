@@ -24,6 +24,8 @@ import { practicePhaseForStage } from './lifecycle/stageMapping.ts'
 import type { Dataset, Word } from './domain/contracts.ts'
 import { applyWarmupResponse, deriveWarmupWordStates, selectWarmupWords } from './warmup/engine.ts'
 import type { ChildWordState, WarmupCategory, WarmupLifecycleSnapshot, WarmupPolicy, WarmupSelection } from './warmup/contracts.ts'
+import type { AdaptiveWarmupV3Projection } from './warmup/adaptive/migration.ts'
+import type { WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
 
 export type { Dataset, Word } from './domain/contracts.ts'
 export type { ChildWordState, WarmupCategory, WarmupSelection } from './warmup/contracts.ts'
@@ -151,6 +153,15 @@ export type AppState = {
   acquisitionTransitionReceipts?: AcquisitionTransitionReceipt[]
   acquisitionPendingCheckpoints?: AcquisitionCheckpoint<Word>[]
   acquisitionProgressQuarantine?: AcquisitionProgressQuarantineRecord[]
+  /** Versioned Adaptive Warmup state. Legacy Warmup fields remain readable during the migration window. */
+  adaptiveWarmup?: AdaptiveWarmupV3Projection
+  warmupVisitsV1?: WarmupVisit[]
+  warmupAttemptsV1?: WarmupAttempt[]
+  warmupTransitionReceiptsV1?: WarmupTransitionReceipt[]
+  warmupGraphPointsV1?: WarmupGraphPoint[]
+  warmupPendingTransitionsV1?: WarmupTransition[]
+  warmupMasteryRevisionsV1?: Record<string, number>
+  warmupCloudQuarantineV1?: WarmupCloudQuarantineRecord[]
   distractorTargetObservations: DistractorTargetObservation[]
   datasetImportReferences?: Array<Exclude<ExistingDatasetReference, string>>
 }
@@ -159,6 +170,16 @@ export type AcquisitionProgressQuarantineRecord = {
   id: string
   childId: string
   datasetId: string
+  reason: string
+  quarantinedAt: string
+  raw: unknown
+}
+
+export type WarmupCloudQuarantineRecord = {
+  id: string
+  childId: string
+  collection: 'mastery' | 'visits' | 'queue-entries' | 'transitions' | 'attempts' | 'graph-points' | 'rotations'
+  recordId: string
   reason: string
   quarantinedAt: string
   raw: unknown
@@ -221,6 +242,8 @@ export type PracticeSession = {
   testReviewSkipped?: boolean
   warmupOnly?: boolean
   cloudSessionId?: string
+  adaptiveWarmupVisitId?: string
+  warmupResumePosition?: number
 }
 
 export type PracticeTarget = {
@@ -635,7 +658,7 @@ export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string 
   } catch {
     legacyRecords = []
   }
-  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], acquisitionProgressEnvelopes: [], acquisitionTransitionReceipts: [], acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine: [], distractorTargetObservations: [] }
+  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], acquisitionProgressEnvelopes: [], acquisitionTransitionReceipts: [], acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine: [], warmupVisitsV1: [], warmupAttemptsV1: [], warmupTransitionReceiptsV1: [], warmupGraphPointsV1: [], warmupPendingTransitionsV1: [], warmupMasteryRevisionsV1: {}, warmupCloudQuarantineV1: [], distractorTargetObservations: [] }
 }
 
 export function isAppState(value: unknown): value is AppState {
@@ -655,8 +678,16 @@ export function isAppState(value: unknown): value is AppState {
   const transitionReceiptsValid = !('acquisitionTransitionReceipts' in value) || Array.isArray(value.acquisitionTransitionReceipts)
   const pendingCheckpointsValid = !('acquisitionPendingCheckpoints' in value) || Array.isArray(value.acquisitionPendingCheckpoints)
   const quarantineValid = !('acquisitionProgressQuarantine' in value) || (Array.isArray(value.acquisitionProgressQuarantine) && value.acquisitionProgressQuarantine.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.datasetId === 'string' && typeof record.reason === 'string' && typeof record.quarantinedAt === 'string' && 'raw' in record))
+  const adaptiveWarmupValid = !('adaptiveWarmup' in value) || isRecord(value.adaptiveWarmup)
+  const warmupVisitCollectionsValid = (!('warmupVisitsV1' in value) || Array.isArray(value.warmupVisitsV1))
+    && (!('warmupAttemptsV1' in value) || Array.isArray(value.warmupAttemptsV1))
+    && (!('warmupTransitionReceiptsV1' in value) || Array.isArray(value.warmupTransitionReceiptsV1))
+    && (!('warmupGraphPointsV1' in value) || Array.isArray(value.warmupGraphPointsV1))
+    && (!('warmupPendingTransitionsV1' in value) || Array.isArray(value.warmupPendingTransitionsV1))
+    && (!('warmupMasteryRevisionsV1' in value) || (isRecord(value.warmupMasteryRevisionsV1) && Object.values(value.warmupMasteryRevisionsV1).every((revision) => typeof revision === 'number' && Number.isInteger(revision) && revision >= 0)))
+    && (!('warmupCloudQuarantineV1' in value) || Array.isArray(value.warmupCloudQuarantineV1))
   const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'familiar' || observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && dtObservationsValid
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && adaptiveWarmupValid && warmupVisitCollectionsValid && dtObservationsValid
 }
 
 export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
@@ -666,7 +697,7 @@ export function loadState(rawState: string | null, legacyRaw?: string | null, im
       const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
         ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
         : []
-      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], distractorTargetObservations }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], warmupVisitsV1: Array.isArray(parsed.warmupVisitsV1) ? parsed.warmupVisitsV1 : [], warmupAttemptsV1: Array.isArray(parsed.warmupAttemptsV1) ? parsed.warmupAttemptsV1 : [], warmupTransitionReceiptsV1: Array.isArray(parsed.warmupTransitionReceiptsV1) ? parsed.warmupTransitionReceiptsV1 : [], warmupGraphPointsV1: Array.isArray(parsed.warmupGraphPointsV1) ? parsed.warmupGraphPointsV1 : [], warmupPendingTransitionsV1: Array.isArray(parsed.warmupPendingTransitionsV1) ? parsed.warmupPendingTransitionsV1 : [], warmupMasteryRevisionsV1: isRecord(parsed.warmupMasteryRevisionsV1) ? parsed.warmupMasteryRevisionsV1 as Record<string, number> : {}, warmupCloudQuarantineV1: Array.isArray(parsed.warmupCloudQuarantineV1) ? parsed.warmupCloudQuarantineV1 : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {
@@ -782,7 +813,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const warmupSessionId = `${session.id}-warmup`
   if (state.completedSessions.some((item) => item.id === session.id) || state.warmupSessions.some((item) => item.id === warmupSessionId)) return state
   const sessionDate = localDateKey(now)
-  const warmupResults: WordResult[] = session.warmupAnswers.map((answer, index) => {
+  const warmupResults: WordResult[] = session.adaptiveWarmupVisitId ? [] : session.warmupAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
   })
@@ -815,8 +846,8 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [], complete }
   const rotationAnswers = session.warmupAnswers.filter((answer) => (session.warmupRandomRotationWordIds || []).includes(answer.word.id))
   const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
-  const monthlyRotationScores = updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
-  const materialized = materializeStateForCommit(state, session, now)
+  const monthlyRotationScores = session.adaptiveWarmupVisitId ? state.monthlyRotationScores : updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
+  const materialized = session.adaptiveWarmupVisitId ? null : materializeStateForCommit(state, session, now)
   const sessionSchoolYear = datasetForSession(state, session)?.schoolYear
   const datasetScopeById = new Map(state.datasets.map((dataset) => [dataset.id, { grade: dataset.grade, schoolYear: dataset.schoolYear }]))
   const priorStates = state.childWordStates.filter((item) => {
@@ -824,7 +855,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const datasetScope = datasetScopeById.get(item.datasetId)
     return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
-  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } }
+  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.adaptiveWarmupVisitId || session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: materialized ? [...priorStates, ...materialized.states] : state.childWordStates, monthlyRotationScores, rotationCycles: materialized ? { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } : state.rotationCycles }
 }
 
 function latestAnswerPerWord(answers: SessionAnswer[]) {
@@ -839,7 +870,7 @@ export function commitCompletedSession(state: AppState, session: PracticeSession
   const primaryComplete = session.primaryPhase === 'acquisition' && session.acquisition
     ? session.acquisition.complete
     : scoredPrimaryAnswers.length === primaryWordIds.size && [...primaryWordIds].every((wordId) => scoredPrimaryAnswers.some((answer) => answer.word.id === wordId))
-  if ((!session.warmupSkipped && session.warmupAnswers.length !== session.warmupQueue.length) || !primaryComplete) return state
+  if ((!session.adaptiveWarmupVisitId && !session.warmupSkipped && session.warmupAnswers.length !== session.warmupQueue.length) || !primaryComplete) return state
   return commitSessionAttempts(state, session, now, true)
 }
 
@@ -854,7 +885,7 @@ export function commitPartialSession(state: AppState, session: PracticeSession, 
       next = { ...next, scores: [...next.scores, makeScore(session, dataset, targetAnswers, 'acquisition', localDateKey(now))] }
     }
   }
-  if (!session.warmupSkipped && session.warmupAnswers.length > 0 && !next.warmupSessions.some((record) => record.sessionId === session.id)) {
+  if (!session.adaptiveWarmupVisitId && !session.warmupSkipped && session.warmupAnswers.length > 0 && !next.warmupSessions.some((record) => record.sessionId === session.id)) {
     const complete = session.warmupAnswers.length === session.warmupQueue.length
     const warmupSessionId = `${session.id}-warmup`
     const warmupResults: WordResult[] = session.warmupAnswers.map((answer, index) => {

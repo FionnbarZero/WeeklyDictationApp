@@ -5,17 +5,20 @@ import {
 } from 'lucide-react'
 import {
   APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
-  buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt,
+  commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt,
   filterDatasetsForChild, latestScore, loadState, localDateKey, createSessionId, requireDatasetLifecycle, resolveDatasetLifecycles, sortDatasetsNewestFirst, shouldSuggestGradePromotion, nextGrade, type LifecyclePhase,
   type PracticeSession, type PracticeTarget, type SessionAnswer, type Word, LEGACY_ATTEMPTS_KEY,
 } from './domain'
 import { acquisitionPersistenceContext, applyAcquisitionCheckpointToAppState, createAcquisitionAnswerCheckpoint, createAcquisitionResumeCheckpoint, markAcquisitionCheckpointCommitted, prepareAcquisitionProgress, recoverAcquisitionCheckpoints, sessionAnswerForCheckpoint } from './application/acquisitionPersistence.ts'
+import { applyWarmupTransitionToAppState, cloudWarmupSeedForVisit, createWarmupAnswerCheckpoint, createWarmupFinalizationCheckpoint, markWarmupTransitionCommitted, prepareAdaptiveWarmupVisit, recoverWarmupTransitions, revalidateWarmupVisitBeforePresentation, synchronizeAdaptiveWarmupCloud, wordsForWarmupVisit, type WarmupGraphPoint } from './application/warmup/index.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signOut, signUp, subscribeAuth, type AuthState } from './firebaseClient'
 import { firebaseConfigReady, firebaseSetupMessage, DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, productionSourceIsActive } from './config'
-import { abandonSession, cloudAcquisitionCheckpointAlreadyCommitted, cloudAdaptiveStateForSave, cloudDataToAppState, commitCloudAcquisitionCheckpoint, completeCloudSession, createChild, ensureParentFamily, finishCloudSession, getCloudAdaptiveState, listAcquisitionProgressions, listAttempts, listChildren, listDatasetWords, listDatasets, listDistractorTargetObservations, listScores, listSessions, saveCloudAdaptiveState, saveCloudAttempt, skipCloudTestReview, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
+import { abandonSession, cloudAcquisitionCheckpointAlreadyCommitted, cloudAdaptiveStateForSave, cloudDataToAppState, cloudWarmupTransitionAlreadyCommitted, commitCloudAcquisitionCheckpoint, commitCloudWarmupTransition, completeCloudSession, createChild, ensureCloudWarmupSeed, ensureParentFamily, finishCloudSession, getCloudAdaptiveState, listAcquisitionProgressions, listAttempts, listChildren, listDatasetWords, listDatasets, listDistractorTargetObservations, listScores, listSessions, listWarmupAttempts, listWarmupGraphPoints, listWarmupMastery, listWarmupQueueEntries, listWarmupRotations, listWarmupTransitions, listWarmupVisits, saveCloudAdaptiveState, saveCloudAttempt, skipCloudTestReview, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
 import { appendPendingAcquisitionCheckpoint, readPendingAcquisitionJournal, removePendingAcquisitionCheckpoint } from './persistence/acquisitionPendingJournal.ts'
+import { appendPendingWarmupTransition, readPendingWarmupJournal, removePendingWarmupTransition } from './persistence/warmup/pendingJournal.ts'
 import { hydrateLocalStateFromJson } from './localHydration'
 import { PracticeView } from './practice/PracticeView'
+import { WarmupProgressGraph } from './progress/WarmupProgressGraph.tsx'
 import { practiceProfileForGrade } from './practice/profiles/registry'
 import type { WritingPracticeProfile } from './practice/profiles/model'
 import { practiceTargetsForLifecycle } from './practice/targets'
@@ -36,12 +39,31 @@ function localStorageGet(key: string) { try { return window.localStorage.getItem
 function localStorageSet(key: string, value: string) { try { window.localStorage.setItem(key, value); return true } catch { return false } }
 function loadLocalApplicationState() {
   const loaded = loadState(localStorageGet(APP_STATE_KEY), localStorageGet(LEGACY_ATTEMPTS_KEY))
-  const journal = readPendingAcquisitionJournal(window.localStorage)
-  if (journal.error || journal.entries.length === 0) return loaded
-  const recovered = recoverAcquisitionCheckpoints(loaded, journal.entries)
-  if (recovered.status !== 'recovered' || !localStorageSet(APP_STATE_KEY, JSON.stringify(recovered.state))) return loaded
-  for (const transitionId of recovered.recoveredTransitionIds) removePendingAcquisitionCheckpoint(window.localStorage, transitionId)
-  return recovered.state
+  const acquisitionJournal = readPendingAcquisitionJournal(window.localStorage)
+  let recoveredState = loaded
+  const recoveredAcquisitionTransitionIds: string[] = []
+  const recoveredWarmupTransitionIds: string[] = []
+  if (!acquisitionJournal.error && acquisitionJournal.entries.length > 0) {
+    const recovered = recoverAcquisitionCheckpoints(recoveredState, acquisitionJournal.entries)
+    if (recovered.status === 'recovered') {
+      recoveredState = recovered.state
+      recoveredAcquisitionTransitionIds.push(...recovered.recoveredTransitionIds)
+    }
+  }
+  const warmupJournal = readPendingWarmupJournal(window.localStorage)
+  if (!warmupJournal.error && warmupJournal.entries.length > 0) {
+    const recovered = recoverWarmupTransitions(recoveredState, warmupJournal.entries)
+    if (recovered.status === 'recovered') {
+      recoveredState = recovered.state
+      recoveredWarmupTransitionIds.push(...recovered.recoveredTransitionIds)
+    }
+  }
+  const saved = localStorageSet(APP_STATE_KEY, JSON.stringify(recoveredState))
+  if (saved) {
+    for (const transitionId of recoveredAcquisitionTransitionIds) removePendingAcquisitionCheckpoint(window.localStorage, transitionId)
+    for (const transitionId of recoveredWarmupTransitionIds) removePendingWarmupTransition(window.localStorage, transitionId)
+  }
+  return recoveredState
 }
 type SpeechPart = { text: string; rate: number; lang?: string }
 let stopActiveSpeech: (() => void) | null = null
@@ -129,7 +151,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const lifecycleResolution = useMemo(() => lifecycleStrategy ? resolveDatasetLifecycles(primaryDatasets, currentDate) : null, [lifecycleStrategy, primaryDatasets, currentDateKey])
   const primaryChoices = (lifecycleResolution ? practiceTargetsForLifecycle(lifecycleResolution) : [])
     .filter((choice) => Boolean(practiceProfile && choice.dataset.words.length > 0 && !choice.dataset.isWritingWorkshop))
-  const warmupSelection = useMemo(() => selectedChild && practiceProfile && lifecycleResolution ? buildWarmupSelection({ grade: selectedChild.grade, datasets: primaryDatasets, results: state.results, childWordStates: state.childWordStates, rotationCycleId: state.rotationCycles[selectedChild.id], childId: selectedChild.id, today: currentDate, targetSize: primaryChoices.length > 0 ? practiceProfile.lifecycle.primaryWarmupTrials : undefined, lifecycleResolution }) : null, [selectedChild, practiceProfile, primaryDatasets, state.results, state.childWordStates, state.rotationCycles, currentDateKey, primaryChoices.length, lifecycleResolution])
+  const warmupPreview = useMemo(() => selectedChild && practiceProfile && lifecycleResolution ? prepareAdaptiveWarmupVisit({ state, childId: selectedChild.id, grade: selectedChild.grade, schoolYear: selectedChild.schoolYear, datasets: primaryDatasets, lifecycleResolution, visitType: 'standalone', visitId: 'warmup-preview-only', createdAt: currentDate.toISOString(), random: () => 0.999 }) : null, [selectedChild, practiceProfile, primaryDatasets, state, currentDateKey, lifecycleResolution])
+  const warmupWordCount = warmupPreview?.status === 'ready' ? warmupPreview.visit.assignedQueueSize : 0
   const promotionSuggested = Boolean(selectedChild && shouldSuggestGradePromotion(selectedChild, currentDate))
 
   useEffect(() => { localStorageSet('weekly-dictation-child', selectedChildId) }, [selectedChildId])
@@ -152,13 +175,14 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (!auth.user || !family || !selectedChild) return
     let cancelled = false
     setDataLoading(true)
-    void Promise.all([listDatasets(), listSessions(family.id, selectedChild.id), listScores(family.id, selectedChild.id), getCloudAdaptiveState(family.id, selectedChild.id), listAcquisitionProgressions(family.id, selectedChild.id), listDistractorTargetObservations(family.id, selectedChild.id)]).then(async ([rawDatasets, sessions, scores, adaptiveState, progressions, dtObservations]) => {
+    void Promise.all([listDatasets(), listSessions(family.id, selectedChild.id), listScores(family.id, selectedChild.id), getCloudAdaptiveState(family.id, selectedChild.id), listAcquisitionProgressions(family.id, selectedChild.id), listDistractorTargetObservations(family.id, selectedChild.id), listWarmupVisits(family.id, selectedChild.id), listWarmupQueueEntries(family.id, selectedChild.id), listWarmupMastery(family.id, selectedChild.id), listWarmupTransitions(family.id, selectedChild.id), listWarmupAttempts(family.id, selectedChild.id), listWarmupGraphPoints(family.id, selectedChild.id), listWarmupRotations(family.id, selectedChild.id)]).then(async ([rawDatasets, sessions, scores, adaptiveState, progressions, dtObservations, cloudWarmupVisits, cloudWarmupQueueEntries, warmupMastery, warmupTransitions, warmupAttempts, warmupGraphPoints, warmupRotations]) => {
       const datasets = await Promise.all(rawDatasets.map(async (dataset) => dataset.words?.length ? dataset : { ...dataset, words: await listDatasetWords(dataset.id) }))
       const readableSessions = sessions.filter((item) => item.status !== 'abandoned')
       const attempts = (await Promise.all(readableSessions.map((item) => listAttempts(family.id, selectedChild.id, item.id)))).flat()
       await Promise.all(readableSessions.filter((item) => item.status === 'in_progress').map((item) => item.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, item, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, item)))
       if (cancelled) return
       let hydrated: AppState = cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations, selectedChild.schoolYear)
+      const scopedDatasets = filterDatasetsForChild(datasets, selectedChild.grade, selectedChild.schoolYear)
       const pendingJournal = readPendingAcquisitionJournal(window.localStorage)
       if (pendingJournal.error) throw new Error(pendingJournal.error)
       const childPending = pendingJournal.entries
@@ -179,6 +203,27 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
         hydrated = markAcquisitionCheckpointCommitted(recovered.state, checkpoint.transitionId)
       }
+      if (lifecycleStrategyForGradeAndSchoolYear(selectedChild.grade, selectedChild.schoolYear)) {
+        const pendingWarmupJournal = readPendingWarmupJournal(window.localStorage)
+        if (pendingWarmupJournal.error) throw new Error(pendingWarmupJournal.error)
+        hydrated = await synchronizeAdaptiveWarmupCloud({
+          state: hydrated,
+          childId: selectedChild.id,
+          grade: selectedChild.grade,
+          schoolYear: selectedChild.schoolYear,
+          datasets: scopedDatasets,
+          lifecycleResolution: resolveDatasetLifecycles(scopedDatasets, now()),
+          records: { visits: cloudWarmupVisits, queueEntries: cloudWarmupQueueEntries, mastery: warmupMastery, receipts: warmupTransitions, attempts: warmupAttempts, graphPoints: warmupGraphPoints, rotations: warmupRotations },
+          pending: pendingWarmupJournal.entries,
+          hydratedAt: now().toISOString(),
+          transport: {
+            transitionAlreadyCommitted: (transition) => cloudWarmupTransitionAlreadyCommitted(family.id, selectedChild.id, transition),
+            ensureSeed: (visit, mastery, rotations) => ensureCloudWarmupSeed(family.id, selectedChild.id, visit, mastery, rotations),
+            commitTransition: (transition) => commitCloudWarmupTransition(family.id, selectedChild.id, transition),
+            acknowledgeTransition: (transitionId) => removePendingWarmupTransition(window.localStorage, transitionId),
+          },
+        })
+      }
       if (cancelled) return
       setState(hydrated)
     }).catch((error) => { if (!cancelled) setCloudError(authErrorMessage(error)) }).finally(() => { if (!cancelled) setDataLoading(false) })
@@ -193,16 +238,75 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     else setFamilyChildren((items) => items.map((item) => item.id === selectedChild.id ? { ...item, grade: promoted, schoolYear: DEFAULT_SCHOOL_YEAR, gradeEffectiveDate: currentDateKey } : item))
   }
   const startPractice = useCallback(async (target: PracticeTarget | null) => {
-    if (!selectedChild || !warmupSelection || (!target && warmupSelection.words.length === 0)) return
+    if (!selectedChild || !lifecycleResolution) return
     const id = createSessionId()
     const startedDate = now()
     const startedAt = startedDate.toISOString()
-    const primaryDatasetId = target?.dataset.id || warmupSelection.words[0]?.datasetId || 'warmup-only'
+    const associatedPrimaryActivity = target ? { phase: target.phase, datasetId: target.dataset.id, ...(target.reviewGroupId ? { reviewGroupId: target.reviewGroupId } : {}) } : undefined
+    const preparedWarmup = prepareAdaptiveWarmupVisit({
+      state,
+      childId: selectedChild.id,
+      grade: selectedChild.grade,
+      schoolYear: selectedChild.schoolYear,
+      datasets: primaryDatasets,
+      lifecycleResolution,
+      visitType: target ? 'pre-activity' : 'standalone',
+      visitId: `${id}-warmup`,
+      createdAt: startedAt,
+      associatedPrimaryActivity,
+    })
+    if (preparedWarmup.status === 'blocked') {
+      setState(preparedWarmup.state)
+      setCloudError(`Adaptive Warmup needs review before practice can continue: ${preparedWarmup.reason}`)
+      return
+    }
+    if (auth.user && family) {
+      try {
+        const seed = cloudWarmupSeedForVisit(preparedWarmup.state, preparedWarmup.visit)
+        await ensureCloudWarmupSeed(family.id, selectedChild.id, preparedWarmup.visit, seed.mastery, seed.rotations)
+      } catch (error) {
+        setCloudError(`Warmup could not start because its initial state was not saved safely: ${authErrorMessage(error)}`)
+        return
+      }
+    }
+    const revalidatedWarmup = revalidateWarmupVisitBeforePresentation(preparedWarmup.state, preparedWarmup.visit.id, startedAt, false)
+    if (!revalidatedWarmup.visit || revalidatedWarmup.reason) {
+      setCloudError(`Adaptive Warmup could not be safely opened: ${revalidatedWarmup.reason || 'The saved visit is unavailable.'}`)
+      return
+    }
+    let revalidationBaseVisit = preparedWarmup.visit
+    for (const transition of revalidatedWarmup.transitions) {
+      try {
+        appendPendingWarmupTransition(window.localStorage, transition, revalidationBaseVisit)
+        if (auth.user && family) {
+          await commitCloudWarmupTransition(family.id, selectedChild.id, transition)
+          removePendingWarmupTransition(window.localStorage, transition.transitionId)
+        } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(revalidatedWarmup.state))) {
+          removePendingWarmupTransition(window.localStorage, transition.transitionId)
+        } else {
+          throw new Error('The browser could not save the eligibility update.')
+        }
+      } catch (error) {
+        setCloudError(`Warmup cannot open until its eligibility update is saved: ${authErrorMessage(error)}`)
+        return
+      }
+      revalidationBaseVisit = transition.nextVisit
+    }
+    const warmupVisit = revalidatedWarmup.visit
+    let warmupWords
+    try {
+      warmupWords = wordsForWarmupVisit(revalidatedWarmup.state, warmupVisit)
+    } catch (error) {
+      setCloudError(`Adaptive Warmup could not safely load its saved queue: ${authErrorMessage(error)}`)
+      return
+    }
+    if (!target && warmupVisit.assignedQueueSize === 0) return
+    const primaryDatasetId = target?.dataset.id || warmupWords[0]?.datasetId || 'warmup-only'
     const primaryPhase = target?.phase || 'acquisition'
     const warmupOnly = !target
-    let nextState = state
+    let nextState = revalidatedWarmup.state
     let preparedAcquisition = target?.phase === 'acquisition'
-      ? prepareAcquisitionProgress(state, selectedChild.id, target.dataset, startedAt)
+      ? prepareAcquisitionProgress(nextState, selectedChild.id, target.dataset, startedAt)
       : null
     if (preparedAcquisition?.status === 'blocked') {
       setState(preparedAcquisition.state)
@@ -255,10 +359,44 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setState(nextState)
     completedSessionRef.current = null
     setCompletedSummary(null)
-    setSession(createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelection, startedAt, cloudSessionId: auth.user ? id : undefined, preparedAcquisitionProgress: preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined }))
+    const warmupSelectionForSession = {
+      words: warmupWords,
+      randomRotationWordIds: warmupVisit.queue.filter((entry) => entry.sourceBucket === 'mastery-rotation').map((entry) => entry.prompt.wordId),
+      recentReviewWordIds: warmupVisit.queue.filter((entry) => entry.sourceBucket === 'recent-entry').map((entry) => entry.prompt.wordId),
+      erroredWordIds: warmupVisit.queue.filter((entry) => entry.sourceBucket === 'needs-attention').map((entry) => entry.prompt.wordId),
+      rotationCycleId: warmupVisit.rotationCycle,
+    }
+    const practiceSession = createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelectionForSession, startedAt, cloudSessionId: auth.user ? id : undefined, preparedAcquisitionProgress: preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined })
+    setSession({ ...practiceSession, adaptiveWarmupVisitId: warmupVisit.id, warmupResumePosition: warmupVisit.nextPosition, index: warmupVisit.nextPosition })
     setView('practice')
-  }, [auth.user, family, now, selectedChild, state, warmupSelection])
-  const leavePractice = (nextView: View) => { const current = session; if (auth.user && family && current?.cloudSessionId && selectedChild) { const cloud = cloudSessionsRef.current.get(current.cloudSessionId); if (cloud) { const request = current.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, cloud, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, cloud); void request.catch((error) => setCloudError(authErrorMessage(error))) } }; setSession(null); setView(nextView) }
+  }, [auth.user, family, lifecycleResolution, now, primaryDatasets, selectedChild, state])
+  const leavePractice = (nextView: View) => {
+    const current = session
+    let nextState = state
+    if (current?.adaptiveWarmupVisitId && current.segment === 'warmup') {
+      const visit = (state.warmupVisitsV1 || []).find((candidate) => candidate.id === current.adaptiveWarmupVisitId)
+      if (visit?.status === 'in-progress' && visit.attemptedCount > 0) {
+        try {
+          const checkpoint = createWarmupFinalizationCheckpoint({ state, visitId: visit.id, operation: 'finalize-partial', occurredAt: now().toISOString() })
+          const { transition } = checkpoint
+          appendPendingWarmupTransition(window.localStorage, transition, checkpoint.baseVisit)
+          const applied = applyWarmupTransitionToAppState(state, transition, Boolean(auth.user && family))
+          if (applied.status === 'applied') {
+            nextState = applied.state
+            if (auth.user && family && selectedChild) {
+              void commitCloudWarmupTransition(family.id, selectedChild.id, transition).then(() => {
+                removePendingWarmupTransition(window.localStorage, transition.transitionId)
+                setState((existing) => markWarmupTransitionCommitted(existing, transition.transitionId))
+              }).catch((error) => setCloudError(`Partial Warmup progress is saved on this device and will retry: ${authErrorMessage(error)}`))
+            } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(nextState))) removePendingWarmupTransition(window.localStorage, transition.transitionId)
+          }
+        } catch (error) { setCloudError(`Partial Warmup progress is preserved for recovery: ${authErrorMessage(error)}`) }
+      }
+    }
+    if (nextState !== state) setState(nextState)
+    if (auth.user && family && current?.cloudSessionId && selectedChild) { const cloud = cloudSessionsRef.current.get(current.cloudSessionId); if (cloud) { const request = current.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, cloud, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, cloud); void request.catch((error) => setCloudError(authErrorMessage(error))) } }
+    setSession(null); setView(nextView)
+  }
   const exitPractice = () => leavePractice('home')
   const primaryStartState = (current: PracticeSession): PracticeSession => current.primaryQueue.length === 0
     ? { ...current, segment: 'primary', stage: 'complete', queue: [], index: 0 }
@@ -268,17 +406,109 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const beginWarmup = () => { unlockSpeech(); setSession((current) => {
     if (!current || current.stage !== 'warmup-intro') return current
     if (current.queue.length === 0) return primaryStartState(current)
-    return { ...current, stage: 'interstitial', index: 0 }
+    return { ...current, stage: 'interstitial', index: current.warmupResumePosition || 0 }
   }) }
   const skipWarmup = () => setSession((current) => {
     if (!current || current.stage !== 'warmup-intro' || current.warmupOnly) return current
+    if (current.adaptiveWarmupVisitId) {
+      const visit = (state.warmupVisitsV1 || []).find((candidate) => candidate.id === current.adaptiveWarmupVisitId)
+      if (!visit) return current
+      try {
+        const checkpoint = createWarmupFinalizationCheckpoint({ state, visitId: visit.id, operation: 'skip', occurredAt: now().toISOString() })
+        const { transition } = checkpoint
+        appendPendingWarmupTransition(window.localStorage, transition, checkpoint.baseVisit)
+        const applied = applyWarmupTransitionToAppState(state, transition, Boolean(auth.user && family))
+        if (applied.status !== 'applied') throw new Error(applied.status === 'conflict' ? applied.reason : 'Warmup skip was already applied.')
+        setState(applied.state)
+        if (auth.user && family && selectedChild) {
+          void commitCloudWarmupTransition(family.id, selectedChild.id, transition).then(() => {
+            removePendingWarmupTransition(window.localStorage, transition.transitionId)
+            setState((existing) => markWarmupTransitionCommitted(existing, transition.transitionId))
+          }).catch((error) => setCloudError(`Warmup skip is saved on this device and will retry: ${authErrorMessage(error)}`))
+        } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(applied.state))) removePendingWarmupTransition(window.localStorage, transition.transitionId)
+      } catch (error) {
+        setCloudError(`Warmup could not be skipped safely: ${authErrorMessage(error)}`)
+        return current
+      }
+    }
     if (auth.user && family && selectedChild && current.cloudSessionId) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
       if (cloud) void updateCloudSession(family.id, selectedChild.id, cloud, { warmupStatus: 'skipped' }).then((updated) => { cloudSessionsRef.current.set(current.cloudSessionId!, updated) }).catch((error) => setCloudError(authErrorMessage(error)))
     }
     return primaryStartState({ ...current, warmupSkipped: true, warmupAnswers: [] })
   })
-  const completeInterstitial = () => setSession((current) => current && current.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current)
+  const continueToPrimaryAfterPartialWarmup = () => {
+    const current = session
+    if (!current || current.segment !== 'warmup' || current.warmupOnly || current.warmupAnswers.length === 0 || !current.adaptiveWarmupVisitId) return
+    const visit = (state.warmupVisitsV1 || []).find((candidate) => candidate.id === current.adaptiveWarmupVisitId)
+    if (!visit || visit.status !== 'in-progress') return
+    try {
+      const checkpoint = createWarmupFinalizationCheckpoint({ state, visitId: visit.id, operation: 'finalize-partial', occurredAt: now().toISOString() })
+      appendPendingWarmupTransition(window.localStorage, checkpoint.transition, checkpoint.baseVisit)
+      const applied = applyWarmupTransitionToAppState(state, checkpoint.transition, Boolean(auth.user && family))
+      if (applied.status !== 'applied') throw new Error(applied.status === 'conflict' ? applied.reason : 'The partial Warmup was already finalized.')
+      setState(applied.state)
+      if (auth.user && family && selectedChild) {
+        void commitCloudWarmupTransition(family.id, selectedChild.id, checkpoint.transition).then(() => {
+          removePendingWarmupTransition(window.localStorage, checkpoint.transition.transitionId)
+          setState((existing) => markWarmupTransitionCommitted(existing, checkpoint.transition.transitionId))
+        }).catch((error) => setCloudError(`Partial Warmup progress is saved on this device and will retry: ${authErrorMessage(error)}`))
+        if (current.cloudSessionId) {
+          const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
+          if (cloud) void updateCloudSession(family.id, selectedChild.id, cloud, { warmupStatus: 'partial' }).then((updated) => { cloudSessionsRef.current.set(current.cloudSessionId!, updated) }).catch((error) => setCloudError(authErrorMessage(error)))
+        }
+      } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(applied.state))) {
+        removePendingWarmupTransition(window.localStorage, checkpoint.transition.transitionId)
+      }
+      setSession(primaryStartState(current))
+    } catch (error) {
+      setCloudError(`Warmup could not continue safely to the activity: ${authErrorMessage(error)}`)
+    }
+  }
+  const completeInterstitial = async () => {
+    const current = session
+    if (!current || current.stage !== 'interstitial') return
+    if (current.segment !== 'warmup' || !current.adaptiveWarmupVisitId || !selectedChild || !lifecycleResolution) {
+      setSession({ ...current, stage: 'dictation' })
+      return
+    }
+    const associatedPrimaryActivity = current.warmupOnly ? undefined : { phase: current.primaryPhase, datasetId: current.primaryDatasetId, ...(current.reviewGroupId ? { reviewGroupId: current.reviewGroupId } : {}) }
+    const refreshed = prepareAdaptiveWarmupVisit({
+      state,
+      childId: selectedChild.id,
+      grade: selectedChild.grade,
+      schoolYear: selectedChild.schoolYear,
+      datasets: primaryDatasets,
+      lifecycleResolution,
+      visitType: current.warmupOnly ? 'standalone' : 'pre-activity',
+      visitId: current.adaptiveWarmupVisitId,
+      createdAt: now().toISOString(),
+      associatedPrimaryActivity,
+    })
+    if (refreshed.status === 'blocked') { setCloudError(`Warmup eligibility could not be refreshed: ${refreshed.reason}`); return }
+    const revalidated = revalidateWarmupVisitBeforePresentation(refreshed.state, refreshed.visit.id, now().toISOString(), false)
+    if (!revalidated.visit || revalidated.reason) { setCloudError(`Warmup eligibility could not be refreshed: ${revalidated.reason || 'The visit is unavailable.'}`); return }
+    let baseVisit = refreshed.visit
+    for (const transition of revalidated.transitions) {
+      try {
+        appendPendingWarmupTransition(window.localStorage, transition, baseVisit)
+        if (auth.user && family) {
+          await commitCloudWarmupTransition(family.id, selectedChild.id, transition)
+          removePendingWarmupTransition(window.localStorage, transition.transitionId)
+        } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(revalidated.state))) {
+          removePendingWarmupTransition(window.localStorage, transition.transitionId)
+        } else throw new Error('The browser could not save the eligibility update.')
+      } catch (error) { setCloudError(`Warmup eligibility is preserved for recovery: ${authErrorMessage(error)}`); return }
+      baseVisit = transition.nextVisit
+    }
+    setState(revalidated.state)
+    if (revalidated.visit.status === 'completed') {
+      if (current.primaryQueue.length === 0) completeSession({ ...current, segment: 'primary', stage: 'complete', queue: [], index: 0 }, revalidated.state)
+      else setSession(primaryStartState(current))
+      return
+    }
+    setSession({ ...current, index: revalidated.visit.nextPosition, stage: 'dictation' })
+  }
   const completeDictationWord = (revealMethod: 'timer' | 'skip_timer' = 'timer') => setSession((current) => {
     if (!current || current.stage !== 'dictation') return current
     if (current.segment === 'primary' && current.acquisition) {
@@ -286,6 +516,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       if (!prompt) return current
       return { ...current, acquisition: revealAcquisitionPrompt(current.acquisition), currentRevealMethod: revealMethod, stage: 'review' }
     }
+    if (current.segment === 'warmup' && current.adaptiveWarmupVisitId) return { ...current, currentRevealMethod: revealMethod, stage: 'review' }
     if (current.index < current.queue.length - 1) return { ...current, stage: 'interstitial', index: current.index + 1 }
     if (current.segment === 'warmup') return { ...current, stage: 'review', index: 0 }
     return { ...current, stage: 'complete' }
@@ -294,9 +525,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (session?.stage === 'complete' && session.primaryQueue.length === 0) { completeSession({ ...session, segment: 'primary', queue: [], primaryAnswers: [] }); return }
     setSession((current) => current && current.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current)
   }
-  const completeSession = (finished: PracticeSession) => {
+  const completeSession = (finished: PracticeSession, baseState: AppState = state) => {
     const completionDate = now()
-    const committed = commitCompletedSession(state, finished, completionDate)
+    const committed = commitCompletedSession(baseState, finished, completionDate)
     setState(committed)
     if (auth.user && family && finished.cloudSessionId && selectedChild) {
       const cloud = cloudSessionsRef.current.get(finished.cloudSessionId)
@@ -304,7 +535,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         // Acquisition attempts are already committed atomically with their
         // progression checkpoints. Session completion must not write them a
         // second time under a different ID.
-        const answers = [...finished.warmupAnswers, ...(finished.primaryPhase === 'acquisition' ? [] : finished.primaryAnswers)]
+        const answers = [...(finished.adaptiveWarmupVisitId ? [] : finished.warmupAnswers), ...(finished.primaryPhase === 'acquisition' ? [] : finished.primaryAnswers)]
         const attempts: CloudAttempt[] = answers.map((answer, index) => ({ id: `${finished.id}-${answer.word.id}-${index}`, sessionId: finished.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: finished.warmupAnswers.includes(answer) ? 'warmup' : finished.primaryPhase, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
         void Promise.all([
           completeCloudSession(family.id, selectedChild.id, cloud, attempts, committed.scores.filter((score) => score.sessionId === finished.id)),
@@ -323,8 +554,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (auth.user && family && selectedChild && current.cloudSessionId) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
       if (cloud) {
-        const attempts: CloudAttempt[] = current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const }))
-        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length === current.warmupQueue.length ? 'completed' as const : 'in_progress' as const
+        const attempts: CloudAttempt[] = current.adaptiveWarmupVisitId ? [] : current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const }))
+        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length === current.warmupQueue.length ? 'completed' as const : current.warmupAnswers.length > 0 ? 'partial' as const : 'in_progress' as const
         void Promise.all([
           finishCloudSession(family.id, selectedChild.id, { ...cloud, warmupStatus }, 'completed', attempts, committed.scores.filter((score) => score.sessionId === current.id)),
           saveCloudAdaptiveState(family.id, selectedChild.id, cloudAdaptiveStateForSave(committed, selectedChild.id, completionDate.toISOString())),
@@ -346,8 +577,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (auth.user && family && selectedChild && current.cloudSessionId) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
       if (cloud) {
-        const attempts: CloudAttempt[] = current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup', correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
-        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length > 0 ? 'completed' as const : 'not_started' as const
+        const attempts: CloudAttempt[] = current.adaptiveWarmupVisitId ? [] : current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup', correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
+        const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length === current.warmupQueue.length ? 'completed' as const : current.warmupAnswers.length > 0 ? 'partial' as const : 'not_started' as const
         void Promise.all([
           skipCloudTestReview(family.id, selectedChild.id, { ...cloud, warmupStatus }, attempts),
           saveCloudAdaptiveState(family.id, selectedChild.id, cloudAdaptiveStateForSave(committed, selectedChild.id, completionDate.toISOString())),
@@ -358,8 +589,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setSession(null)
     setView('home')
   }
-  const answer = (correct: boolean | 'skip-warmup' | 'skip-test-review' | 'done') => {
+  const answer = (correct: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') => {
     if (correct === 'skip-warmup') { skipWarmup(); return }
+    if (correct === 'continue-primary') { continueToPrimaryAfterPartialWarmup(); return }
     if (correct === 'skip-test-review') { skipTestReview(); return }
     if (correct === 'done') { finishAcquisitionForToday(); return }
     const current = session
@@ -414,6 +646,42 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     const response: SessionAnswer = { word: current.queue[current.index], correct, revealMethod: current.currentRevealMethod || 'timer' }
     const isWarmup = current.segment === 'warmup'
+    if (isWarmup && current.adaptiveWarmupVisitId) {
+      let checkpoint
+      try {
+        checkpoint = createWarmupAnswerCheckpoint({ state, visitId: current.adaptiveWarmupVisitId, correct, revealMethod: response.revealMethod, occurredAt: now().toISOString() })
+        appendPendingWarmupTransition(window.localStorage, checkpoint.transition, checkpoint.baseVisit, checkpoint.baseMastery)
+      } catch (error) {
+        setCloudError(`This Warmup answer was not advanced because it could not be checkpointed safely: ${authErrorMessage(error)}`)
+        return
+      }
+      const { transition } = checkpoint
+      const applied = applyWarmupTransitionToAppState(state, transition, Boolean(auth.user && family))
+      if (applied.status !== 'applied') {
+        removePendingWarmupTransition(window.localStorage, transition.transitionId)
+        setCloudError(`This Warmup answer was not advanced because saved progress changed: ${applied.status === 'conflict' ? applied.reason : 'The answer was already applied.'}`)
+        return
+      }
+      setState(applied.state)
+      if (auth.user && family && selectedChild) {
+        void commitCloudWarmupTransition(family.id, selectedChild.id, transition).then(() => {
+          removePendingWarmupTransition(window.localStorage, transition.transitionId)
+          setState((existing) => markWarmupTransitionCommitted(existing, transition.transitionId))
+        }).catch((error) => setCloudError(`Warmup progress is saved on this device and will retry: ${authErrorMessage(error)}`))
+      } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(applied.state))) {
+        removePendingWarmupTransition(window.localStorage, transition.transitionId)
+      } else {
+        setCloudError('This Warmup answer is preserved in the recovery journal and will retry when the app reopens.')
+      }
+      const answers = [...current.warmupAnswers, response]
+      if (transition.nextVisit.status === 'completed') {
+        if (current.primaryQueue.length === 0) { completeSession({ ...current, segment: 'primary', stage: 'complete', queue: [], index: 0, warmupAnswers: answers, primaryAnswers: [] }, applied.state); return }
+        setSession({ ...current, segment: 'primary', stage: 'interstitial', queue: current.primaryQueue, index: 0, warmupAnswers: answers, currentRevealMethod: undefined })
+      } else {
+        setSession({ ...current, warmupAnswers: answers, index: transition.nextVisit.nextPosition, stage: 'interstitial', currentRevealMethod: undefined })
+      }
+      return
+    }
     const answers = isWarmup ? [...current.warmupAnswers, response] : [...current.primaryAnswers, response]
     if (auth.user && family && current.cloudSessionId && selectedChild) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
@@ -460,7 +728,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   if (dataLoading && auth.user && familyChildren.length === 0) return <div className="auth-shell"><div className="auth-card"><Sparkles size={28} /><h1>Loading your family</h1><p>Securely loading children and weekly datasets…</p></div></div>
   if (!selectedChild) return <div className="auth-shell"><div className="auth-card"><h1>Add a child to begin</h1><p>{cloudError || 'Your family does not have an active child profile yet.'}</p><button className="primary-button" onClick={() => setShowProfiles(true)}>Add child</button></div>{showProfiles && family && <ProfileModal children={familyChildren} selectedChildId="" onSelect={() => undefined} onClose={() => setShowProfiles(false)} onAdd={async (input) => { const created = await createChild(family.id, input); setFamilyChildren([{ ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id); setShowProfiles(false) }} onUpdate={async () => undefined} />}</div>
   const legacyCount = state.legacyRecords.filter((record) => record.childId === selectedChild.id).length
-  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length > 0 && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} warmupWords={warmupSelection?.words.length || 0} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length === 0 && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupSelection?.words.length || 0} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} />}{view === 'history' && <HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} onBack={() => setView('home')} />}</main>{view !== 'practice' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}</div>
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length > 0 && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} warmupWords={warmupWordCount} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length === 0 && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupWordCount} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} />}{view === 'history' && <HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} warmupGraphPoints={(state.warmupGraphPointsV1 || []).filter((point) => point.childId === selectedChild.id)} onBack={() => setView('home')} />}</main>{view !== 'practice' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}</div>
 }
 
 function LocalImportControl({ disabled, onChange }: { disabled: boolean; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
@@ -481,14 +749,14 @@ function AuthScreen() {
   return <div className="auth-shell"><div className="auth-card"><div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>weekly<span className="brand-accent">dictation</span></span></div><p className="eyebrow">Private family practice</p><h1>{mode === 'sign-up' ? 'Create your parent account' : mode === 'reset' ? 'Reset your password' : 'Welcome back'}</h1><p className="auth-copy">Sign in to keep children, sessions, and progress safely separated by family.</p><form onSubmit={submit}><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></label>{mode !== 'reset' && <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} /></label>}{error && <div className="error-banner">{error}</div>}{message && <div className="success-banner">{message}</div>}<button className="primary-button auth-submit" disabled={busy}>{busy ? 'Working…' : mode === 'reset' ? 'Send reset email' : mode === 'sign-up' ? 'Create account' : 'Sign in'}</button></form><div className="auth-links">{mode !== 'sign-in' && <button onClick={() => { setMode('sign-in'); setMessage(null); setError(null) }}>Sign in</button>}{mode !== 'sign-up' && <button onClick={() => { setMode('sign-up'); setMessage(null); setError(null) }}>Create account</button>}{mode !== 'reset' && <button onClick={() => { setMode('reset'); setMessage(null); setError(null) }}>Forgot password?</button>}</div></div></div>
 }
 
-function HomeView({ child, profile, datasets, scores, acquisitionTarget, testReviewTarget, warmupWords, completedSummary, currentDate, lifecycleResolution, onStart, onHistory, onProfiles }: { child: Child; profile: WritingPracticeProfile; datasets: Dataset[]; scores: DatasetScore[]; acquisitionTarget: PracticeTarget | null; testReviewTarget: PracticeTarget | null; warmupWords: number; completedSummary: string | null; currentDate: Date; lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>; onStart: (target: PracticeTarget) => void; onHistory: () => void; onProfiles: () => void }) {
+function HomeView({ child, profile, datasets, scores, acquisitionTarget, testReviewTarget, warmupWords, completedSummary, currentDate, lifecycleResolution, onStart, onStartWarmup, onHistory, onProfiles }: { child: Child; profile: WritingPracticeProfile; datasets: Dataset[]; scores: DatasetScore[]; acquisitionTarget: PracticeTarget | null; testReviewTarget: PracticeTarget | null; warmupWords: number; completedSummary: string | null; currentDate: Date; lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>; onStart: (target: PracticeTarget) => void; onStartWarmup: () => void; onHistory: () => void; onProfiles: () => void }) {
   const today = scores.filter((score) => score.childId === child.id && score.sessionDate === localDateKey(currentDate)).length
   const displayDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(currentDate)
   const orderedDatasets = sortDatasetsNewestFirst(datasets)
   const presentation = profile.presentation
   const warmupOptional = profile.preActivityWarmupRequirement === 'optional'
   const tier2Words = acquisitionTarget?.dataset.vocabulary?.tier2 || []
-  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{presentation?.homeEyebrow || displayDate}</p><h1>{presentation?.homeHeading || 'Ready when you are'}, <em>{child.name}.</em></h1><p className="subhead">{presentation?.homeDescription || `Choose your activity. Warmup is offered first and ${warmupOptional ? 'may be skipped' : 'is required'}.`}</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice saved.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice activities"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> {warmupOptional ? 'Optional first activity' : 'Required first activity'}</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} mastery target${warmupWords === 1 ? '' : 's'} selected. ${warmupOptional ? 'You may complete or skip this Warmup.' : 'Complete this Warmup before the teaching activity.'}` : 'No prior mastery targets are available; the selected activity will continue directly.'}</p></article>{acquisitionTarget && <PracticeLaneCard target={acquisitionTarget} profile={profile} onStart={onStart} />}{testReviewTarget && <PracticeLaneCard target={testReviewTarget} profile={profile} onStart={onStart} resumeAcquisitionTarget={acquisitionTarget} />}</section>{tier2Words.length > 0 && <Tier2ReadingModule key={acquisitionTarget!.dataset.id} words={tier2Words} /> }<section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} lifecycle={requireDatasetLifecycle(lifecycleResolution, dataset.id)} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Test Review scores require the complete review.</span></div><div className="strip-arrow">→</div></section></div>
+  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{presentation?.homeEyebrow || displayDate}</p><h1>{presentation?.homeHeading || 'Ready when you are'}, <em>{child.name}.</em></h1><p className="subhead">{presentation?.homeDescription || `Choose your activity. Warmup is offered first and ${warmupOptional ? 'may be skipped' : 'is required'}.`}</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice saved.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice activities"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> Independently available</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} unique mastery target${warmupWords === 1 ? '' : 's'} selected. ${warmupOptional ? 'A pre-activity Warmup may also be skipped.' : 'Pre-activity Warmup is required.'}` : 'No prior mastery targets are available yet.'}</p>{warmupWords > 0 && <button className="primary-button" onClick={onStartWarmup}>Start mastery Warmup <ArrowLeft size={17} /></button>}</article>{acquisitionTarget && <PracticeLaneCard target={acquisitionTarget} profile={profile} onStart={onStart} />}{testReviewTarget && <PracticeLaneCard target={testReviewTarget} profile={profile} onStart={onStart} resumeAcquisitionTarget={acquisitionTarget} />}</section>{tier2Words.length > 0 && <Tier2ReadingModule key={acquisitionTarget!.dataset.id} words={tier2Words} /> }<section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} lifecycle={requireDatasetLifecycle(lifecycleResolution, dataset.id)} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Test Review scores require the complete review.</span></div><div className="strip-arrow">→</div></section></div>
 }
 
 function PracticeLaneCard({ target, profile, onStart, resumeAcquisitionTarget }: { target: PracticeTarget; profile: WritingPracticeProfile; onStart: (target: PracticeTarget) => void; resumeAcquisitionTarget?: PracticeTarget | null }) {
@@ -528,7 +796,8 @@ function NoDatasetView({ child, datasets, warmupWords, localMode, onStartWarmup,
 
 function SetCard({ dataset, lifecycle, score, tone }: { dataset: Dataset; lifecycle: DatasetLifecycle; score: DatasetScore | null; tone: 'yellow' | 'lavender' }) { return <article className={`set-card set-${tone}`}><div className="set-card-top"><span className="set-label">{lifecycleLabel(lifecycle)}</span><span className="score-badge">{score ? `${score.percent}% · ${phaseLabel(score.phase)}` : 'Not scored'}</span></div><h3>{dataset.dateRange}</h3><p className="set-date">{dataset.description} · {dataset.words.length} words</p><div className="set-footer"><span>{dataset.grade}</span><div className="tiny-progress"><span style={{ width: `${score?.percent || 0}%` }} /></div></div></article> }
 
-function HistoryView({ child, datasets, scores, legacyCount, onBack }: { child: Child; datasets: Dataset[]; scores: DatasetScore[]; legacyCount: number; onBack: () => void }) { const ordered = sortDatasetsNewestFirst(datasets); return <div className="page history-page"><button className="back-link" onClick={onBack}><ArrowLeft size={16} /> Back to practice</button><div className="history-heading"><div><p className="eyebrow">Progress for {child.name}</p><h1>Small steps,<br /><em>real progress.</em></h1></div><div className={`avatar avatar-${child.color} avatar-large`}>{child.initials}</div></div>{legacyCount > 0 && <div className="history-note"><History size={17} /><span>{legacyCount} legacy result{legacyCount === 1 ? '' : 's'} preserved without an invented date range.</span></div>}{ordered.map((dataset) => <DatasetGraph key={dataset.id} dataset={dataset} scores={scores.filter((score) => score.childId === child.id && score.datasetId === dataset.id)} />)}</div> }
+function HistoryView({ child, datasets, scores, legacyCount, warmupGraphPoints, onBack }: { child: Child; datasets: Dataset[]; scores: DatasetScore[]; legacyCount: number; warmupGraphPoints: WarmupGraphPoint[]; onBack: () => void }) { const ordered = sortDatasetsNewestFirst(datasets); return <div className="page history-page"><button className="back-link" onClick={onBack}><ArrowLeft size={16} /> Back to practice</button><div className="history-heading"><div><p className="eyebrow">Progress for {child.name}</p><h1>Small steps,<br /><em>real progress.</em></h1></div><div className={`avatar avatar-${child.color} avatar-large`}>{child.initials}</div></div>{legacyCount > 0 && <div className="history-note"><History size={17} /><span>{legacyCount} legacy result{legacyCount === 1 ? '' : 's'} preserved without an invented date range.</span></div>}<WarmupProgressGraph points={warmupGraphPoints} />{ordered.map((dataset) => <DatasetGraph key={dataset.id} dataset={dataset} scores={scores.filter((score) => score.childId === child.id && score.datasetId === dataset.id)} />)}</div> }
+
 function DatasetGraph({ dataset, scores }: { dataset: Dataset; scores: DatasetScore[] }) {
   const orderedScores = [...scores].sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
   return <section className="dataset-graph progress-card">

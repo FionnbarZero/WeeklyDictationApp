@@ -1,6 +1,6 @@
 # Pure Adaptive Warmup model
 
-This branch adds the approved future Adaptive Warmup model without activating it. The current application continues to use the mechanically extracted compatibility engine in `src/warmup/engine.ts` and continues to store application state version 2.
+This document originally accompanied the pure, inactive Adaptive Warmup model. The model is now activated for Grade 2 Tier 1 writing through the modular application boundary in `src/application/warmup/` and the visit boundary in `src/warmup/visits/`. The mechanically extracted compatibility engine remains only for migration-era compatibility. The outer application state remains version 2 while the new mastery and visit records use their own explicit versioned contracts.
 
 ## Boundary
 

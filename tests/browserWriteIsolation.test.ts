@@ -39,8 +39,11 @@ test('dashboard exposes separate Acquisition and Test Review start controls', ()
 
 test('Acquisition and Test Review use the configured six-trial adaptive Warmup', () => {
   const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
-  assert.match(source, /targetSize: primaryChoices\.length > 0 \? practiceProfile\.lifecycle\.primaryWarmupTrials : undefined/)
-  assert.match(source, /warmup: warmupSelection/)
+  const profile = readFileSync(sourcePath('src/warmup/adaptive/profiles/grade2.ts'), 'utf8')
+  assert.match(source, /visitType: target \? 'pre-activity' : 'standalone'/)
+  assert.match(source, /warmup: warmupSelectionForSession/)
+  assert.match(profile, /'pre-activity': \{\s*maximum: 6/)
+  assert.match(profile, /allocation: \{ 'mastery-rotation': 3, 'recent-entry': 2, 'needs-attention': 1 \}/)
 })
 
 test('cloud state reloads when a child grade changes', () => {

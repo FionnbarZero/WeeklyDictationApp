@@ -475,14 +475,14 @@ Activate the preserved Tier 2 data through a shared character-reading module wit
 
 The canonical source, lifecycle, Acquisition engine/transition, domain-contract, Warmup extraction, pure Adaptive Warmup model, Grade 5 source/lifecycle, Kindergarten source/lifecycle/production-practice scaffold, curriculum import result, and shared Learning Hub boundaries are complete on `main`. Grade 5 and Kindergarten production sources remain deliberately inactive even though their isolated architecture exists.
 
-The remaining persistence work is independent and must not be represented as one long grade-branch chain:
+The persistence initiatives remain separate stored-model boundaries even when one implementation branch is temporarily stacked for integration testing:
 
 ```text
 updated main after PRs #15 and #16
-├── feature/persistent-warmup-visits
+├── feature/persistent-warmup-visits (implemented; final audit and merge pending)
 └── refactor/acquisition-persistence-contract
             ↓ merge
-    feature/persistent-acquisition
+    feature/persistent-acquisition (implemented; final merge sequence pending)
 ```
 
 Persistent Warmup visits and persistent Acquisition own different stored models. Either initiative may proceed first when it stays within its boundary, but they must not be combined in one branch. Every branch starts from updated `main`; no grade branch is created from another unmerged grade branch.
@@ -638,6 +638,8 @@ Goal: activate the approved model through safe versioned local and cloud persist
 - Add Firebase Emulator coverage proving valid owned writes succeed while malformed IDs, invalid status or revision transitions, conflicting duplicate transitions, stale writes, and cross-family reads or writes are rejected. Add rendered-browser test infrastructure before claiming cloud and UI acceptance.
 
 Acceptance gate: local and cloud migration, raw-record preservation on failure, exact resumption, idempotent retry, stale-device conflict behavior, security-rule ownership and validation, cross-family rejection, one graph point per visit, short completed queues, skip-before-answer, partial continuation, and standalone entry all pass without Acquisition, lifecycle, Test Review, or weekly-score regressions.
+
+Implementation status: complete on `feature/persistent-warmup-visits`, pending final read-only audit and merge sequencing. The activated boundary keeps the outer application state at version 2 during the migration window, uses a stable materialized queue, revalidates each unanswered entry immediately before presentation, journals interrupted local/cloud transitions, commits visit/queue-entry/mastery/attempt/receipt/graph updates atomically, quarantines malformed cloud records individually, exposes standalone Warmup, and renders the per-visit line graph. The cloud form stores compact visit metadata separately from independently validated queue-entry records so new grade profiles do not require larger embedded-array rules. The full unit/integration suite, production build, Firestore Emulator ownership/stale-write scenarios, and rendered-browser reload/resume scenario are required final gates.
 
 One presentation-level decision remains for this branch: when a mastery term has several linked source occurrences with different context sentences, choose the approved occurrence used for its prompt and audio. The current recommendation is the newest mastery-eligible occurrence.
 
@@ -1000,7 +1002,7 @@ Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosti
 
 ## Current approved implementation — Persistent Acquisition activation
 
-The pure `refactor/acquisition-persistence-contract` boundary and the focused Earned-DT recovery prerequisite are complete. `feature/persistent-acquisition` activates the versioned checkpoint through the application coordinator, durable browser journal, one atomic Firestore commit, migration-era dual reads, strict revision rules, and recovery tests. Its repeatable Firebase Emulator, rendered-browser resume, backup/restore, full-suite, and build gates are implemented; final diff review and merge remain required. Persistent Adaptive Warmup visits remain the next separate stored-model initiative and must not be folded into this branch.
+The pure `refactor/acquisition-persistence-contract` boundary and the focused Earned-DT recovery prerequisite are complete. `feature/persistent-acquisition` activates the versioned checkpoint through the application coordinator, durable browser journal, one atomic Firestore commit, migration-era dual reads, strict revision rules, and recovery tests. Its repeatable Firebase Emulator, rendered-browser resume, backup/restore, full-suite, and build gates are implemented; final diff review and merge remain required. `feature/persistent-warmup-visits` separately activates the approved Adaptive Warmup model with materialized queues, atomic visit/mastery/attempt/receipt/graph updates, exact resume, standalone entry, security rules, and a rendered visit graph; it also awaits final audit and merge.
 
 ## Deferred features
 
@@ -1047,17 +1049,17 @@ Already implemented:
 - A mechanically extracted Warmup compatibility boundary in `src/warmup/`. It preserves the current Grade 2 runtime and stored shapes; its legacy categories, shortage order, and repetition behavior are extraction evidence rather than the approved future Adaptive Warmup contract.
 - Grade 2 Acquisition strategy v3 with Familiar and Earned DTs, independent shuffle bags, the exact 10-position Expanded Trials sequence, four target timers, six-position Correction, three-error restart, and ongoing DT-only practice. Kindergarten and Grade 5 own explicit strategy identities rather than inheriting a Grade 2 fallback.
 - Revision-aware local and cloud Acquisition checkpoints, atomic transition receipts/attempts/DT observations/next positions, durable browser retry journaling, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
-- The pure Adaptive Warmup model, migration, profile-upgrade, evidence-replay, and lifecycle-reconciliation boundaries, still isolated from production state version 2 and child-facing behavior.
+- The Adaptive Warmup model, migration, profile-upgrade, evidence-replay, lifecycle reconciliation, persistent visit boundary, standalone entry, and per-visit graph. The outer application state remains version 2 only as the migration envelope; the approved model is active for Grade 2 Tier 1 writing.
 - Source-neutral `CurriculumImportResult` contracts, the hardened Grade 5 source/lifecycle integration, the Kindergarten lifecycle and production-practice scaffold behind an inactive source gate, and the shared Learning Hub presentation boundary added through PRs #15 and #16.
 
 Required revisions before a production pilot:
 
-- Activate the approved pure Adaptive Warmup model through revision-aware persistent Warmup visits. Replace the remaining incomplete-Warmup cleanup behavior with durable materialized queues and atomic attempt, mastery, visit, and graph-point transitions.
+- Complete final audit and merge sequencing for the activated revision-aware Adaptive Warmup visits; then monitor real-data migration and restore evidence before removing compatibility readers.
 - Complete the monitored Acquisition rollout: back up and restore real child data, confirm migration telemetry, verify staging across devices, then retire migration-era legacy writers/readers only after the approved support window.
-- Add the full Warmup history line graph with target, attempted, correct, percentage, and partial/completed data.
+- Validate the completed Warmup history line graph with real child data and add the derived monthly Mastery Rotation report without replacing visit-level history.
 - Keep the completed canonical source boundary, Grade 5 table-role adapter/lifecycle, Kindergarten Monday–Sunday Sheets adapter/unit lifecycle, and shared Learning Hub boundary stable while Grade 5 and Kindergarten source activation remains deliberately blocked.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
-- Acquisition progressions, stable transition/attempt IDs, exact next-position updates, DT observations, stale revisions, and cross-family rejection now have Emulator coverage. Module-specific Warmup visits and Test Review 1/2 provisional persistence still need their own Emulator gates when those stored models are activated.
+- Acquisition progressions and Adaptive Warmup visits now have Emulator coverage for stable IDs, exact next-position updates, atomic receipts/facts, stale revisions, and cross-family rejection. Test Review 1/2 provisional persistence still needs its own stored-model gate before Grade 5 activation.
 - Add a server-managed DT profile that Firestore rules can validate; the related Acquisition attempt, DT observation, receipt, and next-position writes already use one atomic commit.
 - Prototype and test the in-memory handwriting pad. Keep the cumulative-star reward system in its separate Kindergarten-only branch until its award, redemption, and parent-control rules are approved.
 - Create separate staging and production Firebase environments. Test Firestore rules in the Emulator Suite before deployment.

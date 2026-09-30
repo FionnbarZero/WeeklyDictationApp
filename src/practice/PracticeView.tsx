@@ -22,7 +22,7 @@ export type PracticeViewProps = {
   onInterstitialComplete: () => void
   onDictationComplete: (method?: 'timer' | 'skip_timer') => void
   onStartReview: () => void
-  onAnswer: (answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') => void
+  onAnswer: (answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') => void
   onSpeakWord: (word: Word, warmup: boolean) => StopSpeech
   onSpeakReviewInstruction: () => StopSpeech
   reviewInstruction: string
@@ -93,6 +93,7 @@ export function PracticeView({
     <div className="practice-top">
       <button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button>
       <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>
+      {session.segment === 'warmup' && !session.warmupOnly && session.warmupAnswers.length > 0 && <button className="replay-button" onClick={() => onAnswer('continue-primary')}>Continue to activity</button>}
       {session.primaryPhase === 'acquisition' && session.segment === 'primary' && <button className="replay-button" onClick={() => onAnswer('done')}>Done for today</button>}
       {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Skip Test Review</button>}
     </div>

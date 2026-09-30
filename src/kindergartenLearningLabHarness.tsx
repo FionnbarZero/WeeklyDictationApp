@@ -251,7 +251,7 @@ function KindergartenLearningLab() {
     leavePractice('Returned to the paths. This visit’s writing score is shown in the Ninja Record.')
   }
 
-  function answerWriting(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
+  function answerWriting(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
     if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
     setWritingPractice((current) => current ? {
@@ -276,7 +276,7 @@ function KindergartenLearningLab() {
     })
   }
 
-  function answerTestReview(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
+  function answerTestReview(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
     const current = testReviewSession
     if (!current) return
     if (answer === 'skip-test-review') {
