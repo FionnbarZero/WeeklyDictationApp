@@ -23,8 +23,13 @@ import { practiceProfileForGrade } from './practice/profiles/registry'
 import type { WritingPracticeProfile } from './practice/profiles/model'
 import { practiceTargetsForLifecycle } from './practice/targets'
 import { lifecycleStrategyForGradeAndSchoolYear } from './lifecycle/registry'
+import { Tier2ReadingPractice, type Tier2ReadingPracticeSummary } from './readingPractice/Tier2ReadingPractice'
+import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from './tier2/contracts'
+import { resolveTier2ReadingLifecycle } from './tier2/lifecycle'
+import { tier2ReadingPathwayTargets } from './tier2/pathway'
+import { tier2ReadingProfileForScope } from './tier2/registry'
 
-type View = 'home' | 'practice' | 'history'
+type View = 'home' | 'practice' | 'reading' | 'history'
 type Child = ChildProfile & { name: string; color: string; initials: string }
 type AppClock = () => Date
 
@@ -111,6 +116,11 @@ function speakWord(word: Word, warmup: boolean) { return playSpeechSequence(audi
 function speakReviewInstruction() { return playSpeechSequence([{ text: REVIEW_INSTRUCTION, rate: 0.9, lang: 'en-GB' }], 0) }
 function lifecycleLabel(lifecycle: DatasetLifecycle) { return lifecycle === 'acquisition' ? 'Acquisition' : lifecycle === 'test-review' ? 'Test Review' : lifecycle === 'future' ? 'Future' : lifecycle === 'no-instruction' ? 'Writing Workshop' : 'Mastered' }
 function phaseLabel(phase: LifecyclePhase) { return phase === 'test-review' ? 'Test Review' : phase === 'warmup' ? 'Warmup' : 'Acquisition' }
+function readingPathwayLabel(pathway: Tier2ReadingPathway) {
+  if (pathway.kind === 'acquisition') return 'Learn to Read'
+  if (pathway.kind === 'mastery') return 'Reading Mastery'
+  return pathway.cycle && pathway.cycle > 1 ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'
+}
 
 function unlockSpeech() {
   if ('speechSynthesis' in window) window.speechSynthesis.resume()
@@ -134,6 +144,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [selectedChildId, setSelectedChildId] = useState(() => localStorageGet('weekly-dictation-child') || demoChildren[0].id)
   const [state, setState] = useState<AppState>(() => firebaseConfigReady ? createInitialState() : loadLocalApplicationState())
   const [session, setSession] = useState<PracticeSession | null>(null)
+  const [readingPathway, setReadingPathway] = useState<Tier2ReadingPathway | null>(null)
   const completedSessionRef = useRef<string | null>(null)
   const cloudSessionsRef = useRef(new Map<string, CloudSession>())
   const [showChildMenu, setShowChildMenu] = useState(false); const [showProfiles, setShowProfiles] = useState(false); const [completedSummary, setCompletedSummary] = useState<string | null>(null)
@@ -146,9 +157,32 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     ? practiceProfileForGrade(selectedChild?.grade)
     : null
   const lifecycleStrategy = lifecycleStrategyForGradeAndSchoolYear(selectedChild?.grade, selectedChild?.schoolYear)
+  const readingProfile = productionSourceIsActive(selectedChild?.grade, selectedChild?.schoolYear)
+    ? tier2ReadingProfileForScope(selectedChild?.grade, lifecycleStrategy?.schoolYearKey)
+    : null
   const primaryDatasets = useMemo(() => selectedChild ? filterDatasetsForChild(state.datasets, selectedChild.grade, selectedChild.schoolYear) : [], [selectedChild, state.datasets])
   const currentDate = now(); const currentDateKey = localDateKey(currentDate)
   const lifecycleResolution = useMemo(() => lifecycleStrategy ? resolveDatasetLifecycles(primaryDatasets, currentDate) : null, [lifecycleStrategy, primaryDatasets, currentDateKey])
+  const readingLifecycle = useMemo(() => selectedChild && readingProfile ? resolveTier2ReadingLifecycle(
+    readingProfile,
+    {
+      scope: {
+        grade: selectedChild.grade,
+        schoolYearKey: readingProfile.schoolYearKey,
+        currentDateKey,
+      },
+      sets: primaryDatasets.map((dataset) => ({
+        datasetId: dataset.id,
+        grade: dataset.grade,
+        schoolYearKey: readingProfile.schoolYearKey,
+        activationDate: dataset.startDate,
+        instructionalEndDate: dataset.endDate,
+        kind: dataset.isWritingWorkshop ? 'no-instruction' : 'vocabulary',
+      })),
+      progressionEvents: [],
+    },
+    primaryDatasets,
+  ) : null, [selectedChild, readingProfile, primaryDatasets, currentDateKey])
   const primaryChoices = (lifecycleResolution ? practiceTargetsForLifecycle(lifecycleResolution) : [])
     .filter((choice) => Boolean(practiceProfile && choice.dataset.words.length > 0 && !choice.dataset.isWritingWorkshop))
   const warmupPreview = useMemo(() => selectedChild && practiceProfile && lifecycleResolution ? prepareAdaptiveWarmupVisit({ state, childId: selectedChild.id, grade: selectedChild.grade, schoolYear: selectedChild.schoolYear, datasets: primaryDatasets, lifecycleResolution, visitType: 'standalone', visitId: 'warmup-preview-only', createdAt: currentDate.toISOString(), random: () => 0.999 }) : null, [selectedChild, practiceProfile, primaryDatasets, state, currentDateKey, lifecycleResolution])
@@ -230,7 +264,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     return () => { cancelled = true }
   }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade, selectedChild?.schoolYear])
 
-  const chooseChild = (childId: string) => { setSelectedChildId(childId); setShowChildMenu(false); setShowProfiles(false); setSession(null); setView('home') }
+  const chooseChild = (childId: string) => { setSelectedChildId(childId); setShowChildMenu(false); setShowProfiles(false); setSession(null); setReadingPathway(null); setView('home') }
   const confirmPromotion = async () => {
     if (!selectedChild) return
     const promoted = nextGrade(selectedChild.grade); if (!promoted) return
@@ -398,6 +432,16 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setSession(null); setView(nextView)
   }
   const exitPractice = () => leavePractice('home')
+  const startReading = (pathway: Tier2ReadingPathway) => {
+    setCompletedSummary(null)
+    setReadingPathway(pathway)
+    setView('reading')
+  }
+  const finishReading = (summary: Tier2ReadingPracticeSummary) => {
+    setCompletedSummary(`Reading practice complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This prototype reading visit was not saved.`)
+    setReadingPathway(null)
+    setView('home')
+  }
   const primaryStartState = (current: PracticeSession): PracticeSession => current.primaryQueue.length === 0
     ? { ...current, segment: 'primary', stage: 'complete', queue: [], index: 0 }
     : current.acquisition?.prompt
@@ -703,7 +747,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     completedSessionRef.current = current.id
     completeSession({ ...current, primaryAnswers: answers })
   }
-  const navigate = (nextView: View) => { if (view === 'practice' && nextView !== 'practice') { leavePractice(nextView); return }; setView(nextView) }
+  const navigate = (nextView: View) => { if (view === 'practice' && nextView !== 'practice') { leavePractice(nextView); return }; if (view === 'reading' && nextView !== 'reading') setReadingPathway(null); setView(nextView) }
   const importLocalDeck = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -728,7 +772,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   if (dataLoading && auth.user && familyChildren.length === 0) return <div className="auth-shell"><div className="auth-card"><Sparkles size={28} /><h1>Loading your family</h1><p>Securely loading children and weekly datasets…</p></div></div>
   if (!selectedChild) return <div className="auth-shell"><div className="auth-card"><h1>Add a child to begin</h1><p>{cloudError || 'Your family does not have an active child profile yet.'}</p><button className="primary-button" onClick={() => setShowProfiles(true)}>Add child</button></div>{showProfiles && family && <ProfileModal children={familyChildren} selectedChildId="" onSelect={() => undefined} onClose={() => setShowProfiles(false)} onAdd={async (input) => { const created = await createChild(family.id, input); setFamilyChildren([{ ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id); setShowProfiles(false) }} onUpdate={async () => undefined} />}</div>
   const legacyCount = state.legacyRecords.filter((record) => record.childId === selectedChild.id).length
-  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length > 0 && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} warmupWords={warmupWordCount} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length === 0 && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupWordCount} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} />}{view === 'history' && <HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} warmupGraphPoints={(state.warmupGraphPointsV1 || []).filter((point) => point.childId === selectedChild.id)} onBack={() => setView('home')} />}</main>{view !== 'practice' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}</div>
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice' || view === 'reading'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length > 0 && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} readingLifecycle={readingLifecycle} warmupWords={warmupWordCount} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onStartWarmup={() => void startPractice(null)} onStartReading={startReading} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && primaryChoices.length === 0 && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupWordCount} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} />}{view === 'reading' && readingPathway && readingProfile && <Tier2ReadingPractice key={`${readingPathway.kind}-${readingPathway.cycle || 0}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`} profile={readingProfile} pathway={readingPathway} label={readingPathwayLabel(readingPathway)} onExit={() => { setReadingPathway(null); setView('home') }} onComplete={finishReading} sessionNote="Prototype reading visit · recording and results are not saved yet" />}{view === 'history' && <HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} warmupGraphPoints={(state.warmupGraphPointsV1 || []).filter((point) => point.childId === selectedChild.id)} onBack={() => setView('home')} />}</main>{view !== 'practice' && view !== 'reading' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}</div>
 }
 
 function LocalImportControl({ disabled, onChange }: { disabled: boolean; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
@@ -749,14 +793,13 @@ function AuthScreen() {
   return <div className="auth-shell"><div className="auth-card"><div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>weekly<span className="brand-accent">dictation</span></span></div><p className="eyebrow">Private family practice</p><h1>{mode === 'sign-up' ? 'Create your parent account' : mode === 'reset' ? 'Reset your password' : 'Welcome back'}</h1><p className="auth-copy">Sign in to keep children, sessions, and progress safely separated by family.</p><form onSubmit={submit}><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></label>{mode !== 'reset' && <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} /></label>}{error && <div className="error-banner">{error}</div>}{message && <div className="success-banner">{message}</div>}<button className="primary-button auth-submit" disabled={busy}>{busy ? 'Working…' : mode === 'reset' ? 'Send reset email' : mode === 'sign-up' ? 'Create account' : 'Sign in'}</button></form><div className="auth-links">{mode !== 'sign-in' && <button onClick={() => { setMode('sign-in'); setMessage(null); setError(null) }}>Sign in</button>}{mode !== 'sign-up' && <button onClick={() => { setMode('sign-up'); setMessage(null); setError(null) }}>Create account</button>}{mode !== 'reset' && <button onClick={() => { setMode('reset'); setMessage(null); setError(null) }}>Forgot password?</button>}</div></div></div>
 }
 
-function HomeView({ child, profile, datasets, scores, acquisitionTarget, testReviewTarget, warmupWords, completedSummary, currentDate, lifecycleResolution, onStart, onStartWarmup, onHistory, onProfiles }: { child: Child; profile: WritingPracticeProfile; datasets: Dataset[]; scores: DatasetScore[]; acquisitionTarget: PracticeTarget | null; testReviewTarget: PracticeTarget | null; warmupWords: number; completedSummary: string | null; currentDate: Date; lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>; onStart: (target: PracticeTarget) => void; onStartWarmup: () => void; onHistory: () => void; onProfiles: () => void }) {
+function HomeView({ child, profile, datasets, scores, acquisitionTarget, testReviewTarget, readingLifecycle, warmupWords, completedSummary, currentDate, lifecycleResolution, onStart, onStartWarmup, onStartReading, onHistory, onProfiles }: { child: Child; profile: WritingPracticeProfile; datasets: Dataset[]; scores: DatasetScore[]; acquisitionTarget: PracticeTarget | null; testReviewTarget: PracticeTarget | null; readingLifecycle: Tier2ReadingLifecycle | null; warmupWords: number; completedSummary: string | null; currentDate: Date; lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>; onStart: (target: PracticeTarget) => void; onStartWarmup: () => void; onStartReading: (pathway: Tier2ReadingPathway) => void; onHistory: () => void; onProfiles: () => void }) {
   const today = scores.filter((score) => score.childId === child.id && score.sessionDate === localDateKey(currentDate)).length
   const displayDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(currentDate)
   const orderedDatasets = sortDatasetsNewestFirst(datasets)
   const presentation = profile.presentation
   const warmupOptional = profile.preActivityWarmupRequirement === 'optional'
-  const tier2Words = acquisitionTarget?.dataset.vocabulary?.tier2 || []
-  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{presentation?.homeEyebrow || displayDate}</p><h1>{presentation?.homeHeading || 'Ready when you are'}, <em>{child.name}.</em></h1><p className="subhead">{presentation?.homeDescription || `Choose your activity. Warmup is offered first and ${warmupOptional ? 'may be skipped' : 'is required'}.`}</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice saved.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice activities"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> Independently available</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} unique mastery target${warmupWords === 1 ? '' : 's'} selected. ${warmupOptional ? 'A pre-activity Warmup may also be skipped.' : 'Pre-activity Warmup is required.'}` : 'No prior mastery targets are available yet.'}</p>{warmupWords > 0 && <button className="primary-button" onClick={onStartWarmup}>Start mastery Warmup <ArrowLeft size={17} /></button>}</article>{acquisitionTarget && <PracticeLaneCard target={acquisitionTarget} profile={profile} onStart={onStart} />}{testReviewTarget && <PracticeLaneCard target={testReviewTarget} profile={profile} onStart={onStart} resumeAcquisitionTarget={acquisitionTarget} />}</section>{tier2Words.length > 0 && <Tier2ReadingModule key={acquisitionTarget!.dataset.id} words={tier2Words} /> }<section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} lifecycle={requireDatasetLifecycle(lifecycleResolution, dataset.id)} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Test Review scores require the complete review.</span></div><div className="strip-arrow">→</div></section></div>
+  return <div className="page home-page"><section className="welcome-row"><div><p className="eyebrow">{presentation?.homeEyebrow || displayDate}</p><h1>{presentation?.homeHeading || 'Ready when you are'}, <em>{child.name}.</em></h1><p className="subhead">{presentation?.homeDescription || `Choose your activity. Warmup is offered first and ${warmupOptional ? 'may be skipped' : 'is required'}.`}</p></div><button className="mini-profile" onClick={onProfiles}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span>{child.grade}</span><ChevronDown size={15} /></button></section>{completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice complete.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}<section className="practice-lane-grid" aria-label="Available practice activities"><article className="practice-lane lane-warmup"><div className="status-pill"><span className="status-dot" /> Independently available</div><h2>Adaptive Warmup</h2><p>{warmupWords > 0 ? `${warmupWords} unique mastery target${warmupWords === 1 ? '' : 's'} selected. ${warmupOptional ? 'A pre-activity Warmup may also be skipped.' : 'Pre-activity Warmup is required.'}` : 'No prior mastery targets are available yet.'}</p>{warmupWords > 0 && <button className="primary-button" onClick={onStartWarmup}>Start mastery Warmup <ArrowLeft size={17} /></button>}</article>{acquisitionTarget && <PracticeLaneCard target={acquisitionTarget} profile={profile} onStart={onStart} />}{testReviewTarget && <PracticeLaneCard target={testReviewTarget} profile={profile} onStart={onStart} resumeAcquisitionTarget={acquisitionTarget} />}</section>{readingLifecycle && <Tier2ReadingPathways lifecycle={readingLifecycle} onStart={onStartReading} />}<section className="section-heading"><div><p className="eyebrow">Weekly datasets</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section><div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} lifecycle={requireDatasetLifecycle(lifecycleResolution, dataset.id)} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} />)}</div><section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Test Review scores require the complete review.</span></div><div className="strip-arrow">→</div></section></div>
 }
 
 function PracticeLaneCard({ target, profile, onStart, resumeAcquisitionTarget }: { target: PracticeTarget; profile: WritingPracticeProfile; onStart: (target: PracticeTarget) => void; resumeAcquisitionTarget?: PracticeTarget | null }) {
@@ -774,15 +817,31 @@ function PracticeLaneCard({ target, profile, onStart, resumeAcquisitionTarget }:
   return <article className={`practice-lane lane-${target.phase}`}><div className="status-pill"><span className="status-dot" /> {label}</div><h2>{label}</h2><p>{detail} · Warmup offered first</p><button className="primary-button" aria-label={`${startLabel} for ${target.dataset.dateRange}`} onClick={() => onStart(target)}>{startLabel} <ArrowLeft size={17} /></button>{resumeAcquisitionTarget && <button className="replay-button" onClick={() => onStart(resumeAcquisitionTarget)}>Return to {profile.presentation?.acquisitionLabel?.toLowerCase() || 'acquisition'}</button>}</article>
 }
 
-function Tier2ReadingModule({ words }: { words: Word[] }) {
-  const [active, setActive] = useState(false)
-  const [index, setIndex] = useState(0)
-  const word = words[index]
-  const advance = () => {
-    if (index >= words.length - 1) { setActive(false); setIndex(0); return }
-    setIndex((current) => current + 1)
-  }
-  return <section className="tier2-teaching-card" aria-label="High-frequency reading words"><div className="tier2-copy"><p className="eyebrow">Tier 2 reading</p><h2>High-frequency words</h2><p>Look, listen, and say each word. This is a teaching activity and is not scored yet.</p><div className="tier2-word-list" aria-label="This week's high-frequency words">{words.map((item, wordIndex) => <span className={active && wordIndex === index ? 'active' : ''} key={item.id}>{item.text}</span>)}</div></div>{active && word ? <div className="tier2-player"><span className="tier2-step">Word {index + 1} of {words.length}</span><strong>{word.text}</strong><button className="replay-button" onClick={() => playSpeechSequence([{ text: word.text, rate: 0.4 }])}>Hear the word</button><button className="primary-button" onClick={advance}>{index === words.length - 1 ? 'Finish reading' : 'I said it'} <ArrowLeft size={17} /></button></div> : <button className="primary-button tier2-start" onClick={() => { setIndex(0); setActive(true) }}>Start reading words <ArrowLeft size={17} /></button>}</section>
+function Tier2ReadingPathways({ lifecycle, onStart }: { lifecycle: Tier2ReadingLifecycle; onStart: (pathway: Tier2ReadingPathway) => void }) {
+  const pathways = [
+    ...(lifecycle.acquisition ? [lifecycle.acquisition] : []),
+    ...lifecycle.testReviews,
+    lifecycle.mastery,
+  ].filter((pathway) => pathway.available && tier2ReadingPathwayTargets(pathway).length > 0)
+  if (pathways.length === 0) return null
+  return <section className="tier2-teaching-card tier2-lifecycle-card" aria-label="Tier 2 reading pathways">
+    <div className="tier2-copy">
+      <p className="eyebrow">Tier 2 reading</p>
+      <h2>Look, listen, record, and compare</h2>
+      <p>Reading follows the same curriculum stages as writing while keeping its own targets and session-only results.</p>
+    </div>
+    <div className="tier2-pathway-list">
+      {pathways.map((pathway) => {
+        const targets = tier2ReadingPathwayTargets(pathway)
+        const id = `${pathway.kind}-${pathway.cycle || 0}-${pathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`
+        return <button className="tier2-pathway-button" type="button" key={id} onClick={() => onStart(pathway)}>
+          <span>{readingPathwayLabel(pathway)}</span>
+          <strong>{targets.length} target{targets.length === 1 ? '' : 's'}</strong>
+          <small>{targets.map((target) => target.text).join('、')}</small>
+        </button>
+      })}
+    </div>
+  </section>
 }
 
 function UnsupportedPracticeView({ child, datasets, onHistory, onProfiles }: { child: Child; datasets: Dataset[]; onHistory: () => void; onProfiles: () => void }) {

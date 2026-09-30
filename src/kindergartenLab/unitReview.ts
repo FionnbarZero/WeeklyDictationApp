@@ -25,12 +25,12 @@ export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[
     .filter((candidate) => candidate.normalizedStartDate! >= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.startDate
       && candidate.normalizedStartDate! <= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate)
     .sort((left, right) => left.normalizedStartDate!.localeCompare(right.normalizedStartDate!))
-  const words: Word[] = []
-  const tier2Words: string[] = []
+  const tier1: Word[] = []
+  const tier2: Word[] = []
   for (const candidate of included) {
     for (const occurrence of candidate.tier1) {
-      words.push({
-        id: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id}:tier-1:${words.length + 1}`,
+      tier1.push({
+        id: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id}:tier-1:${tier1.length + 1}`,
         text: occurrence.text,
         sentence: '',
         datasetId: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id,
@@ -41,14 +41,26 @@ export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[
         activityType: 'dictation',
       })
     }
-    tier2Words.push(...candidate.tier2.map((occurrence) => occurrence.text))
+    for (const occurrence of candidate.tier2) {
+      tier2.push({
+        id: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id}:tier-2:${tier2.length + 1}`,
+        text: occurrence.text,
+        sentence: '',
+        datasetId: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id,
+        grade: 'Kindergarten',
+        sourceSlideId: candidate.source.sourceUnitId,
+        language: 'mandarin',
+        tier: 'tier-2',
+        activityType: 'reading',
+      })
+    }
   }
-  if (words.length === 0) throw new Error('The Kindergarten Unit 1 lab fixture contains no usable Tier 1 writing targets.')
+  if (tier1.length === 0) throw new Error('The Kindergarten Unit 1 lab fixture contains no usable Tier 1 writing targets.')
   return {
     label: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.label,
     sourceWeekCount: included.length,
-    tier1Words: words.map((word) => word.text),
-    tier2Words,
+    tier1Words: tier1.map((word) => word.text),
+    tier2Words: tier2.map((word) => word.text),
     dataset: {
       id: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id,
       dateRange: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.startDate}–${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate}`,
@@ -56,9 +68,10 @@ export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[
       endDate: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate,
       grade: 'Kindergarten',
       schoolYear: '2026–2027',
-      description: 'Development-only cumulative Kindergarten Unit 1 writing review fixture',
+      description: 'Development-only cumulative Kindergarten Unit 1 review fixture',
       importStatus: 'valid',
-      words,
+      words: tier1,
+      vocabulary: { tier1, tier2, tier3: [] },
     },
   }
 }

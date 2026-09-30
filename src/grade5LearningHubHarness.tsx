@@ -22,8 +22,14 @@ import {
   grade5LabWritingRequestIsConnected,
 } from './grade5Lab/writingPractice.ts'
 import { grade5WritingLabProfile } from './grade5Lab/practiceProfile.ts'
+import {
+  grade5LabReadingPathway,
+  grade5LabReadingRequestIsConnected,
+} from './grade5Lab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView } from './practice/PracticeView.tsx'
+import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
+import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 
 const fixtureUrl = '/tests/fixtures/grade5-presentation.json'
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
@@ -331,10 +337,49 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
   }
 }
 
+function startReadingPractice(request: Grade5ActivityLaunchRequest, label: string) {
+  try {
+    if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
+    const pathway = grade5LabReadingPathway(sourceExtraction, request)
+    activePractice = null
+    activeDataset = null
+    activeDatasets = []
+    activeSession = null
+    requestPanel.hidden = true
+    hubRootElement.hidden = true
+    labDetails.hidden = true
+    statusElement.hidden = true
+    practicePanel.hidden = false
+    document.body.classList.add('practice-active')
+    practiceSummary.textContent = 'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
+    practiceRoot.render(<Tier2ReadingPractice
+      key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
+      profile={grade5Tier2ReadingProfile}
+      pathway={pathway}
+      label={label}
+      onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
+      onComplete={(summary) => leavePractice(`Reading complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This lab result was not saved.`)}
+      sessionNote="Grade 5 development reading · recording and results are not saved"
+    />)
+    practicePanel.scrollTop = 0
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : 'Grade 5 reading practice could not start.', true)
+  }
+}
+
+function connectedRequest(request: Grade5ActivityLaunchRequest) {
+  return grade5LabWritingRequestIsConnected(request) || grade5LabReadingRequestIsConnected(request)
+}
+
+function startConnectedRequest(request: Grade5ActivityLaunchRequest, label: string) {
+  if (grade5LabReadingRequestIsConnected(request)) startReadingPractice(request, label)
+  else startWritingPractice(request, label)
+}
+
 function launchFromLearningHub(launch: Grade5HubLaunch) {
-  const connected = launch.requests.filter(grade5LabWritingRequestIsConnected)
+  const connected = launch.requests.filter(connectedRequest)
   if (connected.length === 1) {
-    startWritingPractice(connected[0], launch.label)
+    startConnectedRequest(connected[0], launch.label)
     return
   }
   showLaunchRequest(launch.label, launch.requests)
@@ -343,18 +388,20 @@ function launchFromLearningHub(launch: Grade5HubLaunch) {
 function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[]) {
   requestTitle.textContent = label
   requestMessage.textContent = requests.length > 1
-    ? 'Tier 1 writing is connected to the shared practice flow. Reading remains intentionally unavailable until its shared engine is designed.'
-    : 'This activity is not connected yet. The portable request below is ready for its future shared practice engine.'
+    ? 'Choose the connected Tier 1 writing or Tier 2 reading pathway.'
+    : 'This activity is not connected yet. The portable request below is preserved for its future practice engine.'
   requestOutput.textContent = JSON.stringify(requests.length === 1 ? requests[0] : requests, null, 2)
   requestActions.replaceChildren()
   for (const request of requests) {
-    const button = createElement('button', grade5LabWritingRequestIsConnected(request) ? 'primary-button' : 'secondary-button')
+    const button = createElement('button', connectedRequest(request) ? 'primary-button' : 'secondary-button')
     button.type = 'button'
-    if (grade5LabWritingRequestIsConnected(request)) {
-      button.textContent = request.activityKind === 'test-review' ? 'Start Writing Test' : 'Start Writing Dojo'
-      button.addEventListener('click', () => startWritingPractice(request, label))
+    if (connectedRequest(request)) {
+      button.textContent = request.learningChannel === 'tier-2-reading'
+        ? request.activityKind === 'test-review' ? 'Start Reading Test' : request.activityKind === 'warmup' ? 'Start Reading Mastery' : 'Start Reading Dojo'
+        : request.activityKind === 'test-review' ? 'Start Writing Test' : 'Start Writing Dojo'
+      button.addEventListener('click', () => startConnectedRequest(request, label))
     } else {
-      button.textContent = request.learningChannel === 'tier-2-reading' ? 'Reading Engine Not Built Yet' : 'Not Connected Yet'
+      button.textContent = request.activityKind === 'reacquisition' ? 'Re-teaching Not Connected Yet' : 'Not Connected Yet'
       button.disabled = true
     }
     requestActions.append(button)
@@ -372,7 +419,7 @@ async function loadHub() {
     learningHubModel = buildGrade5LearningHub(sourceExtraction)
     hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} />)
     hubRootElement.hidden = false
-    setStatus('Loaded the validated Grade 5 fixture. Tier 1 Acquisition and both writing Test Reviews are ready for local testing.')
+    setStatus('Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.')
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'The Grade 5 hub could not be loaded.', true)
   }
