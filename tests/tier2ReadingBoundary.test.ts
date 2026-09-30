@@ -4,7 +4,10 @@ import type { AcquisitionStrategy } from '../src/acquisition/contracts.ts'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
 import { grade5AcquisitionStrategy } from '../src/acquisition/strategies/grade5.ts'
 import { kindergartenAcquisitionStrategy } from '../src/acquisition/strategies/kindergarten.ts'
+import { datasetFromCanonicalCandidate } from '../src/curriculum/datasetProjection.ts'
+import { candidateFromSheet } from '../src/curriculum/adapters/googleSheets.ts'
 import type { Dataset, Word } from '../src/domain/contracts.ts'
+import { kindergartenSheetsProfile } from '../src/kindergartenSheetsImporter.ts'
 import type { LifecycleContext, LifecycleProgressionEvent, LifecycleSet } from '../src/lifecycle/contracts.ts'
 import { resolveTier2ReadingLifecycle } from '../src/tier2/lifecycle.ts'
 import { grade2Tier2ReadingProfile } from '../src/tier2/profiles/grade2.ts'
@@ -165,6 +168,25 @@ test('Kindergarten Tier 2 reading preserves its cumulative unit review instead o
   assert.equal(reading.testReviews[0].reviewGroupId, 'kindergarten-2026-27-unit-1')
   assert.deepEqual(datasetIds(reading.testReviews[0]), ['k-w1', 'k-w2', 'k-w3', 'k-w4'])
   assert.deepEqual(datasetIds(reading.mastery), [])
+})
+
+test('Kindergarten High-frequency reading words enter the canonical Tier 2 engine', () => {
+  const candidate = candidateFromSheet({
+    sheetId: 45,
+    title: 'Week 6 09/21',
+    values: [['Mandarin\n- Writing character 九、十、白\n- High-frequency reading words 红色、蓝色']],
+  }, kindergartenSheetsProfile)
+  const source = datasetFromCanonicalCandidate(candidate)
+  const reading = resolveTier2ReadingLifecycle(
+    kindergartenTier2ReadingProfile,
+    context('Kindergarten', '2026-09-27', [source]),
+    [source],
+  )
+
+  assert.deepEqual(reading.acquisition?.cohorts[0].targets.map((target) => target.text), ['红色', '蓝色'])
+  assert.ok(reading.acquisition?.cohorts[0].targets.every((target) =>
+    target.tier === 'tier-2' && target.activityType === 'reading',
+  ))
 })
 
 test('Grade 5 Tier 2 reading preserves Test Review 1 and Test Review 2 before Mastery', () => {
