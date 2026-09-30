@@ -9,8 +9,13 @@ import type {
 } from '../tier2/contracts.ts'
 import { resolveTier2ReadingLifecycle } from '../tier2/lifecycle.ts'
 import { tier2ReadingProfileForScope } from '../tier2/registry.ts'
+import {
+  TIER2_PROTOTYPE_CURRICULUM,
+  type Tier2PrototypeCycle,
+  type Tier2PrototypeGrade,
+} from './prototypeCurriculum.ts'
 
-export type Tier2SmokeGrade = 'Kindergarten' | 'Grade 2' | 'Grade 5'
+export type Tier2SmokeGrade = Tier2PrototypeGrade
 
 export type Tier2SmokeScenarioOption = {
   id: string
@@ -48,26 +53,28 @@ function vocabularyWord(
 
 function fixtureDataset(
   grade: Tier2SmokeGrade,
-  id: string,
-  startDate: string,
-  endDate: string,
-  tier2Terms: readonly string[],
+  cycle: Tier2PrototypeCycle,
 ): Dataset {
-  const tier1 = [vocabularyWord(id, `${id}-tier-1-1`, `写-${id}`, 'tier-1')]
-  const tier2 = tier2Terms.map((text, index) => vocabularyWord(
-    id,
-    `${id}-tier-2-${index + 1}`,
+  const tier1 = cycle.tier1Terms.map((text, index) => vocabularyWord(
+    cycle.id,
+    `${cycle.id}-tier-1-${index + 1}`,
+    text,
+    'tier-1',
+  ))
+  const tier2 = cycle.tier2Terms.map((text, index) => vocabularyWord(
+    cycle.id,
+    `${cycle.id}-tier-2-${index + 1}`,
     text,
     'tier-2',
   ))
   return {
-    id,
-    dateRange: `${startDate}–${endDate}`,
-    startDate,
-    endDate,
+    id: cycle.id,
+    dateRange: `${cycle.startDate}–${cycle.endDate}`,
+    startDate: cycle.startDate,
+    endDate: cycle.endDate,
     grade,
     schoolYear: '2026–2027',
-    description: `Development-only Tier 2 smoke fixture ${id}`,
+    description: `Development-only Tier 2 prototype override · ${cycle.sourceReference}`,
     words: tier1,
     vocabulary: { tier1, tier2, tier3: [] },
   }
@@ -97,26 +104,14 @@ function lifecycleContext(
   }
 }
 
-const kindergartenDatasets = [
-  fixtureDataset('Kindergarten', 'kindergarten-smoke-w1', '2026-08-31', '2026-09-06', ['我', '你']),
-  fixtureDataset('Kindergarten', 'kindergarten-smoke-w2', '2026-09-07', '2026-09-13', ['他', '她']),
-  fixtureDataset('Kindergarten', 'kindergarten-smoke-w3', '2026-09-14', '2026-09-20', ['大', '小']),
-  fixtureDataset('Kindergarten', 'kindergarten-smoke-w4', '2026-09-21', '2026-09-27', ['上', '下']),
-]
+const kindergartenDatasets = TIER2_PROTOTYPE_CURRICULUM.Kindergarten
+  .map((cycle) => fixtureDataset('Kindergarten', cycle))
 
-const grade2Datasets = [
-  fixtureDataset('Grade 2', 'grade2-smoke-w1', '2026-08-31', '2026-09-04', ['爱心', '难过']),
-  fixtureDataset('Grade 2', 'grade2-smoke-w2', '2026-09-07', '2026-09-11', ['帮助', '找']),
-  fixtureDataset('Grade 2', 'grade2-smoke-w3', '2026-09-14', '2026-09-18', ['身体', '手']),
-  fixtureDataset('Grade 2', 'grade2-smoke-w4', '2026-09-21', '2026-09-25', ['城市', '上班', '公园']),
-]
+const grade2Datasets = TIER2_PROTOTYPE_CURRICULUM['Grade 2']
+  .map((cycle) => fixtureDataset('Grade 2', cycle))
 
-const grade5Datasets = [
-  fixtureDataset('Grade 5', 'grade5-smoke-w1', '2026-08-31', '2026-09-04', ['河流', '躺', '留']),
-  fixtureDataset('Grade 5', 'grade5-smoke-w2', '2026-09-07', '2026-09-11', ['提醒', '沟通', '快速地']),
-  fixtureDataset('Grade 5', 'grade5-smoke-w3', '2026-09-14', '2026-09-18', ['空气', '根', '帮助']),
-  fixtureDataset('Grade 5', 'grade5-smoke-w4', '2026-09-21', '2026-09-25', ['海洋', '阳光', '鲨鱼']),
-]
+const grade5Datasets = TIER2_PROTOTYPE_CURRICULUM['Grade 5']
+  .map((cycle) => fixtureDataset('Grade 5', cycle))
 
 const grade5ProgressionEvents: LifecycleProgressionEvent[] = grade5Datasets.map((dataset, index) => ({
   eventId: `grade5-smoke-event-${index + 1}`,
