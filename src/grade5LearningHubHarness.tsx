@@ -25,7 +25,8 @@ import { grade5WritingLabProfile } from './grade5Lab/practiceProfile.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView } from './practice/PracticeView.tsx'
 
-const fixtureUrl = '/tests/fixtures/grade5-presentation.json'
+const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
+const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
 
 function requiredElement<T extends HTMLElement>(id: string) {
@@ -380,8 +381,8 @@ dismissButton.addEventListener('click', () => {
   requestActions.replaceChildren()
 })
 
-if (!import.meta.env.DEV) {
-  setStatus('This Grade 5 learning hub is available only in local development.', true)
+if (!import.meta.env.DEV && !publicPreviewEnabled) {
+  setStatus('This Grade 5 learning hub is available only in local development or an approved public preview.', true)
 } else {
   void loadHub()
 }
