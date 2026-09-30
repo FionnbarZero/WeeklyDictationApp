@@ -8,6 +8,7 @@ import {
   tier2SmokePathways,
   tier2SmokeScenarioOptions,
 } from '../src/tier2Lab/fixtures.ts'
+import { TIER2_PROTOTYPE_CURRICULUM } from '../src/tier2Lab/prototypeCurriculum.ts'
 
 function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -80,6 +81,46 @@ test('every smoke target remains a separate Tier 2 Mandarin reading occurrence',
     const targetSet = tier2SmokeAcquisitionTargetSet(acquisition)
     assert.equal(targetSet.id, acquisition.cohorts[0].datasetId)
     assert.deepEqual(targetSet.targets, acquisition.cohorts[0].targets)
+  }
+})
+
+test('the prototype curriculum preserves every known source term without a three-target cap', () => {
+  assert.deepEqual(
+    TIER2_PROTOTYPE_CURRICULUM.Kindergarten.map((cycle) => cycle.tier2Terms),
+    [
+      ['爸爸', '妈妈', '小'],
+      ['我', '开心'],
+      ['有', '没有'],
+      ['红色', '蓝色'],
+    ],
+  )
+  assert.deepEqual(
+    TIER2_PROTOTYPE_CURRICULUM['Grade 2'].map((cycle) => cycle.tier2Terms),
+    [
+      ['爱心', '难过', '帮助', '同学', '比如'],
+      ['帮助', '找', '语', '食物'],
+      ['身体', '手', '脚', '嘴巴', '国家', '事情', '生活'],
+      ['城市', '上班', '公园', '图书馆', '散步', '漂亮', '各种各样的'],
+    ],
+  )
+  assert.deepEqual(
+    TIER2_PROTOTYPE_CURRICULUM['Grade 5'].map((cycle) => cycle.tier2Terms),
+    [
+      ['海洋', '阳光', '鲨鱼', '天敌', '生存'],
+      ['空气', '根', '帮助', '植物', '食物', '得到', '关', '打开'],
+      ['提醒', '沟通', '快速地', '有意思', '年长的', '并且', '表达', '碰'],
+      ['河流', '躺', '留', '不断地', '美味的', '刷牙', '洒', '沉', '浮'],
+    ],
+  )
+
+  for (const grade of ['Kindergarten', 'Grade 2', 'Grade 5'] as const) {
+    const snapshot = buildTier2SmokeSnapshot(grade)
+    for (const [index, cycle] of TIER2_PROTOTYPE_CURRICULUM[grade].entries()) {
+      const dataset = snapshot.datasets[index]
+      assert.deepEqual(dataset.vocabulary?.tier1.map((word) => word.text), cycle.tier1Terms)
+      assert.deepEqual(dataset.vocabulary?.tier2.map((word) => word.text), cycle.tier2Terms)
+      assert.equal(new Set(cycle.tier2Terms).size, cycle.tier2Terms.length)
+    }
   }
 })
 
