@@ -8,7 +8,7 @@ test('writing responses stay hidden until one final all-target review', async ({
   await expect(page.getByRole('button', { name: 'Yes' })).toHaveCount(0)
 
   for (let index = 0; index < 5; index += 1) {
-    await page.getByRole('button', { name: 'Response written' }).click()
+    await page.getByRole('button', { name: 'Skip Timer' }).click()
   }
 
   await expect(page.getByRole('heading', { name: /Review everything/ })).toBeVisible()

@@ -10,6 +10,7 @@ import {
   type PracticeSession, type PracticeTarget, type SessionAnswer, type Word, LEGACY_ATTEMPTS_KEY,
 } from './domain'
 import { acquisitionPersistenceContext, applyAcquisitionCheckpointToAppState, createAcquisitionAnswerCheckpoint, createAcquisitionResumeCheckpoint, markAcquisitionCheckpointCommitted, prepareAcquisitionProgress, recoverAcquisitionCheckpoints, sessionAnswerForCheckpoint } from './application/acquisitionPersistence.ts'
+import { writingSessionAnswers } from './application/testReview.ts'
 import { applyWarmupTransitionToAppState, cloudWarmupSeedForVisit, createWarmupAnswerCheckpoint, createWarmupFinalizationCheckpoint, markWarmupTransitionCommitted, prepareAdaptiveWarmupVisit, recoverWarmupTransitions, revalidateWarmupVisitBeforePresentation, synchronizeAdaptiveWarmupCloud, wordsForWarmupVisit, type WarmupGraphPoint } from './application/warmup/index.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signOut, signUp, subscribeAuth, type AuthState } from './firebaseClient'
 import { firebaseConfigReady, firebaseSetupMessage, DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, productionSourceIsActive } from './config'
@@ -17,7 +18,7 @@ import { abandonSession, cloudAcquisitionCheckpointAlreadyCommitted, cloudAdapti
 import { appendPendingAcquisitionCheckpoint, readPendingAcquisitionJournal, removePendingAcquisitionCheckpoint } from './persistence/acquisitionPendingJournal.ts'
 import { appendPendingWarmupTransition, readPendingWarmupJournal, removePendingWarmupTransition } from './persistence/warmup/pendingJournal.ts'
 import { hydrateLocalStateFromJson } from './localHydration'
-import { PracticeView } from './practice/PracticeView'
+import { PracticeView, type PracticeAnswer } from './practice/PracticeView'
 import { LegacyMasteryHistory } from './progress/LegacyMasteryHistory.tsx'
 import { WarmupProgressGraph } from './progress/WarmupProgressGraph.tsx'
 import { practiceProfileForGrade } from './practice/profiles/registry'
@@ -25,6 +26,7 @@ import type { WritingPracticeProfile } from './practice/profiles/model'
 import { practiceTargetsForLifecycle } from './practice/targets'
 import { lifecycleStrategyForGradeAndSchoolYear } from './lifecycle/registry'
 import { Tier2ReadingPractice, type Tier2ReadingPracticeSummary } from './readingPractice/Tier2ReadingPractice'
+import type { TestReviewCompletion } from './testReview/contracts.ts'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from './tier2/contracts'
 import { resolveTier2ReadingLifecycle } from './tier2/lifecycle'
 import { tier2ReadingPathwayTargets } from './tier2/pathway'
@@ -612,6 +614,20 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setSession(null)
     setView('home')
   }
+  const completeDeferredWritingTestReview = (completion: TestReviewCompletion<Word>) => {
+    const current = session
+    if (!current || current.segment !== 'primary' || current.primaryPhase !== 'test-review') return
+    if (completedSessionRef.current === current.id) return
+    const primaryAnswers = writingSessionAnswers(completion)
+    completedSessionRef.current = current.id
+    completeSession({
+      ...current,
+      stage: 'complete',
+      queue: current.primaryQueue,
+      index: current.primaryQueue.length,
+      primaryAnswers,
+    })
+  }
   const skipTestReview = () => {
     const current = session
     if (!current || current.primaryPhase !== 'test-review') return
@@ -634,7 +650,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setSession(null)
     setView('home')
   }
-  const answer = (correct: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') => {
+  const answer = (correct: PracticeAnswer) => {
+    if (typeof correct === 'object') {
+      if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
+      return
+    }
     if (correct === 'skip-warmup') { skipWarmup(); return }
     if (correct === 'continue-primary') { continueToPrimaryAfterPartialWarmup(); return }
     if (correct === 'skip-test-review') { skipTestReview(); return }
@@ -689,6 +709,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setSession(nextSession)
       return
     }
+    if (current.segment === 'primary' && current.primaryPhase === 'test-review') return
     const response: SessionAnswer = { word: current.queue[current.index], correct, revealMethod: current.currentRevealMethod || 'timer' }
     const isWarmup = current.segment === 'warmup'
     if (isWarmup && current.adaptiveWarmupVisitId) {

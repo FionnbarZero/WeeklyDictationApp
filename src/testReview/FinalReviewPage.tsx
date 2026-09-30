@@ -15,8 +15,10 @@ export type FinalReviewPageProps<TTarget extends TestReviewTarget> = {
   readonly onAssess: (targetId: string, correct: boolean) => void
   readonly onPlayReference: (target: TTarget) => Promise<void>
   readonly onExit: () => void
+  readonly onSkip?: () => void
   readonly onSubmit: () => void
   readonly exitLabel?: string
+  readonly skipLabel?: string
 }
 
 async function playReadingComparison<TTarget extends TestReviewTarget>(
@@ -36,8 +38,10 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
   onAssess,
   onPlayReference,
   onExit,
+  onSkip,
   onSubmit,
   exitLabel = 'Exit review',
+  skipLabel = 'Skip Test Review',
 }: FinalReviewPageProps<TTarget>) {
   const complete = testReviewIsComplete(review)
   const score = testReviewScore(review)
@@ -47,6 +51,7 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
     <div className="practice-top">
       <button className="back-button" type="button" onClick={onExit}><X size={18} /> {exitLabel}</button>
       <span className="practice-count">Final review<span> · {score.attempted} of {score.total} assessed</span></span>
+      {onSkip && <button className="replay-button" type="button" onClick={onSkip}>{skipLabel}</button>}
     </div>
     <header className="deferred-review-header">
       <p className="eyebrow">All responses are now complete</p>

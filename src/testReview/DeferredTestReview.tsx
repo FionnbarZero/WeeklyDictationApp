@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Headphones, X } from 'lucide-react'
 import type {
   TestReviewCompletion,
+  TestReviewCollectionMethod,
   TestReviewMode,
   TestReviewState,
   TestReviewTarget,
@@ -24,10 +25,13 @@ export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
   readonly targets: readonly TTarget[]
   readonly activityLabel: string
+  readonly writingTimerSeconds: number
   readonly onPlayReference: (target: TTarget) => Promise<void>
   readonly onExit: () => void
+  readonly onSkip?: () => void
   readonly onComplete: (completion: TestReviewCompletion<TTarget>) => void
   readonly exitLabel?: string
+  readonly skipLabel?: string
   readonly sessionNote?: string
 }
 
@@ -35,10 +39,13 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   mode,
   targets,
   activityLabel,
+  writingTimerSeconds,
   onPlayReference,
   onExit,
+  onSkip,
   onComplete,
   exitLabel = 'Exit test',
+  skipLabel = 'Skip Test Review',
   sessionNote = 'No answers are scored during collection.',
 }: DeferredTestReviewProps<TTarget>) {
   const [phase, setPhase] = useState<'collect' | 'review'>('collect')
@@ -46,6 +53,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   const [review, setReview] = useState<TestReviewState>(() => createTestReviewState(targets))
   const [captures, setCaptures] = useState<RetainedReadingCapture[]>([])
   const capturesRef = useRef<RetainedReadingCapture[]>([])
+  const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
   const submittedRef = useRef(false)
   const activeTarget = targets[index]
 
@@ -65,12 +73,15 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     setPhase('review')
   }
 
-  function advanceWriting() {
+  function advanceWriting(method: 'timer' | 'skip_timer') {
+    if (!activeTarget) return
+    collectionMethodsRef.current[activeTarget.id] = method
     if (index + 1 >= targets.length) finishCollection()
     else setIndex((current) => current + 1)
   }
 
   function collectReading(capture: RetainedReadingCapture) {
+    collectionMethodsRef.current[capture.targetId] = capture.clip ? 'recording-comparison' : 'recording-unavailable'
     replaceCaptures([...capturesRef.current, capture])
     if (index + 1 >= targets.length) finishCollection()
     else setIndex((current) => current + 1)
@@ -82,9 +93,15 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     onExit()
   }
 
+  function skip() {
+    window.speechSynthesis?.cancel()
+    releaseCaptures()
+    onSkip?.()
+  }
+
   function submit() {
     if (submittedRef.current) return
-    const completion = completeTestReview(mode, targets, review)
+    const completion = completeTestReview(mode, targets, review, collectionMethodsRef.current)
     submittedRef.current = true
     releaseCaptures()
     onComplete(completion)
@@ -117,8 +134,10 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       onAssess={(targetId, correct) => setReview((current) => assessTestReviewTarget(current, targetId, correct ? 'correct' : 'incorrect'))}
       onPlayReference={onPlayReference}
       onExit={exit}
+      onSkip={onSkip ? skip : undefined}
       onSubmit={submit}
       exitLabel={exitLabel}
+      skipLabel={skipLabel}
     />
   </div>
 
@@ -127,6 +146,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     <div className="practice-top">
       <button className="back-button" type="button" onClick={exit}><X size={18} /> {exitLabel}</button>
       <span className="practice-count">{mode === 'writing' ? 'Writing' : 'Reading'} responses<span> · {index + 1} of {targets.length}</span></span>
+      {onSkip && <button className="replay-button" type="button" onClick={skip}>{skipLabel}</button>}
     </div>
     <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
     <section className="prompt-card deferred-collection-card">
@@ -135,6 +155,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
         ? <WritingResponseCollector
           key={activeTarget.id}
           position={index + 1}
+          timerSeconds={writingTimerSeconds}
           onReplay={() => void onPlayReference(activeTarget).catch(() => undefined)}
           onCollected={advanceWriting}
         />

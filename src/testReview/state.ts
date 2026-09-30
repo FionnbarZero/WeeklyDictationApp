@@ -1,6 +1,7 @@
 import type {
   CompletedTestReviewAssessment,
   TestReviewAssessment,
+  TestReviewCollectionMethod,
   TestReviewCompletion,
   TestReviewMode,
   TestReviewState,
@@ -45,17 +46,23 @@ export function completeTestReview<TTarget extends TestReviewTarget>(
   mode: TestReviewMode,
   targets: readonly TTarget[],
   state: TestReviewState,
+  collectionMethods: Readonly<Record<string, TestReviewCollectionMethod>>,
 ): TestReviewCompletion<TTarget> {
   const targetById = new Map(targets.map((target) => [target.id, target]))
+  const validCollectionMethod = (method: TestReviewCollectionMethod | undefined) => mode === 'writing'
+    ? method === 'timer' || method === 'skip_timer'
+    : method === 'recording-comparison' || method === 'recording-unavailable'
   if (targetById.size !== targets.length
     || targets.length !== state.orderedTargetIds.length
     || targets.some((target, index) => state.orderedTargetIds[index] !== target.id)
+    || state.orderedTargetIds.some((targetId) => !validCollectionMethod(collectionMethods[targetId]))
     || !testReviewIsComplete(state)) {
-    throw new Error('A Test Review can be completed only after every original target is assessed.')
+    throw new Error('A Test Review can be completed only after every original target is collected and assessed in the requested mode.')
   }
   const assessments: CompletedTestReviewAssessment<TTarget>[] = state.orderedTargetIds.map((targetId) => ({
     target: targetById.get(targetId)!,
     correct: state.assessments[targetId] === 'correct',
+    collectionMethod: collectionMethods[targetId],
   }))
   const score = testReviewScore(state)
   return { mode, assessments, ...score }

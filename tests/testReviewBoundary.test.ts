@@ -9,6 +9,7 @@ import {
   createTestReviewState,
 } from '../src/testReview/state.ts'
 import { releaseRetainedReadingCaptures } from '../src/testReview/retainedReadingClips.ts'
+import { writingSessionAnswers } from '../src/application/testReview.ts'
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
 const boundaryDirectory = join(repositoryRoot, 'src/testReview')
@@ -48,7 +49,19 @@ test('the shared review state rejects duplicate target occurrence IDs', () => {
 test('an incomplete review cannot be completed', () => {
   const targets = [{ id: 'one', text: '一' }, { id: 'two', text: '二' }]
   const review = assessTestReviewTarget(createTestReviewState(targets), 'one', 'correct')
-  assert.throws(() => completeTestReview('writing', targets, review), /every original target is assessed/)
+  assert.throws(() => completeTestReview('writing', targets, review, {
+    one: 'timer',
+    two: 'skip_timer',
+  }), /every original target is collected and assessed/)
+})
+
+test('a completed review requires collection evidence for every original target', () => {
+  const targets = [{ id: 'one', text: '一' }]
+  const review = assessTestReviewTarget(createTestReviewState(targets), 'one', 'correct')
+  assert.throws(() => completeTestReview('writing', targets, review, {}), /every original target is collected and assessed/)
+  assert.throws(() => completeTestReview('writing', targets, review, {
+    one: 'recording-comparison',
+  }), /requested mode/)
 })
 
 test('completion preserves target order, mode, and the final draft assessments', () => {
@@ -58,25 +71,59 @@ test('completion preserves target order, mode, and the final draft assessments',
   review = assessTestReviewTarget(review, 'one', 'correct')
   review = assessTestReviewTarget(review, 'two', 'incorrect')
 
-  assert.deepEqual(completeTestReview('reading', targets, review), {
+  assert.deepEqual(completeTestReview('reading', targets, review, {
+    one: 'recording-comparison',
+    two: 'recording-unavailable',
+  }), {
     mode: 'reading',
     assessments: [
-      { target: targets[0], correct: true },
-      { target: targets[1], correct: false },
+      { target: targets[0], correct: true, collectionMethod: 'recording-comparison' },
+      { target: targets[1], correct: false, collectionMethod: 'recording-unavailable' },
     ],
     attempted: 2,
     correct: 1,
     total: 2,
   })
   assert.throws(
-    () => completeTestReview('reading', [...targets].reverse(), review),
-    /every original target is assessed/,
+    () => completeTestReview('reading', [...targets].reverse(), review, {
+      one: 'recording-comparison',
+      two: 'recording-unavailable',
+    }),
+    /every original target is collected and assessed/,
   )
 })
 
 test('an assessment for an unknown target is a no-op', () => {
   const state = createTestReviewState([{ id: 'one', text: '一' }])
   assert.equal(assessTestReviewTarget(state, 'missing', 'correct'), state)
+})
+
+test('the writing adapter preserves final order, correctness, and Skip Timer evidence', () => {
+  const words = [
+    { id: 'one', text: '一', sentence: '', datasetId: 'week' },
+    { id: 'two', text: '二', sentence: '', datasetId: 'week' },
+  ]
+  const answers = writingSessionAnswers({
+    mode: 'writing',
+    assessments: [
+      { target: words[0], correct: true, collectionMethod: 'timer' },
+      { target: words[1], correct: false, collectionMethod: 'skip_timer' },
+    ],
+    attempted: 2,
+    correct: 1,
+    total: 2,
+  })
+  assert.deepEqual(answers, [
+    { word: words[0], correct: true, revealMethod: 'timer' },
+    { word: words[1], correct: false, revealMethod: 'skip_timer' },
+  ])
+  assert.throws(() => writingSessionAnswers({
+    mode: 'reading',
+    assessments: [{ target: words[0], correct: true, collectionMethod: 'recording-comparison' }],
+    attempted: 1,
+    correct: 1,
+    total: 1,
+  }), /cannot become Tier 1 writing answers/)
 })
 
 test('retained reading clips are explicitly released', () => {
@@ -107,13 +154,27 @@ test('the shared Test Review boundary has the exact approved Phase 2 file invent
   assert.doesNotMatch(combinedSource, /localStorage|sessionStorage/)
 })
 
-test('Phase 2 activates the shared runner only in the isolated prototype', () => {
+test('Phase 3 activates deferred writing only through the shared PracticeView boundary', () => {
   const consumers = allApplicationTypeScriptFiles(join(repositoryRoot, 'src'))
     .filter((file) => /(?:^|\/)DeferredTestReview(?:\.tsx)?['"]/.test(readFileSync(file, 'utf8')))
     .map((file) => relative(repositoryRoot, file).split(sep).join('/'))
-  assert.deepEqual(consumers, ['src/testReviewPrototype/TestReviewPrototype.tsx'])
+  assert.deepEqual(consumers, [
+    'src/practice/PracticeView.tsx',
+    'src/testReviewPrototype/TestReviewPrototype.tsx',
+  ])
 
   const harness = source('src/testReviewPrototype/TestReviewPrototype.tsx')
+  const practiceView = source('src/practice/PracticeView.tsx')
+  const app = source('src/App.tsx')
+  const grade5 = source('src/grade5LearningHubHarness.tsx')
+  const kindergarten = source('src/kindergartenLearningLabHarness.tsx')
   assert.match(harness, /from '..\/testReview\/DeferredTestReview\.tsx'/)
   assert.doesNotMatch(harness, /startEphemeralAudioRecording|SelfAssessmentActions/)
+  assert.match(practiceView, /mode="writing"/)
+  assert.match(practiceView, /writingTimerSeconds=\{timerSeconds\}/)
+  assert.match(practiceView, /deferred-writing-test-review/)
+  assert.match(app, /completeDeferredWritingTestReview/)
+  assert.match(grade5, /deferred-writing-test-review/)
+  assert.match(kindergarten, /deferred-writing-test-review/)
+  assert.doesNotMatch(source('src/readingPractice/Tier2ReadingPractice.tsx'), /DeferredTestReview/)
 })

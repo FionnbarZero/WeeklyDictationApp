@@ -7,6 +7,12 @@ export type TestReviewTarget = {
 
 export type TestReviewAssessment = 'correct' | 'incorrect' | null
 
+export type TestReviewCollectionMethod =
+  | 'timer'
+  | 'skip_timer'
+  | 'recording-comparison'
+  | 'recording-unavailable'
+
 export type TestReviewState = {
   readonly orderedTargetIds: readonly string[]
   readonly assessments: Readonly<Record<string, TestReviewAssessment>>
@@ -17,6 +23,7 @@ export type CompletedTestReviewAssessment<
 > = {
   readonly target: TTarget
   readonly correct: boolean
+  readonly collectionMethod: TestReviewCollectionMethod
 }
 
 export type TestReviewCompletion<

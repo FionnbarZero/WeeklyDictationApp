@@ -92,6 +92,7 @@ function Grade2TestReviewPrototype() {
       mode={mode}
       targets={termsForPrototypeMode(mode)}
       activityLabel="Grade 2 Test Review"
+      writingTimerSeconds={10}
       onPlayReference={playPrototypeReference}
       onExit={leaveRun}
       onComplete={setCompletion}

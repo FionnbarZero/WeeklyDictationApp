@@ -2,6 +2,7 @@
 .deferred-collection-review { width: min(720px, 100%); }
 .deferred-collection-card { min-height: 650px; }
 .deferred-writing-collector { padding-top: 1px; }
+.deferred-writing-timer { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; padding: 8px 11px; border-radius: 999px; color: #625982; background: #eee9f8; font-size: 12px; font-weight: 800; }
 .deferred-writing-collector .primary-button { display: flex; margin: 32px auto 0; }
 .deferred-reading-collector { max-width: 520px; margin: 76px auto 0; text-align: center; }
 .deferred-reading-word { margin: 14px 0 31px; font-family: serif; font-size: clamp(4.4rem, 16vw, 7.2rem); line-height: 1; }
