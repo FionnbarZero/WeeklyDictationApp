@@ -14,7 +14,7 @@ The workbook was inspected read-only on September 29, 2026. The spreadsheet ID i
 | 6 | Week 2 08/24 | 2026-08-24–2026-08-30 | `1237090927` | — | — |
 | 7 | Week 1 08/17 | 2026-08-17–2026-08-23 | `1564071554` | — | — |
 
-The observed Mandarin curriculum is stored in multiline cells. `Writing character` maps to Tier 1, `High frequency word` maps to Tier 2, and Tier 3 is empty. Terms retain source order and repeated terms remain separate occurrences.
+The observed Mandarin curriculum is stored in multiline cells. `Writing character` maps to Tier 1. `High frequency word` and the equivalent Kindergarten wording `High-frequency reading word(s)` both map to Tier 2 reading; the source wording never creates a separate activity or tier. Tier 3 is empty. Terms retain source order and repeated terms remain separate occurrences.
 
 ## Approved date rule
 

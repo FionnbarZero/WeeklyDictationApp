@@ -60,6 +60,20 @@ test('Writing character maps to Tier 1 and High frequency word maps to Tier 2', 
   }
 })
 
+test('High-frequency reading words is a Kindergarten alias for Tier 2', () => {
+  const candidate = candidateFromSheet({
+    sheetId: 44,
+    title: 'Week 8 10/05',
+    values: [['Mandarin\n- Writing character 一、二\n- High-frequency reading words 爸爸、妈妈']],
+  }, kindergartenSheetsProfile)
+
+  assert.equal(candidate.status, 'valid')
+  assert.deepEqual(candidate.tier1.map((term) => term.text), ['一', '二'])
+  assert.deepEqual(candidate.tier2.map((term) => term.text), ['爸爸', '妈妈'])
+  assert.ok(candidate.tier2.every((term) => typeof term.targetOccurrenceId === 'string'))
+  assert.equal(new Set(candidate.tier2.map((term) => term.targetOccurrenceId)).size, 2)
+})
+
 test('weekly tab dates normalize to the containing Monday-through-Sunday cycle', () => {
   const byTitle = new Map(candidates.map((candidate) => [candidate.rawDate, candidate]))
   assert.deepEqual(byTitle.get('Week 4 09/08')?.assignedWeek, { startDate: '2026-09-07', endDate: '2026-09-13' })
