@@ -5,13 +5,15 @@ import {
 } from 'lucide-react'
 import {
   APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
-  acquisitionProgressFor, checkpointAcquisitionSession, buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt, transitionAcquisitionPrompt,
+  buildWarmupSelection, commitCompletedSession, commitPartialSession, commitSkippedTestReview, createInitialState, createPracticeSessionForTarget, revealAcquisitionPrompt,
   filterDatasetsForChild, latestScore, loadState, localDateKey, createSessionId, requireDatasetLifecycle, resolveDatasetLifecycles, sortDatasetsNewestFirst, shouldSuggestGradePromotion, nextGrade, type LifecyclePhase,
   type PracticeSession, type PracticeTarget, type SessionAnswer, type Word, LEGACY_ATTEMPTS_KEY,
 } from './domain'
+import { acquisitionPersistenceContext, applyAcquisitionCheckpointToAppState, createAcquisitionAnswerCheckpoint, createAcquisitionResumeCheckpoint, markAcquisitionCheckpointCommitted, prepareAcquisitionProgress, recoverAcquisitionCheckpoints, sessionAnswerForCheckpoint } from './application/acquisitionPersistence.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signOut, signUp, subscribeAuth, type AuthState } from './firebaseClient'
 import { firebaseConfigReady, firebaseSetupMessage, DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, productionSourceIsActive } from './config'
-import { abandonSession, cloudAdaptiveStateForSave, cloudDataToAppState, completeCloudSession, createChild, ensureParentFamily, finishCloudSession, getCloudAdaptiveState, listAcquisitionProgressions, listAttempts, listChildren, listDatasetWords, listDatasets, listDistractorTargetObservations, listScores, listSessions, saveCloudAcquisitionProgress, saveCloudAdaptiveState, saveCloudAttempt, saveCloudDistractorTargetObservation, skipCloudTestReview, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
+import { abandonSession, cloudAcquisitionCheckpointAlreadyCommitted, cloudAdaptiveStateForSave, cloudDataToAppState, commitCloudAcquisitionCheckpoint, completeCloudSession, createChild, ensureParentFamily, finishCloudSession, getCloudAdaptiveState, listAcquisitionProgressions, listAttempts, listChildren, listDatasetWords, listDatasets, listDistractorTargetObservations, listScores, listSessions, saveCloudAdaptiveState, saveCloudAttempt, skipCloudTestReview, startCloudSession, updateChild, updateCloudSession, type ChildProfile, type CloudAttempt, type CloudSession, type FamilyRecord } from './firestoreClient'
+import { appendPendingAcquisitionCheckpoint, readPendingAcquisitionJournal, removePendingAcquisitionCheckpoint } from './persistence/acquisitionPendingJournal.ts'
 import { hydrateLocalStateFromJson } from './localHydration'
 import { PracticeView } from './practice/PracticeView'
 import { practiceProfileForGrade } from './practice/profiles/registry'
@@ -31,7 +33,16 @@ const demoChildren: Child[] = [
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
 
 function localStorageGet(key: string) { try { return window.localStorage.getItem(key) } catch { return null } }
-function localStorageSet(key: string, value: string) { try { window.localStorage.setItem(key, value) } catch { /* optional persistence */ } }
+function localStorageSet(key: string, value: string) { try { window.localStorage.setItem(key, value); return true } catch { return false } }
+function loadLocalApplicationState() {
+  const loaded = loadState(localStorageGet(APP_STATE_KEY), localStorageGet(LEGACY_ATTEMPTS_KEY))
+  const journal = readPendingAcquisitionJournal(window.localStorage)
+  if (journal.error || journal.entries.length === 0) return loaded
+  const recovered = recoverAcquisitionCheckpoints(loaded, journal.entries)
+  if (recovered.status !== 'recovered' || !localStorageSet(APP_STATE_KEY, JSON.stringify(recovered.state))) return loaded
+  for (const transitionId of recovered.recoveredTransitionIds) removePendingAcquisitionCheckpoint(window.localStorage, transitionId)
+  return recovered.state
+}
 type SpeechPart = { text: string; rate: number; lang?: string }
 let stopActiveSpeech: (() => void) | null = null
 
@@ -99,7 +110,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [family, setFamily] = useState<FamilyRecord | null>(null)
   const [familyChildren, setFamilyChildren] = useState<Child[]>(firebaseConfigReady ? [] : demoChildren)
   const [selectedChildId, setSelectedChildId] = useState(() => localStorageGet('weekly-dictation-child') || demoChildren[0].id)
-  const [state, setState] = useState<AppState>(() => firebaseConfigReady ? createInitialState() : loadState(localStorageGet(APP_STATE_KEY), localStorageGet(LEGACY_ATTEMPTS_KEY)))
+  const [state, setState] = useState<AppState>(() => firebaseConfigReady ? createInitialState() : loadLocalApplicationState())
   const [session, setSession] = useState<PracticeSession | null>(null)
   const completedSessionRef = useRef<string | null>(null)
   const cloudSessionsRef = useRef(new Map<string, CloudSession>())
@@ -147,7 +158,29 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       const attempts = (await Promise.all(readableSessions.map((item) => listAttempts(family.id, selectedChild.id, item.id)))).flat()
       await Promise.all(readableSessions.filter((item) => item.status === 'in_progress').map((item) => item.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, item, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, item)))
       if (cancelled) return
-      setState(cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations, selectedChild.schoolYear))
+      let hydrated: AppState = cloudDataToAppState(datasets, scores, readableSessions, attempts.filter((item) => item.completionStatus === 'complete'), selectedChild.id, selectedChild.grade, adaptiveState, progressions, dtObservations, selectedChild.schoolYear)
+      const pendingJournal = readPendingAcquisitionJournal(window.localStorage)
+      if (pendingJournal.error) throw new Error(pendingJournal.error)
+      const childPending = pendingJournal.entries
+        .filter((entry) => entry.baseEnvelope.childId === selectedChild.id)
+        .sort((left, right) => left.checkpoint.expectedRevision - right.checkpoint.expectedRevision || left.checkpoint.transitionId.localeCompare(right.checkpoint.transitionId))
+      for (const entry of childPending) {
+        const checkpoint = entry.checkpoint
+        if (await cloudAcquisitionCheckpointAlreadyCommitted(family.id, selectedChild.id, checkpoint)) {
+          removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+          hydrated = markAcquisitionCheckpointCommitted(hydrated, checkpoint.transitionId)
+          continue
+        }
+        const recovered = recoverAcquisitionCheckpoints(hydrated, [entry])
+        if (recovered.status === 'blocked') throw new Error(`Pending Acquisition transition could not be restored: ${recovered.reason}`)
+        const envelope = (recovered.state.acquisitionProgressEnvelopes || []).find((item) => item.id === checkpoint.progressionId)
+        if (!envelope) throw new Error(`Pending Acquisition transition ${checkpoint.transitionId} did not restore its progression.`)
+        await commitCloudAcquisitionCheckpoint(family.id, selectedChild.id, envelope, checkpoint)
+        removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+        hydrated = markAcquisitionCheckpointCommitted(recovered.state, checkpoint.transitionId)
+      }
+      if (cancelled) return
+      setState(hydrated)
     }).catch((error) => { if (!cancelled) setCloudError(authErrorMessage(error)) }).finally(() => { if (!cancelled) setDataLoading(false) })
     return () => { cancelled = true }
   }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade, selectedChild?.schoolYear])
@@ -167,16 +200,62 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     const primaryDatasetId = target?.dataset.id || warmupSelection.words[0]?.datasetId || 'warmup-only'
     const primaryPhase = target?.phase || 'acquisition'
     const warmupOnly = !target
+    let nextState = state
+    let preparedAcquisition = target?.phase === 'acquisition'
+      ? prepareAcquisitionProgress(state, selectedChild.id, target.dataset, startedAt)
+      : null
+    if (preparedAcquisition?.status === 'blocked') {
+      setState(preparedAcquisition.state)
+      setCloudError(`Saved Acquisition progress needs review before practice can continue: ${preparedAcquisition.reason}`)
+      return
+    }
+    if (preparedAcquisition) nextState = preparedAcquisition.state
+    if (!auth.user && preparedAcquisition && !localStorageSet(APP_STATE_KEY, JSON.stringify(nextState))) {
+      setCloudError('Acquisition cannot start because this browser could not save its initial progress record.')
+      return
+    }
     if (auth.user && family) {
       try {
         const cloud = await startCloudSession(family.id, selectedChild.id, { id, childId: selectedChild.id, sessionDate: startedAt, localDate: localDateKey(startedDate), startedAt, primaryPhase, datasetId: primaryDatasetId, datasetIds: target?.reviewDatasets?.map((dataset) => dataset.id), reviewGroupId: target?.reviewGroupId, warmupOnly, warmupStatus: 'in_progress' })
         cloudSessionsRef.current.set(id, cloud)
       } catch (error) { setCloudError(`Practice could not be saved: ${authErrorMessage(error)}`); return }
     }
+    if (preparedAcquisition?.status === 'ready'
+      && preparedAcquisition.envelope.status === 'teaching-complete'
+      && preparedAcquisition.envelope.flow.mode === 'teaching') {
+      const checkpoint = createAcquisitionResumeCheckpoint({ envelope: preparedAcquisition.envelope, context: preparedAcquisition.context, sessionId: id, occurredAt: startedAt })
+      try {
+        appendPendingAcquisitionCheckpoint(window.localStorage, checkpoint, preparedAcquisition.envelope)
+      } catch (error) {
+        setCloudError(`Acquisition cannot resume until its recovery journal is available: ${authErrorMessage(error)}`)
+        return
+      }
+      const applied = applyAcquisitionCheckpointToAppState(nextState, checkpoint, preparedAcquisition.context, Boolean(auth.user && family))
+      if (applied.status === 'conflict') {
+        removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+        setCloudError(`Acquisition could not resume safely: ${applied.reason}`)
+        return
+      }
+      nextState = applied.state
+      preparedAcquisition = { ...preparedAcquisition, state: applied.state, envelope: applied.envelope }
+      if (auth.user && family) {
+        try {
+          await commitCloudAcquisitionCheckpoint(family.id, selectedChild.id, applied.envelope, checkpoint)
+          removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+          nextState = markAcquisitionCheckpointCommitted(nextState, checkpoint.transitionId)
+        } catch (error) {
+          setCloudError(`Acquisition resume is saved on this device and will retry: ${authErrorMessage(error)}`)
+        }
+      } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(nextState))) {
+        removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+      } else {
+        setCloudError('Acquisition resume is preserved in the recovery journal and will retry when the app reopens.')
+      }
+    }
+    setState(nextState)
     completedSessionRef.current = null
     setCompletedSummary(null)
-    const acquisitionProgress = target?.phase === 'acquisition' ? acquisitionProgressFor(state, selectedChild.id, target.dataset.id)?.flow : undefined
-    setSession(createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelection, startedAt, cloudSessionId: auth.user ? id : undefined, acquisitionProgress }))
+    setSession(createPracticeSessionForTarget({ id, childId: selectedChild.id, grade: selectedChild.grade, target, warmup: warmupSelection, startedAt, cloudSessionId: auth.user ? id : undefined, preparedAcquisitionProgress: preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined }))
     setView('practice')
   }, [auth.user, family, now, selectedChild, state, warmupSelection])
   const leavePractice = (nextView: View) => { const current = session; if (auth.user && family && current?.cloudSessionId && selectedChild) { const cloud = cloudSessionsRef.current.get(current.cloudSessionId); if (cloud) { const request = current.primaryPhase === 'acquisition' ? updateCloudSession(family.id, selectedChild.id, cloud, { status: 'partial' }) : abandonSession(family.id, selectedChild.id, cloud); void request.catch((error) => setCloudError(authErrorMessage(error))) } }; setSession(null); setView(nextView) }
@@ -222,7 +301,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (auth.user && family && finished.cloudSessionId && selectedChild) {
       const cloud = cloudSessionsRef.current.get(finished.cloudSessionId)
       if (cloud) {
-        const answers = [...finished.warmupAnswers, ...finished.primaryAnswers]
+        // Acquisition attempts are already committed atomically with their
+        // progression checkpoints. Session completion must not write them a
+        // second time under a different ID.
+        const answers = [...finished.warmupAnswers, ...(finished.primaryPhase === 'acquisition' ? [] : finished.primaryAnswers)]
         const attempts: CloudAttempt[] = answers.map((answer, index) => ({ id: `${finished.id}-${answer.word.id}-${index}`, sessionId: finished.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: finished.warmupAnswers.includes(answer) ? 'warmup' : finished.primaryPhase, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
         void Promise.all([
           completeCloudSession(family.id, selectedChild.id, cloud, attempts, committed.scores.filter((score) => score.sessionId === finished.id)),
@@ -241,8 +323,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (auth.user && family && selectedChild && current.cloudSessionId) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
       if (cloud) {
-        const weeklyAnswers = current.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore)
-        const attempts: CloudAttempt[] = [...current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const })), ...weeklyAnswers.map((answer, index) => ({ id: `${current.id}-acquisition-${answer.promptId || index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const, countsTowardWeeklyScore: true, acquisitionKind: answer.acquisitionKind }))]
+        const attempts: CloudAttempt[] = current.warmupAnswers.map((answer, index) => ({ id: `${current.id}-warmup-${answer.word.id}-${index}`, sessionId: current.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: 'warmup' as const, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' as const }))
         const warmupStatus = current.warmupSkipped ? 'skipped' as const : current.warmupAnswers.length === current.warmupQueue.length ? 'completed' as const : 'in_progress' as const
         void Promise.all([
           finishCloudSession(family.id, selectedChild.id, { ...cloud, warmupStatus }, 'completed', attempts, committed.scores.filter((score) => score.sessionId === current.id)),
@@ -286,19 +367,47 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (current.segment === 'primary' && current.acquisition) {
       const dataset = state.datasets.find((item) => item.id === current.primaryDatasetId)
       if (!dataset || !current.acquisition.prompt?.revealed) return
-      const transition = transitionAcquisitionPrompt(current.acquisition, dataset, current.grade, correct, current.currentRevealMethod || 'timer')
-      const { nextFlow, assessment } = transition
-      const response: SessionAnswer | undefined = assessment ? { word: assessment.target, correct: assessment.correct, revealMethod: assessment.revealMethod, acquisitionKind: assessment.kind, promptId: assessment.promptId, countsTowardWeeklyScore: assessment.countsTowardWeeklyScore, dtPoolType: assessment.dtPoolType } : undefined
+      const context = acquisitionPersistenceContext(current.childId, dataset, current.grade)
+      const envelope = (state.acquisitionProgressEnvelopes || []).find((item) => item.childId === current.childId && item.datasetId === dataset.id)
+      if (!envelope) {
+        setCloudError('Acquisition progress was not loaded. This answer was not recorded; reopen the activity and try again.')
+        return
+      }
+      let checkpoint
+      try {
+        checkpoint = createAcquisitionAnswerCheckpoint({
+          envelope,
+          context,
+          response: { correct, revealMethod: current.currentRevealMethod || 'timer' },
+          answeredPromptId: current.acquisition.prompt.id,
+          sessionId: current.id,
+          occurredAt: now().toISOString(),
+        })
+        appendPendingAcquisitionCheckpoint(window.localStorage, checkpoint, envelope)
+      } catch (error) {
+        setCloudError(`This Acquisition answer was not advanced because it could not be checkpointed safely: ${authErrorMessage(error)}`)
+        return
+      }
+      const applied = applyAcquisitionCheckpointToAppState(state, checkpoint, context, Boolean(auth.user && family))
+      if (applied.status === 'conflict') {
+        removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+        setCloudError(`This Acquisition answer was not advanced because saved progress changed: ${applied.reason}`)
+        return
+      }
+      const nextFlow = checkpoint.nextFlow
+      const response: SessionAnswer | undefined = sessionAnswerForCheckpoint(checkpoint)
       const primaryAnswers = response ? [...current.primaryAnswers, response] : current.primaryAnswers
       const nextSession: PracticeSession = { ...current, acquisition: nextFlow, primaryAnswers, currentRevealMethod: undefined, stage: nextFlow.complete ? 'complete' : 'dictation', queue: nextFlow.prompt ? [nextFlow.prompt.word] : [], index: 0 }
-      const reviewedAt = now()
-      setState((existing) => checkpointAcquisitionSession(existing, nextSession, response, reviewedAt))
+      setState(applied.state)
       if (auth.user && family && selectedChild) {
-        const progression = { id: `${selectedChild.id}::${current.primaryDatasetId}::tier-1-writing`, childId: selectedChild.id, datasetId: current.primaryDatasetId, grade: current.grade, flow: nextFlow, updatedAt: reviewedAt.toISOString() }
-        const writes: Promise<unknown>[] = [saveCloudAcquisitionProgress(family.id, selectedChild.id, progression)]
-        if (assessment?.dtPoolType && practiceProfileForGrade(current.grade)?.acquisition.dtObservationMode === 'collect') writes.push(saveCloudDistractorTargetObservation(family.id, selectedChild.id, { id: `${current.id}-dt-${assessment.promptId}`, childId: selectedChild.id, sessionId: current.id, datasetId: current.primaryDatasetId, wordId: assessment.targetOccurrenceId, text: assessment.target.text, poolType: assessment.dtPoolType, correct: assessment.correct, revealMethod: assessment.revealMethod, reviewedAt: reviewedAt.toISOString() }))
-        if (assessment?.countsTowardWeeklyScore && current.cloudSessionId) writes.push(saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-acquisition-${assessment.promptId}`, sessionId: current.id, wordId: assessment.targetOccurrenceId, sourceDatasetId: current.primaryDatasetId, phase: 'acquisition', correct: assessment.correct, reviewedAt: reviewedAt.toISOString(), completionStatus: 'complete', countsTowardWeeklyScore: true, acquisitionKind: assessment.kind }))
-        void Promise.all(writes).catch((error) => setCloudError(`Acquisition progress could not be confirmed in the cloud: ${authErrorMessage(error)}`))
+        void commitCloudAcquisitionCheckpoint(family.id, selectedChild.id, applied.envelope, checkpoint).then(() => {
+          removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+          setState((existing) => markAcquisitionCheckpointCommitted(existing, checkpoint.transitionId))
+        }).catch((error) => setCloudError(`Acquisition progress is saved on this device and will retry: ${authErrorMessage(error)}`))
+      } else if (localStorageSet(APP_STATE_KEY, JSON.stringify(applied.state))) {
+        removePendingAcquisitionCheckpoint(window.localStorage, checkpoint.transitionId)
+      } else {
+        setCloudError('This Acquisition answer is preserved in the recovery journal and will retry when the app reopens.')
       }
       setSession(nextSession)
       return

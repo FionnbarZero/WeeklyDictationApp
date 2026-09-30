@@ -15,6 +15,7 @@ import type {
   EngineAcquisitionFlow,
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
+import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
 import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
@@ -145,8 +146,22 @@ export type AppState = {
   monthlyRotationScores: MonthlyRotationScore[]
   rotationCycles: Record<string, number>
   acquisitionProgressions: AcquisitionProgressRecord[]
+  /** Versioned Acquisition state. Legacy progressions remain readable during the migration window. */
+  acquisitionProgressEnvelopes?: AcquisitionProgressEnvelope<Word>[]
+  acquisitionTransitionReceipts?: AcquisitionTransitionReceipt[]
+  acquisitionPendingCheckpoints?: AcquisitionCheckpoint<Word>[]
+  acquisitionProgressQuarantine?: AcquisitionProgressQuarantineRecord[]
   distractorTargetObservations: DistractorTargetObservation[]
   datasetImportReferences?: Array<Exclude<ExistingDatasetReference, string>>
+}
+
+export type AcquisitionProgressQuarantineRecord = {
+  id: string
+  childId: string
+  datasetId: string
+  reason: string
+  quarantinedAt: string
+  raw: unknown
 }
 
 export type SessionAnswer = {
@@ -471,6 +486,8 @@ export function createPracticeSessionForTarget(options: {
   startedAt: string
   cloudSessionId?: string
   acquisitionProgress?: AcquisitionFlow
+  /** A versioned persistence envelope already owns start/resume normalization. */
+  preparedAcquisitionProgress?: AcquisitionFlow
   random?: () => number
 }): PracticeSession {
   requirePracticeProfileForGrade(options.grade)
@@ -508,7 +525,9 @@ export function createPracticeSessionForTarget(options: {
     warmupCategoryByWordId,
     warmupRandomRotationWordIds: options.warmup.randomRotationWordIds,
     warmupRotationCycleId: options.warmup.rotationCycleId,
-    acquisition: target?.phase === 'acquisition' ? resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random) : undefined,
+    acquisition: target?.phase === 'acquisition'
+      ? options.preparedAcquisitionProgress || resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random)
+      : undefined,
     warmupOnly: !target,
     cloudSessionId: options.cloudSessionId,
   }
@@ -616,7 +635,7 @@ export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string 
   } catch {
     legacyRecords = []
   }
-  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], distractorTargetObservations: [] }
+  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], acquisitionProgressEnvelopes: [], acquisitionTransitionReceipts: [], acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine: [], distractorTargetObservations: [] }
 }
 
 export function isAppState(value: unknown): value is AppState {
@@ -632,8 +651,12 @@ export function isAppState(value: unknown): value is AppState {
   const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
   const datasetReferencesValid = !('datasetImportReferences' in value) || (Array.isArray(value.datasetImportReferences) && value.datasetImportReferences.every((reference) => isRecord(reference) && typeof reference.datasetId === 'string' && (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') && (!('candidateStatus' in reference) || ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) && (!('instructionalRole' in reference) || ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(String(reference.instructionalRole)))))
   const progressionsValid = !('acquisitionProgressions' in value) || (Array.isArray(value.acquisitionProgressions) && value.acquisitionProgressions.every((progression) => isRecord(progression) && typeof progression.id === 'string' && typeof progression.childId === 'string' && typeof progression.datasetId === 'string' && typeof progression.grade === 'string' && isRecord(progression.flow) && typeof progression.updatedAt === 'string'))
+  const progressEnvelopesValid = !('acquisitionProgressEnvelopes' in value) || Array.isArray(value.acquisitionProgressEnvelopes)
+  const transitionReceiptsValid = !('acquisitionTransitionReceipts' in value) || Array.isArray(value.acquisitionTransitionReceipts)
+  const pendingCheckpointsValid = !('acquisitionPendingCheckpoints' in value) || Array.isArray(value.acquisitionPendingCheckpoints)
+  const quarantineValid = !('acquisitionProgressQuarantine' in value) || (Array.isArray(value.acquisitionProgressQuarantine) && value.acquisitionProgressQuarantine.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.datasetId === 'string' && typeof record.reason === 'string' && typeof record.quarantinedAt === 'string' && 'raw' in record))
   const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'familiar' || observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && dtObservationsValid
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && dtObservationsValid
 }
 
 export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
@@ -643,7 +666,7 @@ export function loadState(rawState: string | null, legacyRaw?: string | null, im
       const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
         ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
         : []
-      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], distractorTargetObservations }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {
@@ -764,7 +787,8 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
   })
   const scoredPrimaryAnswers = session.primaryPhase === 'acquisition' ? session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore !== false) : session.primaryAnswers
-  const primaryResults: WordResult[] = complete ? scoredPrimaryAnswers.map((answer, index) => {
+  const hasVersionedAcquisition = session.primaryPhase === 'acquisition' && (state.acquisitionProgressEnvelopes || []).some((item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId)
+  const primaryResults: WordResult[] = complete && !hasVersionedAcquisition ? scoredPrimaryAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
     return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: true }
   }) : []
@@ -821,7 +845,8 @@ export function commitCompletedSession(state: AppState, session: PracticeSession
 
 export function commitPartialSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
   if (session.primaryPhase !== 'acquisition' || !session.acquisition) return state
-  let next = checkpointAcquisitionSession(state, session, undefined, now)
+  const hasVersionedAcquisition = (state.acquisitionProgressEnvelopes || []).some((item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId)
+  let next = hasVersionedAcquisition ? state : checkpointAcquisitionSession(state, session, undefined, now)
   const targetAnswers = session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore)
   if (targetAnswers.length > 0) {
     const dataset = next.datasets.find((item) => item.id === session.primaryDatasetId)

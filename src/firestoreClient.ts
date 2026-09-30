@@ -1,6 +1,9 @@
 import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { getIdToken, type AuthUser } from './firebaseClient.ts'
 import { deriveChildWordStates, normalizeDistractorTargetObservation, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
+import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
+import { migrateAcquisitionProgress } from './acquisition/persistence/migration.ts'
+import { acquisitionPersistenceContext } from './application/acquisitionPersistence.ts'
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
 
@@ -15,6 +18,7 @@ type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
 
 function firestoreBase() { return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents` }
+function firestoreDatabaseBase() { return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)` }
 function documentValue(value: unknown): FirestoreValue {
   if (value === null || value === undefined) return { mapValue: { fields: {} } }
   if (typeof value === 'boolean') return { booleanValue: value }
@@ -36,13 +40,32 @@ function encodeFields(value: Record<string, unknown>) { return { fields: Object.
 function decodeDocument<T>(document: FirestoreDocument): T { return Object.fromEntries(Object.entries(document.fields || {}).map(([key, item]) => [key, plainValue(item)])) as T }
 function docPath(parts: string[]) { return parts.map((part) => encodeURIComponent(part)).join('/') }
 
-async function firestoreRequest<T>(path: string, init?: RequestInit): Promise<T> {
+async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit): Promise<T> {
   if (!firebaseConfigReady) throw new Error('Firebase configuration is missing.')
   const token = await getIdToken()
-  const response = await fetch(`${firestoreBase()}/${path}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
+  const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
   const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
   return body as T
+}
+
+async function firestoreRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  return authorizedFirestoreRequest<T>(`${firestoreBase()}/${path}`, init)
+}
+
+async function firestoreCommit(writes: unknown[]) {
+  return authorizedFirestoreRequest(`${firestoreDatabaseBase()}/documents:commit`, { method: 'POST', body: JSON.stringify({ writes }) })
+}
+
+function fullDocumentName(parts: string[]) {
+  return `projects/${firebaseConfig.projectId}/databases/(default)/documents/${parts.join('/')}`
+}
+
+function updateWrite(parts: string[], value: Record<string, unknown>, currentDocument?: Record<string, unknown>) {
+  return {
+    update: { name: fullDocumentName(parts), ...encodeFields(value) },
+    ...(currentDocument ? { currentDocument } : {}),
+  }
 }
 
 async function getDoc<T>(path: string) {
@@ -90,10 +113,126 @@ export async function listDatasetWords(datasetId: string) { return listDocs<Word
 export async function listSessions(familyId: string, childId: string) { return listDocs<CloudSession>(docPath(['families', familyId, 'children', childId, 'sessions'])) }
 export async function listAttempts(familyId: string, childId: string, sessionId: string) { return listDocs<CloudAttempt>(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts'])) }
 export async function listScores(familyId: string, childId: string) { return listDocs<DatasetScore>(docPath(['families', familyId, 'children', childId, 'scores'])) }
-export async function listAcquisitionProgressions(familyId: string, childId: string) { return listDocs<AcquisitionProgressRecord>(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions'])) }
+export async function listAcquisitionProgressions(familyId: string, childId: string) { return listDocs<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions'])) }
 export async function listDistractorTargetObservations(familyId: string, childId: string) { return listDocs<DistractorTargetObservation>(docPath(['families', familyId, 'children', childId, 'dtObservations'])) }
 export async function saveCloudAcquisitionProgress(familyId: string, childId: string, progression: AcquisitionProgressRecord) { await putDoc(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions', progression.id]), progression) }
 export async function saveCloudDistractorTargetObservation(familyId: string, childId: string, observation: DistractorTargetObservation) { await putDoc(docPath(['families', familyId, 'children', childId, 'dtObservations', observation.id]), observation) }
+
+export function acquisitionReceiptMatchesCheckpoint(receipt: AcquisitionTransitionReceipt, checkpoint: AcquisitionCheckpoint<Word>) {
+  return receipt.progressionId === checkpoint.progressionId
+    && receipt.transitionId === checkpoint.transitionId
+    && receipt.payloadFingerprint === checkpoint.payloadFingerprint
+    && receipt.operation === checkpoint.operation
+    && receipt.promptId === checkpoint.promptId
+    && receipt.expectedRevision === checkpoint.expectedRevision
+    && receipt.appliedRevision === checkpoint.nextRevision
+    && receipt.appliedAt === checkpoint.occurredAt
+}
+
+/**
+ * Commit one reviewed Acquisition response as a single Firestore transaction-like
+ * batch: progression, immutable receipt, optional scored attempt, and optional DT
+ * observation either all succeed or none do.
+ */
+export async function commitCloudAcquisitionCheckpoint(
+  familyId: string,
+  childId: string,
+  envelope: AcquisitionProgressEnvelope<Word>,
+  checkpoint: AcquisitionCheckpoint<Word>,
+): Promise<'applied' | 'idempotent'> {
+  const receipt = envelope.lastAppliedTransition
+  if (!receipt || !acquisitionReceiptMatchesCheckpoint(receipt, checkpoint)) throw new Error('The cloud commit does not contain the exact applied Acquisition receipt.')
+  if (envelope.childId !== childId || envelope.id !== checkpoint.progressionId || envelope.revision !== checkpoint.nextRevision) throw new Error('The cloud Acquisition checkpoint identity or revision is inconsistent.')
+  const { receiptParts, writes } = buildCloudAcquisitionCheckpointWrites(familyId, childId, envelope, checkpoint)
+  const receiptPath = docPath(receiptParts)
+  const existing = await getDoc<AcquisitionTransitionReceipt>(receiptPath)
+  if (existing) {
+    if (!acquisitionReceiptMatchesCheckpoint(existing, checkpoint)) throw new Error('The cloud transition ID already belongs to different Acquisition content.')
+    return 'idempotent'
+  }
+
+  try {
+    await firestoreCommit(writes)
+    return 'applied'
+  } catch (error) {
+    const committed = await getDoc<AcquisitionTransitionReceipt>(receiptPath)
+    if (committed && acquisitionReceiptMatchesCheckpoint(committed, checkpoint)) return 'idempotent'
+    throw error
+  }
+}
+
+/**
+ * Recognize an exact historical receipt before replaying a browser journal.
+ * The progression may already be several revisions ahead on another device.
+ */
+export async function cloudAcquisitionCheckpointAlreadyCommitted(
+  familyId: string,
+  childId: string,
+  checkpoint: AcquisitionCheckpoint<Word>,
+) {
+  const receipt = await getDoc<AcquisitionTransitionReceipt>(docPath([
+    'families', familyId, 'children', childId, 'acquisitionTransitions', checkpoint.transitionId,
+  ]))
+  if (!receipt) return false
+  if (!acquisitionReceiptMatchesCheckpoint(receipt, checkpoint)) throw new Error('The cloud transition ID already belongs to different Acquisition content.')
+  return true
+}
+
+export function buildCloudAcquisitionCheckpointWrites(
+  familyId: string,
+  childId: string,
+  envelope: AcquisitionProgressEnvelope<Word>,
+  checkpoint: AcquisitionCheckpoint<Word>,
+) {
+  const receipt = envelope.lastAppliedTransition
+  if (!receipt || !acquisitionReceiptMatchesCheckpoint(receipt, checkpoint)) throw new Error('The cloud commit does not contain the exact applied Acquisition receipt.')
+  if (envelope.childId !== childId || envelope.id !== checkpoint.progressionId || envelope.revision !== checkpoint.nextRevision) throw new Error('The cloud Acquisition checkpoint identity or revision is inconsistent.')
+  const progressionParts = ['families', familyId, 'children', childId, 'acquisitionProgressions', envelope.id]
+  const receiptParts = ['families', familyId, 'children', childId, 'acquisitionTransitions', checkpoint.transitionId]
+  const writes: unknown[] = [
+    updateWrite(progressionParts, envelope as unknown as Record<string, unknown>),
+    updateWrite(receiptParts, receipt as unknown as Record<string, unknown>, { exists: false }),
+  ]
+  if (checkpoint.scoredAttempt) {
+    const fact = checkpoint.scoredAttempt
+    writes.push(updateWrite(
+      ['families', familyId, 'children', childId, 'sessions', fact.sessionId, 'attempts', fact.id],
+      {
+        id: fact.id,
+        sessionId: fact.sessionId,
+        wordId: fact.targetOccurrenceId,
+        sourceDatasetId: envelope.datasetId,
+        phase: 'acquisition',
+        correct: fact.correct,
+        reviewedAt: fact.reviewedAt,
+        completionStatus: 'complete',
+        countsTowardWeeklyScore: true,
+        acquisitionKind: fact.kind,
+        transitionId: checkpoint.transitionId,
+      },
+    ))
+  }
+  if (checkpoint.dtObservation) {
+    const fact = checkpoint.dtObservation
+    writes.push(updateWrite(
+      ['families', familyId, 'children', childId, 'dtObservations', fact.id],
+      {
+        id: fact.id,
+        childId,
+        sessionId: fact.sessionId,
+        datasetId: envelope.datasetId,
+        wordId: fact.targetOccurrenceId,
+        text: fact.text,
+        poolType: fact.poolType,
+        correct: fact.correct,
+        revealMethod: fact.revealMethod,
+        reviewedAt: fact.reviewedAt,
+        transitionId: checkpoint.transitionId,
+      },
+    ))
+  }
+  return { progressionParts, receiptParts, writes }
+}
 export async function getCloudAdaptiveState(familyId: string, childId: string) { return getDoc<CloudAdaptiveState>(docPath(['families', familyId, 'children', childId, 'warmupState', 'current'])) }
 export async function saveCloudAdaptiveState(familyId: string, childId: string, state: CloudAdaptiveState) { await putDoc(docPath(['families', familyId, 'children', childId, 'warmupState', 'current']), state) }
 export function cloudAdaptiveStateForSave(state: Pick<AppState, 'childWordStates' | 'monthlyRotationScores' | 'rotationCycles'>, childId: string, updatedAt: string): CloudAdaptiveState {
@@ -129,7 +268,7 @@ function isValidCloudChildWordState(value: unknown, childId: string, datasetsByI
   return Boolean(dataset?.words.some((word) => word.id === value.wordId && word.datasetId === dataset.id))
 }
 
-export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: AcquisitionProgressRecord[] = [], rawDtObservations: DistractorTargetObservation[] = [], schoolYear?: string) {
+export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>> = [], rawDtObservations: DistractorTargetObservation[] = [], schoolYear?: string) {
   const practiceProfile = practiceProfileForGrade(grade)
   const seenDatasetIds = new Set<string>()
   const datasets = rawDatasets.filter((dataset) => isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true))
@@ -159,11 +298,34 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
     : trustedStates
   const monthlyRotationScores = trustedMonthlyScores || []
   const rotationCycles = { [childId]: trustedCycle }
-  const acquisitionProgressions = rawProgressions.filter((progression) => progression.childId === childId && datasetsById.has(progression.datasetId) && progression.flow?.datasetId === progression.datasetId)
+  const legacyProgressions = rawProgressions.filter((progression): progression is AcquisitionProgressRecord => !('contractId' in progression) && progression.childId === childId && datasetsById.has(progression.datasetId) && progression.flow?.datasetId === progression.datasetId)
+  const acquisitionProgressEnvelopes: AcquisitionProgressEnvelope<Word>[] = []
+  const acquisitionProgressQuarantine: NonNullable<AppState['acquisitionProgressQuarantine']> = []
+  for (const dataset of datasets) {
+    const candidates = rawProgressions.filter((progression) => progression.childId === childId && progression.datasetId === dataset.id)
+    const currentCandidates = candidates.filter((progression) => 'contractId' in progression)
+    if (currentCandidates.length > 1 || (currentCandidates.length === 0 && candidates.length > 1)) {
+      acquisitionProgressQuarantine.push({ id: `acq-quarantine-${childId}-${dataset.id}`, childId, datasetId: dataset.id, reason: 'Conflicting cloud Acquisition records reuse the same child and dataset identity.', quarantinedAt: new Date().toISOString(), raw: candidates })
+      continue
+    }
+    const candidate = currentCandidates[0] || candidates[0]
+    if (!candidate) continue
+    try {
+      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade)
+      const migrated = migrateAcquisitionProgress(candidate, context)
+      if (migrated.status === 'quarantined') {
+        acquisitionProgressQuarantine.push({ id: `acq-quarantine-${childId}-${dataset.id}`, childId, datasetId: dataset.id, reason: migrated.reason, quarantinedAt: new Date().toISOString(), raw: migrated.raw })
+      } else {
+        acquisitionProgressEnvelopes.push(migrated.envelope)
+      }
+    } catch (error) {
+      acquisitionProgressQuarantine.push({ id: `acq-quarantine-${childId}-${dataset.id}`, childId, datasetId: dataset.id, reason: error instanceof Error ? error.message : 'No Acquisition profile was available.', quarantinedAt: new Date().toISOString(), raw: candidate })
+    }
+  }
   const distractorTargetObservations = rawDtObservations
     .filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (String(observation.poolType) === 'familiar' || String(observation.poolType) === 'established' || observation.poolType === 'earned'))
     .map(normalizeDistractorTargetObservation)
-  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions, distractorTargetObservations }
+  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions: legacyProgressions, acquisitionProgressEnvelopes, acquisitionTransitionReceipts: acquisitionProgressEnvelopes.flatMap((envelope) => envelope.lastAppliedTransition ? [envelope.lastAppliedTransition] : []), acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine, distractorTargetObservations }
 }
 
 export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress'): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> { const now = new Date(); return { id, childId, sessionDate: now.toISOString(), localDate: new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIME_ZONE }).format(now), startedAt: now.toISOString(), primaryPhase, datasetId, warmupOnly: false, warmupStatus } }
