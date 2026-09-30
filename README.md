@@ -121,6 +121,14 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 - Audio remains the existing browser speech-synthesis fallback. Cached Google Cloud TTS generation remains a later backend task.
 - Acquisition uses the explicitly approved Familiar DT pool (`一` through `十`, `大`, `小`, `上`, `下`, `人`, `水`) plus completed current-week targets that become Earned DTs. Familiar and Earned DT responses are stored in a separate DT history, show/copy responses are not stored, and hidden weekly-target plus Earned DT responses contribute to the Acquisition visit score. Familiar DT responses remain excluded from that score.
 
+## From local development to production
+
+The intended production flow is **Google Slides/Sheets → trusted read-only importer → canonical validation → server-authorized Firestore write → authenticated child app**. The child-facing browser never reads Google documents directly and cannot write shared curriculum records. The Monday importer is a synchronization check, not a clock-based reset: without a newly accepted source event, the existing lifecycle assignments remain available.
+
+The checksum-verified browser backup and isolated restore page are temporary migration safeguards for progress that currently lives in local browser storage. They are not the permanent backend and are not intended as a weekly parent task. Before production, one reviewed migration will copy each child's valid local Acquisition, Warmup, graph, and preserved legacy history into child-owned Firestore records; a second-device verification and rollback window must pass before the original backup or compatibility readers are retired.
+
+Production activation remains grade-specific. Grade 2 Tier 1 writing is the first pilot because its versioned Acquisition and Adaptive Warmup persistence paths are complete in code. Grade 5 remains blocked on its production practice and Test Review 1/2 persistence gates. Kindergarten remains blocked on future unit/source decisions and its own production activation. Tier 2 reading is currently session-only for every grade and requires a separate durable persistence boundary. The complete ordered cutover is recorded in `PROJECT_PLAN.md` under **Production operating model and cutover roadmap**.
+
 ## Adaptive Warmup architecture status
 
 The current Warmup selection and transition algorithm has been mechanically extracted into `src/warmup/`, with `src/domain.ts` retaining compatibility exports. That extraction intentionally preserves today's runtime behavior and stored state; it does not make the legacy category names, shortage order, or repeated-word filling the approved future design.
