@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, BookOpenCheck, Check, RotateCcw, Volume2, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, Headphones, RotateCcw, X } from 'lucide-react'
 import type {
   AcquisitionAssessment,
   AcquisitionTargetSet,
@@ -8,6 +8,7 @@ import type {
 } from './acquisition/contracts.ts'
 import { revealAcquisition, startAcquisition } from './acquisition/engine.ts'
 import { transitionAcquisition } from './acquisition/transition.ts'
+import { ReadingResponsePanel } from './readingPractice/ReadingResponsePanel.tsx'
 import type { Tier2ReadingTarget } from './tier2/contracts.ts'
 import type { Tier2ReadingPathway } from './tier2/contracts.ts'
 import {
@@ -35,7 +36,7 @@ type AcquisitionRun = {
   label: string
   targetSet: AcquisitionTargetSet<Tier2ReadingTarget>
   flow: EngineAcquisitionFlow<Tier2ReadingTarget>
-  assessments: AcquisitionAssessment<Tier2ReadingTarget, 'manual-smoke'>[]
+  assessments: AcquisitionAssessment<Tier2ReadingTarget, 'recording-comparison'>[]
 }
 
 type QueueRun = {
@@ -57,13 +58,29 @@ function deterministicRandom(seed: number) {
   }
 }
 
-function speak(text: string) {
-  if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.55
-  window.speechSynthesis.speak(utterance)
+function speak(text: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      reject(new Error('Mandarin speech playback is unavailable.'))
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.55
+    let settled = false
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeout)
+      if (error) reject(error)
+      else resolve()
+    }
+    const timeout = window.setTimeout(() => finish(new Error('Mandarin speech playback timed out.')), 10_000)
+    utterance.onend = () => finish()
+    utterance.onerror = () => finish(new Error('Mandarin speech playback failed.'))
+    window.speechSynthesis.speak(utterance)
+  })
 }
 
 function pathwayDescription(pathway: Tier2ReadingPathway) {
@@ -153,7 +170,7 @@ function Tier2ReadingSmokeLab() {
         revealed,
         current.targetSet,
         snapshot.profile.acquisitionStrategy,
-        { correct, revealMethod: 'manual-smoke' as const },
+        { correct, revealMethod: 'recording-comparison' as const },
         random.current,
       )
       return {
@@ -211,46 +228,47 @@ function Tier2ReadingSmokeLab() {
       }))
       : run.attempts
 
-    return <main className="t2-shell t2-practice-shell">
-      <p className="t2-safety">Development smoke test · In-memory only · Nothing is recorded or saved</p>
-      <section className="t2-practice-card" aria-live="polite">
-        <header className="t2-practice-header">
-          <div>
-            <p className="t2-eyebrow">{grade} · Tier 2 reading</p>
-            <h1>{run.label}</h1>
-          </div>
-          <button className="t2-icon-button" type="button" onClick={closeRun} aria-label="Close smoke test"><X /></button>
-        </header>
+    const promptId = acquisitionPrompt?.id || `${run.pathwayId}:${run.kind === 'acquisition' ? run.flow.trialNumber : run.index}:${target?.id || 'complete'}`
+    const progress = complete ? 100 : Math.round(((run.kind === 'acquisition' ? run.flow.targetIndex : run.index) / Math.max(total, 1)) * 100)
+    const promptPhase = run.kind === 'acquisition' ? `${run.flow.phase} · ${acquisitionPrompt?.kind}` : run.kind
 
-        {complete ? <div className="t2-complete">
-          <span className="t2-complete-mark"><Check /></span>
-          <h2>Smoke path complete</h2>
-          <p>{summary.correct} of {summary.attempted} assessed reading responses were marked correct.</p>
-          {summary.diagnostics > 0 && <p>{summary.diagnostics} Familiar-DT diagnostic response{summary.diagnostics === 1 ? '' : 's'} remained outside the official target count.</p>}
-          <div className="t2-actions">
-            <button className="t2-primary" type="button" onClick={() => {
+    return <main className="t2-shell t2-practice-shell">
+      <p className="t2-safety">Development smoke test · Recordings stay in this prompt and are never saved or uploaded</p>
+      <div className="practice-page">
+        <div className="practice-top">
+          <button className="back-button" type="button" onClick={closeRun}><X size={18} /> Exit practice</button>
+          <span className="practice-count">{run.label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
+        </div>
+        <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+        <section className={`prompt-card ${complete ? 'complete-card' : ''}`} aria-live="polite">
+          {complete ? <>
+            <span className="complete-mark"><Check size={27} /></span>
+            <p className="eyebrow">{grade} · Tier 2 reading</p>
+            <h1>Reading path complete</h1>
+            <p className="review-instruction">{summary.correct} of {summary.attempted} assessed reading responses were marked correct.</p>
+            {summary.diagnostics > 0 && <p className="practice-helper">{summary.diagnostics} Familiar-DT diagnostic response{summary.diagnostics === 1 ? '' : 's'} remained outside the official target count.</p>}
+            <button className="primary-button review-start-button" type="button" onClick={() => {
               const pathway = pathways.find((candidate) => tier2SmokePathwayId(candidate) === run.pathwayId)
               if (pathway) startPathway(pathway)
             }}><RotateCcw size={18} /> Run it again</button>
-            <button className="t2-secondary" type="button" onClick={closeRun}><ArrowLeft size={18} /> Back to pathways</button>
-          </div>
-        </div> : target && <div className="t2-prompt">
-          <div className="t2-prompt-meta">
-            <span>{run.kind === 'acquisition' ? `${run.flow.phase} · ${acquisitionPrompt?.kind}` : run.kind}</span>
-            <span>Target {position} of {total}</span>
-            {acquisitionPrompt && <span>{acquisitionPrompt.timerSeconds}-second pattern</span>}
-          </div>
-          <p className="t2-instruction">Keep the word visible. Read it aloud, then tell the app how it went.</p>
-          <div className="t2-reading-target" lang="zh-Hans">{target.text}</div>
-          <button className="t2-audio" type="button" onClick={() => speak(target.text)}><Volume2 size={19} /> Hear pronunciation preview</button>
-          {showContinue ? <div className="t2-actions">
-            <button className="t2-primary" type="button" onClick={() => answerAcquisition(true)}>I read it <BookOpenCheck size={18} /></button>
-          </div> : <div className="t2-actions">
-            <button className="t2-primary" type="button" onClick={() => run.kind === 'acquisition' ? answerAcquisition(true) : answerQueue(true)}>I read it correctly <Check size={18} /></button>
-            <button className="t2-secondary" type="button" onClick={() => run.kind === 'acquisition' ? answerAcquisition(false) : answerQueue(false)}>I need help</button>
-          </div>}
-        </div>}
-
+            <button className="replay-button" type="button" onClick={closeRun}><ArrowLeft size={18} /> Back to pathways</button>
+          </> : target && <>
+            <div className="prompt-meta">
+              <span className={`set-chip chip-${run.kind === 'mastery' ? 'warmup' : run.kind}`}>{promptPhase}</span>
+              {acquisitionPrompt && <span className="timer"><Clock3 size={15} /> {acquisitionPrompt.timerSeconds}-second pattern</span>}
+            </div>
+            <ReadingResponsePanel
+              key={promptId}
+              promptId={promptId}
+              targetText={target.text}
+              assessed={!showContinue}
+              onPlayReference={() => speak(target.text)}
+              onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
+              onContinue={() => answerAcquisition(true)}
+            />
+          </>}
+        </section>
+        <p className="practice-footnote"><Headphones size={14} /> Your recording is temporary · Nothing is saved or uploaded</p>
         <details className="t2-debug">
           <summary>View smoke-test trace</summary>
           <p>Completed responses: {attempts.length}. This trace exists only in memory.</p>
@@ -258,12 +276,12 @@ function Tier2ReadingSmokeLab() {
             <span>{attempt.promptKind}</span> · <strong>{attempt.target.text}</strong> · {attempt.correct ? 'correct' : 'needs help'}{attempt.countsTowardScore ? '' : ' · diagnostic'}
           </li>)}</ol>
         </details>
-      </section>
+      </div>
     </main>
   }
 
   return <main className="t2-shell">
-    <p className="t2-safety">Development-only Tier 2 reading lab · Fixture data · No production activation, account data, recording, or persistence</p>
+    <p className="t2-safety">Development-only Tier 2 reading lab · Fixture data · Ephemeral microphone recording · No production activation, account data, or persistence</p>
     <header className="t2-hero">
       <p className="t2-eyebrow">Tier 2 reading smoke test</p>
       <h1>Follow each grade’s real learning path.</h1>
@@ -317,7 +335,7 @@ function Tier2ReadingSmokeLab() {
         <li>The grade-owned lifecycle selects the reading cohorts; this lab does not calculate a second lifecycle.</li>
         <li>Acquisition runs the shared engine with a separate Tier 2 strategy and visible reading targets.</li>
         <li>Kindergarten preserves cumulative review, Grade 2 preserves one review, and Grade 5 preserves two reviews.</li>
-        <li>Mastery terms remain separate from Tier 1 writing. Durable queues, official scores, and cloud persistence are not connected here.</li>
+        <li>Mastery terms remain separate from Tier 1 writing. Microphone recordings are prompt-local and ephemeral; durable queues, official scores, and cloud persistence are not connected here.</li>
       </ul>
     </details>
   </main>

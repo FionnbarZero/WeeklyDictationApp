@@ -119,7 +119,8 @@ test('Tier 2 reading mirrors each grade-owned Acquisition pattern without sharin
     targetPresentation: 'visible',
     response: 'read-aloud',
     assessment: 'self-assessment',
-    recording: 'none',
+    recording: 'prompted-ephemeral',
+    comparisonOrder: 'child-then-model',
   })
 })
 
