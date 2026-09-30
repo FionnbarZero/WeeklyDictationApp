@@ -59,7 +59,7 @@ export const TIER2_PROTOTYPE_CURRICULUM: Record<
       startDate: '2026-08-31',
       endDate: '2026-09-04',
       tier1Terms: ['很短', '也', '笑', '学校', '说'],
-      tier2Terms: ['爱心', '难过'],
+      tier2Terms: ['爱心', '难过', '帮助', '同学', '比如'],
       sourceReference: 'Grade 2 deck · Week 8/31–9/4',
     },
     {
@@ -67,7 +67,7 @@ export const TIER2_PROTOTYPE_CURRICULUM: Record<
       startDate: '2026-09-07',
       endDate: '2026-09-11',
       tier1Terms: ['美国', '带', '路', '到', '都'],
-      tier2Terms: ['帮助', '找'],
+      tier2Terms: ['帮助', '找', '语', '食物'],
       sourceReference: 'Grade 2 deck · Week 9/8–9/11',
     },
     {
@@ -75,7 +75,7 @@ export const TIER2_PROTOTYPE_CURRICULUM: Record<
       startDate: '2026-09-14',
       endDate: '2026-09-18',
       tier1Terms: ['出生', '但是', '运动', '地方', '不同'],
-      tier2Terms: ['身体', '手'],
+      tier2Terms: ['身体', '手', '脚', '嘴巴', '国家', '事情', '生活'],
       sourceReference: 'Grade 2 deck · Week 9/14–9/18',
     },
     {
