@@ -97,9 +97,9 @@ test('the prototype curriculum preserves every known source term without a three
   assert.deepEqual(
     TIER2_PROTOTYPE_CURRICULUM['Grade 2'].map((cycle) => cycle.tier2Terms),
     [
-      ['爱心', '难过'],
-      ['帮助', '找'],
-      ['身体', '手'],
+      ['爱心', '难过', '帮助', '同学', '比如'],
+      ['帮助', '找', '语', '食物'],
+      ['身体', '手', '脚', '嘴巴', '国家', '事情', '生活'],
       ['城市', '上班', '公园', '图书馆', '散步', '漂亮', '各种各样的'],
     ],
   )
