@@ -17,6 +17,7 @@ function sideEffectImportsFrom(fileSource: string) {
 }
 
 const warmupDirectory = fileURLToPath(new URL('../src/warmup/', import.meta.url))
+const warmupPersistenceDirectory = fileURLToPath(new URL('../src/persistence/warmup/', import.meta.url))
 
 function isTypeScriptFamilyFile(fileName: string) {
   return /\.(?:ts|tsx|mts|cts)$/.test(fileName)
@@ -47,6 +48,11 @@ test('the Warmup boundary contains only its approved TypeScript-family files and
     'adaptive/validation.ts': ['./contracts.ts', './identity.ts', './profileValidation.ts'],
     'contracts.ts': ['../domain/contracts.ts'],
     'engine.ts': ['../domain/contracts.ts', './contracts.ts'],
+    'visits/contracts.ts': ['../adaptive/contracts.ts'],
+    'visits/identity.ts': ['./contracts.ts'],
+    'visits/reporting.ts': ['./contracts.ts'],
+    'visits/reducer.ts': ['../adaptive/contracts.ts', '../adaptive/eligibility.ts', '../adaptive/transitions.ts', './contracts.ts', './identity.ts'],
+    'visits/validation.ts': ['../adaptive/contracts.ts', '../adaptive/profileValidation.ts', './contracts.ts', './identity.ts', './reducer.ts'],
   }
   assert.deepEqual(warmupTypeScriptFiles(), Object.keys(approvedImports).sort())
 
@@ -76,7 +82,7 @@ test('the domain facade preserves the public Warmup contracts and compatibility 
   assert.match(domainSource, /export function buildWarmupSelection/)
 })
 
-test('the pure Adaptive Warmup model remains unused by production orchestration and persistence', () => {
+test('production uses the Adaptive Warmup model only through the approved application boundary and state types', () => {
   const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
   const productionFiles = ['src', 'backend', 'scripts'].flatMap((root) => {
     const visit = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -88,9 +94,18 @@ test('the pure Adaptive Warmup model remains unused by production orchestration 
     })
     return visit(join(repositoryRoot, root))
   })
-  for (const file of productionFiles) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /warmup\/adaptive/, relative(repositoryRoot, file))
-  }
+  const adaptiveConsumers = productionFiles.filter((file) => /warmup\/adaptive/.test(readFileSync(file, 'utf8')))
+    .map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort()
+  assert.deepEqual(adaptiveConsumers, [
+    'src/application/warmup/activation.ts',
+    'src/application/warmup/cloudCoordinator.ts',
+    'src/application/warmup/hydration.ts',
+    'src/application/warmup/modelAdapter.ts',
+    'src/application/warmup/state.ts',
+    'src/domain.ts',
+  ])
+  assert.doesNotMatch(source('../src/App.tsx'), /warmup\/adaptive/)
+  assert.doesNotMatch(source('../src/firestoreClient.ts'), /warmup\/adaptive/)
   assert.match(source('../src/domain.ts'), /version: 2/)
 })
 
@@ -99,4 +114,25 @@ test('Adaptive Warmup transitions consume the profile-owned policy without a dup
   assert.match(source('../src/warmup/adaptive/transitions.ts'), /profile: AdaptiveWarmupProfile/)
   assert.match(source('../src/warmup/adaptive/transitions.ts'), /profile\.recentEntryPromotionCorrect/)
   assert.match(source('../src/warmup/adaptive/transitions.ts'), /profile\.rotationPolicy\.promotedTermEligibility/)
+})
+
+test('Warmup cloud codecs and write plans remain storage-neutral', () => {
+  const approvedImports: Record<string, string[]> = {
+    'cloudCodec.ts': ['../../warmup/visits/contracts.ts', './cloudContracts.ts'],
+    'cloudContracts.ts': ['../../warmup/visits/contracts.ts'],
+    'cloudWrites.ts': ['../../warmup/visits/contracts.ts', './cloudCodec.ts', './cloudContracts.ts'],
+    'pendingJournal.ts': ['../../warmup/visits/contracts.ts'],
+  }
+  const files = readdirSync(warmupPersistenceDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && isTypeScriptFamilyFile(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+  assert.deepEqual(files, Object.keys(approvedImports).sort())
+  for (const [file, imports] of Object.entries(approvedImports)) {
+    const fileSource = source(`../src/persistence/warmup/${file}`)
+    assert.deepEqual(importsFrom(fileSource), imports)
+    assert.deepEqual(sideEffectImportsFrom(fileSource), [])
+    assert.doesNotMatch(fileSource, /firestoreClient|firebaseClient|\breact\b|localStorage|App\.tsx|\.\.\/\.\.\/domain(?:\.ts)?['"]/i)
+    assert.doesNotMatch(fileSource, /\brequire\s*\(|\bimport\s*\(/)
+  }
 })

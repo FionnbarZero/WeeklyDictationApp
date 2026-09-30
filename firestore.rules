@@ -91,6 +91,219 @@ service cloud.firestore {
         && request.resource.data.flow.datasetId == request.resource.data.datasetId
         && request.resource.data.updatedAt is string;
     }
+    function validWarmupReceiptShape(visitId, transitionId) {
+      return request.resource.data.visitId == visitId
+        && request.resource.data.transitionId == transitionId
+        && transitionId.matches('^warmup-transition-v1-[0-9a-f]{16}$')
+        && request.resource.data.payloadFingerprint is string
+        && request.resource.data.operation in ['answer', 'mark-unavailable', 'finalize-partial', 'skip']
+        && request.resource.data.expectedVisitRevision is int
+        && request.resource.data.expectedVisitRevision >= 0
+        && request.resource.data.appliedVisitRevision == request.resource.data.expectedVisitRevision + 1
+        && request.resource.data.appliedAt is string
+        && ((request.resource.data.operation in ['answer', 'mark-unavailable']
+              && request.resource.data.queueEntryId is string
+              && request.resource.data.queueEntryId.matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+            || (request.resource.data.operation in ['finalize-partial', 'skip']
+              && !('queueEntryId' in request.resource.data)))
+        && ((request.resource.data.operation == 'answer'
+              && request.resource.data.masteryStateId is string
+              && request.resource.data.expectedMasteryRevision is int
+              && request.resource.data.expectedMasteryRevision >= 0
+              && request.resource.data.appliedMasteryRevision == request.resource.data.expectedMasteryRevision + 1
+              && request.resource.data.attemptId is string
+              && request.resource.data.attemptId.matches('^warmup-attempt-v1-[0-9a-f]{16}$'))
+            || (request.resource.data.operation != 'answer'
+              && !('masteryStateId' in request.resource.data)
+              && !('expectedMasteryRevision' in request.resource.data)
+              && !('appliedMasteryRevision' in request.resource.data)
+              && !('attemptId' in request.resource.data)))
+        && (!('graphPointId' in request.resource.data)
+          || (request.resource.data.graphPointId is string
+            && request.resource.data.graphPointId.matches('^warmup-graph-v1-[0-9a-f]{16}$')));
+    }
+    function validWarmupQueueEntryRecord(childId, entryId) {
+      return request.resource.data.schemaVersion == 1
+        && request.resource.data.contractId == 'adaptive-warmup-queue-entry-v1'
+        && request.resource.data.id == entryId
+        && entryId.matches('^warmup-entry-v1-[0-9a-f]{16}$')
+        && request.resource.data.visitId is string
+        && request.resource.data.childId == childId
+        && request.resource.data.position is int
+        && request.resource.data.position >= 0
+        && request.resource.data.masteryTermId is string
+        && request.resource.data.masteryTermId.matches('^mastery-v1-[0-9a-f]{24}$')
+        && request.resource.data.sourceBucket in ['recent-entry', 'needs-attention', 'mastery-rotation']
+        && request.resource.data.occurrenceIds is list
+        && request.resource.data.occurrenceIds.size() > 0
+        && request.resource.data.prompt is map
+        && request.resource.data.prompt.keys().hasAll(['wordId', 'datasetId', 'text', 'sentence'])
+        && request.resource.data.prompt.keys().hasOnly(['wordId', 'datasetId', 'text', 'sentence'])
+        && request.resource.data.prompt.wordId is string
+        && request.resource.data.prompt.datasetId is string
+        && request.resource.data.prompt.text is string
+        && request.resource.data.prompt.sentence is string
+        && request.resource.data.status in ['pending', 'answered', 'unavailable']
+        && (request.resource.data.status == 'pending'
+          ? !('attemptId' in request.resource.data)
+            && !('unavailableReason' in request.resource.data)
+            && !('lastAppliedTransitionId' in request.resource.data)
+          : (request.resource.data.status == 'answered'
+            ? request.resource.data.attemptId is string
+              && request.resource.data.attemptId.matches('^warmup-attempt-v1-[0-9a-f]{16}$')
+              && !('unavailableReason' in request.resource.data)
+              && request.resource.data.lastAppliedTransitionId is string
+            : request.resource.data.unavailableReason == 'active-curriculum-occurrence'
+              && !('attemptId' in request.resource.data)
+              && request.resource.data.lastAppliedTransitionId is string));
+    }
+    function validWarmupQueueEntryCreate(familyId, childId, entryId) {
+      let visit = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data;
+      return validWarmupQueueEntryRecord(childId, entryId)
+        && request.resource.data.status == 'pending'
+        && visit.childId == childId
+        && visit.revision == 0
+        && request.resource.data.position < visit.queueEntryIds.size()
+        && visit.queueEntryIds[request.resource.data.position] == entryId;
+    }
+    function validWarmupQueueEntryUpdate(familyId, childId, entryId) {
+      let receipt = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.lastAppliedTransitionId)).data;
+      let beforeVisit = get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data;
+      let afterVisit = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data;
+      return validWarmupQueueEntryRecord(childId, entryId)
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'attemptId', 'unavailableReason', 'lastAppliedTransitionId'])
+        && beforeVisit.status == 'in-progress'
+        && beforeVisit.nextPosition == resource.data.position
+        && beforeVisit.queueEntryIds[resource.data.position] == entryId
+        && afterVisit.queueEntryIds == beforeVisit.queueEntryIds
+        && afterVisit.nextPosition == resource.data.position + 1
+        && afterVisit.lastAppliedTransition == receipt
+        && receipt.queueEntryId == entryId
+        && receipt.transitionId == request.resource.data.lastAppliedTransitionId
+        && ((receipt.operation == 'answer'
+            && request.resource.data.status == 'answered'
+            && request.resource.data.attemptId == receipt.attemptId)
+          || (receipt.operation == 'mark-unavailable'
+            && request.resource.data.status == 'unavailable'
+            && request.resource.data.unavailableReason == 'active-curriculum-occurrence'));
+    }
+    function validWarmupQueueEntryIds(entryIds) {
+      return entryIds is list
+        && entryIds.size() <= 16
+        && (entryIds.size() <= 0 || entryIds[0].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 1 || entryIds[1].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 2 || entryIds[2].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 3 || entryIds[3].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 4 || entryIds[4].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 5 || entryIds[5].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 6 || entryIds[6].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 7 || entryIds[7].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 8 || entryIds[8].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 9 || entryIds[9].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 10 || entryIds[10].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 11 || entryIds[11].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 12 || entryIds[12].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 13 || entryIds[13].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 14 || entryIds[14].matches('^warmup-entry-v1-[0-9a-f]{16}$'))
+        && (entryIds.size() <= 15 || entryIds[15].matches('^warmup-entry-v1-[0-9a-f]{16}$'));
+    }
+    function validWarmupVisit(childId, visitId) {
+      return request.resource.data.schemaVersion == 1
+        && request.resource.data.contractId == 'adaptive-warmup-visit-v1'
+        && request.resource.data.id == visitId
+        && request.resource.data.childId == childId
+        && request.resource.data.grade is string
+        && request.resource.data.schoolYear is string
+        && request.resource.data.activityModule is string
+        && request.resource.data.tier in ['tier-1', 'tier-2', 'tier-3']
+        && request.resource.data.language in ['mandarin', 'english']
+        && request.resource.data.visitType in ['standalone', 'pre-activity']
+        && request.resource.data.profile is map
+        && request.resource.data.configuredMaximum is int
+        && request.resource.data.configuredMaximum > 0
+        && request.resource.data.assignedQueueSize is int
+        && request.resource.data.assignedQueueSize >= 0
+        && request.resource.data.assignedQueueSize <= request.resource.data.configuredMaximum
+        && validWarmupQueueEntryIds(request.resource.data.queueEntryIds)
+        && request.resource.data.queueEntryIds.size() == request.resource.data.assignedQueueSize
+        && request.resource.data.nextPosition is int
+        && request.resource.data.nextPosition >= 0
+        && request.resource.data.nextPosition <= request.resource.data.assignedQueueSize
+        && request.resource.data.rotationCycle is int
+        && request.resource.data.rotationCycle > 0
+        && request.resource.data.revision is int
+        && request.resource.data.revision >= 0
+        && request.resource.data.status in ['in-progress', 'partial', 'completed', 'skipped']
+        && request.resource.data.attemptedCount is int
+        && request.resource.data.attemptedCount >= 0
+        && request.resource.data.correctCount is int
+        && request.resource.data.correctCount >= 0
+        && request.resource.data.correctCount <= request.resource.data.attemptedCount
+        && request.resource.data.percent is int
+        && request.resource.data.percent >= 0
+        && request.resource.data.percent <= 100
+        && request.resource.data.createdAt is string
+        && request.resource.data.updatedAt is string
+        && (request.resource.data.revision == 0
+          ? !('lastAppliedTransition' in request.resource.data)
+            && request.resource.data.nextPosition == 0
+            && request.resource.data.attemptedCount == 0
+            && request.resource.data.correctCount == 0
+            && request.resource.data.percent == 0
+            && ((request.resource.data.assignedQueueSize == 0 && request.resource.data.status == 'completed')
+              || (request.resource.data.assignedQueueSize > 0 && request.resource.data.status == 'in-progress'))
+          : (request.resource.data.lastAppliedTransition is map
+            && request.resource.data.lastAppliedTransition.visitId == visitId
+            && request.resource.data.lastAppliedTransition.appliedVisitRevision == request.resource.data.revision));
+    }
+    function validWarmupVisitUpdate(childId, visitId) {
+      return request.resource.data.id == visitId
+        && request.resource.data.childId == childId
+        && request.resource.data.queueEntryIds == resource.data.queueEntryIds
+        && request.resource.data.nextPosition is int
+        && request.resource.data.nextPosition >= 0
+        && request.resource.data.nextPosition <= resource.data.assignedQueueSize
+        && request.resource.data.revision is int
+        && request.resource.data.revision >= 1
+        && request.resource.data.status in ['in-progress', 'partial', 'completed', 'skipped']
+        && request.resource.data.attemptedCount is int
+        && request.resource.data.attemptedCount >= 0
+        && request.resource.data.correctCount is int
+        && request.resource.data.correctCount >= 0
+        && request.resource.data.correctCount <= request.resource.data.attemptedCount
+        && request.resource.data.percent is int
+        && request.resource.data.percent >= 0
+        && request.resource.data.percent <= 100
+        && request.resource.data.updatedAt is string
+        && request.resource.data.lastAppliedTransition is map
+        && request.resource.data.lastAppliedTransition.visitId == visitId
+        && request.resource.data.lastAppliedTransition.appliedVisitRevision == request.resource.data.revision;
+    }
+    function validWarmupMastery(childId, masteryStateId) {
+      return request.resource.data.revision is int
+        && request.resource.data.revision >= 0
+        && masteryStateId.matches('^child-mastery-v1-[0-9a-f]{24}$')
+        && request.resource.data.state is map
+        && request.resource.data.state.version == 1
+        && request.resource.data.state.id == masteryStateId
+        && request.resource.data.state.childId == childId
+        && request.resource.data.state.masteryTermId is string
+        && request.resource.data.state.evidence in ['unassessed', 'demonstrated', 'support-needed']
+        && request.resource.data.state.bucket in ['recent-entry', 'needs-attention', 'mastery-rotation']
+        && request.resource.data.state.consecutiveCorrect is int
+        && request.resource.data.state.consecutiveCorrect >= 0
+        && (request.resource.data.state.evidence == 'support-needed') == (request.resource.data.state.bucket == 'needs-attention')
+        && (request.resource.data.state.evidence != 'unassessed' || request.resource.data.state.consecutiveCorrect == 0)
+        && (request.resource.data.state.bucket != 'needs-attention' || request.resource.data.state.consecutiveCorrect < 3)
+        && (request.resource.data.state.bucket != 'mastery-rotation'
+          || (request.resource.data.state.evidence == 'demonstrated' && request.resource.data.state.consecutiveCorrect == 0))
+        && (request.resource.data.revision == 0
+          ? !('lastAppliedTransition' in request.resource.data)
+          : (request.resource.data.lastAppliedTransition is map
+            && request.resource.data.lastAppliedTransition.masteryStateId == masteryStateId
+            && request.resource.data.lastAppliedTransition.appliedMasteryRevision == request.resource.data.revision));
+    }
     function validScore(familyId, childId) {
       return request.resource.data.childId is string
         && request.resource.data.childId == childId
@@ -176,6 +389,171 @@ service cloud.firestore {
             && request.resource.data.childWordStates is list
             && request.resource.data.monthlyRotationScores is list
             && request.resource.data.updatedAt is string;
+          allow delete: if false;
+        }
+
+        match /warmupVisits/{visitId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validWarmupVisit(childId, visitId)
+            && request.resource.data.revision == 0;
+          allow update: if ownsActiveChild(familyId, childId)
+            && validWarmupVisitUpdate(childId, visitId)
+            && request.resource.data.revision == resource.data.revision + 1
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextPosition', 'revision', 'status', 'attemptedCount', 'correctCount', 'percent', 'lastAppliedTransition', 'updatedAt', 'finalizedAt'])
+            && resource.data.status == 'in-progress'
+            && request.resource.data.lastAppliedTransition == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.lastAppliedTransition.transitionId)).data
+            && request.resource.data.lastAppliedTransition.expectedVisitRevision == resource.data.revision
+            && request.resource.data.lastAppliedTransition.appliedVisitRevision == request.resource.data.revision
+            && ((request.resource.data.lastAppliedTransition.operation in ['answer', 'mark-unavailable']
+                  && request.resource.data.nextPosition == resource.data.nextPosition + 1
+                  && request.resource.data.lastAppliedTransition.queueEntryId == resource.data.queueEntryIds[resource.data.nextPosition]
+                  && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupQueueEntries/$(request.resource.data.lastAppliedTransition.queueEntryId)).data.lastAppliedTransitionId == request.resource.data.lastAppliedTransition.transitionId)
+                || (request.resource.data.lastAppliedTransition.operation in ['finalize-partial', 'skip']
+                  && request.resource.data.nextPosition == resource.data.nextPosition))
+            && ((request.resource.data.lastAppliedTransition.operation in ['answer', 'mark-unavailable']
+                  && ((request.resource.data.nextPosition == request.resource.data.assignedQueueSize
+                      && request.resource.data.status == 'completed')
+                    || (request.resource.data.nextPosition < request.resource.data.assignedQueueSize
+                      && request.resource.data.status == 'in-progress')))
+                || (request.resource.data.lastAppliedTransition.operation == 'finalize-partial'
+                  && resource.data.attemptedCount > 0
+                  && request.resource.data.status == 'partial')
+                || (request.resource.data.lastAppliedTransition.operation == 'skip'
+                  && resource.data.attemptedCount == 0
+                  && request.resource.data.status == 'skipped'))
+            && ((request.resource.data.lastAppliedTransition.operation == 'answer'
+                && request.resource.data.attemptedCount == resource.data.attemptedCount + 1
+                && request.resource.data.correctCount >= resource.data.correctCount
+                && request.resource.data.correctCount <= resource.data.correctCount + 1)
+              || (request.resource.data.lastAppliedTransition.operation != 'answer'
+                && request.resource.data.attemptedCount == resource.data.attemptedCount
+                && request.resource.data.correctCount == resource.data.correctCount));
+          allow delete: if false;
+        }
+
+        match /warmupQueueEntries/{entryId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validWarmupQueueEntryCreate(familyId, childId, entryId);
+          allow update: if ownsActiveChild(familyId, childId)
+            && validWarmupQueueEntryUpdate(familyId, childId, entryId);
+          allow delete: if false;
+        }
+
+        match /warmupMastery/{masteryStateId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validWarmupMastery(childId, masteryStateId)
+            && request.resource.data.revision == 0;
+          allow update: if ownsActiveChild(familyId, childId)
+            && validWarmupMastery(childId, masteryStateId)
+            && request.resource.data.revision == resource.data.revision + 1
+            && request.resource.data.state.id == resource.data.state.id
+            && request.resource.data.state.childId == resource.data.state.childId
+            && request.resource.data.state.masteryTermId == resource.data.state.masteryTermId
+            && request.resource.data.lastAppliedTransition.operation == 'answer'
+            && request.resource.data.lastAppliedTransition.expectedMasteryRevision == resource.data.revision
+            && request.resource.data.lastAppliedTransition == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.lastAppliedTransition.transitionId)).data;
+          allow delete: if false;
+        }
+
+        match /warmupTransitions/{transitionId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validWarmupReceiptShape(request.resource.data.visitId, transitionId)
+            && get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.revision == request.resource.data.expectedVisitRevision
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition == request.resource.data
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition.transitionId == transitionId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition.payloadFingerprint == request.resource.data.payloadFingerprint
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.revision == request.resource.data.appliedVisitRevision
+            && (request.resource.data.operation in ['finalize-partial', 'skip']
+              || (getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupQueueEntries/$(request.resource.data.queueEntryId)).data.lastAppliedTransitionId == transitionId
+                && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupQueueEntries/$(request.resource.data.queueEntryId)).data.visitId == request.resource.data.visitId))
+            && (request.resource.data.operation != 'answer'
+              || getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupAttempts/$(request.resource.data.attemptId)).data.transitionId == transitionId)
+            && (getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.attemptedCount == 0
+              ? !('graphPointId' in request.resource.data)
+              : (request.resource.data.graphPointId is string
+                && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupGraphPoints/$(request.resource.data.graphPointId)).data.visitId == request.resource.data.visitId))
+            && (!('masteryStateId' in request.resource.data)
+              || (get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupMastery/$(request.resource.data.masteryStateId)).data.revision == request.resource.data.expectedMasteryRevision
+                && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupMastery/$(request.resource.data.masteryStateId)).data.lastAppliedTransition.transitionId == transitionId
+                && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupMastery/$(request.resource.data.masteryStateId)).data.revision == request.resource.data.appliedMasteryRevision));
+          allow update, delete: if false;
+        }
+
+        match /warmupAttempts/{attemptId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && request.resource.data.id == attemptId
+            && attemptId.matches('^warmup-attempt-v1-[0-9a-f]{16}$')
+            && request.resource.data.childId == childId
+            && request.resource.data.visitId is string
+            && request.resource.data.transitionId is string
+            && request.resource.data.masteryTermId is string
+            && request.resource.data.queueEntryId is string
+            && request.resource.data.queuePosition is int
+            && request.resource.data.sourceBucket in ['recent-entry', 'needs-attention', 'mastery-rotation']
+            && request.resource.data.correct is bool
+            && request.resource.data.revealMethod in ['timer', 'skip_timer', 'show_answer']
+            && request.resource.data.reviewedAt is string
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.transitionId)).data.operation == 'answer'
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.transitionId)).data.attemptId == attemptId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(request.resource.data.transitionId)).data.visitId == request.resource.data.visitId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupQueueEntries/$(request.resource.data.queueEntryId)).data.attemptId == attemptId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupQueueEntries/$(request.resource.data.queueEntryId)).data.lastAppliedTransitionId == request.resource.data.transitionId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition.transitionId == request.resource.data.transitionId;
+          allow update, delete: if false;
+        }
+
+        match /warmupGraphPoints/{pointId} {
+          allow read: if childExists(familyId, childId);
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.id == pointId
+            && pointId.matches('^warmup-graph-v1-[0-9a-f]{16}$')
+            && request.resource.data.childId == childId
+            && request.resource.data.visitId is string
+            && request.resource.data.status in ['partial', 'completed']
+            && request.resource.data.attemptedCount is int
+            && request.resource.data.attemptedCount > 0
+            && request.resource.data.correctCount is int
+            && request.resource.data.correctCount >= 0
+            && request.resource.data.correctCount <= request.resource.data.attemptedCount
+            && request.resource.data.percent is int
+            && request.resource.data.percent >= 0
+            && request.resource.data.percent <= 100
+            && request.resource.data.grade == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.grade
+            && request.resource.data.activityModule == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.activityModule
+            && request.resource.data.visitType == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.visitType
+            && request.resource.data.configuredMaximum == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.configuredMaximum
+            && request.resource.data.assignedQueueSize == getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.assignedQueueSize
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.attemptedCount == request.resource.data.attemptedCount
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.correctCount == request.resource.data.correctCount
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.percent == request.resource.data.percent
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.updatedAt == request.resource.data.updatedAt
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition.graphPointId == pointId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupTransitions/$(getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.lastAppliedTransition.transitionId)).data.graphPointId == pointId
+            && (request.resource.data.status == 'completed') == (getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/warmupVisits/$(request.resource.data.visitId)).data.status == 'completed');
+          allow delete: if false;
+        }
+
+        match /warmupRotations/{rotationId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && request.resource.data.version == 1
+            && request.resource.data.id == rotationId
+            && rotationId.matches('^rotation-v1-[0-9a-f]{24}$')
+            && request.resource.data.childId == childId
+            && request.resource.data.activityModule is string
+            && request.resource.data.cycle is int
+            && request.resource.data.cycle > 0;
+          allow update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.version == resource.data.version
+            && request.resource.data.id == resource.data.id
+            && request.resource.data.childId == resource.data.childId
+            && request.resource.data.activityModule == resource.data.activityModule
+            && request.resource.data.cycle == resource.data.cycle + 1;
           allow delete: if false;
         }
 

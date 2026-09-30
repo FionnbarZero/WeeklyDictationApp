@@ -1,0 +1,73 @@
+import { expect, test } from '@playwright/test'
+import path from 'node:path'
+
+const APP_STATE_KEY = 'weekly-dictation-state-v2'
+
+async function warmupSnapshot(page: import('@playwright/test').Page) {
+  return page.evaluate((stateKey) => {
+    const raw = window.localStorage.getItem(stateKey)
+    if (!raw) throw new Error('The local application state was not saved.')
+    const state = JSON.parse(raw)
+    const visit = state.warmupVisitsV1?.find((candidate: { status: string }) => candidate.status === 'in-progress')
+      || state.warmupVisitsV1?.at(-1)
+    if (!visit) throw new Error('No durable Warmup visit was saved.')
+    return {
+      id: visit.id,
+      revision: visit.revision,
+      nextPosition: visit.nextPosition,
+      attemptedCount: visit.attemptedCount,
+      queueIds: visit.queue.map((entry: { id: string }) => entry.id),
+      receiptCount: state.warmupTransitionReceiptsV1?.length || 0,
+      attemptCount: state.warmupAttemptsV1?.length || 0,
+      graphCount: state.warmupGraphPointsV1?.length || 0,
+    }
+  }, APP_STATE_KEY)
+}
+
+test('a reviewed standalone Warmup answer resumes the same queue position and graph point after reload', async ({ page }) => {
+  await page.goto('/?testDate=2026-09-29')
+  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
+  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+
+  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await page.getByRole('button', { name: 'Begin Warmup' }).click()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
+  const before = await warmupSnapshot(page)
+
+  await page.getByRole('button', { name: 'Skip Timer' }).click()
+  await page.getByRole('button', { name: /I got it right/i }).click()
+  await expect.poll(async () => (await warmupSnapshot(page)).revision).toBe(before.revision + 1)
+  const after = await warmupSnapshot(page)
+  expect(after.id).toBe(before.id)
+  expect(after.nextPosition).toBe(before.nextPosition + 1)
+  expect(after.queueIds).toEqual(before.queueIds)
+  expect(after.attemptedCount).toBe(1)
+  expect(after.receiptCount).toBe(1)
+  expect(after.attemptCount).toBe(1)
+  expect(after.graphCount).toBe(1)
+
+  await page.reload()
+  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await page.getByRole('button', { name: 'Begin Warmup' }).click()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
+  expect(await warmupSnapshot(page)).toEqual(after)
+})
+
+test('a started pre-activity Warmup can finalize one partial graph point and continue to the selected activity', async ({ page }) => {
+  await page.goto('/?testDate=2026-09-29')
+  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
+  await page.getByRole('button', { name: /Start Acquisition/i }).click()
+  await page.getByRole('button', { name: 'Begin Warmup' }).click()
+  await page.getByRole('button', { name: 'Skip Timer' }).click()
+  await page.getByRole('button', { name: /I got it right/i }).click()
+  await page.getByRole('button', { name: 'Continue to activity' }).click()
+  await expect(page.getByText(/Word 1/i)).toBeVisible()
+  const snapshot = await warmupSnapshot(page)
+  expect(snapshot.attemptedCount).toBe(1)
+  expect(snapshot.graphCount).toBe(1)
+  const visitStatus = await page.evaluate((stateKey) => {
+    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+    return state.warmupVisitsV1?.at(-1)?.status
+  }, APP_STATE_KEY)
+  expect(visitStatus).toBe('partial')
+})

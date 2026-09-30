@@ -2,6 +2,9 @@ import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } f
 import { getIdToken, type AuthUser } from './firebaseClient.ts'
 import { deriveChildWordStates, normalizeDistractorTargetObservation, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
+import type { VersionedChildMasteryState, WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
+import type { CloudWarmupQueueEntry, CloudWarmupRotation, CloudWarmupVisit, WarmupCloudRecordWrite } from './persistence/warmup/cloudContracts.ts'
+import { buildWarmupSeedRecordWrites, buildWarmupTransitionRecordWrites, reconcileWarmupSeedRecord, warmupReceiptMatchesTransition } from './persistence/warmup/cloudWrites.ts'
 import { migrateAcquisitionProgress } from './acquisition/persistence/migration.ts'
 import { acquisitionPersistenceContext } from './application/acquisitionPersistence.ts'
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
@@ -10,9 +13,10 @@ import { isCanonicalDataset } from './slidesImporter.ts'
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
 export type FamilyRecord = { id: string; ownerParentId: string; createdAt: string; updatedAt: string }
 export type ChildProfile = { id: string; nickname: string; grade: string; schoolYear: string; active: boolean; gradeEffectiveDate: string; createdAt: string; updatedAt: string }
-export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
+export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
 export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete'; countsTowardWeeklyScore?: boolean; acquisitionKind?: string }
 export type CloudAdaptiveState = { childId: string; childWordStates: ChildWordState[]; monthlyRotationScores: MonthlyRotationScore[]; rotationCycleId: number; updatedAt: string }
+export type { CloudWarmupRotation } from './persistence/warmup/cloudContracts.ts'
 
 type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue>; createTime?: string; updateTime?: string }
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
@@ -115,6 +119,13 @@ export async function listAttempts(familyId: string, childId: string, sessionId:
 export async function listScores(familyId: string, childId: string) { return listDocs<DatasetScore>(docPath(['families', familyId, 'children', childId, 'scores'])) }
 export async function listAcquisitionProgressions(familyId: string, childId: string) { return listDocs<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions'])) }
 export async function listDistractorTargetObservations(familyId: string, childId: string) { return listDocs<DistractorTargetObservation>(docPath(['families', familyId, 'children', childId, 'dtObservations'])) }
+export async function listWarmupVisits(familyId: string, childId: string) { return listDocs<CloudWarmupVisit>(docPath(['families', familyId, 'children', childId, 'warmupVisits'])) }
+export async function listWarmupQueueEntries(familyId: string, childId: string) { return listDocs<CloudWarmupQueueEntry>(docPath(['families', familyId, 'children', childId, 'warmupQueueEntries'])) }
+export async function listWarmupMastery(familyId: string, childId: string) { return listDocs<VersionedChildMasteryState>(docPath(['families', familyId, 'children', childId, 'warmupMastery'])) }
+export async function listWarmupTransitions(familyId: string, childId: string) { return listDocs<WarmupTransitionReceipt>(docPath(['families', familyId, 'children', childId, 'warmupTransitions'])) }
+export async function listWarmupAttempts(familyId: string, childId: string) { return listDocs<WarmupAttempt>(docPath(['families', familyId, 'children', childId, 'warmupAttempts'])) }
+export async function listWarmupGraphPoints(familyId: string, childId: string) { return listDocs<WarmupGraphPoint>(docPath(['families', familyId, 'children', childId, 'warmupGraphPoints'])) }
+export async function listWarmupRotations(familyId: string, childId: string) { return listDocs<CloudWarmupRotation>(docPath(['families', familyId, 'children', childId, 'warmupRotations'])) }
 export async function saveCloudAcquisitionProgress(familyId: string, childId: string, progression: AcquisitionProgressRecord) { await putDoc(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions', progression.id]), progression) }
 export async function saveCloudDistractorTargetObservation(familyId: string, childId: string, observation: DistractorTargetObservation) { await putDoc(docPath(['families', familyId, 'children', childId, 'dtObservations', observation.id]), observation) }
 
@@ -233,6 +244,62 @@ export function buildCloudAcquisitionCheckpointWrites(
   }
   return { progressionParts, receiptParts, writes }
 }
+
+function cloudWarmupWrite(familyId: string, childId: string, write: WarmupCloudRecordWrite) {
+  return updateWrite(
+    ['families', familyId, 'children', childId, write.collection, write.id],
+    write.value,
+    write.precondition === 'create' ? { exists: false } : undefined,
+  )
+}
+
+export async function ensureCloudWarmupSeed(
+  familyId: string,
+  childId: string,
+  visit: WarmupVisit,
+  mastery: readonly VersionedChildMasteryState[],
+  rotations: readonly CloudWarmupRotation[],
+) {
+  const records = buildWarmupSeedRecordWrites(childId, visit, mastery, rotations)
+  const planned: typeof records = []
+  for (const record of records) {
+    const parts = ['families', familyId, 'children', childId, record.collection, record.id]
+    const existing = await getDoc<unknown>(docPath(parts))
+    const decision = reconcileWarmupSeedRecord(record, existing)
+    if (decision) planned.push(decision)
+  }
+  if (planned.length > 0) await firestoreCommit(planned.map((record) => cloudWarmupWrite(familyId, childId, record)))
+}
+
+function buildCloudWarmupTransitionWrites(familyId: string, childId: string, transition: WarmupTransition) {
+  const records = buildWarmupTransitionRecordWrites(childId, transition)
+  const receiptParts = ['families', familyId, 'children', childId, 'warmupTransitions', transition.transitionId]
+  return { receiptParts, writes: records.map((record) => cloudWarmupWrite(familyId, childId, record)) }
+}
+
+export async function commitCloudWarmupTransition(familyId: string, childId: string, transition: WarmupTransition): Promise<'applied' | 'idempotent'> {
+  const { receiptParts, writes } = buildCloudWarmupTransitionWrites(familyId, childId, transition)
+  const existing = await getDoc<WarmupTransitionReceipt>(docPath(receiptParts))
+  if (existing) {
+    if (!warmupReceiptMatchesTransition(existing, transition)) throw new Error('The cloud Warmup transition ID already belongs to different content.')
+    return 'idempotent'
+  }
+  try {
+    await firestoreCommit(writes)
+    return 'applied'
+  } catch (error) {
+    const committed = await getDoc<WarmupTransitionReceipt>(docPath(receiptParts))
+    if (committed && warmupReceiptMatchesTransition(committed, transition)) return 'idempotent'
+    throw error
+  }
+}
+
+export async function cloudWarmupTransitionAlreadyCommitted(familyId: string, childId: string, transition: WarmupTransition) {
+  const receipt = await getDoc<WarmupTransitionReceipt>(docPath(['families', familyId, 'children', childId, 'warmupTransitions', transition.transitionId]))
+  if (!receipt) return false
+  if (!warmupReceiptMatchesTransition(receipt, transition)) throw new Error('The cloud Warmup transition ID already belongs to different content.')
+  return true
+}
 export async function getCloudAdaptiveState(familyId: string, childId: string) { return getDoc<CloudAdaptiveState>(docPath(['families', familyId, 'children', childId, 'warmupState', 'current'])) }
 export async function saveCloudAdaptiveState(familyId: string, childId: string, state: CloudAdaptiveState) { await putDoc(docPath(['families', familyId, 'children', childId, 'warmupState', 'current']), state) }
 export function cloudAdaptiveStateForSave(state: Pick<AppState, 'childWordStates' | 'monthlyRotationScores' | 'rotationCycles'>, childId: string, updatedAt: string): CloudAdaptiveState {
@@ -250,7 +317,7 @@ export async function deleteDoc(path: string) { await firestoreRequest(path, { m
 export async function startCloudSession(familyId: string, childId: string, session: Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'>) { const value: CloudSession = { ...session, familyId, status: 'in_progress', applicationVersion: APP_VERSION }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function updateCloudSession(familyId: string, childId: string, session: CloudSession, patch: Partial<CloudSession>) { const value = { ...session, ...patch }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function saveCloudAttempt(familyId: string, childId: string, sessionId: string, attempt: CloudAttempt) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts', attempt.id]), attempt) }
-export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'completed', warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : 'completed', completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
+export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'completed', warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed', completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
 export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status, completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
 export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) { const attempts = await listAttempts(familyId, childId, session.id); await Promise.all(attempts.filter((attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary').map((attempt) => deleteDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id])))); await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'skipped', completedAt: new Date().toISOString() }); await Promise.all(warmupAttempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))) }
 

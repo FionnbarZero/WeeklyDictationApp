@@ -271,9 +271,13 @@ function answerCurrentPrompt(correct: boolean) {
   leavePractice(`Test Review complete: ${correctCount}/${answers.length} correct. This lab result was not saved.`)
 }
 
-function handlePracticeAnswer(answer: boolean | 'skip-warmup' | 'skip-test-review' | 'done') {
+function handlePracticeAnswer(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
   if (typeof answer === 'boolean') answerCurrentPrompt(answer)
   else if (answer === 'skip-warmup' && activeSession?.stage === 'warmup-intro') {
+    activeSession = primaryStartState(activeSession)
+    renderPracticeView()
+  }
+  else if (answer === 'continue-primary' && activeSession?.segment === 'warmup') {
     activeSession = primaryStartState(activeSession)
     renderPracticeView()
   }
