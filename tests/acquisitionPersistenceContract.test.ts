@@ -197,6 +197,102 @@ test('completed teaching enters ongoing DT practice through an explicit revision
   assert.equal(validateAcquisitionProgressEnvelope(envelope, context).valid, true)
 })
 
+test('open-ended Earned-DT Correction checkpoints all six positions and returns to DT practice', () => {
+  let envelope = startedEnvelope()
+  let seconds = 1
+  while (!envelope.flow.complete) {
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0, seconds))
+    seconds += 1
+  }
+  envelope = applied(envelope, buildAcquisitionResumeCheckpoint({
+    envelope,
+    sessionId: 'session-dt-correction',
+    occurredAt: new Date(Date.parse(startedAt) + seconds * 1_000).toISOString(),
+    context,
+    random: () => 0.75,
+  }))
+  seconds += 1
+  assert.equal(envelope.flow.prompt?.kind, 'earned-dt')
+
+  envelope = applied(envelope, answerCheckpoint(envelope, false, () => 0.75, seconds))
+  seconds += 1
+  const visited: string[] = []
+  for (let index = 0; index < grade2AcquisitionStrategy.correctionSequence.length; index += 1) {
+    visited.push(`${envelope.flow.step}:${envelope.flow.prompt?.kind}`)
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+    assert.equal(validateAcquisitionProgressEnvelope(envelope, context).valid, true)
+    seconds += 1
+  }
+
+  assert.deepEqual(visited, ['0:show-copy', '1:show-copy', '2:show-copy', '3:target', '4:familiar-dt', '5:target'])
+  assert.equal(envelope.flow.mode, 'dt-practice')
+  assert.equal(envelope.flow.currentTarget, null)
+  assert.ok(envelope.flow.prompt)
+})
+
+test('checkpointed Earned-DT reacquisition preserves the original weekly resume position through completion', () => {
+  let envelope = startedEnvelope()
+  let seconds = 1
+  while (envelope.flow.targetIndex === 0) {
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0, seconds))
+    seconds += 1
+  }
+  while (envelope.flow.phase === 'introduction') {
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0, seconds))
+    seconds += 1
+  }
+  envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+  seconds += 1
+  assert.equal(envelope.flow.prompt?.kind, 'earned-dt')
+  const reacquiredWordId = envelope.flow.prompt.word.id
+
+  envelope = applied(envelope, answerCheckpoint(envelope, false, () => 0.75, seconds))
+  seconds += 1
+  for (let index = 0; index < 3; index += 1) {
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+    seconds += 1
+  }
+  envelope = applied(envelope, answerCheckpoint(envelope, false, () => 0.75, seconds))
+  seconds += 1
+  envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+  seconds += 1
+  envelope = applied(envelope, answerCheckpoint(envelope, false, () => 0.75, seconds))
+  seconds += 1
+
+  assert.equal(envelope.flow.phase, 'introduction')
+  assert.equal(envelope.flow.correctionRole, 'earned-dt')
+  assert.equal(envelope.flow.resumePosition?.currentTarget.id, targets[1].id)
+  assert.equal(envelope.flow.resumePosition?.step, 2)
+
+  let guard = 0
+  while (envelope.flow.correctionRole === 'earned-dt' && guard < 100) {
+    if (envelope.flow.prompt?.kind === 'familiar-dt' || envelope.flow.prompt?.kind === 'earned-dt') {
+      assert.equal(envelope.flow.prompt.kind, 'familiar-dt')
+      assert.equal(envelope.flow.resumePosition?.currentTarget.id, targets[1].id)
+      assert.equal(envelope.flow.resumePosition?.step, 2)
+    }
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+    assert.equal(validateAcquisitionProgressEnvelope(envelope, context).valid, true)
+    seconds += 1
+    guard += 1
+  }
+  assert.ok(guard < 100)
+  assert.equal(envelope.flow.currentTarget?.id, targets[1].id)
+  assert.equal(envelope.flow.targetIndex, 1)
+  assert.equal(envelope.flow.phase, 'expanded-trials')
+  assert.equal(envelope.flow.step, 2)
+  assert.equal(envelope.flow.resumePosition, undefined)
+  assert.ok(envelope.flow.earnedDtPool.some((target) => target.id === reacquiredWordId))
+
+  while (!envelope.flow.complete) {
+    envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0, seconds))
+    assert.equal(validateAcquisitionProgressEnvelope(envelope, context).valid, true)
+    seconds += 1
+  }
+  assert.equal(envelope.flow.teachingComplete, true)
+  assert.deepEqual(envelope.flow.earnedDtPool.map((target) => target.id), targets.map((target) => target.id))
+})
+
 test('one checkpoint derives the correct facts and applies exactly once', () => {
   const envelope = startedEnvelope()
   const checkpoint = answerCheckpoint(envelope)
