@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  assessPrototypeTerm,
-  createPrototypeReviewState,
   GRADE2_TEST_REVIEW_WEEK,
-  prototypeReviewIsComplete,
-  prototypeReviewScore,
   termsForPrototypeMode,
 } from '../src/testReviewPrototype/model.ts'
+import {
+  assessTestReviewTarget,
+  createTestReviewState,
+  testReviewIsComplete,
+  testReviewScore,
+} from '../src/testReview/state.ts'
 
 test('the Grade 2 one-week prototype uses the complete corrected writing and reading cohorts', () => {
   assert.deepEqual(GRADE2_TEST_REVIEW_WEEK.writingTerms.map((term) => term.text), ['比如', '部分', '更', '方便', '美好'])
@@ -18,25 +20,25 @@ test('the Grade 2 one-week prototype uses the complete corrected writing and rea
 
 test('the final review cannot complete until every collected term is assessed', () => {
   const terms = termsForPrototypeMode('writing')
-  let review = createPrototypeReviewState(terms)
-  assert.equal(prototypeReviewIsComplete(review), false)
-  assert.deepEqual(prototypeReviewScore(review), { attempted: 0, correct: 0, total: 5 })
+  let review = createTestReviewState(terms)
+  assert.equal(testReviewIsComplete(review), false)
+  assert.deepEqual(testReviewScore(review), { attempted: 0, correct: 0, total: 5 })
 
   terms.forEach((term, index) => {
-    review = assessPrototypeTerm(review, term.id, index === 1 ? 'incorrect' : 'correct')
+    review = assessTestReviewTarget(review, term.id, index === 1 ? 'incorrect' : 'correct')
   })
 
-  assert.equal(prototypeReviewIsComplete(review), true)
-  assert.deepEqual(prototypeReviewScore(review), { attempted: 5, correct: 4, total: 5 })
+  assert.equal(testReviewIsComplete(review), true)
+  assert.deepEqual(testReviewScore(review), { attempted: 5, correct: 4, total: 5 })
 })
 
 test('final-review assessments can be changed before submission without changing order', () => {
   const terms = termsForPrototypeMode('reading')
-  const initial = createPrototypeReviewState(terms)
-  const incorrect = assessPrototypeTerm(initial, terms[0].id, 'incorrect')
-  const corrected = assessPrototypeTerm(incorrect, terms[0].id, 'correct')
+  const initial = createTestReviewState(terms)
+  const incorrect = assessTestReviewTarget(initial, terms[0].id, 'incorrect')
+  const corrected = assessTestReviewTarget(incorrect, terms[0].id, 'correct')
 
-  assert.deepEqual(corrected.orderedTermIds, initial.orderedTermIds)
+  assert.deepEqual(corrected.orderedTargetIds, initial.orderedTargetIds)
   assert.equal(corrected.assessments[terms[0].id], 'correct')
-  assert.deepEqual(prototypeReviewScore(corrected), { attempted: 1, correct: 1, total: 7 })
+  assert.deepEqual(testReviewScore(corrected), { attempted: 1, correct: 1, total: 7 })
 })
