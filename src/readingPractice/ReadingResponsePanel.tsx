@@ -7,12 +7,15 @@ export type ReadingResponsePanelProps = {
   promptId: string
   targetText: string
   assessed: boolean
+  teachingPrompt?: boolean
   onPlayReference: () => Promise<void>
+  onPlayTeachingIntroduction?: () => Promise<void>
   onAnswer: (correct: boolean) => void
   onContinue: () => void
 }
 
 type ComparisonStatus = 'idle' | 'playing' | 'complete' | 'error'
+type TeachingAudioStatus = 'idle' | 'playing' | 'complete' | 'error'
 
 function playRecordedAudio(element: HTMLAudioElement): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -42,23 +45,53 @@ export function ReadingResponsePanel({
   promptId,
   targetText,
   assessed,
+  teachingPrompt = false,
   onPlayReference,
+  onPlayTeachingIntroduction,
   onAnswer,
   onContinue,
 }: ReadingResponsePanelProps) {
   const recorder = useAudioRecorder(promptId)
   const audioRef = useRef<HTMLAudioElement>(null)
   const submittedRef = useRef(false)
+  const teachingPlaybackRef = useRef(0)
+  const teachingIntroductionRef = useRef(onPlayTeachingIntroduction)
   const [comparison, setComparison] = useState<ComparisonStatus>('idle')
+  const [teachingAudio, setTeachingAudio] = useState<TeachingAudioStatus>('idle')
   const [withoutRecording, setWithoutRecording] = useState(false)
   const [comparisonError, setComparisonError] = useState<string | null>(null)
+  const [teachingAudioError, setTeachingAudioError] = useState<string | null>(null)
+
+  teachingIntroductionRef.current = onPlayTeachingIntroduction
+
+  async function playTeachingIntroduction() {
+    if (!teachingIntroductionRef.current) return
+    const playback = teachingPlaybackRef.current + 1
+    teachingPlaybackRef.current = playback
+    setTeachingAudio('playing')
+    setTeachingAudioError(null)
+    try {
+      await teachingIntroductionRef.current()
+      if (teachingPlaybackRef.current !== playback) return
+      setTeachingAudio('complete')
+    } catch {
+      if (teachingPlaybackRef.current !== playback) return
+      setTeachingAudio('error')
+      setTeachingAudioError('The teaching audio could not play. You can try again or record the word now.')
+    }
+  }
 
   useEffect(() => {
+    teachingPlaybackRef.current += 1
     submittedRef.current = false
     setComparison('idle')
+    setTeachingAudio('idle')
     setWithoutRecording(false)
     setComparisonError(null)
-  }, [promptId])
+    setTeachingAudioError(null)
+    if (teachingPrompt && teachingIntroductionRef.current) void playTeachingIntroduction()
+    return () => { teachingPlaybackRef.current += 1 }
+  }, [promptId, teachingPrompt])
 
   async function hearMine() {
     if (!audioRef.current) return
@@ -127,17 +160,26 @@ export function ReadingResponsePanel({
 
   return <div className="reading-response">
     <div className="review-heading">
-      <p className="answer-label">Read this word aloud</p>
+      <p className="answer-label">{teachingPrompt ? 'Listen, then read this word aloud' : 'Read this word aloud'}</p>
       <div className="answer-word reading-answer-word" lang="zh-Hans">{targetText}</div>
     </div>
 
     {recorder.clip && <audio ref={audioRef} src={recorder.clip.url} preload="metadata" />}
 
-    {!withoutRecording && recorder.status === 'idle' && recorder.supported && <>
-      <p className="practice-helper">Record yourself first. Then compare your reading with the example pronunciation.</p>
+    {teachingPrompt && teachingAudio === 'playing' && <div className="recording-status" role="status">
+      <Volume2 size={18} /> Listen: let’s learn how to say this word.
+    </div>}
+
+    {teachingAudioError && <p className="recording-error" role="alert">{teachingAudioError}</p>}
+
+    {!withoutRecording && recorder.status === 'idle' && recorder.supported && teachingAudio !== 'playing' && <>
+      <p className="practice-helper">{teachingPrompt ? 'Now tap Record and say the word.' : 'Tap Record, then read the word aloud.'}</p>
       <button className="record-reading-button" type="button" onClick={() => void recorder.start()}>
         <Mic size={18} /> Record my reading
       </button>
+      {teachingPrompt && <button className="replay-button" type="button" onClick={() => void playTeachingIntroduction()}>
+        <Volume2 size={16} /> Hear how to say it again
+      </button>}
     </>}
 
     {recorder.status === 'requesting' && <div className="recording-status" role="status">
@@ -146,7 +188,7 @@ export function ReadingResponsePanel({
 
     {recorder.status === 'recording' && <>
       <div className="recording-status recording-live" role="status">
-        <span className="recording-dot" /> Recording now · stops automatically after 8 seconds
+        <span className="recording-dot" /> Say the word. Tap Stop when you finish.
       </div>
       <button className="stop-recording-button" type="button" onClick={recorder.stop}>
         <Square size={16} /> Stop recording
@@ -163,7 +205,7 @@ export function ReadingResponsePanel({
     </div>}
 
     {canCompare && comparison !== 'complete' && <>
-      <p className="practice-helper">{withoutRecording ? 'Say the word aloud, then hear the example before scoring yourself.' : 'Your recording is ready. Compare yours first, then the example.'}</p>
+      <p className="practice-helper">{withoutRecording ? 'Say the word aloud. Then hear the example.' : 'Tap Compare. You’ll hear your voice first, then the example.'}</p>
       <button className="compare-reading-button" type="button" disabled={comparison === 'playing'} onClick={() => void compareReadings()}>
         <Headphones size={18} /> {comparison === 'playing' ? 'Playing comparison…' : withoutRecording ? 'Hear the example pronunciation' : 'Compare my reading'}
       </button>
@@ -173,7 +215,7 @@ export function ReadingResponsePanel({
     {comparisonError && <p className="recording-error" role="alert">{comparisonError}</p>}
 
     {comparison === 'complete' && <div className="reading-assessment">
-      <p className="practice-helper">Listen again if you need to, then score your reading.</p>
+      <p className="practice-helper">Did your reading match the example?</p>
       <div className="reading-secondary-actions">
         {!withoutRecording && <button className="replay-button" type="button" onClick={() => void hearMine()}><Headphones size={16} /> Hear mine again</button>}
         <button className="replay-button" type="button" onClick={() => void hearReference()}><Volume2 size={16} /> Hear the word again</button>
@@ -183,8 +225,8 @@ export function ReadingResponsePanel({
         ? <><SelfAssessmentActions
           onIncorrect={() => submit(false)}
           onCorrect={() => submit(true)}
-          incorrectLabel="I need help"
-          correctLabel="I read it correctly"
+          incorrectLabel="Not yet"
+          correctLabel="Yes"
         /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>
         : <button className="primary-button reading-continue-button" type="button" onClick={continueInstruction}>Continue</button>}
     </div>}

@@ -9,6 +9,7 @@ import type {
 import { revealAcquisition, startAcquisition } from './acquisition/engine.ts'
 import { transitionAcquisition } from './acquisition/transition.ts'
 import { ReadingResponsePanel } from './readingPractice/ReadingResponsePanel.tsx'
+import { readingShowCopyInstruction, type ReadingSpeechSegment } from './readingPractice/contracts.ts'
 import type { Tier2ReadingTarget } from './tier2/contracts.ts'
 import type { Tier2ReadingPathway } from './tier2/contracts.ts'
 import {
@@ -58,16 +59,15 @@ function deterministicRandom(seed: number) {
   }
 }
 
-function speak(text: string): Promise<void> {
+function speakSegment(segment: ReadingSpeechSegment): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    if (!segment.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
       reject(new Error('Mandarin speech playback is unavailable.'))
       return
     }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.55
+    const utterance = new SpeechSynthesisUtterance(segment.text)
+    utterance.lang = segment.language
+    utterance.rate = segment.rate
     let settled = false
     const finish = (error?: Error) => {
       if (settled) return
@@ -81,6 +81,19 @@ function speak(text: string): Promise<void> {
     utterance.onerror = () => finish(new Error('Mandarin speech playback failed.'))
     window.speechSynthesis.speak(utterance)
   })
+}
+
+async function speakSequence(segments: readonly ReadingSpeechSegment[]) {
+  window.speechSynthesis.cancel()
+  for (const segment of segments) await speakSegment(segment)
+}
+
+function speak(text: string) {
+  return speakSequence([{ text, language: 'zh-CN', rate: 0.55 }])
+}
+
+function speakShowCopyInstruction(text: string) {
+  return speakSequence(readingShowCopyInstruction(text))
 }
 
 function pathwayDescription(pathway: Tier2ReadingPathway) {
@@ -262,7 +275,9 @@ function Tier2ReadingSmokeLab() {
               promptId={promptId}
               targetText={target.text}
               assessed={!showContinue}
+              teachingPrompt={showContinue}
               onPlayReference={() => speak(target.text)}
+              onPlayTeachingIntroduction={() => speakShowCopyInstruction(target.text)}
               onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
               onContinue={() => answerAcquisition(true)}
             />
