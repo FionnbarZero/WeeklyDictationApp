@@ -76,6 +76,12 @@ function familiarDtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisi
 }
 
 function dtPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
+  // An Earned DT that has lost earned status is itself being retaught while
+  // resumePosition preserves the interrupted weekly target. Restrict the DT
+  // slots in that reacquisition sequence to Familiar DTs so another Earned DT
+  // cannot replace the one available resume position or recursively interrupt
+  // the reacquisition routine.
+  if (flow.correctionRole === 'earned-dt') return familiarDtPrompt(flow, strategy, random)
   const preferEarned = flow.earnedDtPool.length > 0 && random() >= 0.5
   const earnedCanAvoidRepeat = bagCanAvoidRepeat(flow.earnedDtPool, flow.earnedDtBag, flow.lastDtWordId)
   if (preferEarned && earnedCanAvoidRepeat) {
@@ -270,7 +276,7 @@ function enterCorrection<TTarget extends AcquisitionTarget>(flow: EngineAcquisit
 }
 
 function advanceUnscoredOrFamiliarDt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, random: () => number) {
-  if (flow.mode === 'dt-practice') return coreAcquisitionPrompt({ ...flow, prompt: null }, strategy, random)
+  if (flow.mode === 'dt-practice' && !flow.currentTarget) return coreAcquisitionPrompt({ ...flow, prompt: null }, strategy, random)
   return coreAcquisitionPrompt({ ...flow, step: flow.step + 1, prompt: null }, strategy, random)
 }
 

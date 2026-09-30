@@ -93,13 +93,8 @@ The later `feature/persistent-acquisition` branch owns:
 
 Production files deliberately do not import this boundary yet.
 
-## Separate runtime prerequisite discovered during contract testing
+## Runtime prerequisite resolved after contract testing
 
-The current engine has a broader pre-existing Earned-DT Correction and reacquisition defect. Open-ended DT-only practice can repeat Correction step 0, and a later Earned-DT trial during reacquisition can overwrite the original interrupted-target resume position. Those paths can produce a current-target/target-index mismatch or a terminal state that omits completion evidence for the actual weekly target.
+The focused `fix/acquisition-earned-dt-recovery` branch repairs the pre-existing Earned-DT Correction and reacquisition defects before persistence activation. Open-ended DT-only Correction now advances through all six configured positions. Earned-DT reacquisition preserves the single original weekly-target resume position; its internal DT slots use Familiar DTs so another Earned DT cannot recursively replace that position. Successful reacquisition returns to the exact interrupted weekly-target step, and final completion retains the complete Earned-DT pool.
 
-These runtime defects predate the persistence contract and are deliberately not repaired in this behavior-preserving branch. The persistence validator fails the inconsistent outputs closed. Before activating persistent Acquisition, repair the Earned-DT Correction/reacquisition path in a separate focused branch and freeze at least:
-
-- Correction advancement from open-ended DT-only practice.
-- Preservation of the original interrupted weekly-target resume position throughout Earned-DT reacquisition.
-- Return to the exact interrupted target after successful reacquisition.
-- Correct terminal completion and Earned-DT-pool evidence after the final weekly target.
+The persistence validator continues to fail inconsistent legacy or invented outputs closed. Direct regression tests freeze Correction advancement, resume-position preservation, exact return, and final completion evidence.

@@ -590,6 +590,74 @@ test('three Earned DT errors remove earned status and restart that word from Int
   assert.ok(flow.resumePosition)
 })
 
+test('open-ended Earned-DT Correction advances through all six positions and returns to DT practice', () => {
+  const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
+  let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
+  while (!flow.complete) flow = answerPrompt(flow, dataset)
+  flow = resumeAcquisitionFlow(flow, dataset, 'Grade 2', () => 0.75)
+  assert.equal(flow.mode, 'dt-practice')
+  assert.equal(flow.prompt?.kind, 'earned-dt')
+  const earnedWordId = flow.prompt.word.id
+
+  flow = answerPrompt(flow, dataset, false)
+  assert.equal(flow.phase, 'correction')
+  assert.equal(flow.step, 0)
+  const visited: string[] = []
+  for (let index = 0; index < 6; index += 1) {
+    visited.push(`${flow.step}:${flow.prompt?.kind}`)
+    flow = answerPrompt(flow, dataset, true, () => 0.75)
+  }
+
+  assert.deepEqual(visited, ['0:show-copy', '1:show-copy', '2:show-copy', '3:target', '4:familiar-dt', '5:target'])
+  assert.equal(flow.mode, 'dt-practice')
+  assert.equal(flow.currentTarget, null)
+  assert.ok(flow.prompt)
+  assert.ok(flow.earnedDtPool.some((word) => word.id === earnedWordId))
+})
+
+test('Earned-DT reacquisition preserves and returns to the exact interrupted weekly-target position', () => {
+  const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
+  let flow = enterExpandedTrials(dataset)
+  while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  assert.equal(flow.prompt?.kind, 'earned-dt')
+  const reacquiredWordId = flow.prompt.word.id
+  const interruptedTargetId = dataset.words[1].id
+
+  flow = answerPrompt(flow, dataset, false)
+  for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, false)
+  flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, false)
+  assert.equal(flow.phase, 'introduction')
+  assert.equal(flow.correctionRole, 'earned-dt')
+  assert.equal(flow.currentTarget?.id, reacquiredWordId)
+  assert.equal(flow.resumePosition?.currentTarget.id, interruptedTargetId)
+  assert.equal(flow.resumePosition?.step, 2)
+
+  while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset, true, () => 0.75)
+  while (flow.correctionRole === 'earned-dt') {
+    if (flow.prompt?.kind === 'familiar-dt' || flow.prompt?.kind === 'earned-dt') {
+      assert.equal(flow.prompt.kind, 'familiar-dt')
+      assert.equal(flow.resumePosition?.currentTarget.id, interruptedTargetId)
+      assert.equal(flow.resumePosition?.step, 2)
+    }
+    flow = answerPrompt(flow, dataset, true, () => 0.75)
+  }
+
+  assert.equal(flow.currentTarget?.id, interruptedTargetId)
+  assert.equal(flow.targetIndex, 1)
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 2)
+  assert.equal(flow.resumePosition, undefined)
+  assert.ok(flow.earnedDtPool.some((word) => word.id === reacquiredWordId))
+
+  while (!flow.complete) flow = answerPrompt(flow, dataset)
+  assert.equal(flow.teachingComplete, true)
+  assert.deepEqual(flow.earnedDtPool.map((word) => word.id), dataset.words.map((word) => word.id))
+})
+
 test('DT responses are recorded while show-copy responses are discarded', () => {
   assert.equal(shouldRecordAcquisitionAnswer({ kind: 'familiar-dt' }), true)
   assert.equal(shouldRecordAcquisitionAnswer({ kind: 'earned-dt' }), true)
