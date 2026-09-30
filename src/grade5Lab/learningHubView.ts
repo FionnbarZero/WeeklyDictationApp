@@ -10,6 +10,7 @@ import type {
   Grade5LearningHubModel,
 } from './learningHub.ts'
 import { grade5LabWritingRequestIsConnected } from './writingPractice.ts'
+import { grade5LabReadingRequestIsConnected } from './readingPractice.ts'
 
 export type Grade5HubLaunch = {
   label: string
@@ -38,11 +39,12 @@ function eyebrow(activity: Grade5HubActivity) {
 }
 
 function activityView(activity: Grade5HubActivity): LearningHubActivity<Grade5HubLaunch> {
-  const connected = activity.launchRequests.filter(grade5LabWritingRequestIsConnected)
+  const connected = activity.launchRequests.filter((request) =>
+    grade5LabWritingRequestIsConnected(request) || grade5LabReadingRequestIsConnected(request))
   const icon = activity.book ? '📖' : activity.id.includes('reading') ? '🗣️' : activity.id.includes('writing') ? '✍️' : '🌱'
   const note = connected.length
     ? activity.launchRequests.length > connected.length
-      ? 'Tier 1 writing is ready; Tier 2 reading is still being built.'
+      ? 'The connected writing or reading pathway is ready; future re-teaching remains separate.'
       : 'Ready to practice in this development lab.'
     : activity.unavailableReason || (activity.availability === 'not-connected' ? 'This learning engine is not connected yet.' : undefined)
   const action: LearningHubActivity<Grade5HubLaunch>['action'] = activity.book

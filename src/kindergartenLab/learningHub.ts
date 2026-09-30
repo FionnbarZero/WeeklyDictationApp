@@ -14,7 +14,9 @@ export type KindergartenHubActivityKind =
   | 'ninja-memory'
   | 'ninja-sky-writing'
   | 'final-boss'
+  | 'final-boss-reading'
   | 'spirit-realm'
+  | 'spirit-realm-reading'
 
 export type KindergartenHubLaunch = {
   kind: KindergartenHubActivityKind
@@ -121,7 +123,8 @@ export function kindergartenLearningHubView(
       theme: 'violet',
       cohorts: unit ? [unit] : [],
       activities: [
-        launchActivity('final-boss', 'Unit test review', 'Prepare for your test', 'Complete the cumulative Unit 1 writing review, then check every answer.', '🐉'),
+        launchActivity('final-boss', 'Tier 1 · Writing', 'Writing Test', 'Complete the cumulative Unit 1 writing review, then check every answer.', '🐉'),
+        launchActivity('final-boss-reading', 'Tier 2 · Reading', 'Reading Test', 'Record and compare every high-frequency reading word from Unit 1.', '🎧'),
       ],
     }, Boolean(unit)),
     section({
@@ -134,7 +137,8 @@ export function kindergartenLearningHubView(
       theme: 'green',
       cohorts: unit ? [unit] : [],
       activities: [
-        launchActivity('spirit-realm', 'Adaptive mastery', 'Mastery warmup', 'Practice six mastery words. Words that need help return sooner next time.', '🌙'),
+        launchActivity('spirit-realm', 'Tier 1 · Writing mastery', 'Writing mastery warmup', 'Practice six writing mastery words. Words that need help return sooner next time.', '🌙'),
+        launchActivity('spirit-realm-reading', 'Tier 2 · Reading mastery', 'Reading mastery', 'Record and compare the high-frequency words that completed Unit 1.', '🎧'),
       ],
     }, Boolean(unit)),
   ]
