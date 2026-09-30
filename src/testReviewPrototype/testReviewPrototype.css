@@ -1,12 +1,12 @@
 :root { color: var(--ink); background: #f7f4ee; }
 body { min-height: 100vh; background: radial-gradient(circle at 5% 0, #f8dfd8 0, transparent 27rem), radial-gradient(circle at 95% 4%, #e2dcf7 0, transparent 25rem), #f7f4ee; }
 .trp-shell { width: min(1050px, calc(100% - 36px)); margin: 0 auto; padding: 30px 0 72px; }
-.trp-run-shell { width: min(720px, calc(100% - 30px)); }
+.trp-shared-shell { width: min(980px, calc(100% - 30px)); }
 .trp-safety { margin-bottom: 17px; padding: 12px 15px; border: 1px solid #d6b55b; border-radius: 13px; color: #614d13; background: #fff2bd; font-size: 12px; line-height: 1.45; }
 .trp-hero { position: relative; overflow: hidden; padding: clamp(32px, 6vw, 67px); border-radius: 30px; color: white; background: linear-gradient(135deg, #273941, #4c496f 62%, #985c71); box-shadow: 0 22px 55px rgb(47 43 67 / 18%); }
 .trp-hero .eyebrow { color: #f7cf70; }
-.trp-hero h1, .trp-review-header h1 { margin: 0; font-size: clamp(2.4rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.055em; }
-.trp-hero h1 em, .trp-review-header h1 em { color: #f7cf70; font-family: Fraunces, serif; font-weight: 500; }
+.trp-hero h1 { margin: 0; font-size: clamp(2.4rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.055em; }
+.trp-hero h1 em { color: #f7cf70; font-family: Fraunces, serif; font-weight: 500; }
 .trp-hero > p:not(.eyebrow) { max-width: 650px; margin: 20px 0 0; color: rgb(255 255 255 / 75%); line-height: 1.6; }
 .trp-week-chip { display: inline-flex; gap: 13px; margin-top: 25px; padding: 10px 13px; border: 1px solid rgb(255 255 255 / 17%); border-radius: 999px; background: rgb(255 255 255 / 9%); font-size: 12px; }
 .trp-week-chip span { color: rgb(255 255 255 / 72%); }
@@ -21,49 +21,10 @@ body { min-height: 100vh; background: radial-gradient(circle at 5% 0, #f8dfd8 0,
 .trp-rules { margin-top: 18px; padding: 17px 20px; border: 1px solid var(--line); border-radius: 16px; background: rgb(255 253 249 / 78%); font-size: 13px; }
 .trp-rules summary { cursor: pointer; font-weight: 700; }
 .trp-rules li { margin: 8px 0; color: var(--muted); line-height: 1.45; }
-.trp-collection-card { min-height: 650px; }
-.trp-writing-capture { padding-top: 1px; }
-.trp-writing-capture .primary-button { display: flex; margin: 32px auto 0; }
-.trp-reading-capture { max-width: 520px; margin: 76px auto 0; text-align: center; }
-.trp-reading-word { margin: 14px 0 31px; font-family: serif; font-size: clamp(4.4rem, 16vw, 7.2rem); line-height: 1; }
-.trp-captured { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 18px; padding: 10px 13px; border-radius: 11px; color: #356047; background: #e2f2e6; font-size: 12px; font-weight: 700; }
-.trp-inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.trp-reading-capture .trp-inline-actions { justify-content: center; }
-.trp-next-button { margin: 27px auto 0; }
-.trp-collection-rule { max-width: 390px; margin: 48px auto 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
-.trp-review-shell { width: min(980px, calc(100% - 30px)); }
-.trp-review-header { margin: 28px 0 24px; padding: clamp(28px, 5vw, 49px); border-radius: 25px; color: white; background: #293b43; }
-.trp-review-header h1 { font-size: clamp(2.3rem, 5.5vw, 4rem); }
-.trp-review-header > p:last-child { max-width: 630px; margin: 18px 0 0; color: rgb(255 255 255 / 72%); line-height: 1.55; }
-.trp-review-list { display: grid; gap: 12px; }
-.trp-review-row { display: grid; grid-template-columns: 45px minmax(0, 1fr) minmax(220px, 280px); align-items: center; gap: 20px; padding: 21px; border: 2px solid transparent; border-radius: 18px; background: #fffdf9; box-shadow: 0 8px 22px rgb(42 48 52 / 5%); }
-.trp-review-row.is-correct { border-color: #9cccad; background: #f6fcf7; }
-.trp-review-row.is-incorrect { border-color: #e3aca3; background: #fff8f6; }
-.trp-review-number { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: #625982; background: #ebe5f7; font-weight: 800; }
-.trp-review-word { margin: 4px 0 9px; font-family: serif; font-size: 33px; }
-.trp-reading-review-target { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.trp-reading-review-target .trp-review-word { margin: 4px 0; }
-.trp-compare-control { display: grid; flex: 0 0 auto; justify-items: center; gap: 6px; }
-.trp-compare-control > span { color: #625982; font-size: 10px; font-weight: 800; white-space: nowrap; }
-.trp-compare-button { display: grid; place-items: center; width: 66px; height: 66px; border-radius: 50%; color: white; background: #625982; box-shadow: 0 8px 18px rgb(70 61 111 / 20%); }
-.trp-compare-button:hover { background: #514873; transform: translateY(-1px); }
-.trp-compare-button:focus-visible { outline: 4px solid #e6a83e; outline-offset: 3px; }
-.trp-review-content > p:not(.answer-label) { margin: 0; color: var(--muted); font-size: 11px; }
-.trp-review-row .answer-actions { grid-template-columns: 1fr 1fr; }
-.trp-review-row .answer-actions button { min-height: 47px; }
-.trp-missing-recording { padding: 8px 10px; border-radius: 9px; color: #946227; background: #fff2d8; font-size: 10px; font-weight: 700; }
-.trp-submit-bar { position: sticky; bottom: 14px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 25px; margin-top: 18px; padding: 17px 20px; border: 1px solid #d9d2c8; border-radius: 17px; background: rgb(255 253 249 / 94%); box-shadow: 0 15px 38px rgb(38 43 46 / 15%); backdrop-filter: blur(12px); }
-.trp-submit-bar > div { display: grid; gap: 3px; }
-.trp-submit-bar span { color: var(--muted); font-size: 11px; }
-.trp-submit-bar .primary-button:disabled { opacity: .45; cursor: not-allowed; }
 .trp-complete-shell { width: min(720px, calc(100% - 30px)); }
 @media (max-width: 760px) {
   .trp-shell { width: min(100% - 18px, 1050px); padding-top: 10px; }
   .trp-hero { border-radius: 22px; }
   .trp-mode-grid { grid-template-columns: 1fr; }
   .trp-mode-card { min-height: 270px; }
-  .trp-review-row { grid-template-columns: 38px 1fr; gap: 13px; }
-  .trp-review-row .answer-actions { grid-column: 1 / -1; }
-  .trp-submit-bar { align-items: stretch; flex-direction: column; }
-  .trp-submit-bar .primary-button { justify-content: center; }
 }

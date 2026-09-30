@@ -1,0 +1,44 @@
+.deferred-test-review { width: min(980px, 100%); margin: 0 auto; }
+.deferred-collection-review { width: min(720px, 100%); }
+.deferred-collection-card { min-height: 650px; }
+.deferred-writing-collector { padding-top: 1px; }
+.deferred-writing-collector .primary-button { display: flex; margin: 32px auto 0; }
+.deferred-reading-collector { max-width: 520px; margin: 76px auto 0; text-align: center; }
+.deferred-reading-word { margin: 14px 0 31px; font-family: serif; font-size: clamp(4.4rem, 16vw, 7.2rem); line-height: 1; }
+.deferred-captured { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 18px; padding: 10px 13px; border-radius: 11px; color: #356047; background: #e2f2e6; font-size: 12px; font-weight: 700; }
+.deferred-inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.deferred-reading-collector .deferred-inline-actions { justify-content: center; }
+.deferred-next-button { margin: 27px auto 0; }
+.deferred-collection-rule { max-width: 390px; margin: 48px auto 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.deferred-review-header { margin: 28px 0 24px; padding: clamp(28px, 5vw, 49px); border-radius: 25px; color: white; background: #293b43; }
+.deferred-review-header h1 { margin: 0; font-size: clamp(2.3rem, 5.5vw, 4rem); line-height: .98; letter-spacing: -.055em; }
+.deferred-review-header h1 em { color: #f7cf70; font-family: Fraunces, serif; font-weight: 500; }
+.deferred-review-header > p:last-child { max-width: 630px; margin: 18px 0 0; color: rgb(255 255 255 / 72%); line-height: 1.55; }
+.deferred-review-list { display: grid; gap: 12px; }
+.deferred-review-row { display: grid; grid-template-columns: 45px minmax(0, 1fr) minmax(220px, 280px); align-items: center; gap: 20px; padding: 21px; border: 2px solid transparent; border-radius: 18px; background: #fffdf9; box-shadow: 0 8px 22px rgb(42 48 52 / 5%); }
+.deferred-review-row.is-correct { border-color: #9cccad; background: #f6fcf7; }
+.deferred-review-row.is-incorrect { border-color: #e3aca3; background: #fff8f6; }
+.deferred-review-number { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: #625982; background: #ebe5f7; font-weight: 800; }
+.deferred-review-word { margin: 4px 0 9px; font-family: serif; font-size: 33px; }
+.deferred-reading-review-target { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.deferred-reading-review-target .deferred-review-word { margin: 4px 0; }
+.deferred-compare-control { display: grid; flex: 0 0 auto; justify-items: center; gap: 6px; }
+.deferred-compare-control > span { color: #625982; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.deferred-compare-button { display: grid; place-items: center; width: 66px; height: 66px; border-radius: 50%; color: white; background: #625982; box-shadow: 0 8px 18px rgb(70 61 111 / 20%); }
+.deferred-compare-button:hover { background: #514873; transform: translateY(-1px); }
+.deferred-compare-button:focus-visible { outline: 4px solid #e6a83e; outline-offset: 3px; }
+.deferred-review-content > p:not(.answer-label) { margin: 0; color: var(--muted); font-size: 11px; }
+.deferred-review-row .answer-actions { grid-template-columns: 1fr 1fr; }
+.deferred-review-row .answer-actions button { min-height: 47px; }
+.deferred-missing-recording { padding: 8px 10px; border-radius: 9px; color: #946227; background: #fff2d8; font-size: 10px; font-weight: 700; }
+.deferred-submit-bar { position: sticky; bottom: 14px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 25px; margin-top: 18px; padding: 17px 20px; border: 1px solid #d9d2c8; border-radius: 17px; background: rgb(255 253 249 / 94%); box-shadow: 0 15px 38px rgb(38 43 46 / 15%); backdrop-filter: blur(12px); }
+.deferred-submit-bar > div { display: grid; gap: 3px; }
+.deferred-submit-bar span { color: var(--muted); font-size: 11px; }
+.deferred-submit-bar .primary-button:disabled { opacity: .45; cursor: not-allowed; }
+.deferred-empty-review { display: grid; justify-items: start; gap: 12px; }
+@media (max-width: 760px) {
+  .deferred-review-row { grid-template-columns: 38px 1fr; gap: 13px; }
+  .deferred-review-row .answer-actions { grid-column: 1 / -1; }
+  .deferred-submit-bar { align-items: stretch; flex-direction: column; }
+  .deferred-submit-bar .primary-button { justify-content: center; }
+}
