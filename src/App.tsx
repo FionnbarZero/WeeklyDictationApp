@@ -281,7 +281,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     const id = createSessionId()
     const startedDate = now()
     const startedAt = startedDate.toISOString()
-    const associatedPrimaryActivity = target ? { phase: target.phase, datasetId: target.dataset.id, ...(target.reviewGroupId ? { reviewGroupId: target.reviewGroupId } : {}) } : undefined
+    const associatedPrimaryActivity = target ? { phase: target.phase, datasetId: target.dataset.id, ...(target.reviewGroupId ? { reviewGroupId: target.reviewGroupId } : {}), ...(target.phase === 'test-review' ? { reviewCycle: target.reviewCycle ?? 1 } : {}) } : undefined
     const preparedWarmup = prepareAdaptiveWarmupVisit({
       state,
       childId: selectedChild.id,
@@ -359,7 +359,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     if (auth.user && family) {
       try {
-        const cloud = await startCloudSession(family.id, selectedChild.id, { id, childId: selectedChild.id, sessionDate: startedAt, localDate: localDateKey(startedDate), startedAt, primaryPhase, datasetId: primaryDatasetId, datasetIds: target?.reviewDatasets?.map((dataset) => dataset.id), reviewGroupId: target?.reviewGroupId, warmupOnly, warmupStatus: 'in_progress' })
+        const cloud = await startCloudSession(family.id, selectedChild.id, { id, childId: selectedChild.id, sessionDate: startedAt, localDate: localDateKey(startedDate), startedAt, primaryPhase, datasetId: primaryDatasetId, datasetIds: target?.reviewDatasets?.map((dataset) => dataset.id), reviewGroupId: target?.reviewGroupId, reviewCycle: target?.phase === 'test-review' ? target.reviewCycle ?? 1 : undefined, warmupOnly, warmupStatus: 'in_progress' })
         cloudSessionsRef.current.set(id, cloud)
       } catch (error) { setCloudError(`Practice could not be saved: ${authErrorMessage(error)}`); return }
     }
@@ -521,7 +521,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setSession({ ...current, stage: 'dictation' })
       return
     }
-    const associatedPrimaryActivity = current.warmupOnly ? undefined : { phase: current.primaryPhase, datasetId: current.primaryDatasetId, ...(current.reviewGroupId ? { reviewGroupId: current.reviewGroupId } : {}) }
+    const associatedPrimaryActivity = current.warmupOnly ? undefined : { phase: current.primaryPhase, datasetId: current.primaryDatasetId, ...(current.reviewGroupId ? { reviewGroupId: current.reviewGroupId } : {}), ...(current.primaryPhase === 'test-review' ? { reviewCycle: current.reviewCycle ?? 1 } : {}) }
     const refreshed = prepareAdaptiveWarmupVisit({
       state,
       childId: selectedChild.id,
@@ -585,7 +585,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         // progression checkpoints. Session completion must not write them a
         // second time under a different ID.
         const answers = [...(finished.adaptiveWarmupVisitId ? [] : finished.warmupAnswers), ...(finished.primaryPhase === 'acquisition' ? [] : finished.primaryAnswers)]
-        const attempts: CloudAttempt[] = answers.map((answer, index) => ({ id: `${finished.id}-${answer.word.id}-${index}`, sessionId: finished.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase: finished.warmupAnswers.includes(answer) ? 'warmup' : finished.primaryPhase, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete' }))
+        const attempts: CloudAttempt[] = answers.map((answer, index) => {
+          const phase = finished.warmupAnswers.includes(answer) ? 'warmup' as const : finished.primaryPhase
+          return { id: `${finished.id}-${answer.word.id}-${index}`, sessionId: finished.id, wordId: answer.word.id, sourceDatasetId: answer.word.datasetId, phase, correct: answer.correct, reviewedAt: completionDate.toISOString(), completionStatus: 'complete', ...(phase === 'test-review' ? { reviewCycle: finished.reviewCycle ?? 1 } : {}) }
+        })
         void Promise.all([
           completeCloudSession(family.id, selectedChild.id, cloud, attempts, committed.scores.filter((score) => score.sessionId === finished.id)),
           saveCloudAdaptiveState(family.id, selectedChild.id, cloudAdaptiveStateForSave(committed, selectedChild.id, completionDate.toISOString())),
@@ -754,7 +757,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (auth.user && family && current.cloudSessionId && selectedChild) {
       const cloud = cloudSessionsRef.current.get(current.cloudSessionId)
       if (cloud) {
-        void saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-${response.word.id}-${current.index}`, sessionId: current.id, wordId: response.word.id, sourceDatasetId: response.word.datasetId, phase: isWarmup ? 'warmup' : current.primaryPhase, correct, reviewedAt: now().toISOString(), completionStatus: isWarmup && current.index === current.queue.length - 1 ? 'complete' : 'temporary' }).catch((error) => setCloudError(`A practice result could not be saved: ${authErrorMessage(error)}`))
+        const attemptPhase = isWarmup ? 'warmup' as const : current.primaryPhase
+        void saveCloudAttempt(family.id, selectedChild.id, current.cloudSessionId, { id: `${current.id}-${response.word.id}-${current.index}`, sessionId: current.id, wordId: response.word.id, sourceDatasetId: response.word.datasetId, phase: attemptPhase, correct, reviewedAt: now().toISOString(), completionStatus: isWarmup && current.index === current.queue.length - 1 ? 'complete' : 'temporary', ...(attemptPhase === 'test-review' ? { reviewCycle: current.reviewCycle ?? 1 } : {}) }).catch((error) => setCloudError(`A practice result could not be saved: ${authErrorMessage(error)}`))
         if (isWarmup && current.index === current.queue.length - 1) void updateCloudSession(family.id, selectedChild.id, cloud, { warmupStatus: 'completed' }).catch((error) => setCloudError(authErrorMessage(error)))
       }
     }

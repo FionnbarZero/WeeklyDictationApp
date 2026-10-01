@@ -1,4 +1,17 @@
 export type TestReviewMode = 'writing' | 'reading'
+export type TestReviewCycle = number
+
+export function isTestReviewCycle(value: unknown): value is TestReviewCycle {
+  return Number.isInteger(value) && Number(value) > 0
+}
+
+/**
+ * Records created before Test Review cycles were explicit belong to the only
+ * review stage that existed in production: cycle 1.
+ */
+export function storedTestReviewCycle(value: unknown): TestReviewCycle {
+  return isTestReviewCycle(value) ? value : 1
+}
 
 export type TestReviewTarget = {
   readonly id: string

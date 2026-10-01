@@ -9,7 +9,11 @@ import { validateWarmupVisit } from '../../warmup/visits/validation.ts'
 import { grade2AdaptiveWarmupRegistry, projectionFromState } from './modelAdapter.ts'
 
 function samePrimary(left: WarmupVisit['associatedPrimaryActivity'], right: WarmupVisit['associatedPrimaryActivity']) {
-  return JSON.stringify(left || null) === JSON.stringify(right || null)
+  if (!left || !right) return left === right
+  return left.phase === right.phase
+    && left.datasetId === right.datasetId
+    && left.reviewGroupId === right.reviewGroupId
+    && (left.phase !== 'test-review' || (left.reviewCycle ?? 1) === (right.reviewCycle ?? 1))
 }
 
 function newestPrompt(term: MasteryTermDefinition, occurrenceIds: readonly string[], datasets: readonly Dataset[]) {

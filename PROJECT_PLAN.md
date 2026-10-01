@@ -1096,6 +1096,7 @@ Already implemented:
 - Revision-aware local and cloud Acquisition checkpoints, atomic transition receipts/attempts/DT observations/next positions, durable browser retry journaling, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 - The Adaptive Warmup model, migration, profile-upgrade, evidence-replay, lifecycle reconciliation, persistent visit boundary, standalone entry, and per-visit graph. The outer application state remains version 2 only as the migration envelope; the approved model is active for Grade 2 Tier 1 writing.
 - Source-neutral `CurriculumImportResult` contracts, the hardened Grade 5 source/lifecycle integration, the Kindergarten lifecycle and production-practice scaffold behind an inactive source gate, and the shared Learning Hub presentation boundary added through PRs #15 and #16.
+- An explicit Test Review cycle-identity boundary that carries every lifecycle review cycle through practice targets, sessions, results, scores, completed-session history, pre-activity Warmup identity, and backward-compatible local/cloud hydration. Legacy records without a cycle normalize to cycle 1; Grade 5 remains inactive pending its separate provisional-persistence gate. See `docs/test-review-cycle-identity.md`.
 
 Required revisions before a production pilot:
 
@@ -1104,7 +1105,7 @@ Required revisions before a production pilot:
 - Keep visit-level Warmup history authoritative. Derive future monthly Mastery Rotation reporting from attempts and their original source buckets without replacing visit-level history or inventing dates for legacy monthly totals.
 - Keep the completed canonical source boundary, Grade 5 table-role adapter/lifecycle, Kindergarten Monday–Sunday Sheets adapter/unit lifecycle, and shared Learning Hub boundary stable while Grade 5 and Kindergarten source activation remains deliberately blocked.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
-- Acquisition progressions and Adaptive Warmup visits now have Emulator coverage for stable IDs, exact next-position updates, atomic receipts/facts, stale revisions, and cross-family rejection. Test Review 1/2 provisional persistence still needs its own stored-model gate before Grade 5 activation.
+- Acquisition progressions and Adaptive Warmup visits now have Emulator coverage for stable IDs, exact next-position updates, atomic receipts/facts, stale revisions, and cross-family rejection. Shared Test Review records now preserve explicit cycle identity, but Test Review 1/2 provisional attempt cleanup and completion still need their own stored-model gate before Grade 5 activation.
 - Add a server-managed DT profile that Firestore rules can validate; the related Acquisition attempt, DT observation, receipt, and next-position writes already use one atomic commit.
 - Prototype and test the in-memory handwriting pad. Keep the cumulative-star reward system in its separate Kindergarten-only branch until its award, redemption, and parent-control rules are approved.
 - Create separate staging and production Firebase environments. Test Firestore rules in the Emulator Suite before deployment.

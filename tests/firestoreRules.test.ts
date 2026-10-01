@@ -26,6 +26,14 @@ test('transition-linked attempts and DT observations are immutable and require t
   assert.match(rules, /request\.resource\.data == resource\.data/)
 })
 
+test('Test Review cycle metadata is allowed only as a positive integer on Test Review records', () => {
+  const cycleGuards = rules.match(/request\.resource\.data\.reviewCycle is int/g) || []
+  assert.equal(cycleGuards.length, 3, 'sessions, attempts, and scores each require a cycle guard')
+  assert.match(rules, /request\.resource\.data\.phase == 'test-review'[\s\S]+request\.resource\.data\.reviewCycle > 0/)
+  assert.match(rules, /request\.resource\.data\.primaryPhase == 'test-review'[\s\S]+request\.resource\.data\.reviewCycle > 0/)
+  assert.match(rules, /associatedPrimaryActivity\.phase == 'test-review'[\s\S]+associatedPrimaryActivity\.reviewCycle > 0/)
+})
+
 test('Adaptive Warmup rules require owned, revisioned, atomic, immutable records', () => {
   assert.match(rules, /match \/warmupVisits\/\{visitId\}/)
   assert.match(rules, /request\.resource\.data\.contractId == 'adaptive-warmup-visit-v1'/)

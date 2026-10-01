@@ -191,6 +191,38 @@ test('the next revision, scored attempt, and DT observation require the same ato
   }))
 })
 
+test('Test Review cycle identity is accepted only on matching session, attempt, and score records', async () => {
+  const database = environment.authenticatedContext('parent').firestore()
+  const session = {
+    id: 'test-review-2', childId: 'maya', familyId: 'family-parent', status: 'completed', primaryPhase: 'test-review',
+    reviewCycle: 2, datasetId: 'dataset-1', sessionDate: '2026-09-30T16:00:00.000Z', localDate: '2026-09-30',
+    startedAt: '2026-09-30T16:00:00.000Z', warmupStatus: 'skipped', applicationVersion: 'test',
+  }
+  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2'), session))
+  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/review-attempt'), {
+    id: 'review-attempt', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete',
+  }))
+  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/scores/review-score'), {
+    id: 'review-score', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
+    phase: 'test-review', reviewCycle: 2, percent: 100, correct: 1, wordCount: 1,
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/invalid-review-cycle'), { ...session, id: 'invalid-review-cycle', reviewCycle: 0 }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/acquisition-with-review-cycle'), { ...session, id: 'acquisition-with-review-cycle', primaryPhase: 'acquisition' }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/acquisition-with-review-cycle'), {
+    id: 'acquisition-with-review-cycle', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'acquisition',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:02:00.000Z', completionStatus: 'complete',
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/wrong-review-cycle'), {
+    id: 'wrong-review-cycle', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 1, correct: true, reviewedAt: '2026-09-30T16:03:00.000Z', completionStatus: 'complete',
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/wrong-review-cycle'), {
+    id: 'wrong-review-cycle', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
+    phase: 'test-review', reviewCycle: 1, percent: 100, correct: 1, wordCount: 1,
+  }))
+})
+
 test('malformed IDs, statuses, stale revisions, immutable identity, and cross-family access fail', async () => {
   await assertFails(atomicCheckpointBatch('parent', 2, 'stale-transition').commit())
   await assertFails(atomicCheckpointBatch('parent', 3, 'changed-identity', { changedDataset: true }).commit())

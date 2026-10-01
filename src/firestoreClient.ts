@@ -9,12 +9,13 @@ import { migrateAcquisitionProgress } from './acquisition/persistence/migration.
 import { acquisitionPersistenceContext } from './application/acquisitionPersistence.ts'
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
+import { isTestReviewCycle, storedTestReviewCycle, type TestReviewCycle } from './testReview/contracts.ts'
 
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
 export type FamilyRecord = { id: string; ownerParentId: string; createdAt: string; updatedAt: string }
 export type ChildProfile = { id: string; nickname: string; grade: string; schoolYear: string; active: boolean; gradeEffectiveDate: string; createdAt: string; updatedAt: string }
-export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
-export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete'; countsTowardWeeklyScore?: boolean; acquisitionKind?: string }
+export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; reviewCycle?: TestReviewCycle; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
+export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; reviewCycle?: TestReviewCycle; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete'; countsTowardWeeklyScore?: boolean; acquisitionKind?: string }
 export type CloudAdaptiveState = { childId: string; childWordStates: ChildWordState[]; monthlyRotationScores: MonthlyRotationScore[]; rotationCycleId: number; updatedAt: string }
 export type { CloudWarmupRotation } from './persistence/warmup/cloudContracts.ts'
 
@@ -340,11 +341,28 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
   const seenDatasetIds = new Set<string>()
   const datasets = rawDatasets.filter((dataset) => isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true))
   const datasetsById = new Map(datasets.map((dataset) => [dataset.id, dataset]))
-  const sessions = rawSessions.filter((session) => session.childId === childId)
+  const sessions = rawSessions.filter((session) => session.childId === childId && (!('reviewCycle' in session) || (session.primaryPhase === 'test-review' && isTestReviewCycle(session.reviewCycle))))
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]))
   const sessionIds = new Set(sessions.map((session) => session.id))
-  const attempts = rawAttempts.filter((attempt) => sessionIds.has(attempt.sessionId) && datasetsById.has(attempt.sourceDatasetId) && datasetsById.get(attempt.sourceDatasetId)!.words.some((word) => word.id === attempt.wordId) && (attempt.completionStatus === 'complete' || attempt.completionStatus === 'temporary'))
-  const results: WordResult[] = attempts.map((attempt) => ({ id: attempt.id, childId, datasetId: attempt.sourceDatasetId, datasetDateRange: datasetsById.get(attempt.sourceDatasetId)!.dateRange, wordId: attempt.wordId, grade: datasetsById.get(attempt.sourceDatasetId)!.grade, phase: attempt.phase, sessionId: attempt.sessionId, sessionDate: attempt.reviewedAt.slice(0, 10), completedAt: attempt.reviewedAt, correct: attempt.correct, revealMethod: 'timer', scored: attempt.completionStatus === 'complete', completeSourceDatasetReviewed: attempt.completionStatus === 'complete' }))
-  const scores = rawScores.filter((score) => score.childId === childId && datasetsById.has(score.datasetId) && Number.isFinite(score.percent) && score.percent >= 0 && score.percent <= 100)
+  const attempts = rawAttempts.filter((attempt) => {
+    const session = sessionsById.get(attempt.sessionId)
+    const validReviewCycle = attempt.phase !== 'test-review'
+      ? !('reviewCycle' in attempt)
+      : session?.primaryPhase === 'test-review'
+        && storedTestReviewCycle(attempt.reviewCycle) === storedTestReviewCycle(session.reviewCycle)
+        && (!('reviewCycle' in attempt) || isTestReviewCycle(attempt.reviewCycle))
+    return sessionIds.has(attempt.sessionId) && datasetsById.has(attempt.sourceDatasetId) && datasetsById.get(attempt.sourceDatasetId)!.words.some((word) => word.id === attempt.wordId) && (attempt.completionStatus === 'complete' || attempt.completionStatus === 'temporary') && validReviewCycle
+  })
+  const results: WordResult[] = attempts.map((attempt) => ({ id: attempt.id, childId, datasetId: attempt.sourceDatasetId, datasetDateRange: datasetsById.get(attempt.sourceDatasetId)!.dateRange, wordId: attempt.wordId, grade: datasetsById.get(attempt.sourceDatasetId)!.grade, phase: attempt.phase, sessionId: attempt.sessionId, sessionDate: attempt.reviewedAt.slice(0, 10), completedAt: attempt.reviewedAt, correct: attempt.correct, revealMethod: 'timer', scored: attempt.completionStatus === 'complete', completeSourceDatasetReviewed: attempt.completionStatus === 'complete', ...(attempt.phase === 'test-review' ? { reviewCycle: storedTestReviewCycle(attempt.reviewCycle ?? sessionsById.get(attempt.sessionId)?.reviewCycle) } : {}) }))
+  const scores = rawScores.filter((score) => {
+    const session = sessionsById.get(score.sessionId)
+    const validReviewCycle = score.phase !== 'test-review'
+      ? !('reviewCycle' in score)
+      : session?.primaryPhase === 'test-review'
+        && storedTestReviewCycle(score.reviewCycle) === storedTestReviewCycle(session.reviewCycle)
+        && (!('reviewCycle' in score) || isTestReviewCycle(score.reviewCycle))
+    return score.childId === childId && datasetsById.has(score.datasetId) && Number.isFinite(score.percent) && score.percent >= 0 && score.percent <= 100 && validReviewCycle
+  }).map((score) => score.phase === 'test-review' ? { ...score, reviewCycle: storedTestReviewCycle(score.reviewCycle ?? sessionsById.get(score.sessionId)?.reviewCycle) } : score)
   const warmupSessions = sessions.map((session) => {
     const warmup = attempts.filter((attempt) => attempt.sessionId === session.id && attempt.phase === 'warmup' && attempt.completionStatus === 'complete')
     const datasetIds = [...new Set(warmup.map((attempt) => attempt.sourceDatasetId))]
@@ -392,7 +410,11 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
   const distractorTargetObservations = rawDtObservations
     .filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (String(observation.poolType) === 'familiar' || String(observation.poolType) === 'established' || observation.poolType === 'earned'))
     .map(normalizeDistractorTargetObservation)
-  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions: legacyProgressions, acquisitionProgressEnvelopes, acquisitionTransitionReceipts: acquisitionProgressEnvelopes.flatMap((envelope) => envelope.lastAppliedTransition ? [envelope.lastAppliedTransition] : []), acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine, distractorTargetObservations }
+  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, reviewCycle: session.primaryPhase === 'test-review' ? storedTestReviewCycle(session.reviewCycle) : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions: legacyProgressions, acquisitionProgressEnvelopes, acquisitionTransitionReceipts: acquisitionProgressEnvelopes.flatMap((envelope) => envelope.lastAppliedTransition ? [envelope.lastAppliedTransition] : []), acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine, distractorTargetObservations }
 }
 
-export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress'): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> { const now = new Date(); return { id, childId, sessionDate: now.toISOString(), localDate: new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIME_ZONE }).format(now), startedAt: now.toISOString(), primaryPhase, datasetId, warmupOnly: false, warmupStatus } }
+export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress', reviewCycle?: TestReviewCycle): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> {
+  if (reviewCycle !== undefined && (primaryPhase !== 'test-review' || !isTestReviewCycle(reviewCycle))) throw new Error('The cloud session contains an invalid Test Review cycle identity.')
+  const now = new Date()
+  return { id, childId, sessionDate: now.toISOString(), localDate: new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIME_ZONE }).format(now), startedAt: now.toISOString(), primaryPhase, datasetId, reviewCycle: primaryPhase === 'test-review' ? reviewCycle ?? 1 : undefined, warmupOnly: false, warmupStatus }
+}
