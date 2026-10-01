@@ -32,7 +32,8 @@ import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 
-const fixtureUrl = '/tests/fixtures/grade5-presentation.json'
+const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
+const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
 
 function requiredElement<T extends HTMLElement>(id: string) {
@@ -332,7 +333,9 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     activeDatasets = grade5LabDatasets(sourceExtraction)
     activeDataset = activeDatasets.find((dataset) => dataset.id === candidate.datasetId) || grade5LabDataset(candidate)
     const warmup = grade5LabWarmupSelection(sourceExtraction, latestProgressionDate(sourceExtraction))
-    activePractice = request.activityKind === 'acquisition' ? startGrade5AcquisitionLab(candidate) : null
+    activePractice = request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
+      ? startGrade5AcquisitionLab(candidate)
+      : null
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
@@ -408,9 +411,13 @@ function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[
     const button = createElement('button', connectedRequest(request) ? 'primary-button' : 'secondary-button')
     button.type = 'button'
     if (connectedRequest(request)) {
-      button.textContent = request.learningChannel === 'tier-2-reading'
-        ? request.activityKind === 'test-review' ? 'Start Reading Test' : request.activityKind === 'warmup' ? 'Start Reading Mastery' : 'Start Reading Dojo'
-        : request.activityKind === 'test-review' ? 'Start Writing Test' : 'Start Writing Dojo'
+      const cohortLabel = request.cohortId
+        ? sourceExtraction?.classification.selectedCandidates.find((candidate) => candidate.datasetId === request.cohortId)?.dateRangeLabel
+        : undefined
+      const actionLabel = request.learningChannel === 'tier-2-reading'
+        ? request.activityKind === 'test-review' ? 'Start Reading Test' : request.activityKind === 'warmup' ? 'Start Reading Mastery' : request.activityKind === 'reacquisition' ? 'Relearn Reading' : 'Start Reading Dojo'
+        : request.activityKind === 'test-review' ? 'Start Writing Test' : request.activityKind === 'reacquisition' ? 'Relearn Writing' : 'Start Writing Dojo'
+      button.textContent = `${actionLabel}${cohortLabel ? ` · ${cohortLabel}` : ''}`
       button.addEventListener('click', () => startConnectedRequest(request, label))
     } else {
       button.textContent = request.activityKind === 'reacquisition' ? 'Re-teaching Not Connected Yet' : 'Not Connected Yet'
@@ -443,8 +450,8 @@ dismissButton.addEventListener('click', () => {
   requestActions.replaceChildren()
 })
 
-if (!import.meta.env.DEV) {
-  setStatus('This Grade 5 learning hub is available only in local development.', true)
+if (!import.meta.env.DEV && !publicPreviewEnabled) {
+  setStatus('This Grade 5 learning hub is available only in local development or an approved public preview.', true)
 } else {
   void loadHub()
 }

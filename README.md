@@ -12,7 +12,7 @@ npm run dev
 
 Without Firebase variables, the app runs only as a clearly local development/demo mode. Legacy localStorage data is never uploaded to a parent account. Authenticated practice requires Firebase and an active internet connection; official cloud scores are not created when Firestore cannot confirm the write.
 
-### Development-only curriculum labs
+### Isolated curriculum labs and public preview
 
 When the Vite development server is running, these isolated pages can be opened directly:
 
@@ -26,6 +26,15 @@ When the Vite development server is running, these isolated pages can be opened 
 - `/grade2-test-review-prototype.html` — test the approved collect-all, one-page final review pattern for one Grade 2 writing and reading week.
 
 The lab pages are not linked from `index.html` or `App.tsx`, do not activate a curriculum source, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only. Kindergarten now also has a separately owned production-practice profile, but its source-registry release flag remains off. The grade-neutral Learning Hub presentation boundary is documented in [`docs/shared-learning-hub-ui.md`](./docs/shared-learning-hub-ui.md); grade lifecycle, source parsing, and practice engines remain outside it.
+
+An explicit public-preview build publishes only the primary app, the Grade 5 Learning Hub, the Kindergarten Learning Lab, and the testing index under the GitHub Pages repository base path:
+
+```bash
+npm run build:public-preview
+npm run test:public-preview
+```
+
+The preview flag makes the two fixture-backed labs available in that build without activating their production source registrations or enabling persistence. Grade 5 includes current Tier 1 writing and Tier 2 reading plus cohort-specific Spirit Realm reacquisition; reacquisition repeats the teaching routine without moving the cohort out of Mastery.
 
 ## Firebase setup
 

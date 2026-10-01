@@ -52,7 +52,12 @@ test('Grade 5 connects complete source-derived reading cohorts to every ordinary
   const reteach = hub.sections.find((item) => item.id === 'review')!
     .activities.find((item) => item.id === 'mastery-reteach')!
     .launchRequests.find((item) => item.learningChannel === 'tier-2-reading')!
-  assert.equal(grade5LabReadingRequestIsConnected(reteach), false)
+  const reteachPathway = grade5LabReadingPathway(extraction, reteach)
+  assert.equal(grade5LabReadingRequestIsConnected(reteach), true)
+  assert.equal(reteach.stage, 'mastery')
+  assert.equal(reteach.activityKind, 'reacquisition')
+  assert.equal(reteachPathway.kind, 'acquisition')
+  assert.equal(tier2ReadingPathwayTargets(reteachPathway).length, 5)
 })
 
 test('Kindergarten connects separate reading Acquisition, cumulative review, and mastery paths', () => {

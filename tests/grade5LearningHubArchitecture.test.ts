@@ -6,7 +6,7 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('the Grade 5 learning hub remains development-only and outside production entry points', () => {
+test('the Grade 5 learning hub uses an explicit public-preview gate and remains outside production entry points', () => {
   const productionEntries = [source('index.html'), source('src/main.tsx'), source('src/App.tsx')].join('\n')
   const harnessHtml = source('grade5-learning-hub.html')
   const harnessSource = source('src/grade5LearningHubHarness.tsx')
@@ -17,6 +17,8 @@ test('the Grade 5 learning hub remains development-only and outside production e
   assert.match(harnessHtml, /id="lab-details" class="lab-details"/)
   assert.match(harnessHtml, /src\/grade5LearningHubHarness\.tsx/)
   assert.match(harnessSource, /import\.meta\.env\.DEV/)
+  assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
+  assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/grade5-presentation\.json', import\.meta\.url\)\.href/)
   assert.match(harnessSource, /tests\/fixtures\/grade5-presentation\.json/)
   assert.doesNotMatch(`${harnessSource}\n${hubModel}`, /firebase|firestore|localStorage|googleapis/i)
   assert.doesNotMatch(hubModel, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
@@ -61,8 +63,9 @@ test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 readi
   assert.match(writingPractice, /classification\.selectedCandidates/)
   assert.match(hubModel, /classification\.selectedCandidates/)
   assert.match(writingPractice, /activityKind === 'test-review'/)
+  assert.match(writingPractice, /activityKind === 'reacquisition'/)
   assert.match(readingPractice, /learningChannel === 'tier-2-reading'/)
-  assert.match(readingPractice, /activityKind !== 'reacquisition'/)
+  assert.match(readingPractice, /activityKind === 'reacquisition'/)
   assert.match(profile, /grade5AcquisitionStrategy/)
   assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${readingPractice}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
   assert.doesNotMatch(`${hubModel}\n${labAdapter}`, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)

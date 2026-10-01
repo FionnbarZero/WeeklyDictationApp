@@ -7,6 +7,7 @@ import { SOURCE_REGISTRY } from '../src/config.ts'
 import { buildGrade5LearningHub, resolveGrade5SourceLifecycle } from '../src/grade5Lab/learningHub.ts'
 import { grade5WritingLabProfile } from '../src/grade5Lab/practiceProfile.ts'
 import { grade5LabWarmupSelection, grade5LabWritingRequestIsConnected } from '../src/grade5Lab/writingPractice.ts'
+import { grade5LabReadingRequestIsConnected } from '../src/grade5Lab/readingPractice.ts'
 import { lifecycleProgressionEventsFrom } from '../src/lifecycle/curriculumProgression.ts'
 import { resolveGrade5ProgressionLifecycle } from '../src/lifecycle/strategies/grade5ProgressionStrategy.ts'
 import { practiceProfileForGrade } from '../src/practice/profiles/registry.ts'
@@ -205,18 +206,24 @@ test('Grade 5 remains development-only despite having a registered lifecycle str
   assert.equal(practiceProfileForGrade('Grade 5'), null)
 })
 
-test('every Tier 1 writing link is connected while Tier 2 remains deferred', () => {
+test('Grade 5 writing and reading launch requests are connected, including mastery reacquisition', () => {
   const hub = buildGrade5LearningHub(extraction())
-  const writingActivities = hub.sections.flatMap((section) => section.activities)
-    .filter((activity) => activity.id.includes('writing') || activity.id.includes('reenter-training-dojo'))
-  const acquisitionWriting = writingActivities.find((activity) => activity.id === 'acquisition-writing')!
-  const test1Writing = writingActivities.find((activity) => activity.id === 'test-review-1-writing')!
-  const test2Writing = writingActivities.find((activity) => activity.id === 'test-review-2-writing')!
-  const reentry = writingActivities.find((activity) => activity.id === 'test-review-1-reenter-training-dojo')!
+  const activities = hub.sections.flatMap((section) => section.activities)
+  const acquisitionWriting = activities.find((activity) => activity.id === 'acquisition-writing')!
+  const acquisitionReading = activities.find((activity) => activity.id === 'acquisition-reading')!
+  const test1Writing = activities.find((activity) => activity.id === 'test-review-1-writing')!
+  const test2Writing = activities.find((activity) => activity.id === 'test-review-2-writing')!
+  const reentry = activities.find((activity) => activity.id === 'test-review-1-reenter-training-dojo')!
+  const masteryReentry = activities.find((activity) => activity.id === 'mastery-reteach')!
 
   assert.equal(grade5LabWritingRequestIsConnected(acquisitionWriting.launchRequests[0]), true)
+  assert.equal(grade5LabReadingRequestIsConnected(acquisitionReading.launchRequests[0]), true)
   assert.equal(grade5LabWritingRequestIsConnected(test1Writing.launchRequests[0]), true)
   assert.equal(grade5LabWritingRequestIsConnected(test2Writing.launchRequests[0]), true)
   assert.equal(grade5LabWritingRequestIsConnected(reentry.launchRequests[0]), true)
-  assert.equal(grade5LabWritingRequestIsConnected(reentry.launchRequests[1]), false)
+  assert.equal(grade5LabReadingRequestIsConnected(reentry.launchRequests[1]), true)
+  assert.equal(grade5LabWritingRequestIsConnected(masteryReentry.launchRequests[0]), true)
+  assert.equal(grade5LabReadingRequestIsConnected(masteryReentry.launchRequests[1]), true)
+  assert.ok(masteryReentry.launchRequests.every((request) => request.stage === 'mastery'))
+  assert.ok(masteryReentry.launchRequests.every((request) => request.activityKind === 'reacquisition'))
 })

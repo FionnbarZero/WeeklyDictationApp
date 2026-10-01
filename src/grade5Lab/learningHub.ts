@@ -75,9 +75,9 @@ function summary(candidate: WeeklyDatasetCandidate): Grade5CohortSummary {
 
 function launchRequest(
   candidate: WeeklyDatasetCandidate,
-  stage: Exclude<Grade5HubStage, 'mastery'>,
+  stage: Grade5HubStage,
   learningChannel: Grade5LearningChannel,
-  activityKind: 'acquisition' | 'test-review',
+  activityKind: 'acquisition' | 'test-review' | 'reacquisition',
 ): Grade5ActivityLaunchRequest {
   return {
     cohortId: candidate.datasetId!,
@@ -208,15 +208,15 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
     },
     {
       id: 'mastery-reteach',
-      label: 'Re-teach Words',
-      description: 'Future writing and reading re-acquisition queues remain separate.',
+      label: 'Reenter the Training Dojo',
+      description: 'Choose an older week, then repeat its guided writing or reading Acquisition routine without changing its Mastery status.',
       availability: available ? 'not-connected' : 'unavailable',
       ...(!available ? { unavailableReason } : {}),
       launchRequests: available
-        ? [
-            masteryLaunchRequest(candidates, 'tier-1-writing', 'reacquisition'),
-            masteryLaunchRequest(candidates, 'tier-2-reading', 'reacquisition'),
-          ]
+        ? candidates.flatMap((candidate) => [
+            launchRequest(candidate, 'mastery', 'tier-1-writing', 'reacquisition'),
+            launchRequest(candidate, 'mastery', 'tier-2-reading', 'reacquisition'),
+          ])
         : [],
     },
   ] satisfies Grade5HubActivity[]

@@ -39,7 +39,8 @@ import { kindergartenWritingPracticeProfile } from './practice/profiles/kinderga
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
 
-const fixtureUrl = '/tests/fixtures/kindergarten-workbook.json'
+const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
+const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
@@ -175,8 +176,8 @@ function KindergartenLearningLab() {
   const [masteryWords, setMasteryWords] = useState<Word[]>([])
 
   useEffect(() => {
-    if (!import.meta.env.DEV) {
-      setStatus('This Kindergarten learning lab is available only in local development.')
+    if (!import.meta.env.DEV && !publicPreviewEnabled) {
+      setStatus('This Kindergarten learning lab is available only in local development or an approved public preview.')
       setError(true)
       return
     }

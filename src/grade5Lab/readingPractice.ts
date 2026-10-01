@@ -30,7 +30,6 @@ function readingCohort(candidate: WeeklyDatasetCandidate): Tier2ReadingCohort {
 
 export function grade5LabReadingRequestIsConnected(request: Grade5ActivityLaunchRequest) {
   return request.learningChannel === 'tier-2-reading'
-    && request.activityKind !== 'reacquisition'
     && (Boolean(request.cohortId) || request.activityKind === 'warmup')
 }
 
@@ -48,7 +47,7 @@ export function grade5LabReadingPathway(
     return readingCohort(candidate)
   })
   const available = cohorts.some((cohort) => cohort.available)
-  const kind = request.activityKind === 'acquisition'
+  const kind = request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
     ? 'acquisition'
     : request.activityKind === 'test-review'
       ? 'test-review'
