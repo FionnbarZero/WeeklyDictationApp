@@ -61,7 +61,10 @@ test('Grade 2 writing responses stay provisional until one final all-target revi
 test('exiting during collection discards the provisional writing review', async ({ page }) => {
   await openGrade2WritingReview(page)
   await page.getByRole('button', { name: 'Skip Timer' }).click()
-  await page.getByRole('button', { name: 'Exit practice' }).click()
+  await page.getByRole('button', { name: 'Exit without saving' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Exit without saving?' })
+  await expect(confirmation).toBeVisible()
+  await confirmation.getByRole('button', { name: 'Exit without saving' }).click()
 
   await expect(page.getByRole('heading', { name: /Ready for your next challenge/ })).toBeVisible()
   const stored = await storedReviewSnapshot(page)

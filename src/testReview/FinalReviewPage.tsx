@@ -1,5 +1,7 @@
 import { ArrowLeft, Headphones, Volume2, X } from 'lucide-react'
 import { SelfAssessmentActions } from '../practice/SelfAssessmentActions.tsx'
+import { SkyWritingAcquisition } from '../skywriting/skywritingacquisition.tsx'
+import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
 import type { TestReviewMode, TestReviewState, TestReviewTarget } from './contracts.ts'
 import {
   playRetainedReadingClip,
@@ -11,14 +13,13 @@ export type FinalReviewPageProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
   readonly targets: readonly TTarget[]
   readonly captures: readonly RetainedReadingCapture[]
+  readonly writingByTargetId: Readonly<Record<string, WritingPadState>>
   readonly review: TestReviewState
   readonly onAssess: (targetId: string, correct: boolean) => void
   readonly onPlayReference: (target: TTarget) => Promise<void>
-  readonly onExit: () => void
-  readonly onSkip?: () => void
+  readonly onRequestDiscard: () => void
   readonly onSubmit: () => void
   readonly exitLabel?: string
-  readonly skipLabel?: string
 }
 
 async function playReadingComparison<TTarget extends TestReviewTarget>(
@@ -34,14 +35,13 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
   mode,
   targets,
   captures,
+  writingByTargetId,
   review,
   onAssess,
   onPlayReference,
-  onExit,
-  onSkip,
+  onRequestDiscard,
   onSubmit,
-  exitLabel = 'Exit review',
-  skipLabel = 'Skip Test Review',
+  exitLabel = 'Exit without saving',
 }: FinalReviewPageProps<TTarget>) {
   const complete = testReviewIsComplete(review)
   const score = testReviewScore(review)
@@ -49,9 +49,8 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
 
   return <div className="deferred-final-review">
     <div className="practice-top">
-      <button className="back-button" type="button" onClick={onExit}><X size={18} /> {exitLabel}</button>
+      <button className="back-button" type="button" onClick={onRequestDiscard}><X size={18} /> {exitLabel}</button>
       <span className="practice-count">Final review<span> · {score.attempted} of {score.total} assessed</span></span>
-      {onSkip && <button className="replay-button" type="button" onClick={onSkip}>{skipLabel}</button>}
     </div>
     <header className="deferred-review-header">
       <p className="eyebrow">All responses are now complete</p>
@@ -64,12 +63,20 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
       {targets.map((target, index) => {
         const assessment = review.assessments[target.id] || null
         const capture = capturesByTargetId.get(target.id)
-        return <article key={target.id} className={`deferred-review-row ${assessment ? `is-${assessment}` : ''}`}>
+        return <article key={target.id} className={`deferred-review-row deferred-${mode}-review-row ${assessment ? `is-${assessment}` : ''}`}>
           <div className="deferred-review-number">{index + 1}</div>
           <div className="deferred-review-content">
             <p className="answer-label">{mode === 'writing' ? 'The word was' : 'Compare this reading'}</p>
             {mode === 'writing'
-              ? <><div className="deferred-review-word" lang="zh-Hans">{target.text}</div><p>Compare this word with the response on paper.</p></>
+              ? <>
+                <p>Compare the saved on-screen response with the correct word.</p>
+                <SkyWritingAcquisition
+                  word={target.text}
+                  phase="review"
+                  traceTarget={false}
+                  padState={writingByTargetId[target.id] || emptyWritingPadState}
+                />
+              </>
               : <>
                 <div className="deferred-reading-review-target">
                   <div className="deferred-review-word" lang="zh-Hans">{target.text}</div>

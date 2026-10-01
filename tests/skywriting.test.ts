@@ -120,6 +120,8 @@ test('Sky Writing is a standalone source module with no Kindergarten or persiste
 
 test('every shared Tier 1 writing activity uses the Songti Sky Writing response', () => {
   const practiceView = readFileSync(new URL('../src/practice/PracticeView.tsx', import.meta.url), 'utf8')
+  const testReviewCollector = readFileSync(new URL('../src/testReview/WritingResponseCollector.tsx', import.meta.url), 'utf8')
+  const finalReview = readFileSync(new URL('../src/testReview/FinalReviewPage.tsx', import.meta.url), 'utf8')
   const productionApp = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const kindergarten = readFileSync(new URL('../src/kindergartenLearningLabHarness.tsx', import.meta.url), 'utf8')
   const grade5 = readFileSync(new URL('../src/grade5LearningHubHarness.tsx', import.meta.url), 'utf8')
@@ -132,6 +134,11 @@ test('every shared Tier 1 writing activity uses the Songti Sky Writing response'
   assert.match(practiceView, /writingByResponse\[writingResponseId\]/)
   assert.match(practiceView, /Your writing stays on this device only\./)
   assert.doesNotMatch(practiceView, /write the word on paper|check your paper/i)
+  assert.match(testReviewCollector, /<SkyWritingAcquisition/)
+  assert.match(testReviewCollector, /phase="writing"/)
+  assert.match(finalReview, /<SkyWritingAcquisition/)
+  assert.match(finalReview, /phase="review"/)
+  assert.doesNotMatch(`${testReviewCollector}\n${finalReview}`, /write the response on paper|check your paper/i)
   assert.match(productionApp, /<PracticeView session=\{session\}/)
   assert.match(kindergarten, /<PracticeView/)
   assert.match(grade5, /<PracticeView/)
