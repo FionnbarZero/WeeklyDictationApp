@@ -34,10 +34,10 @@ test('the Grade 5 hub assigns accepted cohorts to Acquisition, Test 1, Test 2, a
   const hub = model()
 
   assert.deepEqual(hub.sections.map((item) => item.title), [
-    'Enter the Training Dojo',
+    'Enter the Dojo',
     'Practice your Ninja Skills',
-    'The Final Boss Test!',
-    'Enter the Spirit realm',
+    'The Final Boss Test',
+    'Enter the Spirit Realm',
   ])
   assert.equal(section('homework').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-21__2026-09-25')
   assert.equal(section('test-review-1').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-14__2026-09-18')

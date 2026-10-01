@@ -9,6 +9,7 @@ import type {
 export type LearningHubProps<Launch> = {
   model: LearningHubViewModel<Launch>
   onLaunch: (launch: Launch) => void
+  showTopbar?: boolean
 }
 
 function WordGroup({ group }: { group: LearningHubWordGroup }) {
@@ -99,7 +100,7 @@ function SectionDetail<Launch>({
   </section>
 }
 
-export function LearningHub<Launch>({ model, onLaunch }: LearningHubProps<Launch>) {
+export function LearningHub<Launch>({ model, onLaunch, showTopbar = true }: LearningHubProps<Launch>) {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const selected = model.sections.find((section) => section.id === selectedSectionId)
 
@@ -114,10 +115,10 @@ export function LearningHub<Launch>({ model, onLaunch }: LearningHubProps<Launch
   }
 
   return <>
-    <header className="learning-hub-topbar">
+    {showTopbar && <header className="learning-hub-topbar">
       <div className="learning-hub-brand"><span>{model.brandMark}</span>{model.brandLabel}</div>
       <span className="learning-hub-profile">{model.profileLabel}</span>
-    </header>
+    </header>}
     <section className="learning-hub-welcome">
       <div>
         <p className="learning-hub-eyebrow">{model.eyebrow}</p>

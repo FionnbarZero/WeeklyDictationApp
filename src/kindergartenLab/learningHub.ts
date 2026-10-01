@@ -6,6 +6,7 @@ import type {
   LearningHubViewModel,
 } from '../learningHub/contracts.ts'
 import type { KindergartenUnitReviewLab } from './unitReview.ts'
+import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
 
 export type KindergartenHubActivityKind =
   | 'dojo-writing'
@@ -86,7 +87,7 @@ export function kindergartenLearningHubView(
       id: 'current-week',
       number: '1',
       kicker: 'Current week',
-      title: 'Enter the Dojo',
+      title: SHARED_LEARNING_PATH_TITLES.dojo,
       subtitle: 'Learn this week’s writing characters and high-frequency reading words.',
       detailTitle: 'Welcome to the Dojo',
       detailSubtitle: 'First learn the writing characters. Then look, listen, and say the reading words aloud.',
@@ -102,7 +103,7 @@ export function kindergartenLearningHubView(
       id: 'ninja-skills',
       number: '2',
       kicker: 'Play and practice',
-      title: 'Practice your Ninja Skills',
+      title: SHARED_LEARNING_PATH_TITLES.ninjaSkills,
       subtitle: 'Build reading and writing power through three quick games.',
       actionLabel: 'Choose a game',
       theme: 'blue',
@@ -117,7 +118,7 @@ export function kindergartenLearningHubView(
       id: 'final-boss',
       number: '3',
       kicker: 'Cumulative Unit 1 review',
-      title: 'The Final Boss Test',
+      title: SHARED_LEARNING_PATH_TITLES.finalBoss,
       subtitle: 'Prepare for your test with every writing character from the unit.',
       actionLabel: 'Face the Final Boss',
       theme: 'violet',
@@ -131,7 +132,7 @@ export function kindergartenLearningHubView(
       id: 'spirit-realm',
       number: '4',
       kicker: 'Mastery review',
-      title: 'Enter the Spirit Realm',
+      title: SHARED_LEARNING_PATH_TITLES.spiritRealm,
       subtitle: 'Keep older writing and reading words strong with an adaptive warmup.',
       actionLabel: 'Enter the Spirit Realm',
       theme: 'green',
