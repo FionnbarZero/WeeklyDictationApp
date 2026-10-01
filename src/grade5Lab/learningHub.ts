@@ -6,6 +6,7 @@ import { schoolYearToken } from '../curriculum/identity.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import { lifecycleProgressionEventsFrom } from '../lifecycle/curriculumProgression.ts'
 import { resolveLifecycle } from '../lifecycle/registry.ts'
+import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
 
 export type Grade5HubStage = 'acquisition' | 'test-review-1' | 'test-review-2' | 'mastery'
 export type Grade5LearningChannel = 'tier-1-writing' | 'tier-2-reading'
@@ -273,7 +274,7 @@ export function buildGrade5LearningHub(
   const sections: Grade5HubSection[] = [
     {
       id: 'homework',
-      title: 'Enter the Training Dojo',
+      title: SHARED_LEARNING_PATH_TITLES.dojo,
       subtitle: 'Learn this week’s newest writing and reading words.',
       stage: 'acquisition',
       cohorts: acquisition ? [summary(acquisition)] : [],
@@ -283,7 +284,7 @@ export function buildGrade5LearningHub(
     },
     {
       id: 'test-review-1',
-      title: 'Practice your Ninja Skills',
+      title: SHARED_LEARNING_PATH_TITLES.ninjaSkills,
       subtitle: 'Build confidence with your first test-practice word set.',
       stage: 'test-review-1',
       cohorts: testReview1 ? [summary(testReview1)] : [],
@@ -293,7 +294,7 @@ export function buildGrade5LearningHub(
     },
     {
       id: 'test-review-2',
-      title: 'The Final Boss Test!',
+      title: SHARED_LEARNING_PATH_TITLES.finalBoss,
       subtitle: 'Get ready to face the older word set one more time.',
       stage: 'test-review-2',
       cohorts: testReview2 ? [summary(testReview2)] : [],
@@ -303,7 +304,7 @@ export function buildGrade5LearningHub(
     },
     {
       id: 'review',
-      title: 'Enter the Spirit realm',
+      title: SHARED_LEARNING_PATH_TITLES.spiritRealm,
       subtitle: 'Keep older writing and reading vocabulary active.',
       stage: 'mastery',
       cohorts: mastery.map(summary),
