@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:public-preview": "tsc -b && vite build --mode public-preview",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "playwright test",
+    "test:public-preview": "npm run build:public-preview && playwright test --config playwright.public-preview.config.ts",
     "test:firestore": "firebase emulators:exec --only firestore --project weekly-dictation-test \"node --experimental-strip-types --test tests/firestoreEmulator.emulator.ts\"",
     "import:slides": "node --experimental-strip-types scripts/import-slides.ts",
     "hydrate:local": "node --experimental-strip-types scripts/hydrate-local.ts",

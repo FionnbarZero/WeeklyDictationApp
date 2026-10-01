@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#233f38" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Weekly Dictation Testing</title>
+    <style>
+      :root { color: #233139; background: #f7f4ee; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; min-height: 100vh; }
+      main { width: min(100% - 32px, 980px); margin: 0 auto; padding: 64px 0 80px; }
+      .eyebrow { margin: 0 0 10px; color: #b75f4f; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+      h1 { max-width: 720px; margin: 0; font-family: Georgia, serif; font-size: clamp(40px, 7vw, 70px); font-weight: 500; line-height: .98; }
+      .intro { max-width: 660px; margin: 22px 0 0; color: #687279; font-size: 17px; line-height: 1.65; }
+      .notice { margin: 28px 0 0; padding: 14px 16px; border: 1px solid #ded8cc; border-radius: 14px; background: #fffdf8; color: #566167; line-height: 1.5; }
+      .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 38px; }
+      .card { display: flex; min-height: 310px; flex-direction: column; padding: 24px; border: 1px solid #ded8cc; border-radius: 24px; background: #fff; box-shadow: 0 12px 30px rgb(49 58 54 / 8%); }
+      .card:nth-child(1) { border-top: 7px solid #d77a66; }
+      .card:nth-child(2) { border-top: 7px solid #536fbd; }
+      .card:nth-child(3) { border-top: 7px solid #8061bd; }
+      .tag { align-self: flex-start; padding: 5px 9px; border-radius: 999px; background: #f2efe8; color: #626b70; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+      h2 { margin: 22px 0 10px; font-family: Georgia, serif; font-size: 28px; font-weight: 500; line-height: 1.05; }
+      .card p { margin: 0; color: #687279; font-size: 14px; line-height: 1.55; }
+      a { display: inline-flex; justify-content: center; margin-top: auto; padding: 12px 16px; border-radius: 999px; color: #fff; background: #29443c; font-size: 14px; font-weight: 800; text-decoration: none; }
+      a:hover, a:focus-visible { background: #172f29; outline: 3px solid #efd58a; outline-offset: 3px; }
+      footer { margin-top: 34px; color: #7a8286; font-size: 13px; text-align: center; }
+      @media (max-width: 760px) { main { padding-top: 42px; } .cards { grid-template-columns: 1fr; } .card { min-height: 250px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Public testing preview</p>
+      <h1>Choose an experience to test.</h1>
+      <p class="intro">These links provide a safe testing home for the current grade experiences.</p>
+      <p class="notice"><strong>Testing only:</strong> the Grade 5 and Kindergarten labs do not save progress or use production child data.</p>
+      <section class="cards" aria-label="Available testing experiences">
+        <article class="card">
+          <span class="tag">Primary app</span>
+          <h2>Grade 2</h2>
+          <p>Open the current family application with its saved learning progress.</p>
+          <a href="./">Open Grade 2 app</a>
+        </article>
+        <article class="card">
+          <span class="tag">Public preview</span>
+          <h2>Grade 5 Learning Hub</h2>
+          <p>Practice current Tier 1 writing and Tier 2 reading, both Test Reviews, or return to guided Acquisition for an older Mastery cohort.</p>
+          <a href="./grade5-learning-hub.html">Open Grade 5</a>
+        </article>
+        <article class="card">
+          <span class="tag">Public preview</span>
+          <h2>Kindergarten Learning Lab</h2>
+          <p>Test the checked-in Kindergarten learning fixture without production persistence.</p>
+          <a href="./kindergarten-learning-lab.html">Open Kindergarten lab</a>
+        </article>
+      </section>
+      <footer>Weekly Dictation · invited testing preview</footer>
+    </main>
+  </body>
+</html>

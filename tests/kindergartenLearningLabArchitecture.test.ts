@@ -6,7 +6,7 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('the Kindergarten learning lab is development-only and outside production entry points', () => {
+test('the Kindergarten learning lab uses an explicit public-preview gate and stays outside production entry points', () => {
   const productionEntries = [source('index.html'), source('src/main.tsx'), source('src/App.tsx')].join('\n')
   const harnessHtml = source('kindergarten-learning-lab.html')
   const harnessSource = source('src/kindergartenLearningLabHarness.tsx')
@@ -15,9 +15,27 @@ test('the Kindergarten learning lab is development-only and outside production e
   assert.match(harnessHtml, /kindergarten-lab-root/)
   assert.match(harnessHtml, /src\/kindergartenLearningLabHarness\.tsx/)
   assert.match(harnessSource, /import\.meta\.env\.DEV/)
+  assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
+  assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/kindergarten-workbook\.json', import\.meta\.url\)\.href/)
   assert.match(harnessSource, /tests\/fixtures\/kindergarten-workbook\.json/)
   assert.match(harnessSource, /Manual selection only—this lab does not infer the active week/)
   assert.doesNotMatch(harnessSource, /from ['"].*(firebase|firestore)|localStorage\.|googleapis|fetch\(['"]https:/i)
+})
+
+test('the public preview build publishes only the explicit testing entry points under the repository base path', () => {
+  const viteConfig = source('vite.config.ts')
+  const previewEnvironment = source('.env.public-preview')
+  const packageJson = source('package.json')
+  const testingPage = source('testing.html')
+
+  assert.match(viteConfig, /mode === 'public-preview' \? '\/WeeklyDictationApp\/' : '\/'/)
+  assert.match(viteConfig, /grade5LearningHub: page\('\.\/grade5-learning-hub\.html'\)/)
+  assert.match(viteConfig, /kindergartenLearningLab: page\('\.\/kindergarten-learning-lab\.html'\)/)
+  assert.match(viteConfig, /testing: page\('\.\/testing\.html'\)/)
+  assert.match(previewEnvironment, /^VITE_PUBLIC_PREVIEW=true\s*$/)
+  assert.match(packageJson, /vite build --mode public-preview/)
+  assert.match(testingPage, /Open Grade 5/)
+  assert.match(testingPage, /Open Kindergarten lab/)
 })
 
 test('Kindergarten writing uses the shared PracticeView with an independent strategy', () => {

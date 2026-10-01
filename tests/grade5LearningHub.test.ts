@@ -68,7 +68,7 @@ test('each weekly area exposes the approved activity labels', () => {
   assert.deepEqual(section('review').activities.map((item) => item.label), [
     'Tier 1 Writing Warmup',
     'Tier 2 Reading Warmup',
-    'Re-teach Words',
+    'Reenter the Training Dojo',
   ])
 })
 
@@ -152,6 +152,10 @@ test('mastery requests preserve separate writing and reading queues', () => {
   assert.equal(writingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.equal(readingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.deepEqual(reteach.map((request) => request.learningChannel), ['tier-1-writing', 'tier-2-reading'])
+  assert.ok(reteach.every((request) => request.activityKind === 'reacquisition'))
+  assert.ok(reteach.every((request) => request.stage === 'mastery'))
+  assert.ok(reteach.every((request) => request.cohortId === 'grade-5__2026-27__2026-08-31__2026-09-04'))
+  assert.ok(reteach.every((request) => request.warmupMaximum === 6))
   assert.deepEqual(writingWarmup.eligibleCohortIds, ['grade-5__2026-27__2026-08-31__2026-09-04'])
   assert.equal(writingWarmup.cohortId, null)
 })

@@ -36,7 +36,7 @@ export function grade5LabDatasets(extraction: Grade5SourceExtraction) {
 }
 
 export function grade5LabWritingRequestIsConnected(request: Grade5ActivityLaunchRequest) {
-  return (request.activityKind === 'acquisition' || request.activityKind === 'test-review')
+  return (request.activityKind === 'acquisition' || request.activityKind === 'test-review' || request.activityKind === 'reacquisition')
     && request.learningChannel === 'tier-1-writing'
     && Boolean(request.cohortId)
 }
