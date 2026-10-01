@@ -12,8 +12,8 @@ import {
 } from './curriculum/adapters/googleSlides.ts'
 import { classifyWeeklyDatasetCandidates, type CandidateClassificationDecision, type ExistingDatasetReference } from './curriculum/classification.ts'
 import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity.ts'
-import type { CandidateStatus, InstructionalRole, WeeklyDatasetCandidate } from './curriculum/model.ts'
-import type { Dataset, Word } from './domain/contracts.ts'
+import type { CandidateStatus, InstructionalRole, VocabularyOccurrenceCandidate, WeeklyDatasetCandidate } from './curriculum/model.ts'
+import type { Dataset, DatasetVocabulary, Word } from './domain/contracts.ts'
 import { isSourceNeutralCanonicalDataset } from './curriculum/datasetProjection.ts'
 
 export type { ExistingDatasetReference } from './curriculum/classification.ts'
@@ -153,8 +153,24 @@ export function importOutcomeFromCandidate(candidate: WeeklyDatasetCandidate, pr
       : `Canonical validation failed${validationError ? ` (${validationError.code}): ${validationError.message}` : '.'}`
     return { status: 'error', sourceDeckId: profile.sourceDeckId, message, sourceSlideId, datasetId }
   }
-  const words: Word[] = candidate.tier1.map((term) => ({ id: term.targetOccurrenceId!, text: term.text, sentence: '', datasetId, grade: profile.grade, sourceSlideId, language: 'mandarin', tier: 'tier-1', activityType: 'dictation' }))
-  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words), ...candidateMetadata }
+  const tierWords = (tier: 'tier-1' | 'tier-2' | 'tier-3', terms: VocabularyOccurrenceCandidate[]) => terms.map((term): Word => ({
+    id: term.targetOccurrenceId!,
+    text: term.text,
+    sentence: '',
+    datasetId,
+    grade: profile.grade,
+    sourceSlideId,
+    language: 'mandarin',
+    tier,
+    activityType: tier === 'tier-1' ? 'dictation' : 'reading',
+  }))
+  const words = tierWords('tier-1', candidate.tier1)
+  const vocabulary: DatasetVocabulary = {
+    tier1: words,
+    tier2: tierWords('tier-2', candidate.tier2),
+    tier3: tierWords('tier-3', candidate.tier3),
+  }
+  return { status: 'imported', sourceDeckId: profile.sourceDeckId, message: `Extracted ${words.length} Tier 1 target${words.length === 1 ? '' : 's'}.`, sourceSlideId, datasetId, dataset: datasetFor(profile, range, sourceSlideId, words, false, vocabulary), ...candidateMetadata }
 }
 
 export function profileForDataset(dataset: Pick<Dataset, 'grade' | 'schoolYear' | 'sourceDeckId'>) {
@@ -175,13 +191,13 @@ export function isCanonicalDataset(dataset: Dataset) {
   return dataset.words.every((word, index) => word.id === wordIdFor(profile, dataset, index + 1) && word.datasetId === dataset.id && word.grade === profile.grade && word.sourceSlideId === dataset.sourceSlideId && word.language === 'mandarin' && word.tier === 'tier-1' && word.activityType === 'dictation')
 }
 
-function datasetFor(profile: ParserProfile, range: { startDate: string; endDate: string; dateRange: string }, sourceSlideId: string | undefined, words: Word[], workshop = false): Dataset {
+function datasetFor(profile: ParserProfile, range: { startDate: string; endDate: string; dateRange: string }, sourceSlideId: string | undefined, words: Word[], workshop = false, vocabulary?: DatasetVocabulary): Dataset {
   const datasetId = datasetIdFor(profile, range)
   return {
     id: datasetId, dateRange: range.dateRange, startDate: range.startDate, endDate: range.endDate, grade: profile.grade, schoolYear: profile.schoolYear,
     description: workshop ? `Writing workshop from ${range.dateRange}` : `Tier 1 words from ${range.dateRange}`,
     sourceDeckId: profile.sourceDeckId, sourceSlideId, importStatus: workshop ? 'writing-workshop' : 'valid', isWritingWorkshop: workshop,
-    importedAt: new Date().toISOString(), words,
+    importedAt: new Date().toISOString(), words, ...(vocabulary ? { vocabulary } : {}),
   }
 }
 

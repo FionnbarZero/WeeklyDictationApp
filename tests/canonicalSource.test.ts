@@ -58,7 +58,7 @@ function expectedGrade2Dataset(options: {
 }
 
 function stableDataset(dataset: NonNullable<ReturnType<typeof importWeeklyDatasets>['datasets'][number]>) {
-  const { importedAt: _importedAt, ...stable } = dataset
+  const { importedAt: _importedAt, vocabulary: _vocabulary, ...stable } = dataset
   return stable
 }
 
@@ -209,6 +209,10 @@ test('Grade 2 Slides normalize all vocabulary tiers before Tier 1 becomes writin
   assert.match(candidate.contentFingerprint, /^v2-fnv1a64-/)
   assert.ok(isCanonicalWeeklyDatasetCandidate(candidate))
   assert.deepEqual(imported.dataset?.words.map((word) => word.text), ['比如', '部分'])
+  assert.deepEqual(imported.dataset?.vocabulary?.tier1.map((word) => word.text), ['比如', '部分'])
+  assert.deepEqual(imported.dataset?.vocabulary?.tier2.map((word) => word.text), ['城市', '上班'])
+  assert.deepEqual(imported.dataset?.vocabulary?.tier3.map((word) => word.text), ['社区'])
+  assert.ok(imported.dataset?.vocabulary?.tier2.every((word) => word.activityType === 'reading' && word.tier === 'tier-2'))
 })
 
 test('ordered duplicate vocabulary values remain separate stable target occurrences', () => {
