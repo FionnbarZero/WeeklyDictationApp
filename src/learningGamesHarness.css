@@ -1,0 +1,61 @@
+:root { --coral: #b85647; color: #26313c; background: #f7f3ed; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: radial-gradient(circle at 2% 0, #f5d87d 0, transparent 25rem), radial-gradient(circle at 98% 8%, #d8cbef 0, transparent 28rem), #f7f3ed; }
+button { font: inherit; }
+.lgh-shell { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 28px 0 72px; }
+.lgh-safety { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 0 0 17px; color: #655676; font-size: .75rem; font-weight: 800; }
+.lgh-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 40px; overflow: hidden; padding: clamp(32px, 6vw, 66px); border-radius: 31px; color: white; background: linear-gradient(135deg, #293d46, #4d456e 60%, #80536d); box-shadow: 0 23px 60px rgb(42 37 61 / 19%); }
+.lgh-eyebrow { margin: 0 0 7px; color: #6c5595; font-size: .7rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+.lgh-hero .lgh-eyebrow { color: #f5d071; }
+.lgh-hero h1 { max-width: 720px; margin: 0; font-size: clamp(2.6rem, 6vw, 5rem); line-height: .97; letter-spacing: -.06em; }
+.lgh-hero h1 em { color: #f5d071; font-family: Georgia, serif; font-weight: 500; }
+.lgh-hero > div > p:last-child { max-width: 680px; margin: 20px 0 0; color: rgb(255 255 255 / 72%); line-height: 1.6; }
+.lgh-count { display: grid; place-items: center; width: 150px; aspect-ratio: 1; border: 1px solid rgb(255 255 255 / 15%); border-radius: 38px; background: rgb(255 255 255 / 9%); }
+.lgh-count strong { align-self: end; font-size: 4rem; line-height: 1; }
+.lgh-count span { align-self: start; color: rgb(255 255 255 / 70%); font-size: .75rem; font-weight: 800; }
+.lgh-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; margin-top: 20px; }
+.lgh-card { display: flex; flex-direction: column; min-height: 325px; padding: 27px; border: 1px solid rgb(47 42 63 / 9%); border-radius: 24px; background: rgb(255 253 249 / 92%); box-shadow: 0 12px 30px rgb(47 42 63 / 7%); }
+.lgh-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 21px; }
+.lgh-mark { display: grid; place-items: center; width: 53px; height: 53px; border-radius: 17px; background: #eee7f7; font-size: 1.8rem; }
+.lgh-time { color: #72697c; font-size: .68rem; font-weight: 800; }
+.lgh-card h2 { margin: 2px 0 9px; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; }
+.lgh-card > p:not(.lgh-eyebrow) { margin: 0 0 19px; color: #68717e; font-size: .82rem; line-height: 1.55; }
+.lgh-channels { display: flex; flex-wrap: wrap; gap: 7px; margin: auto 0 19px; }
+.lgh-channels span { padding: 6px 9px; border-radius: 999px; color: #5a4878; background: #eee8f6; font-size: .65rem; font-weight: 850; }
+.lgh-card button, .lgh-result-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; padding: 10px 16px; border: 0; border-radius: 12px; color: white; background: #5e438f; cursor: pointer; font-weight: 850; }
+.lgh-card button { align-self: flex-start; }
+.lgh-details { margin-top: 20px; padding: 16px 19px; border: 1px solid #d9d1df; border-radius: 15px; background: rgb(255 253 249 / 75%); }
+.lgh-details summary, .lgh-result summary { cursor: pointer; font-weight: 850; }
+.lgh-details p { color: #68717e; line-height: 1.55; }
+.lgh-result-shell { width: min(760px, calc(100% - 32px)); }
+.lgh-back { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 18px; padding: 9px 13px; border: 0; border-radius: 999px; color: #5e438f; background: #ece4f5; cursor: pointer; font-weight: 850; }
+.lgh-result { display: grid; min-height: 610px; padding: clamp(28px, 6vw, 55px); place-items: center; align-content: center; border: 1px solid #dfd7e6; border-radius: 29px; background: #fffdf9; box-shadow: 0 18px 45px rgb(73 55 101 / 12%); text-align: center; }
+.lgh-result-mark { display: grid; place-items: center; width: 82px; height: 82px; margin-bottom: 18px; border-radius: 26px; color: #36734d; background: #dff2e4; }
+.lgh-result h1 { margin: 2px 0 11px; font-family: Georgia, serif; font-size: clamp(2.4rem, 7vw, 4.2rem); font-weight: 500; letter-spacing: -.05em; }
+.lgh-result > strong { color: #5e438f; font-size: 2.1rem; }
+.lgh-result > p:not(.lgh-eyebrow) { max-width: 520px; color: #68717e; line-height: 1.55; }
+.lgh-result-actions { display: flex; gap: 10px; margin: 13px 0 23px; }
+.lgh-result-actions .secondary { color: #5e438f; background: #ece4f5; }
+.lgh-result details { width: 100%; text-align: left; }
+.lgh-result pre { max-height: 260px; overflow: auto; padding: 15px; border-radius: 13px; color: #ebefff; background: #282c46; font-size: .7rem; }
+.lgh-unavailable { max-width: 650px; margin: 80px auto; padding: 30px; text-align: center; }
+.lgh-boss-response { display: grid; justify-items: center; width: min(540px, 100%); }
+.lgh-boss-response .lg-boss-meter { margin-bottom: 7px; }
+.lgh-boss-avatar { font-size: 2.8rem; filter: drop-shadow(0 6px 7px rgb(69 44 81 / 18%)); }
+.lgh-boss-response .reading-response { width: 100%; }
+.lgh-boss-response .review-heading { margin-top: 5px; }
+.lgh-boss-response .answer-label { margin-bottom: 7px; color: #6c5595; font-size: .72rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.lgh-boss-response .answer-word { display: grid; min-height: 105px; place-items: center; margin-bottom: 8px; font-family: "STKaiti", "KaiTi", "Kaiti SC", serif; }
+.lgh-boss-response .practice-helper { color: #68717e; line-height: 1.5; }
+.lgh-boss-response button { border: 0; cursor: pointer; }
+.lgh-recording-note { max-width: 430px; margin: 20px 0 0; color: #777180; font-size: .7rem; line-height: 1.45; }
+button:focus-visible, summary:focus-visible { outline: 4px solid #e2a73a; outline-offset: 3px; }
+
+@media (max-width: 720px) {
+  .lgh-shell { width: min(100% - 18px, 1120px); padding-top: 13px; }
+  .lgh-hero { grid-template-columns: 1fr; border-radius: 23px; }
+  .lgh-count { display: none; }
+  .lgh-grid { grid-template-columns: 1fr; }
+  .lgh-card { min-height: 300px; }
+  .lgh-result-actions { align-items: stretch; flex-direction: column; width: 100%; }
+}
