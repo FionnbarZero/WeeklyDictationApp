@@ -8,6 +8,10 @@ import type {
   Tier2ReadingTarget,
 } from '../tier2/contracts.ts'
 import { resolveTier2ReadingLifecycle } from '../tier2/lifecycle.ts'
+import {
+  tier2ReadingAcquisitionTargetSet,
+  tier2ReadingPathwayTargets,
+} from '../tier2/pathway.ts'
 import { tier2ReadingProfileForScope } from '../tier2/registry.ts'
 import {
   TIER2_PROTOTYPE_CURRICULUM,
@@ -215,13 +219,9 @@ export function tier2SmokePathwayLabel(pathway: Tier2ReadingPathway) {
 }
 
 export function tier2SmokePathwayTargets(pathway: Tier2ReadingPathway): Tier2ReadingTarget[] {
-  return pathway.cohorts.flatMap((cohort) => cohort.targets)
+  return tier2ReadingPathwayTargets(pathway)
 }
 
 export function tier2SmokeAcquisitionTargetSet(pathway: Tier2ReadingPathway): AcquisitionTargetSet<Tier2ReadingTarget> {
-  if (pathway.kind !== 'acquisition' || pathway.cohorts.length !== 1 || !pathway.available) {
-    throw new Error('The Tier 2 Acquisition smoke test requires one available Acquisition cohort.')
-  }
-  const cohort = pathway.cohorts[0]
-  return { id: cohort.datasetId, targets: cohort.targets }
+  return tier2ReadingAcquisitionTargetSet(pathway)
 }

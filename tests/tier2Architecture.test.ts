@@ -37,6 +37,7 @@ test('the Tier 2 reading boundary contains only its approved modules and depende
     'acquisition.ts': ['../acquisition/contracts.ts', './contracts.ts'],
     'contracts.ts': ['../acquisition/contracts.ts', '../domain/contracts.ts', '../lifecycle/contracts.ts'],
     'lifecycle.ts': ['../domain/contracts.ts', '../lifecycle/contracts.ts', './contracts.ts', './acquisition.ts'],
+    'pathway.ts': ['../acquisition/contracts.ts', './contracts.ts'],
     'profiles/grade2.ts': ['../../acquisition/strategies/grade2.ts', '../../lifecycle/strategies/grade2ReplacementStrategy.ts', '../acquisition.ts', '../contracts.ts'],
     'profiles/grade5.ts': ['../../acquisition/strategies/grade5.ts', '../../lifecycle/strategies/grade5ProgressionStrategy.ts', '../acquisition.ts', '../contracts.ts'],
     'profiles/kindergarten.ts': ['../../acquisition/strategies/kindergarten.ts', '../../lifecycle/strategies/kindergartenUnitStrategy.ts', '../acquisition.ts', '../contracts.ts'],
@@ -61,7 +62,16 @@ test('Tier 2 reading cannot depend on UI, persistence, configuration, or the dom
   assert.doesNotMatch(combinedSource, /['"]\.\.\/domain(?:\.ts)?['"]|App\.tsx|firestore|firebase|localStorage|config\.ts|\breact\b/i)
 })
 
-test('the inactive Tier 2 boundary is imported only by its explicit development lab', () => {
+test('the Tier 2 boundary is imported only by approved reading integration surfaces', () => {
+  const approvedConsumers = new Set([
+    'src/App.tsx',
+    'src/grade2/learningHub.ts',
+    'src/grade5Lab/readingPractice.ts',
+    'src/grade5LearningHubHarness.tsx',
+    'src/kindergartenLab/readingPractice.ts',
+    'src/kindergartenLearningLabHarness.tsx',
+    'src/readingPractice/Tier2ReadingPractice.tsx',
+  ])
   const productionFiles = ['src', 'backend', 'scripts'].flatMap((rootName) => {
     const root = join(repositoryRoot, rootName)
     const visit = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -78,9 +88,14 @@ test('the inactive Tier 2 boundary is imported only by its explicit development 
     return visit(root)
   })
 
+  const consumers: string[] = []
   for (const file of productionFiles) {
+    const repositoryPath = relative(repositoryRoot, file).split(sep).join('/')
     const tier2Imports = [...importsFrom(readFileSync(file, 'utf8')), ...sideEffectImportsFrom(readFileSync(file, 'utf8'))]
       .filter((specifier) => /(?:^|\/)tier2(?:\/|$)/.test(specifier))
-    assert.deepEqual(tier2Imports, [], relative(repositoryRoot, file))
+    if (tier2Imports.length === 0) continue
+    assert.ok(approvedConsumers.has(repositoryPath), repositoryPath)
+    consumers.push(repositoryPath)
   }
+  assert.deepEqual(consumers.sort(), [...approvedConsumers].sort())
 })

@@ -13,7 +13,6 @@ import {
   type KindergartenLabRevealMethod,
 } from './kindergartenLab/acquisitionLab.ts'
 import {
-  CurrentWeekReading,
   ListeningLilyPads,
   MasteryWarmup,
   MemoryLanterns,
@@ -23,9 +22,17 @@ import {
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
+import {
+  kindergartenReadingAcquisitionPathway,
+  kindergartenReadingMasteryPathway,
+  kindergartenReadingReviewPathway,
+} from './kindergartenLab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView } from './practice/PracticeView.tsx'
+import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { SkyWriting } from './skywriting/index.ts'
+import type { Tier2ReadingPathway } from './tier2/contracts.ts'
+import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
@@ -35,7 +42,12 @@ const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
 type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
-type StandaloneActivity = Exclude<KindergartenHubActivityKind, 'dojo-writing' | 'final-boss'>
+type StandaloneActivity = Exclude<KindergartenHubActivityKind,
+  | 'dojo-writing'
+  | 'dojo-reading'
+  | 'final-boss'
+  | 'final-boss-reading'
+  | 'spirit-realm-reading'>
 type ScoreInput = Omit<KindergartenScoreRecord, 'id' | 'completedAt'>
 
 function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceType'> {
@@ -121,21 +133,12 @@ function masteryDatasetFor(review: KindergartenUnitReviewLab | null): Dataset | 
   if (!review) return null
   const id = '__kindergarten-unit-1-mastery-lab__'
   const tier1 = review.dataset.words.map((word) => ({ ...word, id: `${id}:writing:${word.id}`, datasetId: id }))
-  const tier2 = review.tier2Words.map((text, index): Word => ({
-    id: `${id}:reading:${index + 1}`,
-    text,
-    sentence: '',
-    datasetId: id,
-    grade: 'Kindergarten',
-    language: 'mandarin',
-    tier: 'tier-2',
-    activityType: 'reading',
-  }))
   return {
     ...review.dataset,
     id,
-    description: 'Development-only Kindergarten Unit 1 writing and reading mastery bank',
-    words: [...tier1, ...tier2],
+    description: 'Development-only Kindergarten Unit 1 writing mastery bank',
+    words: tier1,
+    vocabulary: { tier1, tier2: [], tier3: [] },
   }
 }
 
@@ -145,6 +148,7 @@ function KindergartenLearningLab() {
   const [status, setStatus] = useState('Loading the trusted local Kindergarten fixture…')
   const [error, setError] = useState(false)
   const [writingPractice, setWritingPractice] = useState<WritingPractice | null>(null)
+  const [readingPathway, setReadingPathway] = useState<Tier2ReadingPathway | null>(null)
   const [testReviewSession, setTestReviewSession] = useState<PracticeSession | null>(null)
   const [testReviewDataset, setTestReviewDataset] = useState<Dataset | null>(null)
   const [activeActivity, setActiveActivity] = useState<StandaloneActivity | null>(null)
@@ -200,6 +204,7 @@ function KindergartenLearningLab() {
   function returnToHub(message = 'Returned to the Kindergarten paths.') {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setActiveActivity(null)
+    setReadingPathway(null)
     setMasteryWords([])
     setStatus(message)
     setError(false)
@@ -213,6 +218,7 @@ function KindergartenLearningLab() {
   function leavePractice(message: string) {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setWritingPractice(null)
+    setReadingPathway(null)
     setTestReviewSession(null)
     setTestReviewDataset(null)
     setStatus(message)
@@ -332,8 +338,38 @@ function KindergartenLearningLab() {
 
   function launchFromHub(launch: KindergartenHubLaunch) {
     if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'dojo-reading') {
+      if (selectedCandidate) {
+        setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
+        setStatus('Running the current-week high-frequency reading Acquisition flow.')
+      } else {
+        setStatus('The current Kindergarten reading cohort is unavailable.')
+        setError(true)
+      }
+      return
+    }
     if (launch.kind === 'final-boss') { startUnitReview(); return }
+    if (launch.kind === 'final-boss-reading') {
+      if (unitReview) {
+        setReadingPathway(kindergartenReadingReviewPathway(unitReview))
+        setStatus('Facing the Final Boss: the cumulative Unit 1 reading review is ready.')
+      } else {
+        setStatus('The cumulative Kindergarten reading review is unavailable.')
+        setError(true)
+      }
+      return
+    }
     if (launch.kind === 'spirit-realm') { startSpiritRealm(); return }
+    if (launch.kind === 'spirit-realm-reading') {
+      if (unitReview) {
+        setReadingPathway(kindergartenReadingMasteryPathway(unitReview))
+        setStatus('The Spirit Realm opened the separate Tier 2 reading mastery path.')
+      } else {
+        setStatus('The Kindergarten reading mastery path is unavailable.')
+        setError(true)
+      }
+      return
+    }
     setActiveActivity(launch.kind)
     setStatus(`${launch.label} started. Finish the activity to add its score to the Ninja Record.`)
   }
@@ -385,8 +421,37 @@ function KindergartenLearningLab() {
     </main>
   }
 
+  if (readingPathway) {
+    const label = readingPathway.kind === 'acquisition'
+      ? 'High-frequency words'
+      : readingPathway.kind === 'test-review'
+        ? 'Final Boss Reading Test'
+        : 'Reading Mastery'
+    const scoreKind = readingPathway.kind === 'acquisition'
+      ? 'Current week'
+      : readingPathway.kind === 'test-review'
+        ? 'Final Boss'
+        : 'Spirit Realm'
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note">Tier 2 recorded reading · Session-only development record</p>
+      <Tier2ReadingPractice
+        key={`${readingPathway.kind}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`}
+        profile={kindergartenTier2ReadingProfile}
+        pathway={readingPathway}
+        label={label}
+        onExit={() => returnToHub('Reading practice exited. No score was added.')}
+        onComplete={(summary) => completeStandalone({
+          label,
+          kind: scoreKind,
+          correct: summary.correct,
+          total: summary.attempted,
+        })}
+        sessionNote="Kindergarten development reading · recording and results remain in this visit"
+      />
+    </main>
+  }
+
   const speak = (text: string) => { speakText(text) }
-  if (activeActivity === 'dojo-reading') return <CurrentWeekReading words={tier2Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting

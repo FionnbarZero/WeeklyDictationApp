@@ -6,6 +6,7 @@ import type {
   LearningHubViewModel,
 } from '../learningHub/contracts.ts'
 import type { KindergartenUnitReviewLab } from './unitReview.ts'
+import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
 
 export type KindergartenHubActivityKind =
   | 'dojo-writing'
@@ -14,7 +15,9 @@ export type KindergartenHubActivityKind =
   | 'ninja-memory'
   | 'ninja-sky-writing'
   | 'final-boss'
+  | 'final-boss-reading'
   | 'spirit-realm'
+  | 'spirit-realm-reading'
 
 export type KindergartenHubLaunch = {
   kind: KindergartenHubActivityKind
@@ -84,7 +87,7 @@ export function kindergartenLearningHubView(
       id: 'current-week',
       number: '1',
       kicker: 'Current week',
-      title: 'Enter the Dojo',
+      title: SHARED_LEARNING_PATH_TITLES.dojo,
       subtitle: 'Learn this week’s writing characters and high-frequency reading words.',
       detailTitle: 'Welcome to the Dojo',
       detailSubtitle: 'First learn the writing characters. Then look, listen, and say the reading words aloud.',
@@ -100,7 +103,7 @@ export function kindergartenLearningHubView(
       id: 'ninja-skills',
       number: '2',
       kicker: 'Play and practice',
-      title: 'Practice your Ninja Skills',
+      title: SHARED_LEARNING_PATH_TITLES.ninjaSkills,
       subtitle: 'Build reading and writing power through three quick games.',
       actionLabel: 'Choose a game',
       theme: 'blue',
@@ -115,26 +118,28 @@ export function kindergartenLearningHubView(
       id: 'final-boss',
       number: '3',
       kicker: 'Cumulative Unit 1 review',
-      title: 'The Final Boss Test',
+      title: SHARED_LEARNING_PATH_TITLES.finalBoss,
       subtitle: 'Prepare for your test with every writing character from the unit.',
       actionLabel: 'Face the Final Boss',
       theme: 'violet',
       cohorts: unit ? [unit] : [],
       activities: [
-        launchActivity('final-boss', 'Unit test review', 'Prepare for your test', 'Complete the cumulative Unit 1 writing review, then check every answer.', '🐉'),
+        launchActivity('final-boss', 'Tier 1 · Writing', 'Writing Test', 'Complete the cumulative Unit 1 writing review, then check every answer.', '🐉'),
+        launchActivity('final-boss-reading', 'Tier 2 · Reading', 'Reading Test', 'Record and compare every high-frequency reading word from Unit 1.', '🎧'),
       ],
     }, Boolean(unit)),
     section({
       id: 'spirit-realm',
       number: '4',
       kicker: 'Mastery review',
-      title: 'Enter the Spirit Realm',
+      title: SHARED_LEARNING_PATH_TITLES.spiritRealm,
       subtitle: 'Keep older writing and reading words strong with an adaptive warmup.',
       actionLabel: 'Enter the Spirit Realm',
       theme: 'green',
       cohorts: unit ? [unit] : [],
       activities: [
-        launchActivity('spirit-realm', 'Adaptive mastery', 'Mastery warmup', 'Practice six mastery words. Words that need help return sooner next time.', '🌙'),
+        launchActivity('spirit-realm', 'Tier 1 · Writing mastery', 'Writing mastery warmup', 'Practice six writing mastery words. Words that need help return sooner next time.', '🌙'),
+        launchActivity('spirit-realm-reading', 'Tier 2 · Reading mastery', 'Reading mastery', 'Record and compare the high-frequency words that completed Unit 1.', '🎧'),
       ],
     }, Boolean(unit)),
   ]

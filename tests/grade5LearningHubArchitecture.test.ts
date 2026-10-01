@@ -41,15 +41,18 @@ test('the Grade 5 landing experience uses the shared child-facing visual languag
   assert.doesNotMatch(harnessSource, /renderHubHome|renderSectionDetail|sectionVisuals/)
 })
 
-test('the Grade 5 learning hub connects Tier 1 Acquisition and Test Review without persistence', () => {
+test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 reading paths without persistence', () => {
   const harnessSource = source('src/grade5LearningHubHarness.tsx')
   const hubModel = source('src/grade5Lab/learningHub.ts')
   const labAdapter = source('src/grade5Lab/acquisitionLab.ts')
   const writingPractice = source('src/grade5Lab/writingPractice.ts')
+  const readingPractice = source('src/grade5Lab/readingPractice.ts')
   const profile = source('src/grade5Lab/practiceProfile.ts')
 
   assert.match(harnessSource, /not connected yet/i)
   assert.match(harnessSource, /startGrade5AcquisitionLab/)
+  assert.match(harnessSource, /<Tier2ReadingPractice/)
+  assert.match(harnessSource, /grade5LabReadingPathway/)
   assert.match(harnessSource, /grade5LabWarmupSelection/)
   assert.match(harnessSource, /skip-warmup/)
   assert.match(labAdapter, /startAcquisition/)
@@ -58,8 +61,10 @@ test('the Grade 5 learning hub connects Tier 1 Acquisition and Test Review witho
   assert.match(writingPractice, /classification\.selectedCandidates/)
   assert.match(hubModel, /classification\.selectedCandidates/)
   assert.match(writingPractice, /activityKind === 'test-review'/)
+  assert.match(readingPractice, /learningChannel === 'tier-2-reading'/)
+  assert.match(readingPractice, /activityKind !== 'reacquisition'/)
   assert.match(profile, /grade5AcquisitionStrategy/)
-  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
+  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${readingPractice}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
   assert.doesNotMatch(`${hubModel}\n${labAdapter}`, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
 })
 

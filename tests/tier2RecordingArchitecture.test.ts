@@ -9,12 +9,14 @@ function source(path: string) {
 test('the recording presentation has a small explicit boundary and no persistence path', () => {
   assert.deepEqual(readdirSync(new URL('../src/readingPractice/', import.meta.url)).sort(), [
     'ReadingResponsePanel.tsx',
+    'Tier2ReadingPractice.tsx',
     'audioRecorder.ts',
     'contracts.ts',
     'useAudioRecorder.ts',
   ])
   const combined = [
     source('src/readingPractice/ReadingResponsePanel.tsx'),
+    source('src/readingPractice/Tier2ReadingPractice.tsx'),
     source('src/readingPractice/audioRecorder.ts'),
     source('src/readingPractice/contracts.ts'),
     source('src/readingPractice/useAudioRecorder.ts'),
@@ -54,13 +56,16 @@ test('the smoke presentation records before comparison and comparison before ass
   assert.match(source('src/tier2ReadingLabHarness.tsx'), /readingShowCopyInstruction/)
 })
 
-test('the recording feature remains confined to the development Tier 2 entry point', () => {
-  const production = [
+test('recording is exposed only through the shared Tier 2 runner and stays outside persistence infrastructure', () => {
+  const infrastructure = [
     source('index.html'),
     source('src/main.tsx'),
-    source('src/App.tsx'),
     source('src/firestoreClient.ts'),
   ].join('\n')
-  assert.doesNotMatch(production, /ReadingResponsePanel|readingPractice\/|getUserMedia|MediaRecorder/)
+  assert.doesNotMatch(infrastructure, /ReadingResponsePanel|Tier2ReadingPractice|getUserMedia|MediaRecorder/)
+  assert.match(source('src/App.tsx'), /Tier2ReadingPractice/)
+  assert.match(source('src/grade5LearningHubHarness.tsx'), /Tier2ReadingPractice/)
+  assert.match(source('src/kindergartenLearningLabHarness.tsx'), /Tier2ReadingPractice/)
+  assert.doesNotMatch(source('src/App.tsx'), /getUserMedia|MediaRecorder/)
   assert.match(source('src/tier2ReadingLabHarness.tsx'), /ReadingResponsePanel/)
 })

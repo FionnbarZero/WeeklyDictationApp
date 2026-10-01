@@ -34,10 +34,10 @@ test('the Grade 5 hub assigns accepted cohorts to Acquisition, Test 1, Test 2, a
   const hub = model()
 
   assert.deepEqual(hub.sections.map((item) => item.title), [
-    'Enter the Training Dojo',
+    'Enter the Dojo',
     'Practice your Ninja Skills',
-    'The Final Boss Test!',
-    'Enter the Spirit realm',
+    'The Final Boss Test',
+    'Enter the Spirit Realm',
   ])
   assert.equal(section('homework').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-21__2026-09-25')
   assert.equal(section('test-review-1').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-14__2026-09-18')
@@ -194,5 +194,8 @@ test('the Grade 5 adapter preserves content and launch requests in the shared Le
     assert.equal(writing.action.launch.requests[0]?.learningChannel, 'tier-1-writing')
   }
   const reading = homework?.activities.find((item) => item.id === 'acquisition-reading')
-  assert.equal(reading?.action.kind, 'disabled')
+  assert.equal(reading?.action.kind, 'launch')
+  if (reading?.action.kind === 'launch') {
+    assert.equal(reading.action.launch.requests[0]?.learningChannel, 'tier-2-reading')
+  }
 })
