@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
 
@@ -31,7 +32,7 @@ test('a reviewed Acquisition response resumes at the exact next prompt after rel
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
 
   await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
-  await page.getByRole('button', { name: /Start Acquisition for/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Skip Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
 
@@ -48,7 +49,7 @@ test('a reviewed Acquisition response resumes at the exact next prompt after rel
   expect(afterAnswer.receiptCount).toBe(1)
 
   await page.reload()
-  await page.getByRole('button', { name: /Start Acquisition for/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Skip Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
 

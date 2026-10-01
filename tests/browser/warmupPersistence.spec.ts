@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
 
@@ -29,7 +30,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
   await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
 
-  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Writing mastery warmup')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   const before = await warmupSnapshot(page)
@@ -47,7 +48,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
   expect(after.graphCount).toBe(1)
 
   await page.reload()
-  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Writing mastery warmup')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   expect(await warmupSnapshot(page)).toEqual(after)
@@ -56,7 +57,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
 test('a started pre-activity Warmup can finalize one partial graph point and continue to the selected activity', async ({ page }) => {
   await page.goto('/?testDate=2026-09-29')
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
-  await page.getByRole('button', { name: /Start Acquisition/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await page.getByRole('button', { name: 'Skip Timer' }).click()
   await page.getByRole('button', { name: /I got it right/i }).click()

@@ -17,7 +17,6 @@ import {
   MasteryWarmup,
   MemoryLanterns,
   NinjaRecord,
-  SkyWriting,
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
@@ -31,6 +30,7 @@ import {
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
+import { SkyWriting } from './skywriting/index.ts'
 import type { Tier2ReadingPathway } from './tier2/contracts.ts'
 import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
@@ -461,7 +461,12 @@ function KindergartenLearningLab() {
   const speak = (text: string) => { speakText(text) }
   if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
-  if (activeActivity === 'ninja-sky-writing') return <SkyWriting words={tier1Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-sky-writing') return <SkyWriting
+    words={tier1Words}
+    onExit={returnToHub}
+    onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
+    speak={speak}
+  />
   if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
 
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>

@@ -1,0 +1,54 @@
+:root { font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; color: #29303a; background: #f7f1ff; }
+* { box-sizing: border-box; }
+body { min-width: 320px; margin: 0; background: radial-gradient(circle at 12% 0, #fff3b7 0, transparent 27rem), radial-gradient(circle at 88% 10%, #dfd0fa 0, transparent 30rem), #faf7ff; }
+button { font: inherit; }
+.sky-lab-shell { width: min(1040px, calc(100% - 30px)); margin: 0 auto; padding: 24px 0 70px; }
+.sky-lab-safety { margin: 0 0 15px; padding: 11px 15px; border: 1px solid #d9bd58; border-radius: 14px; color: #654d00; background: #fff8d7; font-size: .82rem; font-weight: 750; }
+.sky-lab-hero { display: grid; grid-template-columns: 1fr auto; gap: 30px; align-items: center; min-height: 370px; padding: clamp(30px, 6vw, 62px); border-radius: 34px; color: white; background: linear-gradient(145deg, #4e3193, #7952bc 58%, #b26fa6); box-shadow: 0 22px 54px rgb(84 47 132 / 24%); }
+.sky-lab-eyebrow { margin: 0 0 9px; font-size: .73rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.sky-lab-hero h1 { max-width: 720px; margin: 0; font-size: clamp(2.7rem, 7vw, 5.2rem); line-height: .94; letter-spacing: -.06em; }
+.sky-lab-hero p:not(.sky-lab-eyebrow) { max-width: 660px; margin: 21px 0 28px; line-height: 1.65; }
+.sky-lab-count { display: grid; width: clamp(150px, 18vw, 210px); aspect-ratio: 1; place-items: center; align-content: center; border: 1px solid rgb(255 255 255 / 32%); border-radius: 50%; background: rgb(255 255 255 / 13%); box-shadow: inset 0 0 40px rgb(255 255 255 / 8%); }
+.sky-lab-count strong { font-family: Georgia, serif; font-size: clamp(4.6rem, 10vw, 7rem); font-weight: 500; line-height: .86; }
+.sky-lab-count span { margin-top: 12px; font-size: .72rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.sky-lab-primary, .sky-lab-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 11px 19px; border: 0; border-radius: 999px; cursor: pointer; font-weight: 850; }
+.sky-lab-primary { color: #4f328e; background: #fff7cc; box-shadow: 0 8px 20px rgb(42 20 78 / 20%); }
+.sky-lab-back { margin-bottom: 18px; color: #5d4780; background: #ebe2f7; }
+.sky-lab-primary:focus-visible, .sky-lab-back:focus-visible, .sky-lab-provenance summary:focus-visible { outline: 4px solid #f1bb39; outline-offset: 3px; }
+.sky-lab-grade-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+.sky-lab-grade-grid article { position: relative; min-height: 220px; padding: 24px; overflow: hidden; border: 1px solid #dfd3eb; border-radius: 24px; background: rgb(255 255 255 / 78%); box-shadow: 0 12px 27px rgb(70 48 100 / 8%); }
+.sky-lab-grade-grid article > span { display: grid; width: 44px; aspect-ratio: 1; place-items: center; border-radius: 14px; color: white; background: #6745a7; font-weight: 900; }
+.sky-lab-grade-grid h2 { margin: 16px 0 4px; font-family: Georgia, serif; font-size: 1.65rem; font-weight: 500; }
+.sky-lab-grade-grid p { margin: 0; color: #766b80; font-size: .78rem; }
+.sky-lab-grade-grid article > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 19px; }
+.sky-lab-grade-grid b { display: grid; min-width: 46px; min-height: 46px; padding: 7px 9px; place-items: center; border-radius: 13px; color: #493961; background: #f0e9f9; font-family: Georgia, serif; font-size: 1.35rem; font-weight: 500; }
+.sky-lab-provenance { margin-top: 20px; padding: 14px 17px; border: 1px dashed #cfc0dd; border-radius: 16px; background: rgb(255 255 255 / 54%); }
+.sky-lab-provenance summary { cursor: pointer; color: #5f5270; font-size: .8rem; font-weight: 850; }
+.sky-lab-provenance table { width: 100%; margin-top: 14px; border-collapse: collapse; font-size: .76rem; }
+.sky-lab-provenance th, .sky-lab-provenance td { padding: 10px; border-top: 1px solid #e3d9eb; text-align: left; }
+.sky-lab-provenance td:nth-child(2) { font-family: Georgia, serif; font-size: 1.25rem; }
+.sky-lab-results { padding: clamp(28px, 6vw, 58px); border: 1px solid #ded2e9; border-radius: 32px; background: rgb(255 255 255 / 86%); box-shadow: 0 20px 46px rgb(72 47 105 / 12%); text-align: center; }
+.sky-lab-result-mark { display: grid; width: 78px; aspect-ratio: 1; margin: 0 auto 16px; place-items: center; border-radius: 26px; color: #37734d; background: #dff2e4; }
+.sky-lab-results > h1 { margin: 0; color: #55358f; font-family: Georgia, serif; font-size: clamp(3.2rem, 10vw, 6rem); font-weight: 500; }
+.sky-lab-results > p:not(.sky-lab-eyebrow) { color: #706879; line-height: 1.55; }
+.sky-lab-grade-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 28px 0; text-align: left; }
+.sky-lab-grade-results article { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; padding: 18px; border-radius: 20px; background: #f7f1fc; }
+.sky-lab-grade-results article > span { display: grid; width: 40px; aspect-ratio: 1; place-items: center; border-radius: 12px; color: white; background: #6946ad; font-size: .75rem; font-weight: 900; }
+.sky-lab-grade-results h2 { margin: 1px 0 3px; font-size: 1rem; }
+.sky-lab-grade-results p { margin: 0; color: #756b7e; font-size: .7rem; }
+.sky-lab-grade-results ul { display: grid; grid-column: 1 / -1; gap: 6px; margin: 5px 0 0; padding: 0; list-style: none; }
+.sky-lab-grade-results li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 11px; background: white; }
+.sky-lab-grade-results li b { font-family: Georgia, serif; font-size: 1.2rem; font-weight: 500; }
+.sky-lab-grade-results li span { display: inline-flex; align-items: center; gap: 4px; font-size: .68rem; font-weight: 800; }
+.sky-lab-grade-results li.correct span { color: #34704a; }
+.sky-lab-grade-results li.practice span { color: #9a493f; }
+.sky-lab-results > small { display: block; margin-top: 12px; color: #857b8c; font-size: .67rem; }
+.sky-lab-unavailable { display: grid; min-height: 100vh; place-items: center; padding: 30px; color: #5d5270; }
+@media (max-width: 760px) {
+  .sky-lab-shell { width: min(100% - 18px, 1040px); padding-top: 10px; }
+  .sky-lab-hero { grid-template-columns: 1fr; min-height: 0; border-radius: 25px; }
+  .sky-lab-count { display: none; }
+  .sky-lab-grade-grid, .sky-lab-grade-results { grid-template-columns: 1fr; }
+  .sky-lab-provenance { overflow-x: auto; }
+  .sky-lab-provenance table { min-width: 620px; }
+}

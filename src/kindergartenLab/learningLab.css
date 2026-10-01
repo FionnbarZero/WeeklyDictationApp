@@ -49,7 +49,7 @@ button, select { font: inherit; }
 .k-reading-complete { display: grid; place-items: center; align-content: center; min-height: 520px; }
 .k-reading-complete .mark { display: grid; place-items: center; width: 82px; aspect-ratio: 1; margin-bottom: 16px; border-radius: 27px; color: #3c754f; background: #dff2e4; font-size: 2rem; }
 .k-practice-note { margin: 0 0 15px; color: #786f7c; font-size: .75rem; text-align: center; }
-.k-lab-shell.practice { width: min(720px, calc(100% - 42px)); padding-top: 36px; }
+.k-lab-shell.practice { width: min(1440px, calc(100% - 42px)); padding-top: 16px; }
 .k-loading { display: grid; place-items: center; min-height: 70vh; color: #5e5471; font-weight: 750; }
 .k-hub-shell { width: min(1080px, calc(100% - 40px)); padding-top: 0; }
 .k-hub-shell .k-lab-safety { margin-top: 12px; }
@@ -91,8 +91,8 @@ button, select { font: inherit; }
 .k-memory-card { display: grid; min-height: 120px; place-items: center; border: 0; border-radius: 20px; color: #4a3c5f; background: linear-gradient(150deg, #f3c96b, #e9a862); cursor: pointer; font-size: clamp(2.2rem, 7vw, 3.5rem); box-shadow: 0 9px 20px rgb(86 55 21 / 14%); }
 .k-memory-card.visible { background: #fff; }
 .k-memory-card.matched { color: #316a46; background: #dff1e5; }
-.k-sky-game, .k-spirit-game, .k-weekly-reading { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.k-sky-game .k-primary, .k-spirit-game .k-primary { margin-top: 12px; }
+.k-spirit-game, .k-weekly-reading { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.k-spirit-game .k-primary { margin-top: 12px; }
 .k-reveal-word { display: grid; min-width: 210px; min-height: 170px; margin: 21px auto 14px; padding: 20px; place-items: center; border: 3px solid #d3c4ed; border-radius: 28px; color: #3f3458; background: #fff; font-family: serif; font-size: clamp(4.2rem, 15vw, 7rem); box-shadow: 0 15px 30px rgb(75 54 111 / 12%); }
 .k-self-check-prompt { margin-top: 8px; font-weight: 800; }
 .k-self-check-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 11px; margin-top: 15px; }

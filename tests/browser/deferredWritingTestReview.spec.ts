@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
 
@@ -20,7 +21,7 @@ async function openGrade2WritingReview(page: import('@playwright/test').Page) {
   await page.goto('/?testDate=2026-09-29')
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
   await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
-  await page.getByRole('button', { name: /Start Test Review/i }).click()
+  await openGrade2LearningActivity(page, 'The Final Boss Test', 'Writing Test')
   await page.getByRole('button', { name: 'Skip Warmup' }).click()
 }
 
@@ -62,7 +63,7 @@ test('exiting during collection discards the provisional writing review', async 
   await page.getByRole('button', { name: 'Skip Timer' }).click()
   await page.getByRole('button', { name: 'Exit practice' }).click()
 
-  await expect(page.getByRole('heading', { name: /Ready when you are/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Ready for your next challenge/ })).toBeVisible()
   const stored = await storedReviewSnapshot(page)
   expect(stored.results).toHaveLength(0)
   expect(stored.scores).toHaveLength(0)
