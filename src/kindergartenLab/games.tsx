@@ -182,52 +182,6 @@ export function MemoryLanterns({ words, onExit, onComplete, speak }: {
   </GameShell>
 }
 
-export function SkyWriting({ words, onExit, onComplete, speak }: {
-  words: string[]
-  onExit: () => void
-  onComplete: (score: CompleteScore) => void
-  speak: (text: string) => void
-}) {
-  const rounds = distinctWords(words).slice(0, 5)
-  const [index, setIndex] = useState(0)
-  const [revealed, setRevealed] = useState(false)
-  const [correct, setCorrect] = useState(0)
-  const [complete, setComplete] = useState(false)
-  const word = rounds[index]
-
-  function answer(value: boolean) {
-    const nextCorrect = correct + (value ? 1 : 0)
-    setCorrect(nextCorrect)
-    if (index + 1 >= rounds.length) setComplete(true)
-    else { setIndex((value) => value + 1); setRevealed(false) }
-  }
-
-  if (complete) return <GameShell title="Sky Writing" eyebrow="Ninja Skills · Writing" score={`${correct}/${rounds.length}`} onExit={onExit}>
-    <CompletionCard title="Your sky is full of characters!" message="The ones that need more practice can visit the Spirit Realm later." score={`${correct} of ${rounds.length} correct`} onDone={() => onComplete({ label: 'Sky Writing', kind: 'Ninja game', correct, total: rounds.length })} />
-  </GameShell>
-
-  return <GameShell title="Sky Writing" eyebrow="Ninja Skills · Writing" score={`${correct}/${index}`} onExit={onExit}>
-    <section className="k-game-card k-sky-game">
-      <p className="k-round-label">Character {index + 1} of {rounds.length}</p>
-      <div className="k-game-mascot" aria-hidden="true">☁️</div>
-      {!revealed ? <>
-        <h2>Listen, then write it in the sky</h2>
-        <p>Use one finger in the air, or write the character on paper.</p>
-        <button className="k-listen-button" type="button" onClick={() => speak(word)}><Volume2 size={24} /> Hear the character</button>
-        <button className="k-primary" type="button" onClick={() => setRevealed(true)}>Show the character <Sparkles size={17} /></button>
-      </> : <>
-        <p className="k-eyebrow">The character was</p>
-        <div className="k-reveal-word">{word}</div>
-        <p>Does your character match?</p>
-        <div className="k-self-check-actions">
-          <button className="k-game-wrong" type="button" onClick={() => answer(false)}><X size={17} /> Not yet</button>
-          <button className="k-game-right" type="button" onClick={() => answer(true)}><Check size={17} /> It matches!</button>
-        </div>
-      </>}
-    </section>
-  </GameShell>
-}
-
 export function CurrentWeekReading({ words, onExit, onComplete, speak }: {
   words: string[]
   onExit: () => void

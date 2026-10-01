@@ -18,7 +18,6 @@ import {
   MasteryWarmup,
   MemoryLanterns,
   NinjaRecord,
-  SkyWriting,
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
@@ -26,6 +25,7 @@ import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView } from './practice/PracticeView.tsx'
+import { SkyWriting } from './skywriting/index.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
@@ -389,7 +389,12 @@ function KindergartenLearningLab() {
   if (activeActivity === 'dojo-reading') return <CurrentWeekReading words={tier2Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
-  if (activeActivity === 'ninja-sky-writing') return <SkyWriting words={tier1Words} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-sky-writing') return <SkyWriting
+    words={tier1Words}
+    onExit={returnToHub}
+    onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
+    speak={speak}
+  />
   if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
 
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>

@@ -9,6 +9,7 @@ import {
   type Word,
 } from '../domain'
 import { createPracticeCountdown, practicePosition, wordIsVisibleDuringWriting } from '../practicePresentation'
+import { SkyWritingAcquisition, emptyWritingPadState, type WritingPadState, type WritingPadStateUpdater } from '../skywriting/index.ts'
 import { SelfAssessmentActions } from './SelfAssessmentActions'
 
 type StopSpeech = void | (() => void)
@@ -32,6 +33,11 @@ export type PracticeViewProps = {
 
 function phaseLabel(phase: LifecyclePhase) {
   return phase === 'test-review' ? 'Test Review' : phase === 'warmup' ? 'Warmup' : 'Acquisition'
+}
+
+function skyWritingResponseId(session: PracticeSession, word: Word, promptId?: string) {
+  const position = promptId || `${session.index}:${word.id}`
+  return `${session.id}:${session.segment}:${session.primaryPhase}:${position}`
 }
 
 function PromptCountdown({ durationSeconds, onComplete }: { durationSeconds: number; onComplete: () => void }) {
@@ -61,6 +67,7 @@ export function PracticeView({
   timerSecondsOverride,
   warmupRequired = false,
 }: PracticeViewProps) {
+  const [writingByResponse, setWritingByResponse] = useState<Record<string, WritingPadState>>({})
   const term = activePracticeWord(session)
   const dataset = datasets.find((item) => item.id === term?.datasetId) || datasets.find((item) => item.id === session.primaryDatasetId)
   const isWarmup = session.segment === 'warmup'
@@ -68,6 +75,18 @@ export function PracticeView({
   const showCopy = wordIsVisibleDuringWriting(acquisitionPrompt?.kind)
   const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsOverride || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
   const stageKey = `${session.id}:${session.segment}:${session.stage}:${session.index}:${acquisitionPrompt?.id || ''}`
+  const writingResponseId = term ? skyWritingResponseId(session, term, acquisitionPrompt?.id) : null
+  const writingPadState = writingResponseId ? writingByResponse[writingResponseId] || emptyWritingPadState : emptyWritingPadState
+  const showingWritingResponse = Boolean(term && writingResponseId && (session.stage === 'dictation' || session.stage === 'review'))
+  function updateWritingPad(update: WritingPadStateUpdater) {
+    if (!writingResponseId) return
+    setWritingByResponse((current) => {
+      const existing = current[writingResponseId] || emptyWritingPadState
+      const next = update(existing)
+      return next === existing ? current : { ...current, [writingResponseId]: next }
+    })
+  }
+  useEffect(() => { setWritingByResponse({}) }, [session.id])
   useEffect(() => {
     if (session.stage === 'warmup-intro') return
     if (session.stage === 'interstitial') {
@@ -89,7 +108,7 @@ export function PracticeView({
       : session.acquisition ? 50 + Math.round((session.acquisition.targetIndex / Math.max(session.primaryQueue.length, 1)) * 50)
         : 50 + Math.round((session.index / Math.max(session.queue.length, 1)) * 50)
   const promptLabel = acquisitionPrompt?.kind === 'familiar-dt' ? 'Familiar DT' : acquisitionPrompt?.kind === 'earned-dt' || acquisitionPrompt?.dtPoolType === 'earned' ? 'Earned DT' : phaseLabel(session.primaryPhase)
-  return <div className="practice-page">
+  return <div className={`practice-page${showingWritingResponse ? ' has-skywriting-response' : ''}`}>
     <div className="practice-top">
       <button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button>
       <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>
@@ -98,13 +117,26 @@ export function PracticeView({
       {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Skip Test Review</button>}
     </div>
     <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
-    <section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}`}>
+    <section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}${showingWritingResponse ? ` tier1-writing-card is-${session.stage}` : ''}`}>
       {session.stage === 'warmup-intro' && <><div className="interstitial-mark"><Sparkles size={25} /></div><p className="eyebrow">{warmupRequired ? 'Required before this activity' : 'Optional before this activity'}</p><h1>Warm up</h1><p className="practice-helper">{warmupRequired ? 'Complete these warmup words before continuing.' : 'Warm up first, or continue directly to the activity.'}</p><button className="primary-button" onClick={onBeginWarmup}>Begin Warmup <ArrowLeft size={17} /></button>{!warmupRequired && !session.warmupOnly && <button className="replay-button" onClick={() => onAnswer('skip-warmup')}>Skip Warmup</button>}</>}
       {session.stage === 'interstitial' && <><div className="interstitial-mark"><Volume2 size={25} /></div><p className="eyebrow">{isWarmup ? 'Warm up' : phaseLabel(session.primaryPhase)}</p><h1>{isWarmup ? `Warmup word ${session.index + 1}` : `Word ${session.index + 1}`}</h1><p className="practice-helper">Listen carefully, then write what you hear.</p>{term && <button className="replay-button" onClick={onReplay}><Volume2 size={16} /> Play word audio</button>}</>}
       {session.stage === 'complete' && session.primaryPhase === 'acquisition' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Teaching sequence complete · {dataset?.dateRange}</p><h1>All targets are now Earned DTs</h1><p className="review-instruction">Return anytime for ongoing Familiar and Earned DT practice.</p><button className="primary-button review-start-button" onClick={() => onAnswer('done')}>Done for today <ArrowLeft size={17} /></button></>}
       {session.stage === 'complete' && session.primaryPhase === 'test-review' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Dictation finished · {dataset?.dateRange}</p><h1>Test complete</h1><p className="review-instruction">{reviewInstruction}</p><button className="primary-button review-start-button" onClick={onStartReview}>Start review <ArrowLeft size={17} /></button><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay instructions</button></>}
-      {session.stage === 'dictation' && term && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : promptLabel} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} onComplete={() => onDictationComplete('timer')} /></span></div><div className="speaker-orb"><div className="orb-ring" /><Volume2 size={32} strokeWidth={1.7} /></div>{showCopy ? <><h1>Look, listen, and<br /><span>copy this word.</span></h1><div className="copy-target">{term.text}</div><p className="practice-helper">Copy the word onto your paper before the timer ends.</p></> : <><h1>Listen, then write<br /><span>what you hear.</span></h1><p className="practice-helper">Write the word on paper. Review your answer when the timer ends.</p></>}<button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay sequence</button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button><p className="dictation-status">The review frame appears when the timer ends or is skipped.</p></>}
-      {session.stage === 'review' && term && <><div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup review' : `${promptLabel} review`} · {dataset?.dateRange}</span><span className="review-label">Check your paper</span></div><div className="review-heading"><p className="answer-label">The word was</p><div className="answer-word">{term.text}</div></div><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<SelfAssessmentActions onIncorrect={() => onAnswer(false)} onCorrect={() => onAnswer(true)} /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>}
+      {session.stage === 'dictation' && term && writingResponseId && <>
+        <div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : promptLabel} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} onComplete={() => onDictationComplete('timer')} /></span></div>
+        <div className="tier1-writing-instructions">
+          <div className="speaker-orb"><div className="orb-ring" /><Volume2 size={24} strokeWidth={1.7} /></div>
+          <div><h1>{showCopy ? <>Trace the word<br /><span>as you listen.</span></> : <>Listen, then write<br /><span>what you hear.</span></>}</h1><p className="practice-helper">{showCopy ? 'Write directly over the Songti characters.' : 'Write the word on the screen before the timer ends.'}</p></div>
+          <div className="tier1-writing-audio-actions"><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay sequence</button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button></div>
+        </div>
+        <div className="tier1-writing-response"><SkyWritingAcquisition key={writingResponseId} word={term.text} phase="writing" traceTarget={showCopy} padState={writingPadState} onPadStateChange={updateWritingPad} /></div>
+        <p className="dictation-status">Your writing stays on this device only. The comparison appears when the timer ends or is skipped.</p>
+      </>}
+      {session.stage === 'review' && term && writingResponseId && <>
+        <div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup review' : `${promptLabel} review`} · {dataset?.dateRange}</span><span className="review-label">Compare your writing</span></div>
+        <div className="tier1-writing-response"><SkyWritingAcquisition key={writingResponseId} word={term.text} phase="review" traceTarget={showCopy} padState={writingPadState} onPadStateChange={updateWritingPad} /></div>
+        <div className="tier1-review-controls"><button className="replay-button" onClick={onReplay}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<SelfAssessmentActions onIncorrect={() => onAnswer(false)} onCorrect={() => onAnswer(true)} /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></div>
+      </>}
     </section>
     <p className="practice-footnote"><Headphones size={14} /> Mandarin audio plays automatically · You can replay it anytime</p>
   </div>
