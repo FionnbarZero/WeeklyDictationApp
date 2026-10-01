@@ -1,20 +1,23 @@
-import type { DatasetLifecycleResolution, PracticeTarget } from '../domain.ts'
+import type { PracticeTarget } from '../domain.ts'
+import { isTestReviewCycle } from '../testReview/contracts.ts'
+import type { DatasetLifecycleResolution } from './lifecycleProjection.ts'
 
 export function practiceTargetsForLifecycle(resolution: DatasetLifecycleResolution): PracticeTarget[] {
   const acquisition: PracticeTarget | null = resolution.acquisition
     ? { dataset: resolution.acquisition, phase: 'acquisition' }
     : null
-  const cumulativeGroup = resolution.testReviewGroups.find((group) => group.cycle === 1 && group.datasets.length > 0)
-  const groupedReview: PracticeTarget | null = cumulativeGroup
-    ? {
-        dataset: cumulativeGroup.datasets[cumulativeGroup.datasets.length - 1],
+  const reviews = resolution.testReviews
+    .filter((review) => review.datasets.length > 0)
+    .map((review): PracticeTarget => {
+      if (!isTestReviewCycle(review.cycle)) throw new Error('A lifecycle review target has an invalid cycle identity.')
+      return {
+        dataset: review.datasets[review.datasets.length - 1],
         phase: 'test-review',
-        reviewGroupId: cumulativeGroup.id,
-        reviewDatasets: cumulativeGroup.datasets,
+        reviewCycle: review.cycle,
+        ...(review.reviewGroupId ? { reviewGroupId: review.reviewGroupId } : {}),
+        ...(review.datasets.length > 1 ? { reviewDatasets: review.datasets } : {}),
       }
-    : null
-  const ordinaryReview: PracticeTarget | null = !groupedReview && resolution.testReview
-    ? { dataset: resolution.testReview, phase: 'test-review' }
-    : null
-  return [acquisition, groupedReview || ordinaryReview].filter((target): target is PracticeTarget => Boolean(target))
+    })
+    .sort((left, right) => (left.reviewCycle ?? 1) - (right.reviewCycle ?? 1))
+  return [acquisition, ...reviews].filter((target): target is PracticeTarget => Boolean(target))
 }

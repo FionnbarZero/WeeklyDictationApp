@@ -97,6 +97,16 @@ export function validateWarmupVisit(
   if (value.schemaVersion !== WARMUP_VISIT_SCHEMA_VERSION || value.contractId !== WARMUP_VISIT_CONTRACT_ID) errors.push('The Warmup visit contract is unsupported.')
   if (!nonEmpty(value.id) || !nonEmpty(value.childId) || !nonEmpty(value.grade) || !nonEmpty(value.schoolYear) || !nonEmpty(value.activityModule)) errors.push('The Warmup visit identity is incomplete.')
   if (!['tier-1', 'tier-2', 'tier-3'].includes(String(value.tier)) || !['mandarin', 'english'].includes(String(value.language))) errors.push('The Warmup visit module metadata is invalid.')
+  if (value.associatedPrimaryActivity !== undefined) {
+    const activity = value.associatedPrimaryActivity
+    if (!record(activity)
+      || !['acquisition', 'test-review'].includes(String(activity.phase))
+      || !nonEmpty(activity.datasetId)
+      || ('reviewGroupId' in activity && !nonEmpty(activity.reviewGroupId))
+      || ('reviewCycle' in activity && (activity.phase !== 'test-review' || !positiveInteger(activity.reviewCycle)))) {
+      errors.push('The Warmup visit primary-activity identity is invalid.')
+    }
+  }
   if (!['standalone', 'pre-activity'].includes(String(value.visitType)) || !record(value.profile) || !nonEmpty(value.profile.id) || !positiveInteger(value.profile.version)) errors.push('The Warmup visit profile is invalid.')
   const profile = record(value.profile) && nonEmpty(value.profile.id) && positiveInteger(value.profile.version)
     ? profileDefinition(registry, { id: value.profile.id, version: Number(value.profile.version) })

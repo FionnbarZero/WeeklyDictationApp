@@ -102,6 +102,29 @@ test('a partial visit closes permanently while its one graph point remains updat
   if (next.status === 'ready') assert.equal(next.visit.id, 'session-2-warmup')
 })
 
+test('pre-activity Warmups for different Test Review cycles never resume each other', () => {
+  const datasetId = lifecycleResolution.testReview!.id
+  const first = prepareAdaptiveWarmupVisit({
+    state: createInitialState(datasets), childId: 'maya', grade: 'Grade 2', schoolYear, datasets, lifecycleResolution,
+    visitType: 'pre-activity', visitId: 'review-1-warmup', createdAt: '2026-09-23T16:00:00.000Z',
+    associatedPrimaryActivity: { phase: 'test-review', datasetId, reviewCycle: 1 }, random: () => 0.999,
+  })
+  assert.equal(first.status, 'ready')
+  if (first.status !== 'ready') return
+  const second = prepareAdaptiveWarmupVisit({
+    state: first.state, childId: 'maya', grade: 'Grade 2', schoolYear, datasets, lifecycleResolution,
+    visitType: 'pre-activity', visitId: 'review-2-warmup', createdAt: '2026-09-23T16:01:00.000Z',
+    associatedPrimaryActivity: { phase: 'test-review', datasetId, reviewCycle: 2 }, random: () => 0.999,
+  })
+  assert.equal(second.status, 'ready')
+  if (second.status !== 'ready') {
+    return
+  }
+  assert.equal(second.resumed, false)
+  assert.equal(second.visit.id, 'review-2-warmup')
+  assert.equal(second.visit.associatedPrimaryActivity?.reviewCycle, 2)
+})
+
 test('unsupported grades cannot silently inherit the Grade 2 Warmup profile', () => {
   const prepared = prepareAdaptiveWarmupVisit({
     state: createInitialState(datasets),

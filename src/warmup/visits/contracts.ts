@@ -37,6 +37,7 @@ export type WarmupPrimaryActivity = {
   readonly phase: 'acquisition' | 'test-review'
   readonly datasetId: string
   readonly reviewGroupId?: string
+  readonly reviewCycle?: number
 }
 
 export type WarmupVisit = {

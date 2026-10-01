@@ -27,6 +27,14 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId))
         && exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
         && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && (!('reviewCycle' in request.resource.data)
+          || (request.resource.data.phase == 'test-review'
+            && request.resource.data.reviewCycle is int
+            && request.resource.data.reviewCycle > 0))
+        && (request.resource.data.phase != 'test-review'
+          || ((!('reviewCycle' in request.resource.data)
+                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data))
+            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data.reviewCycle)))
         && request.resource.data.correct is bool
         && request.resource.data.reviewedAt is string
         && request.resource.data.completionStatus in ['temporary', 'complete'];
@@ -220,6 +228,16 @@ service cloud.firestore {
         && request.resource.data.language in ['mandarin', 'english']
         && request.resource.data.visitType in ['standalone', 'pre-activity']
         && request.resource.data.profile is map
+        && (!('associatedPrimaryActivity' in request.resource.data)
+          || (request.resource.data.associatedPrimaryActivity is map
+            && request.resource.data.associatedPrimaryActivity.phase in ['acquisition', 'test-review']
+            && request.resource.data.associatedPrimaryActivity.datasetId is string
+            && (!('reviewGroupId' in request.resource.data.associatedPrimaryActivity)
+              || request.resource.data.associatedPrimaryActivity.reviewGroupId is string)
+            && (!('reviewCycle' in request.resource.data.associatedPrimaryActivity)
+              || (request.resource.data.associatedPrimaryActivity.phase == 'test-review'
+                && request.resource.data.associatedPrimaryActivity.reviewCycle is int
+                && request.resource.data.associatedPrimaryActivity.reviewCycle > 0))))
         && request.resource.data.configuredMaximum is int
         && request.resource.data.configuredMaximum > 0
         && request.resource.data.assignedQueueSize is int
@@ -313,6 +331,14 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
         && request.resource.data.sessionDate is string
         && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && (!('reviewCycle' in request.resource.data)
+          || (request.resource.data.phase == 'test-review'
+            && request.resource.data.reviewCycle is int
+            && request.resource.data.reviewCycle > 0))
+        && (request.resource.data.phase != 'test-review'
+          || ((!('reviewCycle' in request.resource.data)
+                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data))
+            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data.reviewCycle)))
         && request.resource.data.percent is number
         && request.resource.data.percent >= 0
         && request.resource.data.percent <= 100
@@ -359,7 +385,11 @@ service cloud.firestore {
             && request.resource.data.childId == childId
             && request.resource.data.familyId == familyId
             && validSessionStatus()
-            && request.resource.data.primaryPhase in ['acquisition', 'test-review'];
+            && request.resource.data.primaryPhase in ['acquisition', 'test-review']
+            && (!('reviewCycle' in request.resource.data)
+              || (request.resource.data.primaryPhase == 'test-review'
+                && request.resource.data.reviewCycle is int
+                && request.resource.data.reviewCycle > 0));
           allow delete: if false;
 
           match /attempts/{attemptId} {

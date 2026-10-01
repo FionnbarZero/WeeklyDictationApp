@@ -68,6 +68,7 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
   assert.ok(acquisition)
   assert.ok(review)
   assert.equal(acquisition.dataset.startDate, '2026-09-21')
+  assert.equal(review.reviewCycle, 1)
   assert.equal(review.reviewGroupId, 'kindergarten-2026-27-unit-1')
   assert.deepEqual(review.reviewDatasets?.map((dataset) => dataset.startDate), [
     '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21',
@@ -84,6 +85,7 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
     random: () => 0,
   })
   assert.equal(session.primaryQueue.length, 14)
+  assert.equal(session.reviewCycle, 1)
   assert.deepEqual(session.primaryDatasetIds, review.reviewDatasets?.map((dataset) => dataset.id))
 
   const completed: PracticeSession = {
@@ -101,4 +103,5 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
   assert.ok(committed.scores.every((score) => score.percent === 100 && score.phase === 'test-review'))
   assert.deepEqual(committed.completedSessions[0].primaryDatasetIds, review.reviewDatasets?.map((dataset) => dataset.id))
   assert.equal(committed.completedSessions[0].reviewGroupId, 'kindergarten-2026-27-unit-1')
+  assert.equal(committed.completedSessions[0].reviewCycle, 1)
 })
