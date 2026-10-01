@@ -125,7 +125,7 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
     brandLabel: 'Weekly Dictation',
     profileLabel: 'Grade 2',
     eyebrow: 'Grade 2 adventures',
-    title: `Ready for your next challenge,`,
+    title: 'Ready for your next challenge,',
     titleAccent: `${input.childName}?`,
     introduction: 'Choose one path. Writing and reading use the same weekly words while keeping their own practice records.',
     heroTitle: 'Learn. Practice.',

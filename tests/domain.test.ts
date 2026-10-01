@@ -793,6 +793,28 @@ test('complete sessions create a primary score once and preserve adaptive warmup
   assert.equal(duplicateCommit.results.length, committed.results.length)
 })
 
+test('completed Test Review preserves timer and Skip Timer collection evidence', () => {
+  const state = initialState()
+  const session: PracticeSession = {
+    ...completeSession(state),
+    id: 'deferred-writing-review',
+    primaryPhase: 'test-review',
+    acquisition: undefined,
+    primaryAnswers: currentDataset.words.map((word, index) => ({
+      word,
+      correct: index !== 1,
+      revealMethod: index === 0 ? 'timer' : 'skip_timer',
+    })),
+  }
+  const committed = commitCompletedSession(state, session, today)
+  const reviewResults = committed.results.filter((item) => item.phase === 'test-review')
+
+  assert.equal(reviewResults.length, currentDataset.words.length)
+  assert.equal(reviewResults[0]?.revealMethod, 'timer')
+  assert.ok(reviewResults.slice(1).every((item) => item.revealMethod === 'skip_timer'))
+  assert.equal(committed.scores.find((score) => score.datasetId === currentDataset.id)?.percent, 80)
+})
+
 test('completing Grade 2 practice preserves other-grade, orphaned, and other-child adaptive states', () => {
   const grade5State: ChildWordState = { id: `maya::${grade5Dataset.words[0].id}`, childId: 'maya', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review', correctStreak: 1 }
   const historicalDataset: Dataset = { ...currentDataset, id: 'historical-grade-2-dataset', schoolYear: '2025–2026', words: currentDataset.words.map((word, index) => ({ ...word, id: `historical-grade-2-word-${index + 1}`, datasetId: 'historical-grade-2-dataset' })) }

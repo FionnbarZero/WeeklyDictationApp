@@ -24,9 +24,9 @@ The approved near-term source configuration is:
 
 | School year | Grade | Source type | Authoritative source | Status |
 |---|---|---|---|---|
-| 2026–2027 | Kindergarten | Google Sheets workbook | One workbook containing weekly tabs | Follows Grade 5; workbook ID is the yearly source identity |
-| 2026–2027 | Grade 2 | Google Slides deck | Grade 2 Weekly Focus deck | Active reference implementation |
-| 2026–2027 | Grade 5 | Google Slides deck | Grade 5 Weekly Focus deck | First new grade after the canonical-source refactor |
+| 2026–2027 | Kindergarten | Google Sheets workbook | One workbook containing weekly tabs | Adapter, Unit 1 lifecycle, and development lab exist; production source gate remains inactive |
+| 2026–2027 | Grade 2 | Google Slides deck | Grade 2 Weekly Focus deck | Only active source profile; local/manual import is still required until the trusted backend is deployed |
+| 2026–2027 | Grade 5 | Google Slides deck | Grade 5 Weekly Focus deck | Adapter, progression lifecycle, and development lab exist; production source gate remains inactive |
 
 The administrator configures a data-driven grade registry containing the internal grade key, display name, school year, source type, source ID, source-adapter profile, practice-strategy profile, active status, and phase timers. Future grades and school years can be added through explicit profiles rather than new grade-specific application forks. Parents choose only a child’s grade; the grade and school year select the source and practice profiles automatically.
 
@@ -1000,9 +1000,54 @@ Rollout order:
 
 Cloud Run and Scheduler are not prerequisites for the public pilot. Secure hosting, family isolation, lifecycle-specific cross-device persistence, and a controlled dataset import for every grade included in the pilot must work first.
 
-## Current approved implementation — Persistent Acquisition activation
+## Production operating model and cutover roadmap — approved 2026-09-30
 
-The pure `refactor/acquisition-persistence-contract` boundary and the focused Earned-DT recovery prerequisite are complete. `feature/persistent-acquisition` activates the versioned checkpoint through the application coordinator, durable browser journal, one atomic Firestore commit, migration-era dual reads, strict revision rules, and recovery tests. Its repeatable Firebase Emulator, rendered-browser resume, backup/restore, full-suite, and build gates are implemented; final diff review and merge remain required. `feature/persistent-warmup-visits` separately activates the approved Adaptive Warmup model with materialized queues, atomic visit/mastery/attempt/receipt/graph updates, exact resume, standalone entry, security rules, and a rendered visit graph; it also awaits final audit and merge.
+The finished application uses one trusted server boundary between teacher-authored Google sources and the child-facing app:
+
+```text
+Grade 2 and Grade 5 Google Slides / Kindergarten Google Sheets
+→ trusted read-only Cloud Run importer
+→ grade-owned adapter and shared canonical validation
+→ server-authorized Firestore batch and deterministic import log
+→ grade-owned lifecycle resolution
+→ authenticated child app reads canonical Firestore datasets
+→ assessed Acquisition and Warmup transitions save automatically to child-owned Firestore records
+```
+
+The browser never reads teacher Google documents directly and never writes shared datasets or import logs. Parents and children do not authorize Google access. A Monday import is a synchronization check, not a lifecycle reset: only a newly accepted canonical source event may rotate a cohort. Missing, malformed, conflicting, or duplicate-only source input preserves the last valid lifecycle assignment. Grade 2 holds its replacement-driven Acquisition and Test Review assignments; Grade 5 advances exactly once per accepted progression event and freezes through source gaps; Kindergarten holds the newest arrived teaching set and accumulates its explicitly configured cumulative unit review.
+
+### Current gap snapshot
+
+| Capability | Current repository state | Required production state |
+|---|---|---|
+| Curriculum import | Grade-owned adapters, canonical validation, dry runs, and guarded server writes exist. No Cloud Run service or Monday Scheduler job is deployed. | Deploy the trusted importer, credentials, IAM, logs, alerts, and Monday schedule after shadow/manual gates pass. |
+| Grade 2 curriculum | The source profile is active in code, but local development still relies on a manually supplied trusted JSON payload when Firebase/import services are absent. | Populate canonical Grade 2 datasets through the server importer and have authenticated clients read them from Firestore. |
+| Grade 5 curriculum | Source extraction, progression evidence, lifecycle resolution, and Learning Hub lab exist. The production source gate is off. | Complete the Grade 5 practice/persistence gates, import its canonical source through staging, then activate only its explicit profile. |
+| Kindergarten curriculum | Sheets extraction, Monday–Sunday normalization, Unit 1 lifecycle, cumulative review, and Learning Hub lab exist. The production source gate is off. | Define future unit boundaries and remaining source policies, verify staging import, then activate the Kindergarten-owned profile without adopting Grade 2 or Grade 5 lifecycle rules. |
+| Tier 1 Acquisition | Versioned local/cloud checkpoints, retry journals, exact-position resume, and Firestore rule tests exist for the active Grade 2 path. | Deploy and verify the Firebase environment, migrate existing local state once, and prove cross-device restoration before relying on cloud state. Grade 5 and Kindergarten require separate activation evidence. |
+| Tier 1 Adaptive Warmup | Versioned visits, attempts, mastery state, receipts, graph points, exact resume, and legacy-history display exist for active Grade 2 writing. | Deploy and verify cloud writes, migration telemetry, and cross-device recovery; activate other grades only through explicit Warmup profiles. |
+| Tier 2 reading | Shared grade-aware reading pathways and development integrations exist, but attempts, scores, adaptive state, and recordings remain session-only. | Add a separate versioned persistence boundary before any Tier 2 result is treated as durable; stored recordings remain blocked pending the privacy review. |
+| Existing child data | Important history still exists in browser storage. A checksum-verified backup and isolated restore test preserve Acquisition, Warmup, and earlier monthly Mastery history. | Perform one reviewed local-to-cloud migration per child, verify record counts and cross-device results, retain the untouched backup through the rollback window, then make manual backup an emergency/export tool rather than a normal workflow. |
+| Hosting and operations | Local and preview builds exist; production Firebase configuration and deployment are not complete. | Deploy separate staging and production environments, Hosting, Authentication, Firestore rules, App Check monitoring, budgets, retention procedures, and rollback instructions. |
+
+### Required cutover order
+
+1. Preserve and restore-test the current local child data. Never silently upload or replace it.
+2. Deploy an isolated staging Firebase environment and the exact Emulator-approved rules.
+3. Run the trusted importer in read-only shadow mode, then perform reviewed, idempotent staging imports for each grade independently.
+4. Migrate a copy of one child's local state to staging and verify Acquisition position, Warmup mastery state, visit graph points, earlier monthly Mastery history, and family isolation on a second device.
+5. Pilot Grade 2 Tier 1 writing first because it is the only active production profile and has the complete persistence path.
+6. Activate Grade 5 separately after its Warmup policy, Test Review 1/2 persistence, canonical import, and end-to-end practice gates pass.
+7. Activate Kindergarten separately after future unit boundaries and source policies are approved, preserving weekly Acquisition plus cumulative unit review.
+8. Add durable Tier 2 reading only through its separate persistence and privacy gates; it must never share Tier 1 writing state.
+9. Enable the Monday Scheduler only after manual and shadow imports are proven safe for every grade it will check.
+10. Monitor migration and import telemetry through the rollback window. Retire compatibility readers and routine manual backups only after successful real-data conversion is confirmed.
+
+Source activation, practice activation, cloud persistence, and deployment are four separate approvals. A working development lab does not activate a source or authorize production writes. A deployed source adapter does not imply that the grade's practice or persistence profile is complete.
+
+## Current approved implementation — Persistent Acquisition and Adaptive Warmup
+
+The pure Acquisition persistence contract, focused Earned-DT recovery prerequisite, persistent Acquisition activation, and persistent Adaptive Warmup visits are merged into `main`. Acquisition uses the application coordinator, durable browser journal, one atomic Firestore commit, migration-era dual reads, strict revision rules, and exact-position recovery. Adaptive Warmup uses materialized queues, atomic visit/mastery/attempt/receipt/graph updates, exact resume, standalone entry, security rules, a rendered visit graph, and a separate display for preserved earlier monthly Mastery history. Their repeatable Firebase Emulator, rendered-browser resume, backup/restore, full-suite, and production-build gates are implemented. This confirms code readiness; it does not substitute for deploying Firebase, migrating real local data to staging, or proving cross-device production operation.
 
 ## Deferred features
 
@@ -1029,7 +1074,7 @@ The first version will not include ten-word mastered rotations, sentence-writing
 - Treat child voice recordings as private personal data; restrict access to the authorized family and define retention/deletion behavior before production.
 - Do not use automatic speech recognition as the official pronunciation score without a separately validated feature; the child’s explicit self-assessment is the initial reading result.
 
-## Current implementation baseline and required revisions — 2026-09-29
+## Current implementation baseline and required revisions — 2026-09-30
 
 The repository contains Stage 2 foundations as a Firebase REST-backed browser flow with safe configuration placeholders. Acquisition progression rules have been validated with the Firebase Emulator Suite, but the application has not been deployed or approved for production data collection. The approved requirements in this plan supersede any existing implementation behavior that treats every incomplete lifecycle in the same way.
 
@@ -1051,15 +1096,16 @@ Already implemented:
 - Revision-aware local and cloud Acquisition checkpoints, atomic transition receipts/attempts/DT observations/next positions, durable browser retry journaling, per-visit **Done for today** scoring, the current Grade 2 development-time **Skip Warmup** option, whole Test Review skip, Skip Timer, and prior-week Acquisition entry from Test Review.
 - The Adaptive Warmup model, migration, profile-upgrade, evidence-replay, lifecycle reconciliation, persistent visit boundary, standalone entry, and per-visit graph. The outer application state remains version 2 only as the migration envelope; the approved model is active for Grade 2 Tier 1 writing.
 - Source-neutral `CurriculumImportResult` contracts, the hardened Grade 5 source/lifecycle integration, the Kindergarten lifecycle and production-practice scaffold behind an inactive source gate, and the shared Learning Hub presentation boundary added through PRs #15 and #16.
+- An explicit Test Review cycle-identity boundary that carries every lifecycle review cycle through practice targets, sessions, results, scores, completed-session history, pre-activity Warmup identity, and backward-compatible local/cloud hydration. Legacy records without a cycle normalize to cycle 1; Grade 5 remains inactive pending its separate provisional-persistence gate. See `docs/test-review-cycle-identity.md`.
 
 Required revisions before a production pilot:
 
-- Complete final audit and merge sequencing for the activated revision-aware Adaptive Warmup visits; then monitor real-data migration and restore evidence before removing compatibility readers.
-- Complete the monitored Acquisition rollout: back up and restore real child data, confirm migration telemetry, verify staging across devices, then retire migration-era legacy writers/readers only after the approved support window.
-- Validate the completed Warmup history line graph with real child data and add the derived monthly Mastery Rotation report without replacing visit-level history.
+- Deploy the merged revision-aware Acquisition and Adaptive Warmup paths to staging, migrate a copy of real child data, confirm migration telemetry, and verify exact cross-device state before removing compatibility readers.
+- Preserve the verified browser backup through the rollback window. The real-data restore test confirmed Acquisition history, the Warmup visit graph, and separately displayed earlier monthly Mastery totals; it did not upload that browser data to Firestore.
+- Keep visit-level Warmup history authoritative. Derive future monthly Mastery Rotation reporting from attempts and their original source buckets without replacing visit-level history or inventing dates for legacy monthly totals.
 - Keep the completed canonical source boundary, Grade 5 table-role adapter/lifecycle, Kindergarten Monday–Sunday Sheets adapter/unit lifecycle, and shared Learning Hub boundary stable while Grade 5 and Kindergarten source activation remains deliberately blocked.
 - Preserve Tier 1–3, source labels, instructional roles, assigned weeks, fingerprints, confirmations, conflicts, and malformed outcomes.
-- Acquisition progressions and Adaptive Warmup visits now have Emulator coverage for stable IDs, exact next-position updates, atomic receipts/facts, stale revisions, and cross-family rejection. Test Review 1/2 provisional persistence still needs its own stored-model gate before Grade 5 activation.
+- Acquisition progressions and Adaptive Warmup visits now have Emulator coverage for stable IDs, exact next-position updates, atomic receipts/facts, stale revisions, and cross-family rejection. Shared Test Review records now preserve explicit cycle identity, but Test Review 1/2 provisional attempt cleanup and completion still need their own stored-model gate before Grade 5 activation.
 - Add a server-managed DT profile that Firestore rules can validate; the related Acquisition attempt, DT observation, receipt, and next-position writes already use one atomic commit.
 - Prototype and test the in-memory handwriting pad. Keep the cumulative-star reward system in its separate Kindergarten-only branch until its award, redemption, and parent-control rules are approved.
 - Create separate staging and production Firebase environments. Test Firestore rules in the Emulator Suite before deployment.

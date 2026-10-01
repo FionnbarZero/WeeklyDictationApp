@@ -18,21 +18,30 @@ import type {
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
 import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
-import type { CurriculumStage, LifecycleSet } from './lifecycle/contracts.ts'
+import type { LifecycleSet } from './lifecycle/contracts.ts'
 import { resolveLifecycle } from './lifecycle/registry.ts'
-import { practicePhaseForStage } from './lifecycle/stageMapping.ts'
 import type { Dataset, Word } from './domain/contracts.ts'
 import { applyWarmupResponse, deriveWarmupWordStates, selectWarmupWords } from './warmup/engine.ts'
 import type { ChildWordState, WarmupCategory, WarmupLifecycleSnapshot, WarmupPolicy, WarmupSelection } from './warmup/contracts.ts'
 import type { AdaptiveWarmupV3Projection } from './warmup/adaptive/migration.ts'
 import type { WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
+import type { TestReviewCycle } from './testReview/contracts.ts'
+import { isTestReviewCycle, storedTestReviewCycle } from './testReview/contracts.ts'
+import {
+  datasetLifecycleResolutionFrom,
+  emptyDatasetLifecycleResolution,
+  requireDatasetLifecycle,
+  type DatasetLifecycle,
+  type DatasetLifecycleResolution,
+} from './practice/lifecycleProjection.ts'
 
 export type { Dataset, Word } from './domain/contracts.ts'
 export type { ChildWordState, WarmupCategory, WarmupSelection } from './warmup/contracts.ts'
+export type { DatasetLifecycle, DatasetLifecycleResolution } from './practice/lifecycleProjection.ts'
+export { datasetLifecycleResolutionFrom, requireDatasetLifecycle } from './practice/lifecycleProjection.ts'
 
 export type LifecyclePhase = 'acquisition' | 'test-review' | 'warmup'
 export type PrimaryPhase = 'acquisition' | 'test-review'
-export type DatasetLifecycle = PrimaryPhase | 'future' | 'mastered' | 'no-instruction'
 export type RevealMethod = 'show_answer' | 'timer' | 'skip_timer'
 
 export type WordResult = {
@@ -51,6 +60,7 @@ export type WordResult = {
   scored: boolean
   completeSourceDatasetReviewed: boolean
   warmupSessionId?: string
+  reviewCycle?: TestReviewCycle
 }
 
 export type DatasetScore = {
@@ -65,6 +75,7 @@ export type DatasetScore = {
   correct: number
   wordCount: number
   warmupSessionId?: string
+  reviewCycle?: TestReviewCycle
 }
 
 export type WarmupSessionRecord = {
@@ -86,6 +97,7 @@ export type CompletedSession = {
   primaryDatasetId: string
   primaryDatasetIds?: string[]
   reviewGroupId?: string
+  reviewCycle?: TestReviewCycle
   primaryPhase: PrimaryPhase
   complete: boolean
   outcome?: 'completed' | 'skipped'
@@ -223,6 +235,7 @@ export type PracticeSession = {
   primaryDatasetId: string
   primaryDatasetIds?: string[]
   reviewGroupId?: string
+  reviewCycle?: TestReviewCycle
   primaryPhase: PrimaryPhase
   segment: 'warmup' | 'primary'
   stage: 'warmup-intro' | 'interstitial' | 'dictation' | 'review' | 'complete'
@@ -251,6 +264,7 @@ export type PracticeTarget = {
   phase: PrimaryPhase
   reviewGroupId?: string
   reviewDatasets?: Dataset[]
+  reviewCycle?: TestReviewCycle
 }
 
 export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'acquisition' | 'queue' | 'index'>) {
@@ -316,27 +330,12 @@ export function dateIsBetween(date: Date, start: Date, end: Date) {
   return value >= localDateKey(start) && value <= localDateKey(end)
 }
 
-export type DatasetLifecycleResolution = {
-  acquisition: Dataset | null
-  testReview: Dataset | null
-  testReviewGroups: Array<{ id: string; cycle: number; datasets: Dataset[] }>
-  mastered: Dataset[]
-  masteredAtByDatasetId: Record<string, string>
-  future: Dataset[]
-  noInstruction: Dataset[]
-  lifecycleByDatasetId: Record<string, DatasetLifecycle>
-}
-
 function uniqueCanonicalDatasets(datasets: Dataset[]) {
   const byId = new Map<string, Dataset>()
   for (const dataset of datasets) {
     if (isCanonicalDataset(dataset) && !byId.has(dataset.id)) byId.set(dataset.id, dataset)
   }
   return [...byId.values()].sort((left, right) => left.startDate.localeCompare(right.startDate) || left.endDate.localeCompare(right.endDate) || left.id.localeCompare(right.id))
-}
-
-function emptyDatasetLifecycleResolution(): DatasetLifecycleResolution {
-  return { acquisition: null, testReview: null, testReviewGroups: [], mastered: [], masteredAtByDatasetId: {}, future: [], noInstruction: [], lifecycleByDatasetId: {} }
 }
 
 function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
@@ -350,19 +349,6 @@ function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
   }
 }
 
-function compatibilityLifecycle(stage: CurriculumStage): DatasetLifecycle {
-  const practicePhase = practicePhaseForStage(stage)
-  if (practicePhase === 'acquisition' || practicePhase === 'test-review') return practicePhase
-  if (stage.kind === 'mastery') return 'mastered'
-  return stage.kind
-}
-
-export function requireDatasetLifecycle(resolution: DatasetLifecycleResolution, datasetId: string): DatasetLifecycle {
-  const lifecycle = resolution.lifecycleByDatasetId[datasetId]
-  if (!lifecycle) throw new Error(`Canonical dataset ${datasetId} has no lifecycle assignment.`)
-  return lifecycle
-}
-
 // Grade 2 compatibility wrapper. Callers pass one grade and school-year
 // collection; future grades receive their own registered lifecycle strategy.
 export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date()): DatasetLifecycleResolution {
@@ -373,34 +359,11 @@ export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date())
   if (canonical.some((dataset) => dataset.grade !== grade || schoolYearToken(dataset.schoolYear) !== schoolYearKey)) {
     throw new Error('Lifecycle resolution requires one grade and school-year collection.')
   }
-  const resolution = resolveLifecycle({
+  return datasetLifecycleResolutionFrom(canonical, resolveLifecycle({
     scope: { grade, schoolYearKey, currentDateKey: localDateKey(date) },
     sets: canonical.map(lifecycleSetForDataset),
     progressionEvents: [],
-  })
-  const datasetsById = new Map(canonical.map((dataset) => [dataset.id, dataset]))
-  const datasetsForIds = (ids: string[]) => ids.map((id) => datasetsById.get(id)).filter((dataset): dataset is Dataset => Boolean(dataset))
-  const lifecycleByDatasetId = Object.fromEntries(Object.entries(resolution.assignmentByDatasetId).map(([datasetId, assignment]) => [datasetId, compatibilityLifecycle(assignment.stage)]))
-  const groupedReviews = new Map<string, { id: string; cycle: number; datasets: Dataset[] }>()
-  for (const review of resolution.testReviews) {
-    if (!review.reviewGroupId) continue
-    const dataset = datasetsById.get(review.datasetId)
-    if (!dataset) continue
-    const group = groupedReviews.get(review.reviewGroupId) || { id: review.reviewGroupId, cycle: review.cycle, datasets: [] }
-    group.datasets.push(dataset)
-    groupedReviews.set(review.reviewGroupId, group)
-  }
-
-  return {
-    acquisition: resolution.acquisitionDatasetId ? datasetsById.get(resolution.acquisitionDatasetId) || null : null,
-    testReview: datasetsById.get(resolution.testReviews.find((review) => review.cycle === 1)?.datasetId || '') || null,
-    testReviewGroups: [...groupedReviews.values()],
-    mastered: datasetsForIds(resolution.masteryDatasetIds),
-    masteredAtByDatasetId: resolution.masteredAtByDatasetId,
-    future: datasetsForIds(resolution.futureDatasetIds),
-    noInstruction: datasetsForIds(resolution.noInstructionDatasetIds),
-    lifecycleByDatasetId,
-  }
+  }))
 }
 
 export function datasetLifecycle(dataset: Dataset, datasets: Dataset[], date = new Date()): DatasetLifecycle {
@@ -516,6 +479,10 @@ export function createPracticeSessionForTarget(options: {
   requirePracticeProfileForGrade(options.grade)
   const random = options.random || Math.random
   const target = options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop ? options.target : null
+  if (target?.reviewCycle !== undefined && (target.phase !== 'test-review' || !isTestReviewCycle(target.reviewCycle))) {
+    throw new Error('A practice target contains an invalid Test Review cycle identity.')
+  }
+  const reviewCycle = target?.phase === 'test-review' ? target.reviewCycle ?? 1 : undefined
   const reviewDatasets = target?.phase === 'test-review' && target.reviewDatasets?.length
     ? target.reviewDatasets
     : target ? [target.dataset] : []
@@ -535,6 +502,7 @@ export function createPracticeSessionForTarget(options: {
     primaryDatasetId,
     primaryDatasetIds: primaryDatasetIds.length ? primaryDatasetIds : primaryDatasetId === 'warmup-only' ? [] : [primaryDatasetId],
     reviewGroupId: target?.reviewGroupId,
+    reviewCycle,
     primaryPhase: target?.phase || 'acquisition',
     segment: 'warmup',
     stage: 'warmup-intro',
@@ -664,10 +632,10 @@ export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string 
 export function isAppState(value: unknown): value is AppState {
   if (!isRecord(value) || value.version !== 2 || !Array.isArray(value.datasets) || !Array.isArray(value.results) || !Array.isArray(value.scores) || !Array.isArray(value.warmupSessions) || !Array.isArray(value.completedSessions) || !Array.isArray(value.legacyRecords)) return false
   const datasetsValid = value.datasets.every((dataset) => isRecord(dataset) && typeof dataset.id === 'string' && typeof dataset.dateRange === 'string' && typeof dataset.startDate === 'string' && typeof dataset.endDate === 'string' && typeof dataset.grade === 'string' && Array.isArray(dataset.words) && dataset.words.every((word) => isRecord(word) && typeof word.id === 'string' && typeof word.text === 'string' && typeof word.sentence === 'string' && word.datasetId === dataset.id))
-  const resultsValid = value.results.every((result) => isRecord(result) && typeof result.id === 'string' && typeof result.childId === 'string' && typeof result.datasetId === 'string' && typeof result.wordId === 'string' && typeof result.sessionId === 'string' && typeof result.sessionDate === 'string' && (result.phase === 'warmup' || result.phase === 'acquisition' || result.phase === 'test-review') && typeof result.correct === 'boolean' && typeof result.completeSourceDatasetReviewed === 'boolean')
-  const scoresValid = value.scores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.datasetId === 'string' && typeof score.sessionId === 'string' && typeof score.sessionDate === 'string' && typeof score.percent === 'number')
+  const resultsValid = value.results.every((result) => isRecord(result) && typeof result.id === 'string' && typeof result.childId === 'string' && typeof result.datasetId === 'string' && typeof result.wordId === 'string' && typeof result.sessionId === 'string' && typeof result.sessionDate === 'string' && (result.phase === 'warmup' || result.phase === 'acquisition' || result.phase === 'test-review') && typeof result.correct === 'boolean' && typeof result.completeSourceDatasetReviewed === 'boolean' && (!('reviewCycle' in result) || (result.phase === 'test-review' && isTestReviewCycle(result.reviewCycle))))
+  const scoresValid = value.scores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.datasetId === 'string' && typeof score.sessionId === 'string' && typeof score.sessionDate === 'string' && typeof score.percent === 'number' && (!('reviewCycle' in score) || (score.phase === 'test-review' && isTestReviewCycle(score.reviewCycle))))
   const warmupsValid = value.warmupSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && Array.isArray(session.wordIds) && Array.isArray(session.datasetIds) && Array.isArray(session.completeDatasetIds) && typeof session.complete === 'boolean')
-  const sessionsValid = value.completedSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && typeof session.primaryDatasetId === 'string' && session.complete === true)
+  const sessionsValid = value.completedSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && typeof session.primaryDatasetId === 'string' && session.complete === true && (!('reviewCycle' in session) || (session.primaryPhase === 'test-review' && isTestReviewCycle(session.reviewCycle))))
   const legacyValid = value.legacyRecords.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.legacySet === 'string' && record.note === 'legacy-date-range-unknown')
   const statesValid = !('childWordStates' in value) || (Array.isArray(value.childWordStates) && value.childWordStates.every((state) => isRecord(state) && typeof state.id === 'string' && typeof state.childId === 'string' && typeof state.wordId === 'string' && typeof state.datasetId === 'string' && ['acquisition', 'recent-review', 'errored-word', 'random-rotation'].includes(String(state.category)) && typeof state.correctStreak === 'number'))
   const monthlyValid = !('monthlyRotationScores' in value) || (Array.isArray(value.monthlyRotationScores) && value.monthlyRotationScores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.month === 'string' && typeof score.correct === 'number' && typeof score.total === 'number' && typeof score.percent === 'number' && (score.status === 'open' || score.status === 'finalized') && typeof score.updatedAt === 'string'))
@@ -687,7 +655,13 @@ export function isAppState(value: unknown): value is AppState {
     && (!('warmupMasteryRevisionsV1' in value) || (isRecord(value.warmupMasteryRevisionsV1) && Object.values(value.warmupMasteryRevisionsV1).every((revision) => typeof revision === 'number' && Number.isInteger(revision) && revision >= 0)))
     && (!('warmupCloudQuarantineV1' in value) || Array.isArray(value.warmupCloudQuarantineV1))
   const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'familiar' || observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
-  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && adaptiveWarmupValid && warmupVisitCollectionsValid && dtObservationsValid
+  const completedSessionsById = sessionsValid ? new Map(value.completedSessions.map((session) => [session.id, session])) : new Map<string, never>()
+  const reviewCyclesConsistent = resultsValid && scoresValid && [...value.results, ...value.scores].every((record) => {
+    if (record.phase !== 'test-review') return true
+    const session = completedSessionsById.get(record.sessionId)
+    return !session || (session.primaryPhase === 'test-review' && storedTestReviewCycle(record.reviewCycle) === storedTestReviewCycle(session.reviewCycle))
+  })
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && adaptiveWarmupValid && warmupVisitCollectionsValid && dtObservationsValid && reviewCyclesConsistent
 }
 
 export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
@@ -697,7 +671,7 @@ export function loadState(rawState: string | null, legacyRaw?: string | null, im
       const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
         ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
         : []
-      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], warmupVisitsV1: Array.isArray(parsed.warmupVisitsV1) ? parsed.warmupVisitsV1 : [], warmupAttemptsV1: Array.isArray(parsed.warmupAttemptsV1) ? parsed.warmupAttemptsV1 : [], warmupTransitionReceiptsV1: Array.isArray(parsed.warmupTransitionReceiptsV1) ? parsed.warmupTransitionReceiptsV1 : [], warmupGraphPointsV1: Array.isArray(parsed.warmupGraphPointsV1) ? parsed.warmupGraphPointsV1 : [], warmupPendingTransitionsV1: Array.isArray(parsed.warmupPendingTransitionsV1) ? parsed.warmupPendingTransitionsV1 : [], warmupMasteryRevisionsV1: isRecord(parsed.warmupMasteryRevisionsV1) ? parsed.warmupMasteryRevisionsV1 as Record<string, number> : {}, warmupCloudQuarantineV1: Array.isArray(parsed.warmupCloudQuarantineV1) ? parsed.warmupCloudQuarantineV1 : [], distractorTargetObservations }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), results: parsed.results.map((result) => result.phase === 'test-review' ? { ...result, reviewCycle: storedTestReviewCycle(result.reviewCycle) } : result), scores: parsed.scores.map((score) => score.phase === 'test-review' ? { ...score, reviewCycle: storedTestReviewCycle(score.reviewCycle) } : score), completedSessions: parsed.completedSessions.map((session) => session.primaryPhase === 'test-review' ? { ...session, reviewCycle: storedTestReviewCycle(session.reviewCycle) } : session), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], warmupVisitsV1: Array.isArray(parsed.warmupVisitsV1) ? parsed.warmupVisitsV1 : [], warmupAttemptsV1: Array.isArray(parsed.warmupAttemptsV1) ? parsed.warmupAttemptsV1 : [], warmupTransitionReceiptsV1: Array.isArray(parsed.warmupTransitionReceiptsV1) ? parsed.warmupTransitionReceiptsV1 : [], warmupGraphPointsV1: Array.isArray(parsed.warmupGraphPointsV1) ? parsed.warmupGraphPointsV1 : [], warmupPendingTransitionsV1: Array.isArray(parsed.warmupPendingTransitionsV1) ? parsed.warmupPendingTransitionsV1 : [], warmupMasteryRevisionsV1: isRecord(parsed.warmupMasteryRevisionsV1) ? parsed.warmupMasteryRevisionsV1 as Record<string, number> : {}, warmupCloudQuarantineV1: Array.isArray(parsed.warmupCloudQuarantineV1) ? parsed.warmupCloudQuarantineV1 : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {
@@ -815,13 +789,13 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   const sessionDate = localDateKey(now)
   const warmupResults: WordResult[] = session.adaptiveWarmupVisitId ? [] : session.warmupAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
-    return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
+    return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
   })
   const scoredPrimaryAnswers = session.primaryPhase === 'acquisition' ? session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore !== false) : session.primaryAnswers
   const hasVersionedAcquisition = session.primaryPhase === 'acquisition' && (state.acquisitionProgressEnvelopes || []).some((item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId)
   const primaryResults: WordResult[] = complete && !hasVersionedAcquisition ? scoredPrimaryAnswers.map((answer, index) => {
     const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
-    return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: 'timer', scored: true, completeSourceDatasetReviewed: true }
+    return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: true, ...(session.primaryPhase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}) }
   }) : []
   const scores: DatasetScore[] = []
   const primaryDatasets = (session.primaryDatasetIds?.length ? session.primaryDatasetIds : [session.primaryDatasetId])
@@ -855,7 +829,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
     const datasetScope = datasetScopeById.get(item.datasetId)
     return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
-  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.adaptiveWarmupVisitId || session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: materialized ? [...priorStates, ...materialized.states] : state.childWordStates, monthlyRotationScores, rotationCycles: materialized ? { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } : state.rotationCycles }
+  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.adaptiveWarmupVisitId || session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, reviewCycle: session.primaryPhase === 'test-review' ? session.reviewCycle ?? 1 : undefined, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: materialized ? [...priorStates, ...materialized.states] : state.childWordStates, monthlyRotationScores, rotationCycles: materialized ? { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } : state.rotationCycles }
 }
 
 function latestAnswerPerWord(answers: SessionAnswer[]) {
@@ -917,5 +891,5 @@ export function commitSkippedTestReview(state: AppState, session: PracticeSessio
 
 function makeScore(session: PracticeSession, dataset: Dataset, answers: SessionAnswer[], phase: LifecyclePhase, sessionDate: string, warmupSessionId?: string): DatasetScore {
   const correct = answers.filter((answer) => answer.correct).length
-  return { id: `${session.id}-${phase}-${dataset.id}${warmupSessionId ? `-${warmupSessionId}` : ''}`, childId: session.childId, datasetId: dataset.id, datasetDateRange: dataset.dateRange, phase, sessionId: session.id, sessionDate, percent: Math.round((correct / answers.length) * 100), correct, wordCount: answers.length, warmupSessionId }
+  return { id: `${session.id}-${phase}-${dataset.id}${warmupSessionId ? `-${warmupSessionId}` : ''}`, childId: session.childId, datasetId: dataset.id, datasetDateRange: dataset.dateRange, phase, sessionId: session.id, sessionDate, percent: Math.round((correct / answers.length) * 100), correct, wordCount: answers.length, warmupSessionId, ...(phase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}) }
 }

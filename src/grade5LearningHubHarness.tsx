@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
@@ -27,7 +28,7 @@ import {
   grade5LabReadingRequestIsConnected,
 } from './grade5Lab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
-import { PracticeView } from './practice/PracticeView.tsx'
+import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 
@@ -127,6 +128,10 @@ function renderAssessmentSummary() {
     const officialCorrect = official.filter((item) => item.correct).length
     const familiarCorrect = familiar.filter((item) => item.correct).length
     practiceSummary.innerHTML = `<strong>Lab observations:</strong> official target/Earned-DT trials ${officialCorrect}/${official.length} correct · Familiar-DT diagnostic trials ${familiarCorrect}/${familiar.length} correct. Nothing from this lab run is saved.`
+    return
+  }
+  if (activeSession.segment === 'primary' && activeSession.primaryPhase === 'test-review') {
+    practiceSummary.innerHTML = '<strong>Lab observations:</strong> Writing responses remain provisional until the final review page. Nothing from this lab run is saved.'
     return
   }
   const correct = activeSession.primaryAnswers.filter((answer) => answer.correct).length
@@ -277,8 +282,15 @@ function answerCurrentPrompt(correct: boolean) {
   leavePractice(`Test Review complete: ${correctCount}/${answers.length} correct. This lab result was not saved.`)
 }
 
-function handlePracticeAnswer(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
-  if (typeof answer === 'boolean') answerCurrentPrompt(answer)
+function handlePracticeAnswer(answer: PracticeAnswer) {
+  if (typeof answer === 'object') {
+    if (!activeSession || answer.kind !== 'deferred-writing-test-review') return
+    const primaryAnswers = writingSessionAnswers(answer.completion)
+    activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
+    const correct = primaryAnswers.filter((item) => item.correct).length
+    leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
+  }
+  else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
   else if (answer === 'skip-warmup' && activeSession?.stage === 'warmup-intro') {
     activeSession = primaryStartState(activeSession)
     renderPracticeView()

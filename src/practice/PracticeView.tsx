@@ -8,9 +8,12 @@ import {
   type PracticeSession,
   type Word,
 } from '../domain'
-import { createPracticeCountdown, practicePosition, wordIsVisibleDuringWriting } from '../practicePresentation'
+import { createPracticeCountdown } from './countdown.ts'
+import { practicePosition, wordIsVisibleDuringWriting } from '../practicePresentation'
 import { SkyWritingAcquisition, emptyWritingPadState, type WritingPadState, type WritingPadStateUpdater } from '../skywriting/index.ts'
 import { SelfAssessmentActions } from './SelfAssessmentActions'
+import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
+import type { TestReviewCompletion } from '../testReview/contracts.ts'
 
 type StopSpeech = void | (() => void)
 
@@ -23,13 +26,21 @@ export type PracticeViewProps = {
   onInterstitialComplete: () => void
   onDictationComplete: (method?: 'timer' | 'skip_timer') => void
   onStartReview: () => void
-  onAnswer: (answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') => void
+  onAnswer: (answer: PracticeAnswer) => void
   onSpeakWord: (word: Word, warmup: boolean) => StopSpeech
   onSpeakReviewInstruction: () => StopSpeech
   reviewInstruction: string
   timerSecondsOverride?: number
   warmupRequired?: boolean
 }
+
+export type PracticeAnswer =
+  | boolean
+  | 'skip-warmup'
+  | 'continue-primary'
+  | 'skip-test-review'
+  | 'done'
+  | { readonly kind: 'deferred-writing-test-review'; readonly completion: TestReviewCompletion<Word> }
 
 function phaseLabel(phase: LifecyclePhase) {
   return phase === 'test-review' ? 'Test Review' : phase === 'warmup' ? 'Warmup' : 'Acquisition'
@@ -51,7 +62,7 @@ function PromptCountdown({ durationSeconds, onComplete }: { durationSeconds: num
   return <>00:{String(seconds).padStart(2, '0')}</>
 }
 
-export function PracticeView({
+function SequentialPracticeView({
   session,
   datasets,
   onExit,
@@ -140,4 +151,24 @@ export function PracticeView({
     </section>
     <p className="practice-footnote"><Headphones size={14} /> Mandarin audio plays automatically · You can replay it anytime</p>
   </div>
+}
+
+export function PracticeView(props: PracticeViewProps) {
+  const { session } = props
+  if (session.segment === 'primary' && session.primaryPhase === 'test-review') {
+    const timerSeconds = props.timerSecondsOverride || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
+    return <DeferredTestReview
+      key={session.id}
+      mode="writing"
+      targets={session.primaryQueue}
+      activityLabel="Writing Test Review"
+      writingTimerSeconds={timerSeconds}
+      onPlayReference={async (word) => { props.onSpeakWord(word, false) }}
+      onExit={props.onExit}
+      onSkip={() => props.onAnswer('skip-test-review')}
+      onComplete={(completion) => props.onAnswer({ kind: 'deferred-writing-test-review', completion })}
+      exitLabel="Exit practice"
+    />
+  }
+  return <SequentialPracticeView {...props} />
 }

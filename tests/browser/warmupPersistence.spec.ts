@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
 
@@ -29,7 +30,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
   await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
 
-  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Writing mastery warmup')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   const before = await warmupSnapshot(page)
@@ -47,7 +48,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
   expect(after.graphCount).toBe(1)
 
   await page.reload()
-  await page.getByRole('button', { name: /Start mastery Warmup/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Writing mastery warmup')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   expect(await warmupSnapshot(page)).toEqual(after)
@@ -56,7 +57,7 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
 test('a started pre-activity Warmup can finalize one partial graph point and continue to the selected activity', async ({ page }) => {
   await page.goto('/?testDate=2026-09-29')
   await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
-  await page.getByRole('button', { name: /Start Acquisition/i }).click()
+  await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await page.getByRole('button', { name: 'Skip Timer' }).click()
   await page.getByRole('button', { name: /I got it right/i }).click()
@@ -70,4 +71,46 @@ test('a started pre-activity Warmup can finalize one partial graph point and con
     return state.warmupVisitsV1?.at(-1)?.status
   }, APP_STATE_KEY)
   expect(visitStatus).toBe('partial')
+})
+
+test('restored monthly Mastery totals remain visible without becoming invented visit graph points', async ({ page }) => {
+  await page.goto('/?testDate=2026-09-29')
+  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
+  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+
+  const legacyMonthlyScore = {
+    id: 'rhys-random-rotation-2026-09',
+    childId: 'rhys',
+    month: '2026-09',
+    correct: 7,
+    total: 10,
+    percent: 70,
+    status: 'finalized',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+    finalizedAt: '2026-10-01T00:00:00.000Z',
+  }
+  await page.evaluate(({ stateKey, score }) => {
+    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+    state.monthlyRotationScores = [score]
+    state.warmupGraphPointsV1 = []
+    window.localStorage.setItem(stateKey, JSON.stringify(state))
+  }, { stateKey: APP_STATE_KEY, score: legacyMonthlyScore })
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Progress' }).click()
+  const legacyHistory = page.getByRole('region', { name: 'Earlier Mastery history' })
+  await expect(legacyHistory).toContainText('September 2026')
+  await expect(legacyHistory).toContainText('7/10 correct')
+  await expect(legacyHistory).toContainText('70%')
+  await expect(page.getByText('Complete at least one Warmup answer to begin this graph.')).toBeVisible()
+
+  const stored = await page.evaluate((stateKey) => {
+    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+    return {
+      monthlyRotationScores: state.monthlyRotationScores,
+      warmupGraphPointsV1: state.warmupGraphPointsV1,
+    }
+  }, APP_STATE_KEY)
+  expect(stored.monthlyRotationScores).toEqual([legacyMonthlyScore])
+  expect(stored.warmupGraphPointsV1).toEqual([])
 })

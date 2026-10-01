@@ -16,19 +16,20 @@ export const grade2AdaptiveWarmupRegistry: AdaptiveWarmupProfileRegistry = activ
   grade2Tier1WritingAdaptiveWarmupProfile,
 ])
 
-function lifecycleStage(value: DatasetLifecycleResolution['lifecycleByDatasetId'][string]) {
+function lifecycleStage(value: DatasetLifecycleResolution['lifecycleByDatasetId'][string], reviewCycle?: number) {
   if (value === 'acquisition') return { kind: 'acquisition' as const }
-  if (value === 'test-review') return { kind: 'test-review' as const, cycle: 1 }
+  if (value === 'test-review') return { kind: 'test-review' as const, cycle: reviewCycle ?? 1 }
   if (value === 'mastered') return { kind: 'mastery' as const }
   if (value === 'no-instruction') return { kind: 'no-instruction' as const }
   return { kind: 'future' as const }
 }
 
 export function datasetAssignments(datasets: readonly Dataset[], resolution: DatasetLifecycleResolution): MasteryDatasetLifecycleAssignment[] {
+  const reviewCycleByDatasetId = new Map(resolution.testReviews.flatMap((review) => review.datasets.map((dataset) => [dataset.id, review.cycle] as const)))
   return datasets.map((dataset) => ({
     datasetId: dataset.id,
     profileId: 'grade-2-replacement-2026-27',
-    stage: lifecycleStage(resolution.lifecycleByDatasetId[dataset.id] || 'future'),
+    stage: lifecycleStage(resolution.lifecycleByDatasetId[dataset.id] || 'future', reviewCycleByDatasetId.get(dataset.id)),
     finalTestReviewCycle: 1,
   }))
 }
@@ -52,7 +53,7 @@ export function finalReviewEvidence(results: readonly WordResult[]): FinalReview
     attemptId: result.id,
     childId: result.childId,
     occurrenceId: result.wordId,
-    reviewCycle: 1,
+    reviewCycle: result.reviewCycle ?? 1,
     reviewedAt: result.completedAt,
     status: result.completeSourceDatasetReviewed ? 'completed' as const : 'provisional' as const,
     ...(result.completeSourceDatasetReviewed ? { correct: result.correct } : {}),

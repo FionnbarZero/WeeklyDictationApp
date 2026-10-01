@@ -28,7 +28,7 @@ import {
   kindergartenReadingReviewPathway,
 } from './kindergartenLab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
-import { PracticeView } from './practice/PracticeView.tsx'
+import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { SkyWriting } from './skywriting/index.ts'
 import type { Tier2ReadingPathway } from './tier2/contracts.ts'
@@ -257,7 +257,8 @@ function KindergartenLearningLab() {
     leavePractice('Returned to the paths. This visit’s writing score is shown in the Ninja Record.')
   }
 
-  function answerWriting(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
+  function answerWriting(answer: PracticeAnswer) {
+    if (typeof answer === 'object') return
     if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
     setWritingPractice((current) => current ? {
@@ -282,9 +283,16 @@ function KindergartenLearningLab() {
     })
   }
 
-  function answerTestReview(answer: boolean | 'skip-warmup' | 'continue-primary' | 'skip-test-review' | 'done') {
+  function answerTestReview(answer: PracticeAnswer) {
     const current = testReviewSession
     if (!current) return
+    if (typeof answer === 'object') {
+      if (answer.kind !== 'deferred-writing-test-review') return
+      const correct = answer.completion.assessments.filter((item) => item.correct).length
+      recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })
+      leavePractice(`Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`)
+      return
+    }
     if (answer === 'skip-test-review') {
       leavePractice('Final Boss review skipped. No score was added.')
       return
@@ -400,9 +408,8 @@ function KindergartenLearningLab() {
 
   if (testReviewSession && testReviewDataset) {
     const activeWord = activePracticeWord(testReviewSession)
-    const correct = testReviewSession.primaryAnswers.filter((answer) => answer.correct).length
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Current score: {correct}/{testReviewSession.primaryAnswers.length}</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
+      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
       <PracticeView
         session={testReviewSession}
         datasets={[testReviewDataset]}
