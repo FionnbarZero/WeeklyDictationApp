@@ -94,9 +94,9 @@ function Grade2TestReviewPrototype() {
       activityLabel="Grade 2 Test Review"
       writingTimerSeconds={10}
       onPlayReference={playPrototypeReference}
-      onExit={leaveRun}
+      onDiscard={leaveRun}
       onComplete={setCompletion}
-      exitLabel="Exit prototype"
+      exitLabel="Exit without saving"
     />
   </main>
 

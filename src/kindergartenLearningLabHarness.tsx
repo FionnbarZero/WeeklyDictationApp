@@ -31,7 +31,9 @@ import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { SkyWriting } from './skywriting/index.ts'
-import type { Tier2ReadingPathway } from './tier2/contracts.ts'
+import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
+import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
+import type { Tier2ReadingPathway, Tier2ReadingTarget } from './tier2/contracts.ts'
 import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
@@ -72,6 +74,22 @@ function speakText(text: string, language = 'zh-CN', rate = 0.55) {
 
 function speakWord(word: Word) {
   return speakText(word.text)
+}
+
+function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!target.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      reject(new Error('Mandarin speech playback is unavailable.'))
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(target.text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.55
+    utterance.onend = () => resolve()
+    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
+    window.speechSynthesis.speak(utterance)
+  })
 }
 
 function writingSessionFor(practice: WritingPractice): PracticeSession {
@@ -428,17 +446,35 @@ function KindergartenLearningLab() {
     </main>
   }
 
+  if (readingPathway?.kind === 'test-review') {
+    const targets = tier2ReadingPathwayTargets(readingPathway)
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss cumulative Unit 1 reading review · Session-only development record</p>
+      <DeferredTestReview
+        key={`kindergarten-reading-review-${readingPathway.cycle || 1}`}
+        mode="reading"
+        targets={targets}
+        activityLabel="Final Boss Reading Test"
+        onPlayReference={speakReadingReference}
+        onDiscard={() => returnToHub('Final Boss reading exited. Temporary recordings and provisional answers were discarded.')}
+        onComplete={(completion) => completeStandalone({
+          label: 'Final Boss Reading Test',
+          kind: 'Final Boss',
+          correct: completion.correct,
+          total: completion.total,
+        })}
+        sessionNote="Temporary recordings stay only in this Final Boss visit and are released when it ends."
+      />
+    </main>
+  }
+
   if (readingPathway) {
     const label = readingPathway.kind === 'acquisition'
       ? 'High-frequency words'
-      : readingPathway.kind === 'test-review'
-        ? 'Final Boss Reading Test'
-        : 'Reading Mastery'
+      : 'Reading Mastery'
     const scoreKind = readingPathway.kind === 'acquisition'
       ? 'Current week'
-      : readingPathway.kind === 'test-review'
-        ? 'Final Boss'
-        : 'Spirit Realm'
+      : 'Spirit Realm'
     return <main className="k-lab-shell practice">
       <p className="k-practice-note">Tier 2 recorded reading · Session-only development record</p>
       <Tier2ReadingPractice

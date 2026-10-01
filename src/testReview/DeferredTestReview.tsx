@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Headphones, X } from 'lucide-react'
+import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
+import type { WritingPadStateUpdater } from '../skywriting/WritingPad.tsx'
 import type {
   TestReviewCompletion,
   TestReviewCollectionMethod,
@@ -25,13 +27,11 @@ export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
   readonly targets: readonly TTarget[]
   readonly activityLabel: string
-  readonly writingTimerSeconds: number
+  readonly writingTimerSeconds?: number
   readonly onPlayReference: (target: TTarget) => Promise<void>
-  readonly onExit: () => void
-  readonly onSkip?: () => void
+  readonly onDiscard: () => void
   readonly onComplete: (completion: TestReviewCompletion<TTarget>) => void
   readonly exitLabel?: string
-  readonly skipLabel?: string
   readonly sessionNote?: string
 }
 
@@ -39,19 +39,19 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   mode,
   targets,
   activityLabel,
-  writingTimerSeconds,
+  writingTimerSeconds = 10,
   onPlayReference,
-  onExit,
-  onSkip,
+  onDiscard,
   onComplete,
-  exitLabel = 'Exit test',
-  skipLabel = 'Skip Test Review',
+  exitLabel = 'Exit without saving',
   sessionNote = 'No answers are scored during collection.',
 }: DeferredTestReviewProps<TTarget>) {
   const [phase, setPhase] = useState<'collect' | 'review'>('collect')
   const [index, setIndex] = useState(0)
   const [review, setReview] = useState<TestReviewState>(() => createTestReviewState(targets))
   const [captures, setCaptures] = useState<RetainedReadingCapture[]>([])
+  const [writingByTargetId, setWritingByTargetId] = useState<Record<string, WritingPadState>>({})
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const capturesRef = useRef<RetainedReadingCapture[]>([])
   const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
   const submittedRef = useRef(false)
@@ -73,6 +73,13 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     setPhase('review')
   }
 
+  function updateWriting(targetId: string, update: WritingPadStateUpdater) {
+    setWritingByTargetId((current) => ({
+      ...current,
+      [targetId]: update(current[targetId] || emptyWritingPadState),
+    }))
+  }
+
   function advanceWriting(method: 'timer' | 'skip_timer') {
     if (!activeTarget) return
     collectionMethodsRef.current[activeTarget.id] = method
@@ -87,16 +94,12 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     else setIndex((current) => current + 1)
   }
 
-  function exit() {
+  function discard() {
     window.speechSynthesis?.cancel()
     releaseCaptures()
-    onExit()
-  }
-
-  function skip() {
-    window.speechSynthesis?.cancel()
-    releaseCaptures()
-    onSkip?.()
+    setWritingByTargetId({})
+    setConfirmingDiscard(false)
+    onDiscard()
   }
 
   function submit() {
@@ -104,6 +107,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     const completion = completeTestReview(mode, targets, review, collectionMethodsRef.current)
     submittedRef.current = true
     releaseCaptures()
+    setWritingByTargetId({})
     onComplete(completion)
   }
 
@@ -118,10 +122,27 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     }
   }, [phase, mode, activeTarget, onPlayReference])
 
+  useEffect(() => {
+    if (phase === 'review') window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [phase])
+
+  const discardConfirmation = confirmingDiscard && <div className="deferred-discard-backdrop" role="presentation">
+    <section className="deferred-discard-dialog" role="dialog" aria-modal="true" aria-labelledby="deferred-discard-title">
+      <p className="eyebrow">Unfinished Final Boss</p>
+      <h2 id="deferred-discard-title">Exit without saving?</h2>
+      <p>Your collected writing or temporary recordings and every unfinished assessment will be discarded.</p>
+      <div className="deferred-discard-actions">
+        <button className="replay-button" type="button" onClick={() => setConfirmingDiscard(false)}>Keep working</button>
+        <button className="deferred-confirm-discard" type="button" onClick={discard}>Exit without saving</button>
+      </div>
+    </section>
+  </div>
+
   if (targets.length === 0 || (!activeTarget && phase === 'collect')) {
     return <div className="deferred-test-review deferred-empty-review">
       <p className="error-banner">This Test Review has no available targets.</p>
-      <button className="back-button" type="button" onClick={exit}><X size={18} /> {exitLabel}</button>
+      <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}><X size={18} /> {exitLabel}</button>
+      {discardConfirmation}
     </div>
   }
 
@@ -130,23 +151,22 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       mode={mode}
       targets={targets}
       captures={captures}
+      writingByTargetId={writingByTargetId}
       review={review}
       onAssess={(targetId, correct) => setReview((current) => assessTestReviewTarget(current, targetId, correct ? 'correct' : 'incorrect'))}
       onPlayReference={onPlayReference}
-      onExit={exit}
-      onSkip={onSkip ? skip : undefined}
+      onRequestDiscard={() => setConfirmingDiscard(true)}
       onSubmit={submit}
       exitLabel={exitLabel}
-      skipLabel={skipLabel}
     />
+    {discardConfirmation}
   </div>
 
   const progress = Math.round((index / targets.length) * 100)
   return <div className="deferred-test-review deferred-collection-review">
     <div className="practice-top">
-      <button className="back-button" type="button" onClick={exit}><X size={18} /> {exitLabel}</button>
+      <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}><X size={18} /> {exitLabel}</button>
       <span className="practice-count">{mode === 'writing' ? 'Writing' : 'Reading'} responses<span> · {index + 1} of {targets.length}</span></span>
-      {onSkip && <button className="replay-button" type="button" onClick={skip}>{skipLabel}</button>}
     </div>
     <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
     <section className="prompt-card deferred-collection-card">
@@ -154,13 +174,17 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       {mode === 'writing'
         ? <WritingResponseCollector
           key={activeTarget.id}
+          target={activeTarget}
           position={index + 1}
           timerSeconds={writingTimerSeconds}
+          padState={writingByTargetId[activeTarget.id] || emptyWritingPadState}
+          onPadStateChange={(update) => updateWriting(activeTarget.id, update)}
           onReplay={() => void onPlayReference(activeTarget).catch(() => undefined)}
           onCollected={advanceWriting}
         />
         : <ReadingResponseCollector key={activeTarget.id} target={activeTarget} onCollected={collectReading} />}
     </section>
     <p className="practice-footnote"><Headphones size={14} /> {sessionNote}</p>
+    {discardConfirmation}
   </div>
 }

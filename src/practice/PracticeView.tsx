@@ -125,7 +125,7 @@ function SequentialPracticeView({
       <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>
       {session.segment === 'warmup' && !session.warmupOnly && session.warmupAnswers.length > 0 && <button className="replay-button" onClick={() => onAnswer('continue-primary')}>Continue to activity</button>}
       {session.primaryPhase === 'acquisition' && session.segment === 'primary' && <button className="replay-button" onClick={() => onAnswer('done')}>Done for today</button>}
-      {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Skip Test Review</button>}
+      {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Exit without saving</button>}
     </div>
     <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}${showingWritingResponse ? ` tier1-writing-card is-${session.stage}` : ''}`}>
@@ -164,10 +164,8 @@ export function PracticeView(props: PracticeViewProps) {
       activityLabel="Writing Test Review"
       writingTimerSeconds={timerSeconds}
       onPlayReference={async (word) => { props.onSpeakWord(word, false) }}
-      onExit={props.onExit}
-      onSkip={() => props.onAnswer('skip-test-review')}
+      onDiscard={() => props.onAnswer('skip-test-review')}
       onComplete={(completion) => props.onAnswer({ kind: 'deferred-writing-test-review', completion })}
-      exitLabel="Exit practice"
     />
   }
   return <SequentialPracticeView {...props} />

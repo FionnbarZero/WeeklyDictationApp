@@ -95,13 +95,13 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   assert.doesNotMatch(source, /setInterval\(\(\) => setSeconds/)
 })
 
-test('practice UI exposes the approved skip, resume, and Done for today controls', () => {
+test('practice UI exposes approved exit, resume, and Done for today controls', () => {
   const source = [
     readFileSync(sourcePath('src/App.tsx'), 'utf8'),
     readFileSync(sourcePath('src/practice/PracticeView.tsx'), 'utf8'),
   ].join('\n')
   assert.match(source, />Skip Warmup</)
-  assert.match(source, />Skip Test Review</)
+  assert.match(source, />Exit without saving</)
   assert.match(source, />Skip Timer</)
   assert.match(source, />Done for today/)
   assert.match(source, /Return to \{profile\.presentation\?\.acquisitionLabel/)

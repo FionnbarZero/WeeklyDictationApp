@@ -154,11 +154,12 @@ test('the shared Test Review boundary has the exact approved Phase 2 file invent
   assert.doesNotMatch(combinedSource, /localStorage|sessionStorage/)
 })
 
-test('Phase 3 activates deferred writing only through the shared PracticeView boundary', () => {
+test('shared deferred review is activated through writing practice and the Kindergarten reading Final Boss', () => {
   const consumers = allApplicationTypeScriptFiles(join(repositoryRoot, 'src'))
     .filter((file) => /(?:^|\/)DeferredTestReview(?:\.tsx)?['"]/.test(readFileSync(file, 'utf8')))
     .map((file) => relative(repositoryRoot, file).split(sep).join('/'))
   assert.deepEqual(consumers, [
+    'src/kindergartenLearningLabHarness.tsx',
     'src/practice/PracticeView.tsx',
     'src/testReviewPrototype/TestReviewPrototype.tsx',
   ])
@@ -173,8 +174,12 @@ test('Phase 3 activates deferred writing only through the shared PracticeView bo
   assert.match(practiceView, /mode="writing"/)
   assert.match(practiceView, /writingTimerSeconds=\{timerSeconds\}/)
   assert.match(practiceView, /deferred-writing-test-review/)
+  assert.match(source('src/testReview/WritingResponseCollector.tsx'), /<SkyWritingAcquisition/)
+  assert.doesNotMatch(source('src/testReview/WritingResponseCollector.tsx'), /write the response on paper/i)
   assert.match(app, /completeDeferredWritingTestReview/)
   assert.match(grade5, /deferred-writing-test-review/)
   assert.match(kindergarten, /deferred-writing-test-review/)
+  assert.match(kindergarten, /mode="reading"/)
+  assert.match(kindergarten, /Final Boss Reading Test/)
   assert.doesNotMatch(source('src/readingPractice/Tier2ReadingPractice.tsx'), /DeferredTestReview/)
 })
