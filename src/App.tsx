@@ -167,6 +167,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     )
   }, [])
   const completedSessionRef = useRef<string | null>(null)
+  const completionInFlightRef = useRef<string | null>(null)
   const cloudSessionsRef = useRef(new Map<string, CloudSession>())
   const [showChildMenu, setShowChildMenu] = useState(false); const [showProfiles, setShowProfiles] = useState(false); const [completedSummary, setCompletedSummary] = useState<string | null>(null)
   const [dataLoading, setDataLoading] = useState(Boolean(auth.user))
@@ -405,7 +406,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     })
     if (result.status === 'ignored') return
     if (result.status === 'blocked') { setCloudError(result.message); return }
-    if (result.status === 'completed') { completeSession(result.session, result.state); return }
+    if (result.status === 'completed') { await completeSession(result.session, result.state); return }
     if (result.state !== state) setState(result.state)
     setSession(result.session)
   }
@@ -422,10 +423,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     return { ...current, stage: 'complete' }
   })
   const startPrimaryReview = () => {
-    if (session?.stage === 'complete' && session.primaryQueue.length === 0) { completeSession({ ...session, segment: 'primary', queue: [], primaryAnswers: [] }); return }
+    if (session?.stage === 'complete' && session.primaryQueue.length === 0) { void completeSession({ ...session, segment: 'primary', queue: [], primaryAnswers: [] }); return }
     setSession((current) => current && current.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current)
   }
-  const completeSession = (finished: PracticeSession, baseState: AppState = state) => {
+  const completeSession = async (finished: PracticeSession, baseState: AppState = state) => {
+    if (completionInFlightRef.current) return
+    completionInFlightRef.current = finished.id
     const completionDate = now()
     const cloud = finished.cloudSessionId ? cloudSessionsRef.current.get(finished.cloudSessionId) : undefined
     const outcome = completePracticeOperation({
@@ -434,13 +437,23 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       completedAt: completionDate,
       cloud: cloud && practiceCompletionPersistence ? { session: cloud, persistence: practiceCompletionPersistence } : undefined,
     })
-    setState(outcome.state)
-    void outcome.cloudCommit?.catch((error) => setCloudError(`Your score or adaptive progress could not be confirmed in the cloud: ${authErrorMessage(error)}`))
-    setCompletedSummary(outcome.summary); setSession(null); setView('home')
+    setCloudError(null)
+    try {
+      await outcome.cloudCommit
+      setState(outcome.state)
+      setCompletedSummary(outcome.summary); setSession(null); setView('home')
+    } catch (error) {
+      completedSessionRef.current = null
+      setCloudError(`Your score or adaptive progress could not be confirmed in the cloud: ${authErrorMessage(error)}`)
+    } finally {
+      if (completionInFlightRef.current === finished.id) completionInFlightRef.current = null
+    }
   }
-  const finishAcquisitionForToday = () => {
+  const finishAcquisitionForToday = async () => {
     const current = session
     if (!current?.acquisition || current.primaryPhase !== 'acquisition') return
+    if (completionInFlightRef.current) return
+    completionInFlightRef.current = current.id
     const completionDate = now()
     const cloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const outcome = completeAcquisitionForTodayOperation({
@@ -449,11 +462,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       completedAt: completionDate,
       cloud: cloud && practiceCompletionPersistence ? { session: cloud, persistence: practiceCompletionPersistence } : undefined,
     })
-    setState(outcome.state)
-    void outcome.cloudCommit?.catch((error) => setCloudError(`Acquisition could not be finalized in the cloud: ${authErrorMessage(error)}`))
-    setCompletedSummary(outcome.summary)
-    setSession(null)
-    setView('home')
+    setCloudError(null)
+    try {
+      await outcome.cloudCommit
+      setState(outcome.state)
+      setCompletedSummary(outcome.summary)
+      setSession(null)
+      setView('home')
+    } catch (error) {
+      setCloudError(`Acquisition could not be finalized in the cloud: ${authErrorMessage(error)}`)
+    } finally {
+      if (completionInFlightRef.current === current.id) completionInFlightRef.current = null
+    }
   }
   const completeDeferredWritingTestReview = (completion: TestReviewCompletion<Word>) => {
     const current = session
@@ -461,7 +481,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (completedSessionRef.current === current.id) return
     const primaryAnswers = writingSessionAnswers(completion)
     completedSessionRef.current = current.id
-    completeSession({
+    void completeSession({
       ...current,
       stage: 'complete',
       queue: current.primaryQueue,
@@ -469,9 +489,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       primaryAnswers,
     })
   }
-  const discardTestReview = () => {
+  const discardTestReview = async () => {
     const current = session
     if (!current || current.primaryPhase !== 'test-review') return
+    if (completionInFlightRef.current) return
+    completionInFlightRef.current = current.id
     const completionDate = now()
     const cloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const outcome = discardTestReviewOperation({
@@ -480,11 +502,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       completedAt: completionDate,
       cloud: cloud && practiceCompletionPersistence ? { session: cloud, persistence: practiceCompletionPersistence } : undefined,
     })
-    setState(outcome.state)
-    void outcome.cloudCommit?.catch((error) => setCloudError(`The skipped Test Review could not be confirmed in the cloud: ${authErrorMessage(error)}`))
-    setCompletedSummary(outcome.summary)
-    setSession(null)
-    setView('home')
+    setCloudError(null)
+    try {
+      await outcome.cloudCommit
+      setState(outcome.state)
+      setCompletedSummary(outcome.summary)
+      setSession(null)
+      setView('home')
+    } catch (error) {
+      setCloudError(`The skipped Test Review could not be confirmed in the cloud: ${authErrorMessage(error)}`)
+    } finally {
+      if (completionInFlightRef.current === current.id) completionInFlightRef.current = null
+    }
   }
   const answer = (correct: PracticeAnswer) => {
     if (typeof correct === 'object') {
@@ -493,8 +522,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     if (correct === 'skip-warmup') { skipWarmup(); return }
     if (correct === 'continue-primary') { continueToPrimaryAfterPartialWarmup(); return }
-    if (correct === 'skip-test-review') { discardTestReview(); return }
-    if (correct === 'done') { finishAcquisitionForToday(); return }
+    if (correct === 'skip-test-review') { void discardTestReview(); return }
+    if (correct === 'done') { void finishAcquisitionForToday(); return }
     const current = session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const cloudEnabled = Boolean(auth.user && cloudScope)
@@ -528,7 +557,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (result.completion) {
       if (completedSessionRef.current === result.completion.session.id) return
       completedSessionRef.current = result.completion.session.id
-      completeSession(result.completion.session, result.completion.state)
+      void completeSession(result.completion.session, result.completion.state)
       return
     }
     if (result.session) setSession(result.session)

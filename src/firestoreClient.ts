@@ -145,6 +145,10 @@ function updateWrite(parts: string[], value: Record<string, unknown>, currentDoc
   }
 }
 
+function deleteWrite(parts: string[]) {
+  return { delete: fullDocumentName(parts) }
+}
+
 async function getDoc<T>(path: string) {
   const documentName = fullDocumentName(path.split('/').map((part) => decodeURIComponent(part)))
   const [result] = await authorizedFirestoreRequest<FirestoreBatchGetResult[]>(
@@ -405,9 +409,59 @@ export async function deleteDoc(path: string) { await firestoreRequest(path, { m
 export async function startCloudSession(familyId: string, childId: string, session: Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'>) { const value: CloudSession = { ...session, familyId, status: 'in_progress', applicationVersion: APP_VERSION }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function updateCloudSession(familyId: string, childId: string, session: CloudSession, patch: Partial<CloudSession>) { const value = { ...session, ...patch }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function saveCloudAttempt(familyId: string, childId: string, sessionId: string, attempt: CloudAttempt) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts', attempt.id]), attempt) }
-export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'completed', warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed', completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
-export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status, completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
-export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) { const attempts = await listAttempts(familyId, childId, session.id); await Promise.all(attempts.filter((attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary').map((attempt) => deleteDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id])))); await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'skipped', completedAt: new Date().toISOString() }); await Promise.all(warmupAttempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))) }
+function cloudSessionCompletionWrites(
+  familyId: string,
+  childId: string,
+  session: CloudSession,
+  attempts: CloudAttempt[],
+  scores: DatasetScore[],
+) {
+  return [
+    updateWrite(['families', familyId, 'children', childId, 'sessions', session.id], session),
+    ...attempts.map((attempt) =>
+      updateWrite(
+        ['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id],
+        { ...attempt, completionStatus: 'complete' },
+      ),
+    ),
+    ...scores.map((score) =>
+      updateWrite(['families', familyId, 'children', childId, 'scores', score.id], score),
+    ),
+  ]
+}
+
+export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) {
+  const value: CloudSession = {
+    ...session,
+    status: 'completed',
+    warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed',
+    completedAt: new Date().toISOString(),
+  }
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+}
+export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) {
+  const value: CloudSession = { ...session, status, completedAt: new Date().toISOString() }
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+}
+export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) {
+  const attempts = await listAttempts(familyId, childId, session.id)
+  const temporaryReviewAttempts = attempts.filter(
+    (attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary',
+  )
+  const value: CloudSession = { ...session, status: 'skipped', completedAt: new Date().toISOString() }
+  await firestoreCommit([
+    ...temporaryReviewAttempts.map((attempt) =>
+      deleteWrite(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id]),
+    ),
+    updateWrite(['families', familyId, 'children', childId, 'sessions', session.id], value),
+    ...warmupAttempts.map((attempt) =>
+      updateWrite(
+        ['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id],
+        { ...attempt, completionStatus: 'complete' },
+      ),
+    ),
+  ])
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value) }
 
