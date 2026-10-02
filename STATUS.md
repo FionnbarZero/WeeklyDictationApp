@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Last verified: 2026-10-01
+Last verified: 2026-10-02; Program B1 staging foundation complete
 
 This is the authoritative capability matrix for what exists today. A visible UI is not evidence that a capability is durable or eligible for production. Product direction and sequencing live in [ROADMAP.md](./ROADMAP.md); durable architecture decisions live in [docs/decisions](./docs/decisions/README.md).
 
@@ -8,9 +8,9 @@ This is the authoritative capability matrix for what exists today. A visible UI 
 
 | Gate | Current result | Notes |
 | --- | --- | --- |
-| Unit tests | 503 passing | Node test runner, including workspace synchronization and practice-coordinator characterization |
+| Unit tests | 508 passing | Node test runner, including workspace synchronization, practice-coordinator characterization, and staging completion safeguards |
 | Production build | Passing | TypeScript/Vite build plus deterministic performance-budget check |
-| Initial asset budgets | Passing | 544,233/550,000 JavaScript bytes and 37,076/60,000 CSS bytes |
+| Initial asset budgets | Passing | Staging: 547,261/550,000 JavaScript bytes and 37,076/60,000 CSS bytes |
 | Browser suite | 38 tests | Prototype parity, persistence recovery, keyboard focus, and unexpected console/page-error enforcement |
 | Frozen static prototype suite | 23 tests | Includes five selected visual references |
 | Public preview suite | 2 tests | Grade 5 and Kindergarten explicit preview entries |
@@ -32,13 +32,13 @@ Combinations must be validated centrally before the planned capability registry 
 
 | Grade / capability | Availability | Results | Recording | Production eligibility | Principal blocker |
 | --- | --- | --- | --- | --- | --- |
-| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | `blocked` | Separate Firebase environments, migration rehearsal, rollback, observability, and cross-device pilot |
+| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | `blocked` | Migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
 | Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | `blocked` | Versioned Tier 2 persistence and approved reference-audio/privacy gates |
 | Kindergarten Tier 1 writing | `development` | `session-only` | N/A | `blocked` | Trusted importer deployment, source activation review, staging recovery, and release relationship with Tier 2 |
 | Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
 | Grade 5 Tier 1 writing | `development` | `session-only` | N/A | `blocked` | Importer activation, Warmup policy, and durable two-review-cycle persistence |
 | Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
-| Trusted curriculum importer | `development` | N/A | N/A | `blocked` | Staging deployment, shadow comparison, idempotency evidence, IAM, monitoring, and rollback |
+| Trusted curriculum importer | `development` | N/A | N/A | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
 
 ## Frozen contracts during Program A
 
@@ -53,7 +53,7 @@ Unless a separately reviewed behavior change explicitly authorizes a difference,
 
 ## Program A closeout
 
-Program A is complete on `refactor/application-orchestration-boundary`, subject to the remote CI workflow confirming the local results above.
+Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73e7accb11fb29bff54caf6`. The remote quality, build, browser, frozen-prototype, public-preview, and Firestore Emulator jobs passed before merge.
 
 - Workspace reads, assembly, open-session reconciliation, and pending-transition recovery are explicit application operations. Synchronization is ordered, abortable, and covered for stale results, retry, acknowledgement failure, and idempotence.
 - Practice start, answer, exit, experience-specific skip/discard, interstitial advancement, and completion are behind capability-based application operations. React does not import raw Firestore or recovery-journal operations.
@@ -65,11 +65,18 @@ Program A is complete on `refactor/application-orchestration-boundary`, subject 
 
 ## Known active risks
 
-- Production and deployment readiness is still unstarted: Firebase environment separation, synthetic migration rehearsal, backup/restore, rollback, observability, App Check, retention, and a cross-device Grade 2 pilot remain Program B work.
+- Program B1 is complete. Synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill are the next Program B risks in B2.
+- The authorized cross-device Grade 2 pilot with real profile data remains B3 work and cannot begin until B2 passes.
 - The initial JavaScript budget passes with limited headroom. Dependency updates must run the complete build budget before merge.
-- The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before staging acceptance.
+- The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before pilot or production acceptance.
 - Browser latency is environment-sensitive and remains telemetry rather than a hard gate.
 - Kindergarten and Grade 5 source activation, durable Tier 2 results, and Grade 5 multi-review persistence remain separate Program C decisions and implementations.
+
+## Program B1 staging foundation
+
+Program B1 is complete on `ops/staging-foundation`. The isolated `weekly-dictation-staging` Firebase project has its own web app, Hosting site, native Firestore database in `nam5`, Email/Password Authentication, reCAPTCHA Enterprise App Check registration, deletion protection, synthetic-only build gates, and guarded deploy command. It remains on the no-billing plan; App Check enforcement remains disabled for monitoring.
+
+Commit `29e0f972f7ec` is live at `https://weekly-dictation-staging.web.app`. A synthetic Grade 2 lifecycle verified exact Acquisition resume, atomic scored completion, immediate reload, and second-browser visibility. All 104 observed protected requests carried App Check, and the run produced no page errors, failed responses, or unexpected console errors. Temporary accounts and family data were deleted afterward; the Auth inventory is empty. Detailed release, rollback, retention, and test evidence is in [docs/staging-foundation.md](./docs/staging-foundation.md).
 
 ## Documentation authority
 

@@ -1,5 +1,6 @@
 import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { getIdToken, type AuthUser } from './firebaseClient.ts'
+import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
 import { deriveChildWordStates, normalizeDistractorTargetObservation, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
 import type { VersionedChildMasteryState, WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
@@ -19,6 +20,7 @@ export type { CloudWarmupRotation } from './persistence/warmup/cloudContracts.ts
 type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue>; createTime?: string; updateTime?: string }
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
 type FirestoreRunQueryResult = { document?: FirestoreDocument }
+type FirestoreBatchGetResult = { found?: FirestoreDocument; missing?: string }
 
 export const INITIAL_WORKSPACE_RECORD_BUDGETS = {
   datasetWords: 10_000,
@@ -79,7 +81,14 @@ async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit, ti
   if (!firebaseConfigReady) throw new Error('Firebase configuration is missing.')
   try {
     const token = await getIdToken()
-    const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
+    const headers = new Headers(init?.headers)
+    headers.set('Content-Type', headers.get('Content-Type') || 'application/json')
+    headers.set('Authorization', `Bearer ${token}`)
+    for (const [name, value] of Object.entries(await firebaseAppCheckHeaders())) headers.set(name, value)
+    const response = await fetch(url, {
+      ...init,
+      headers,
+    })
     const body = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
     return body as T
@@ -136,16 +145,19 @@ function updateWrite(parts: string[], value: Record<string, unknown>, currentDoc
   }
 }
 
+function deleteWrite(parts: string[]) {
+  return { delete: fullDocumentName(parts) }
+}
+
 async function getDoc<T>(path: string) {
-  try {
-    return decodeDocument<T>(await firestoreRequest<FirestoreDocument>(path))
-  } catch (error) {
-    // Firestore REST can report a missing document as either NOT_FOUND or
-    // a human-readable "Document ... not found" message. A missing user,
-    // family, or child is expected during first-time account setup.
-    if (/not[ _-]?found/i.test(String(error))) return null
-    throw error
-  }
+  const documentName = fullDocumentName(path.split('/').map((part) => decodeURIComponent(part)))
+  const [result] = await authorizedFirestoreRequest<FirestoreBatchGetResult[]>(
+    `${firestoreDatabaseBase()}/documents:batchGet`,
+    { method: 'POST', body: JSON.stringify({ documents: [documentName] }) },
+  )
+  if (result?.found) return decodeDocument<T>(result.found)
+  if (result?.missing === documentName) return null
+  throw new Error(`Firestore batch get returned no result for ${documentName}.`)
 }
 async function putDoc(path: string, value: Record<string, unknown>) { await firestoreRequest(path, { method: 'PATCH', body: JSON.stringify(encodeFields(value)) }) }
 async function listDocs<T>(path: string, signal?: AbortSignal) {
@@ -397,9 +409,59 @@ export async function deleteDoc(path: string) { await firestoreRequest(path, { m
 export async function startCloudSession(familyId: string, childId: string, session: Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'>) { const value: CloudSession = { ...session, familyId, status: 'in_progress', applicationVersion: APP_VERSION }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function updateCloudSession(familyId: string, childId: string, session: CloudSession, patch: Partial<CloudSession>) { const value = { ...session, ...patch }; await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), value); return value }
 export async function saveCloudAttempt(familyId: string, childId: string, sessionId: string, attempt: CloudAttempt) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts', attempt.id]), attempt) }
-export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'completed', warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed', completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
-export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) { await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status, completedAt: new Date().toISOString() }); await Promise.all(attempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))); await Promise.all(scores.map((score) => putDoc(docPath(['families', familyId, 'children', childId, 'scores', score.id]), score))) }
-export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) { const attempts = await listAttempts(familyId, childId, session.id); await Promise.all(attempts.filter((attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary').map((attempt) => deleteDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id])))); await putDoc(docPath(['families', familyId, 'children', childId, 'sessions', session.id]), { ...session, status: 'skipped', completedAt: new Date().toISOString() }); await Promise.all(warmupAttempts.map((attempt) => saveCloudAttempt(familyId, childId, session.id, { ...attempt, completionStatus: 'complete' }))) }
+function cloudSessionCompletionWrites(
+  familyId: string,
+  childId: string,
+  session: CloudSession,
+  attempts: CloudAttempt[],
+  scores: DatasetScore[],
+) {
+  return [
+    updateWrite(['families', familyId, 'children', childId, 'sessions', session.id], session),
+    ...attempts.map((attempt) =>
+      updateWrite(
+        ['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id],
+        { ...attempt, completionStatus: 'complete' },
+      ),
+    ),
+    ...scores.map((score) =>
+      updateWrite(['families', familyId, 'children', childId, 'scores', score.id], score),
+    ),
+  ]
+}
+
+export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) {
+  const value: CloudSession = {
+    ...session,
+    status: 'completed',
+    warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed',
+    completedAt: new Date().toISOString(),
+  }
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+}
+export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) {
+  const value: CloudSession = { ...session, status, completedAt: new Date().toISOString() }
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+}
+export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) {
+  const attempts = await listAttempts(familyId, childId, session.id)
+  const temporaryReviewAttempts = attempts.filter(
+    (attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary',
+  )
+  const value: CloudSession = { ...session, status: 'skipped', completedAt: new Date().toISOString() }
+  await firestoreCommit([
+    ...temporaryReviewAttempts.map((attempt) =>
+      deleteWrite(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id]),
+    ),
+    updateWrite(['families', familyId, 'children', childId, 'sessions', session.id], value),
+    ...warmupAttempts.map((attempt) =>
+      updateWrite(
+        ['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id],
+        { ...attempt, completionStatus: 'complete' },
+      ),
+    ),
+  ])
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value) }
 

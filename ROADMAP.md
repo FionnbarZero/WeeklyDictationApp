@@ -8,7 +8,7 @@ This roadmap separates three programs with independent finish lines:
 
 Program A must not stay open because a curriculum or release decision in Program C is unresolved. The frozen references protect approved behavior while the integrated application is assembled one vertical slice at a time.
 
-As of 2026-10-01, Program A is complete locally on `refactor/application-orchestration-boundary`; remote CI confirmation is the remaining merge gate. Programs B and C have not been activated by that work.
+As of 2026-10-02, Program A is merged and Program B1 is complete on `ops/staging-foundation`. Program B2 migration rehearsal is next. Program C has not been activated by this work.
 
 ## Operating model
 
@@ -73,7 +73,7 @@ Program B begins with synthetic, production-shaped data. Real child data require
 
 | Stage | Scope | Exit gate |
 | --- | --- | --- |
-| B1. Staging foundation | Separate Firebase projects/environments; deploy rules and application; budgets, retention, App Check monitoring, and observability | Staging has no production credentials or data and emits actionable operational signals |
+| B1. Staging foundation (complete) | Separate Firebase projects/environments; deploy rules and application; budgets, retention, App Check monitoring, and observability | Isolated synthetic-only staging is live; guarded deploy, App Check traffic, atomic completion, cross-browser visibility, cleanup, and rollback history are verified |
 | B2. Migration rehearsal | Synthetic backup/restore and migration; rollback drill; failure injection; support runbook | Migration and rollback are repeatable, checksum-verifiable, and lossless |
 | B3. Grade 2 pilot | Migrate one authorized Grade 2 profile; exercise local/cloud retry and a second device | Cross-device Grade 2 resume works without loss, duplication, or identity drift |
 | B4. Operations acceptance | Restore test, incident response, retention/deletion, performance trend review, and release checklist | Named owner accepts the production runbook and fail-closed gates |
@@ -110,11 +110,10 @@ Recommended integration order remains Grade 2 Tier 1 writing, Kindergarten, dura
 
 ## Immediate execution order
 
-1. Merge Program A only after the remote quality, build, browser, frozen-prototype, public-preview, and Emulator gates pass.
-2. Create isolated staging Firebase resources and operational ownership for B1; use synthetic production-shaped data only.
-3. Rehearse backup, migration, restore, and rollback before requesting authorization for any real child data.
-4. Run the authorized Grade 2 cross-device pilot after B1 and B2 pass.
-5. Deploy the trusted importer through shadow, idempotency, IAM, monitoring, and rollback gates.
-6. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005.
-7. Implement durable Grade 2 Tier 2 independently where useful.
-8. Activate Grade 5 last, after importer and multi-review persistence gates pass.
+1. Rehearse synthetic backup, migration, restore, failure injection, and rollback in B2 before requesting authorization for any real child data.
+2. Run the authorized Grade 2 cross-device pilot after B2 passes.
+3. Complete operational acceptance and the production runbook in B4.
+4. Deploy the trusted importer through shadow, idempotency, IAM, monitoring, and rollback gates.
+5. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005.
+6. Implement durable Grade 2 Tier 2 independently where useful.
+7. Activate Grade 5 last, after importer and multi-review persistence gates pass.

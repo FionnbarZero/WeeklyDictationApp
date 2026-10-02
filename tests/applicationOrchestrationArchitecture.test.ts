@@ -56,6 +56,13 @@ test('React composition imports neither Firestore operations nor recovery-journa
   assert.match(app, /discardTestReviewOperation/)
 })
 
+test('the application shell waits for durable completion before leaving practice', () => {
+  const app = source('src/App.tsx')
+  assert.equal(app.match(/await outcome\.cloudCommit/g)?.length, 3)
+  assert.match(app, /completionInFlightRef/)
+  assert.match(app, /await outcome\.cloudCommit[\s\S]*?setSession\(null\)[\s\S]*?setView\('home'\)/)
+})
+
 test('practice application operations depend on capabilities instead of React or Firestore', () => {
   const files = filesUnder('src/application/practice').filter((path) => /\.tsx?$/.test(path))
   assert.ok(files.length >= 5)

@@ -1,4 +1,5 @@
 import { firebaseConfig, firebaseConfigReady } from './config.ts'
+import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
 
 type StoredAuth = {
   idToken: string
@@ -36,7 +37,13 @@ function writeStoredAuth(value: StoredAuth | null) {
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } })
+  const headers = new Headers(init?.headers)
+  headers.set('Content-Type', headers.get('Content-Type') || 'application/json')
+  for (const [name, value] of Object.entries(await firebaseAppCheckHeaders())) headers.set(name, value)
+  const response = await fetch(url, {
+    ...init,
+    headers,
+  })
   const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(`Firebase REST error: ${body?.error?.message || response.statusText}`)
   return body as T

@@ -33,6 +33,7 @@
 
 ## Operations and verification
 
+- [Staging foundation](./staging-foundation.md)
 - [Backend importer](./backend-import.md)
 - [Manual UI verification](./manual-ui-verification.md)
 - [Adaptive Warmup legacy evidence](./adaptive-warmup-legacy-evidence.md)

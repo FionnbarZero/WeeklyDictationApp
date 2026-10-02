@@ -123,23 +123,30 @@ test('Test Review 1 and Test Review 2 requests reference different cohorts', () 
   assert.equal(test2.preActivityWarmupRequirement, 'undecided')
 })
 
-test('both Test Review stages can request Acquisition help without changing curriculum stage', () => {
+test('both Test Review stages offer guided Acquisition and collect-first Test Review options without changing curriculum stage', () => {
   for (const stage of ['test-review-1', 'test-review-2'] as const) {
     const requests = activity(section(stage), `${stage}-reenter-training-dojo`).launchRequests
 
     assert.deepEqual(requests.map((request) => request.learningChannel), [
       'tier-1-writing',
       'tier-2-reading',
+      'tier-1-writing',
+      'tier-2-reading',
     ])
     assert.ok(requests.every((request) => request.stage === stage))
-    assert.ok(requests.every((request) => request.activityKind === 'acquisition'))
+    assert.deepEqual(requests.map((request) => request.activityKind), [
+      'acquisition',
+      'acquisition',
+      'test-review',
+      'test-review',
+    ])
     assert.ok(requests.every((request) => request.warmupMaximum === 6))
     assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'undecided'))
     assert.equal(new Set(requests.map((request) => request.cohortId)).size, 1)
   }
 })
 
-test('mastery requests preserve separate writing and reading queues', () => {
+test('mastery requests preserve separate writing and reading queues and offer both guided and Test Review reentry', () => {
   const review = section('review')
   const writingWarmup = activity(review, 'mastery-writing-warmup').launchRequests[0]
   const readingWarmup = activity(review, 'mastery-reading-warmup').launchRequests[0]
@@ -151,8 +158,18 @@ test('mastery requests preserve separate writing and reading queues', () => {
   assert.equal(readingWarmup.warmupMaximum, null)
   assert.equal(writingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.equal(readingWarmup.preActivityWarmupRequirement, 'not-applicable')
-  assert.deepEqual(reteach.map((request) => request.learningChannel), ['tier-1-writing', 'tier-2-reading'])
-  assert.ok(reteach.every((request) => request.activityKind === 'reacquisition'))
+  assert.deepEqual(reteach.map((request) => request.learningChannel), [
+    'tier-1-writing',
+    'tier-2-reading',
+    'tier-1-writing',
+    'tier-2-reading',
+  ])
+  assert.deepEqual(reteach.map((request) => request.activityKind), [
+    'reacquisition',
+    'reacquisition',
+    'test-review',
+    'test-review',
+  ])
   assert.ok(reteach.every((request) => request.stage === 'mastery'))
   assert.ok(reteach.every((request) => request.cohortId === 'grade-5__2026-27__2026-08-31__2026-09-04'))
   assert.ok(reteach.every((request) => request.warmupMaximum === 6))

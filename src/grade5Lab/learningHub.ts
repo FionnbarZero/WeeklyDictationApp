@@ -172,13 +172,15 @@ function cohortActivities(
     activities.push({
       id: `${stage}-reenter-training-dojo`,
       label: 'Reenter the Training Dojo',
-      description: 'Return to guided writing or reading Acquisition for this word set when more help is needed.',
+      description: 'Choose guided practice or a collect-first Test Review for writing or reading.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
       launchRequests: candidate
         ? [
             launchRequest(candidate, stage, 'tier-1-writing', 'acquisition'),
             launchRequest(candidate, stage, 'tier-2-reading', 'acquisition'),
+            launchRequest(candidate, stage, 'tier-1-writing', 'test-review'),
+            launchRequest(candidate, stage, 'tier-2-reading', 'test-review'),
           ]
         : [],
     })
@@ -209,13 +211,15 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
     {
       id: 'mastery-reteach',
       label: 'Reenter the Training Dojo',
-      description: 'Choose an older week, then repeat its guided writing or reading Acquisition routine without changing its Mastery status.',
+      description: 'Choose an older week, then use guided practice or a collect-first Test Review for writing or reading without changing its Mastery status.',
       availability: available ? 'not-connected' : 'unavailable',
       ...(!available ? { unavailableReason } : {}),
       launchRequests: available
         ? candidates.flatMap((candidate) => [
             launchRequest(candidate, 'mastery', 'tier-1-writing', 'reacquisition'),
             launchRequest(candidate, 'mastery', 'tier-2-reading', 'reacquisition'),
+            launchRequest(candidate, 'mastery', 'tier-1-writing', 'test-review'),
+            launchRequest(candidate, 'mastery', 'tier-2-reading', 'test-review'),
           ])
         : [],
     },
