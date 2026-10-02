@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Last verified: 2026-10-01
+Last verified: 2026-10-01; Program B1 repository work started 2026-10-01
 
 This is the authoritative capability matrix for what exists today. A visible UI is not evidence that a capability is durable or eligible for production. Product direction and sequencing live in [ROADMAP.md](./ROADMAP.md); durable architecture decisions live in [docs/decisions](./docs/decisions/README.md).
 
@@ -53,7 +53,7 @@ Unless a separately reviewed behavior change explicitly authorizes a difference,
 
 ## Program A closeout
 
-Program A is complete on `refactor/application-orchestration-boundary`, subject to the remote CI workflow confirming the local results above.
+Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73e7accb11fb29bff54caf6`. The remote quality, build, browser, frozen-prototype, public-preview, and Firestore Emulator jobs passed before merge.
 
 - Workspace reads, assembly, open-session reconciliation, and pending-transition recovery are explicit application operations. Synchronization is ordered, abortable, and covered for stale results, retry, acknowledgement failure, and idempotence.
 - Practice start, answer, exit, experience-specific skip/discard, interstitial advancement, and completion are behind capability-based application operations. React does not import raw Firestore or recovery-journal operations.
@@ -65,11 +65,18 @@ Program A is complete on `refactor/application-orchestration-boundary`, subject 
 
 ## Known active risks
 
-- Production and deployment readiness is still unstarted: Firebase environment separation, synthetic migration rehearsal, backup/restore, rollback, observability, App Check, retention, and a cross-device Grade 2 pilot remain Program B work.
+- Program B1 repository safeguards are in progress, but Firebase project separation, first deployment, App Check monitoring evidence, budget/no-billing status, and operational ownership remain incomplete.
+- Synthetic migration rehearsal, backup/restore, rollback, and the cross-device Grade 2 pilot remain later Program B work.
 - The initial JavaScript budget passes with limited headroom. Dependency updates must run the complete build budget before merge.
 - The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before staging acceptance.
 - Browser latency is environment-sensitive and remains telemetry rather than a hard gate.
 - Kindergarten and Grade 5 source activation, durable Tier 2 results, and Grade 5 multi-review persistence remain separate Program C decisions and implementations.
+
+## Program B1 staging foundation
+
+Program B1 is in progress on `ops/staging-foundation`. Repository-side safeguards require an explicitly named staging Firebase project, synthetic-only data, matching web configuration, App Check, observability, and exact project confirmation before deployment. Hosting configuration, restrictive baseline headers, guarded build/deploy commands, and the staging runbook are present.
+
+Cloud provisioning is not yet complete. The Firebase-owning Google account, globally unique project ID, permanent Firestore location, web app, Hosting site, Authentication provider, App Check registration, budget/no-billing decision, retention owner, and first deployment evidence remain open and must not be represented as complete.
 
 ## Documentation authority
 

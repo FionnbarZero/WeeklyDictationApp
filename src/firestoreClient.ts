@@ -1,5 +1,6 @@
 import { APP_VERSION, DEFAULT_TIME_ZONE, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { getIdToken, type AuthUser } from './firebaseClient.ts'
+import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
 import { deriveChildWordStates, normalizeDistractorTargetObservation, type AcquisitionProgressRecord, type AppState, type ChildWordState, type Dataset, type DatasetScore, type DistractorTargetObservation, type MonthlyRotationScore, type Word, type WordResult } from './domain.ts'
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
 import type { VersionedChildMasteryState, WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
@@ -79,7 +80,14 @@ async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit, ti
   if (!firebaseConfigReady) throw new Error('Firebase configuration is missing.')
   try {
     const token = await getIdToken()
-    const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
+    const headers = new Headers(init?.headers)
+    headers.set('Content-Type', headers.get('Content-Type') || 'application/json')
+    headers.set('Authorization', `Bearer ${token}`)
+    for (const [name, value] of Object.entries(await firebaseAppCheckHeaders())) headers.set(name, value)
+    const response = await fetch(url, {
+      ...init,
+      headers,
+    })
     const body = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
     return body as T

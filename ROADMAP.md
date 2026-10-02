@@ -73,7 +73,7 @@ Program B begins with synthetic, production-shaped data. Real child data require
 
 | Stage | Scope | Exit gate |
 | --- | --- | --- |
-| B1. Staging foundation | Separate Firebase projects/environments; deploy rules and application; budgets, retention, App Check monitoring, and observability | Staging has no production credentials or data and emits actionable operational signals |
+| B1. Staging foundation (in progress) | Separate Firebase projects/environments; deploy rules and application; budgets, retention, App Check monitoring, and observability | Staging has no production credentials or data and emits actionable operational signals |
 | B2. Migration rehearsal | Synthetic backup/restore and migration; rollback drill; failure injection; support runbook | Migration and rollback are repeatable, checksum-verifiable, and lossless |
 | B3. Grade 2 pilot | Migrate one authorized Grade 2 profile; exercise local/cloud retry and a second device | Cross-device Grade 2 resume works without loss, duplication, or identity drift |
 | B4. Operations acceptance | Restore test, incident response, retention/deletion, performance trend review, and release checklist | Named owner accepts the production runbook and fail-closed gates |
