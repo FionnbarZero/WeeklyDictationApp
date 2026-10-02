@@ -34,6 +34,12 @@ const week0921 = bySlide.get('week-0921')!
 const week0928 = bySlide.get('week-0928')!
 const week1012 = bySlide.get('week-1012')!
 
+// Noon UTC remains the requested Los Angeles calendar date regardless of the
+// machine timezone running the test suite.
+function testDate(year: number, monthIndex: number, day: number) {
+  return new Date(Date.UTC(year, monthIndex, day, 12))
+}
+
 function label(dataset: Dataset) {
   return dataset.sourceSlideId || dataset.id
 }
@@ -79,7 +85,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
   const cases = [
     {
       name: 'Friday before the next replacement',
-      date: new Date(2026, 8, 18),
+      date: testDate(2026, 8, 18),
       sets: baseSets,
       expected: {
         acquisition: 'week-0914',
@@ -93,7 +99,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
     },
     {
       name: 'Saturday retains Friday assignments',
-      date: new Date(2026, 8, 19),
+      date: testDate(2026, 8, 19),
       sets: baseSets,
       expected: {
         acquisition: 'week-0914',
@@ -107,7 +113,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
     },
     {
       name: 'Sunday retains Friday assignments',
-      date: new Date(2026, 8, 20),
+      date: testDate(2026, 8, 20),
       sets: baseSets,
       expected: {
         acquisition: 'week-0914',
@@ -121,7 +127,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
     },
     {
       name: 'a missing replacement holds the latest assignments',
-      date: new Date(2026, 8, 28),
+      date: testDate(2026, 8, 28),
       sets: baseSets,
       expected: {
         acquisition: 'week-0921',
@@ -135,7 +141,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
     },
     {
       name: 'a valid replacement advances every older assignment',
-      date: new Date(2026, 8, 28),
+      date: testDate(2026, 8, 28),
       sets: [...baseSets, week0928],
       expected: {
         acquisition: 'week-0928',
@@ -149,7 +155,7 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
     },
     {
       name: 'a delayed replacement advances assignments only when it arrives',
-      date: new Date(2026, 9, 12),
+      date: testDate(2026, 9, 12),
       sets: [...baseSets, week1012],
       expected: {
         acquisition: 'week-1012',
@@ -169,9 +175,9 @@ test('Grade 2 lifecycle golden matrix preserves weekends, missing weeks, and rep
 })
 
 test('Grade 2 lifecycle golden matrix is deterministic for duplicates and unordered input', () => {
-  const expected = summarize(resolveDatasetLifecycles([...baseSets, week0928], new Date(2026, 8, 28)))
+  const expected = summarize(resolveDatasetLifecycles([...baseSets, week0928], testDate(2026, 8, 28)))
   const duplicatedAndUnordered = [week0928, week0914, week0831, week0921, week0908, week0928, week0914]
-  assert.deepEqual(summarize(resolveDatasetLifecycles(duplicatedAndUnordered, new Date(2026, 8, 28))), expected)
+  assert.deepEqual(summarize(resolveDatasetLifecycles(duplicatedAndUnordered, testDate(2026, 8, 28))), expected)
 })
 
 test('Grade 2 lifecycle golden matrix preserves no-instruction and malformed handling', () => {
@@ -180,7 +186,7 @@ test('Grade 2 lifecycle golden matrix preserves no-instruction and malformed han
     slides: [{ objectId: 'week-workshop', text: 'Week 9/28-10/2\nMandarin\nWriting Workshop\nNo new Tier 1 targets' }],
   }, [], grade2DeckProfile).datasets[0]
   const malformed = { ...week0921, id: '2026-09-21__2026-09-25', sourceSlideId: 'malformed' }
-  const resolution = summarize(resolveDatasetLifecycles([...baseSets, workshop, malformed], new Date(2026, 8, 28)))
+  const resolution = summarize(resolveDatasetLifecycles([...baseSets, workshop, malformed], testDate(2026, 8, 28)))
 
   assert.deepEqual(resolution, {
     acquisition: 'week-0921',
@@ -199,7 +205,7 @@ test('Grade 2 lifecycle golden matrix scopes grade and school year before resolu
     slides: [{ objectId: 'grade-5-week', text: 'Week 6 (9/21-25)\nMandarin\nTier 1: 需要、部分、重要' }],
   }, [], grade5DeckProfile).datasets[0]
   const scoped = filterDatasetsForChild([...baseSets, grade5], 'Grade 2', '2026–2027')
-  assert.deepEqual(summarize(resolveDatasetLifecycles(scoped, new Date(2026, 8, 23))), {
+  assert.deepEqual(summarize(resolveDatasetLifecycles(scoped, testDate(2026, 8, 23))), {
     acquisition: 'week-0921',
     testReview: 'week-0914',
     mastered: ['week-0831', 'week-0908'],
@@ -208,7 +214,7 @@ test('Grade 2 lifecycle golden matrix scopes grade and school year before resolu
     noInstruction: [],
     stages: { 'week-0831': 'mastered', 'week-0908': 'mastered', 'week-0914': 'test-review', 'week-0921': 'acquisition' },
   })
-  assert.deepEqual(summarize(resolveDatasetLifecycles([], new Date(2026, 8, 23))), {
+  assert.deepEqual(summarize(resolveDatasetLifecycles([], testDate(2026, 8, 23))), {
     acquisition: null,
     testReview: null,
     mastered: [],
@@ -234,7 +240,7 @@ test('Grade 2 replacement strategy reproduces the golden replacement ordering', 
 
 test('Grade 2 compatibility wrapper projects the strategy without changing dataset identity', () => {
   const sourceDatasets = [...baseSets, week0928]
-  const compatibility = resolveDatasetLifecycles(sourceDatasets, new Date(2026, 8, 28))
+  const compatibility = resolveDatasetLifecycles(sourceDatasets, testDate(2026, 8, 28))
   const strategy = resolveLifecycle(lifecycleContext(sourceDatasets, '2026-09-28'))
 
   assert.strictEqual(compatibility.acquisition, week0928)
@@ -261,7 +267,7 @@ test('Grade 2 compatibility wrapper rejects an unresolved mixed scope', () => {
     slides: [{ objectId: 'grade-5-mixed-scope', text: 'Week 6 (9/21-25)\nMandarin\nTier 1: 需要、部分、重要' }],
   }, [], grade5DeckProfile).datasets[0]
   assert.throws(
-    () => resolveDatasetLifecycles([week0921, grade5], new Date(2026, 8, 28)),
+    () => resolveDatasetLifecycles([week0921, grade5], testDate(2026, 8, 28)),
     /one grade and school-year collection/,
   )
 })
@@ -327,7 +333,7 @@ test('curriculum stages map both review cycles to the existing Test Review pract
 })
 
 test('canonical dataset lifecycle assignments are required instead of inferred from dates', () => {
-  const resolution = resolveDatasetLifecycles([...baseSets, week0928], new Date(2026, 8, 28))
+  const resolution = resolveDatasetLifecycles([...baseSets, week0928], testDate(2026, 8, 28))
   assert.equal(requireDatasetLifecycle(resolution, week0928.id), 'acquisition')
   assert.throws(() => requireDatasetLifecycle(resolution, 'missing-canonical-dataset'), /has no lifecycle assignment/)
 })

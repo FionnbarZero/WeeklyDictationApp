@@ -91,12 +91,16 @@ test('Acquisition persistence activation is limited to the approved application 
   }).filter((file) => /acquisition\/persistence/.test(readFileSync(file, 'utf8')))
   assert.deepEqual(activationFiles.map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort(), [
     'src/application/acquisitionPersistence.ts',
+    'src/application/practice/recordPracticeAnswer.ts',
+    'src/application/practice/startPractice.ts',
+    'src/application/workspace/contracts.ts',
     'src/domain.ts',
     'src/firestoreClient.ts',
+    'src/infrastructure/browserPracticePersistence.ts',
     'src/persistence/acquisitionPendingJournal.ts',
   ])
-  assert.match(source('../src/App.tsx'), /from '.\/application\/acquisitionPersistence\.ts'/)
-  assert.doesNotMatch(source('../src/App.tsx'), /from '.\/acquisition\/persistence/)
+  assert.match(source('../src/App.tsx'), /recordPracticeAnswer as recordPracticeAnswerOperation/)
+  assert.doesNotMatch(source('../src/App.tsx'), /from '.\/(?:application\/acquisitionPersistence|acquisition\/persistence)/)
   for (const file of acquisitionTypeScriptFiles().filter((entry) => entry.startsWith('persistence/'))) {
     const contents = source(`../src/acquisition/${file}`)
     assert.doesNotMatch(contents, /from\s+['"][^'"]*(?:App|domain|firestoreClient|firebaseClient|react)[^'"]*['"]/i)

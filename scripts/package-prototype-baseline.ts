@@ -1,14 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { basename, relative, resolve } from 'node:path'
 
 const repositoryRoot = process.cwd()
@@ -84,10 +76,7 @@ const manifest = {
   },
   verification: {
     document: 'prototype-baseline.md',
-    browserCommands: [
-      'npm run test:browser',
-      'npm run test:prototype-baseline',
-    ],
+    browserCommands: ['npm run test:browser', 'npm run test:prototype-baseline'],
   },
   routes: [
     '/grade5-learning-hub.html',
@@ -105,10 +94,7 @@ const manifest = {
   files: fileRecords,
 }
 
-writeFileSync(
-  resolve(outputDirectory, 'prototype-baseline-manifest.json'),
-  `${JSON.stringify(manifest, null, 2)}\n`,
-)
+writeFileSync(resolve(outputDirectory, 'prototype-baseline-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 
 const archivePath = resolve(repositoryRoot, `${tag}.tar.gz`)
 command('tar', ['-czf', archivePath, '-C', outputDirectory, '.'])

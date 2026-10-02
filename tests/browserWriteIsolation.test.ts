@@ -38,10 +38,13 @@ test('dashboard exposes separate Acquisition and Test Review start controls', ()
 })
 
 test('Acquisition and Test Review use the configured six-trial adaptive Warmup', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/application/practice/startPractice.ts'), 'utf8'),
+  ].join('\n')
   const profile = readFileSync(sourcePath('src/warmup/adaptive/profiles/grade2.ts'), 'utf8')
-  assert.match(source, /visitType: target \? 'pre-activity' : 'standalone'/)
-  assert.match(source, /warmup: warmupSelectionForSession/)
+  assert.match(source, /visitType: input\.target \? 'pre-activity' : 'standalone'/)
+  assert.match(source, /warmup: warmupSelection/)
   assert.match(profile, /'pre-activity': \{\s*maximum: 6/)
   assert.match(profile, /allocation: \{ 'mastery-rotation': 3, 'recent-entry': 2, 'needs-attention': 1 \}/)
 })
@@ -71,6 +74,10 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   const source = [
     readFileSync(sourcePath('src/App.tsx'), 'utf8'),
     readFileSync(sourcePath('src/practice/PracticeView.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/application/practice/recordPracticeAnswer.ts'), 'utf8'),
+    readFileSync(sourcePath('src/infrastructure/browserPracticePersistence.ts'), 'utf8'),
+    readFileSync(sourcePath('src/infrastructure/firestoreWorkspace.ts'), 'utf8'),
+    readFileSync(sourcePath('src/application/workspace/recoverPendingTransitions.ts'), 'utf8'),
   ].join('\n')
   assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\), currentRevealMethod: revealMethod, stage: 'review'/)
   assert.match(source, /session\.segment === 'primary' \? session\.acquisition\?\.prompt : undefined/)
@@ -82,15 +89,15 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   assert.match(source, /practicePosition\(session\)/)
   assert.match(source, /<PromptCountdown key=\{stageKey\} durationSeconds=\{timerSeconds\} onComplete=\{\(\) => onDictationComplete\('timer'\)\}/)
   assert.match(source, /checkpoint = createAcquisitionAnswerCheckpoint\(/)
-  assert.match(source, /const nextFlow = checkpoint\.nextFlow/)
+  assert.match(source, /acquisition: checkpoint\.nextFlow/)
   assert.match(source, /sessionAnswerForCheckpoint\(checkpoint\)/)
-  assert.match(source, /applyAcquisitionCheckpointToAppState\(state, checkpoint, context/)
-  assert.match(source, /commitCloudAcquisitionCheckpoint\(family\.id, selectedChild\.id, applied\.envelope, checkpoint\)/)
-  assert.match(source, /appendPendingAcquisitionCheckpoint\(window\.localStorage, checkpoint, envelope\)/)
-  assert.match(source, /cloudAcquisitionCheckpointAlreadyCommitted\(family\.id, selectedChild\.id, checkpoint\)[\s\S]*recoverAcquisitionCheckpoints\(hydrated, \[entry\]\)/)
+  assert.match(source, /applyAcquisitionCheckpointToAppState\(\s*input\.state,\s*checkpoint,\s*context/)
+  assert.match(source, /commitCloudAcquisitionCheckpoint\(\.\.\.scopeIds\(scope\), envelope, checkpoint\)/)
+  assert.match(source, /appendPendingAcquisitionCheckpoint\(storage, checkpoint, envelope\)/)
+  assert.match(source, /cloudAcquisitionCheckpointAlreadyCommitted\(\.\.\.childIds\(scope\), checkpoint\)[\s\S]*recoverAcquisitionCheckpoints\(state, \[entry\]\)/)
   assert.doesNotMatch(source, /answerAcquisitionPrompt\(current\.acquisition/)
   assert.doesNotMatch(source, /saveCloudAcquisitionProgress/)
-  assert.match(source, /const nextSession: PracticeSession = \{ \.\.\.current, acquisition: nextFlow, primaryAnswers/)
+  assert.match(source, /const session: PracticeSession = \{[\s\S]*acquisition: checkpoint\.nextFlow,[\s\S]*primaryAnswers/)
   assert.match(source, /className="replay-button" onClick=\{onReplay\}/)
   assert.doesNotMatch(source, /setInterval\(\(\) => setSeconds/)
 })
@@ -109,11 +116,14 @@ test('practice UI exposes approved exit, resume, and Done for today controls', (
 })
 
 test('header navigation preserves Acquisition as partial and abandons provisional Test Review', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
-  assert.match(source, /const leavePractice = \(nextView: View\) =>/)
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/application/practice/warmupTransitions.ts'), 'utf8'),
+  ].join('\n')
+  assert.match(source, /const leavePractice = \(nextView: BaseView\) =>/)
   assert.match(source, /const exitPractice = \(\) => leavePractice\('home'\)/)
-  assert.match(source, /if \(view === 'practice' && nextView !== 'practice'\) \{ leavePractice\(nextView\); return \}/)
-  assert.match(source, /current\.primaryPhase === 'acquisition' \? updateCloudSession[\s\S]*status: 'partial'[\s\S]*: abandonSession/)
+  assert.match(source, /if \(view === 'practice'\) \{ leavePractice\(nextView\); return \}/)
+  assert.match(source, /current\?\.primaryPhase === 'acquisition'[\s\S]*input\.persistence\.updateCloudSession[\s\S]*status: 'partial'[\s\S]*input\.persistence\.abandonCloudSession/)
 })
 
 test('local hydration performs no network or Firestore writes', () => {

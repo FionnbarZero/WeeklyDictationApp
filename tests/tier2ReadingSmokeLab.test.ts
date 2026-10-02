@@ -9,6 +9,7 @@ import {
   tier2SmokeScenarioOptions,
 } from '../src/tier2Lab/fixtures.ts'
 import { TIER2_PROTOTYPE_CURRICULUM } from '../src/tier2Lab/prototypeCurriculum.ts'
+import { assertValidTier2ReadingCapability } from '../src/tier2/contracts.ts'
 
 function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -66,7 +67,9 @@ test('Kindergarten smoke scenarios preserve active cumulative review and later M
 test('every smoke target remains a separate Tier 2 Mandarin reading occurrence', () => {
   for (const grade of ['Kindergarten', 'Grade 2', 'Grade 5'] as const) {
     const snapshot = buildTier2SmokeSnapshot(grade)
-    assert.equal(snapshot.profile.releaseStatus, 'inactive')
+    assert.equal(snapshot.profile.results, 'session-only')
+    assert.equal(snapshot.profile.recording, 'prompt-local')
+    assert.equal(snapshot.profile.productionEligibility, 'blocked')
     assert.equal(snapshot.profile.responseRule.recording, 'prompted-ephemeral')
     assert.equal(snapshot.profile.responseRule.comparisonOrder, 'child-then-model')
     for (const pathway of tier2SmokePathways(snapshot)) {
@@ -82,6 +85,24 @@ test('every smoke target remains a separate Tier 2 Mandarin reading occurrence',
     assert.equal(targetSet.id, acquisition.cohorts[0].datasetId)
     assert.deepEqual(targetSet.targets, acquisition.cohorts[0].targets)
   }
+})
+
+test('Tier 2 capability validation rejects impossible production combinations', () => {
+  const profile = buildTier2SmokeSnapshot('Grade 2').profile
+  assert.throws(
+    () => assertValidTier2ReadingCapability({ ...profile, productionEligibility: 'eligible' }),
+    /session-only results/,
+  )
+  assert.throws(
+    () =>
+      assertValidTier2ReadingCapability({
+        ...profile,
+        availability: 'development',
+        results: 'durable',
+        productionEligibility: 'eligible',
+      }),
+    /unavailable in the main app/,
+  )
 })
 
 test('the prototype curriculum preserves every known source term without a three-target cap', () => {

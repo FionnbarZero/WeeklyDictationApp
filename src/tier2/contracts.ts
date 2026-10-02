@@ -29,7 +29,23 @@ export type Tier2ReadingProfile = {
   readonly lifecycleStrategy: LifecycleStrategy
   readonly acquisitionStrategy: AcquisitionStrategy<Tier2ReadingTarget>
   readonly preActivityWarmupRequirement: 'optional' | 'required' | 'undecided'
-  readonly releaseStatus: 'inactive'
+  readonly availability: 'none' | 'development' | 'main-app'
+  readonly results: 'session-only' | 'durable'
+  readonly recording: 'prompt-local' | 'retained'
+  readonly productionEligibility: 'blocked' | 'eligible'
+}
+
+export function assertValidTier2ReadingCapability(profile: Tier2ReadingProfile) {
+  if (profile.productionEligibility === 'eligible' && profile.availability !== 'main-app') {
+    throw new Error(`${profile.id} cannot be production-eligible while it is unavailable in the main app.`)
+  }
+  if (profile.productionEligibility === 'eligible' && profile.results !== 'durable') {
+    throw new Error(`${profile.id} cannot be production-eligible with session-only results.`)
+  }
+  if (profile.availability === 'none' && profile.recording === 'retained') {
+    throw new Error(`${profile.id} cannot retain recordings when the activity is unavailable.`)
+  }
+  return profile
 }
 
 export type Tier2ReadingCohort = {

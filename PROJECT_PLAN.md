@@ -1,5 +1,7 @@
 # Weekly Dictation App — Project Plan
 
+> **Archived on 2026-10-01.** This document is preserved for its privacy, migration, grade-policy, and design history. It is no longer the authority for current status or execution order. See [`STATUS.md`](./STATUS.md), [`ROADMAP.md`](./ROADMAP.md), and the [`docs/decisions`](./docs/decisions/README.md) index. Do not delete this archive when migrating durable decisions into ADRs.
+
 ## Purpose
 
 A browser-based Mandarin dictation practice app for children in Chinese immersion programs. The public interface will be hosted through Firebase Hosting and support multiple families and children. The first target language is simplified Mainland Mandarin. Pinyin and English meanings will not appear in the child interface.

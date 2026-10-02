@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 
 test('writing responses stay hidden until one final all-target review', async ({ page }) => {
   await page.goto('/grade2-test-review-prototype.html')

@@ -18,5 +18,8 @@ export const grade5Tier2ReadingProfile = {
     pattern: grade5AcquisitionStrategy,
   }),
   preActivityWarmupRequirement: 'undecided',
-  releaseStatus: 'inactive',
+  availability: 'development',
+  results: 'session-only',
+  recording: 'prompt-local',
+  productionEligibility: 'blocked',
 } as const satisfies Tier2ReadingProfile

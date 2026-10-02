@@ -40,7 +40,13 @@ import {
 import { datasetIdFor, grade2DeckProfile, grade5DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
 import { grade2PracticeProfile } from '../src/practice/profiles/grade2.ts'
 
-const today = new Date(2026, 8, 18)
+// Use an unambiguous instant that remains the requested Los Angeles calendar
+// date regardless of the machine timezone running the test suite.
+function testDate(year: number, monthIndex: number, day: number) {
+  return new Date(Date.UTC(year, monthIndex, day, 12))
+}
+
+const today = testDate(2026, 8, 18)
 const hydrationPresentation = { presentationId: grade2DeckProfile.sourceDeckId, slides: [
   { objectId: 'oldest', text: 'Week 8/31-9/4\nMandarin\nTier 1: 甲、乙、丙、丁、戊' },
   { objectId: 'prior', text: 'Week 9/8-9/11\nMandarin\nTier 1: 己、庚、辛、壬、癸' },
@@ -82,13 +88,13 @@ test('dataset lifecycle uses ordered valid replacements instead of Friday expira
 })
 
 test('Acquisition and Test Review are independently active on the same date', () => {
-  const active = getActiveLifecycleDatasets(importedDatasets, new Date(2026, 8, 23))
+  const active = getActiveLifecycleDatasets(importedDatasets, testDate(2026, 8, 23))
   assert.equal(active.acquisition?.id, futureDataset.id)
   assert.equal(active.testReview?.id, currentDataset.id)
 })
 
 test('lifecycle selection assigns the newest arrived dataset and its immediate predecessor', () => {
-  const lifecycleDate = new Date(2026, 8, 23)
+  const lifecycleDate = testDate(2026, 8, 23)
   assert.deepEqual(getActiveLifecycleDatasets([futureDataset], lifecycleDate), { acquisition: futureDataset, testReview: null })
   assert.deepEqual(getActiveLifecycleDatasets([currentDataset], lifecycleDate), { acquisition: currentDataset, testReview: null })
   assert.deepEqual(getActiveLifecycleDatasets([oldestDataset, priorDataset], lifecycleDate), { acquisition: priorDataset, testReview: oldestDataset })
@@ -96,24 +102,24 @@ test('lifecycle selection assigns the newest arrived dataset and its immediate p
 })
 
 test('weekends and missing replacements preserve Acquisition and Test Review assignments', () => {
-  for (const lifecycleDate of [new Date(2026, 8, 18), new Date(2026, 8, 19), new Date(2026, 8, 20)]) {
+  for (const lifecycleDate of [testDate(2026, 8, 18), testDate(2026, 8, 19), testDate(2026, 8, 20)]) {
     const active = getActiveLifecycleDatasets(importedDatasets, lifecycleDate)
     assert.equal(active.acquisition?.id, currentDataset.id)
     assert.equal(active.testReview?.id, priorDataset.id)
   }
 
-  const withoutReplacement = getActiveLifecycleDatasets(importedDatasets, new Date(2026, 8, 28))
+  const withoutReplacement = getActiveLifecycleDatasets(importedDatasets, testDate(2026, 8, 28))
   assert.equal(withoutReplacement.acquisition?.id, futureDataset.id)
   assert.equal(withoutReplacement.testReview?.id, currentDataset.id)
 
-  const duplicateOnly = getActiveLifecycleDatasets([...importedDatasets, futureDataset], new Date(2026, 8, 28))
+  const duplicateOnly = getActiveLifecycleDatasets([...importedDatasets, futureDataset], testDate(2026, 8, 28))
   assert.equal(duplicateOnly.acquisition?.id, futureDataset.id)
   assert.equal(duplicateOnly.testReview?.id, currentDataset.id)
 
-  const withReplacement = getActiveLifecycleDatasets([...importedDatasets, replacementDataset], new Date(2026, 8, 28))
+  const withReplacement = getActiveLifecycleDatasets([...importedDatasets, replacementDataset], testDate(2026, 8, 28))
   assert.equal(withReplacement.acquisition?.id, replacementDataset.id)
   assert.equal(withReplacement.testReview?.id, futureDataset.id)
-  assert.equal(datasetLifecycle(currentDataset, [...importedDatasets, replacementDataset], new Date(2026, 8, 28)), 'mastered')
+  assert.equal(datasetLifecycle(currentDataset, [...importedDatasets, replacementDataset], testDate(2026, 8, 28)), 'mastered')
 })
 
 test('writing-workshop and malformed datasets never create or advance primary lifecycle options', () => {
@@ -122,13 +128,13 @@ test('writing-workshop and malformed datasets never create or advance primary li
     slides: [{ objectId: 'workshop-week', text: 'Week 9/28-10/2\nMandarin\nWriting Workshop\nNo new Tier 1 targets' }],
   }, [], grade2DeckProfile).datasets[0]
   assert.ok(workshop?.isWritingWorkshop)
-  assert.deepEqual(getActiveLifecycleDatasets([workshop], new Date(2026, 8, 23)), { acquisition: null, testReview: null })
-  assert.equal(datasetLifecycle(workshop, [...importedDatasets, workshop], new Date(2026, 8, 28)), 'no-instruction')
-  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, workshop], new Date(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
+  assert.deepEqual(getActiveLifecycleDatasets([workshop], testDate(2026, 8, 23)), { acquisition: null, testReview: null })
+  assert.equal(datasetLifecycle(workshop, [...importedDatasets, workshop], testDate(2026, 8, 28)), 'no-instruction')
+  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, workshop], testDate(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
 
   const malformed = { ...futureDataset, id: '2026-09-21__2026-09-25' }
-  assert.deepEqual(getActiveLifecycleDatasets([malformed], new Date(2026, 8, 23)), { acquisition: null, testReview: null })
-  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, malformed], new Date(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
+  assert.deepEqual(getActiveLifecycleDatasets([malformed], testDate(2026, 8, 23)), { acquisition: null, testReview: null })
+  assert.deepEqual(getActiveLifecycleDatasets([...importedDatasets, malformed], testDate(2026, 8, 28)), { acquisition: futureDataset, testReview: currentDataset })
 })
 
 test('grade and school-year filtering occurs before lifecycle selection', () => {
@@ -137,14 +143,14 @@ test('grade and school-year filtering occurs before lifecycle selection', () => 
     slides: [{ objectId: 'grade-five-current', text: 'Week 6 (9/21-25)\nMandarin\nTier 1: 天、地、人' }],
   }, [], grade5DeckProfile).datasets[0]
   const filtered = filterDatasetsForChild([...importedDatasets, gradeFive], 'Grade 2', '2026–2027')
-  const active = getActiveLifecycleDatasets(filtered, new Date(2026, 8, 23))
+  const active = getActiveLifecycleDatasets(filtered, testDate(2026, 8, 23))
   assert.equal(active.acquisition?.id, futureDataset.id)
   assert.equal(active.testReview?.id, currentDataset.id)
   assert.ok(filtered.every((dataset) => dataset.grade === 'Grade 2' && dataset.schoolYear === '2026–2027'))
 })
 
 test('each primary activity starts by offering the same adaptive Warmup', () => {
-  const lifecycleDate = new Date(2026, 8, 23)
+  const lifecycleDate = testDate(2026, 8, 23)
   const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
   assert.equal(warmup.words.length, 6)
   assert.ok(warmup.words.every((word) => word.datasetId !== futureDataset.id))
@@ -214,7 +220,7 @@ test('Acquisition and Test Review completion records and scores remain independe
 })
 
 test('Warmup-only fallback starts safely without a primary lifecycle target', () => {
-  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: new Date(2026, 9, 20), random: () => 0.25 })
+  const warmup = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: testDate(2026, 9, 20), random: () => 0.25 })
   const session = createPracticeSessionForTarget({ id: 'warmup-only-session', childId: 'maya', grade: 'Grade 2', target: null, warmup, startedAt: '2026-10-20T12:00:00.000Z', random: () => 0 })
   assert.equal(session.segment, 'warmup')
   assert.equal(session.stage, 'warmup-intro')
@@ -313,7 +319,7 @@ test('phase timers remain configurable by lifecycle', () => {
 })
 
 test('adaptive warmup uses only Mastered datasets and excludes active Acquisition and Test Review', () => {
-  const lifecycleDate = new Date(2026, 8, 23)
+  const lifecycleDate = testDate(2026, 8, 23)
   const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, random: () => 0.25 })
   const eligibleDatasetIds = new Set([oldestDataset.id, priorDataset.id])
   assert.equal(selection.words.length, 6)
@@ -324,7 +330,7 @@ test('adaptive warmup uses only Mastered datasets and excludes active Acquisitio
 })
 
 test('errors from active Acquisition and Test Review datasets cannot bypass warmup eligibility', () => {
-  const lifecycleDate = new Date(2026, 8, 23)
+  const lifecycleDate = testDate(2026, 8, 23)
   const acquisitionError = futureDataset.words[2]
   const testReviewError = currentDataset.words[2]
   const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [
@@ -337,7 +343,7 @@ test('errors from active Acquisition and Test Review datasets cannot bypass warm
 })
 
 test('persisted adaptive categories cannot bypass active lifecycle exclusion', () => {
-  const lifecycleDate = new Date(2026, 8, 23)
+  const lifecycleDate = testDate(2026, 8, 23)
   const acquisitionWord = futureDataset.words[0]
   const testReviewWord = currentDataset.words[0]
   const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: lifecycleDate, targetSize: grade2PracticeProfile.lifecycle.primaryWarmupTrials, childWordStates: [
@@ -350,17 +356,17 @@ test('persisted adaptive categories cannot bypass active lifecycle exclusion', (
 })
 
 test('a Test Review dataset becomes Recent Review only after a valid replacement moves it to Mastered', () => {
-  const duringTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
+  const duringTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [], childId: 'maya', today: testDate(2026, 8, 23), random: () => 0.25 })
   assert.ok(duringTestReview.words.every((word) => word.datasetId !== currentDataset.id))
 
-  const afterTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: new Date(2026, 8, 28), random: () => 0.25 })
+  const afterTestReview = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: testDate(2026, 8, 28), random: () => 0.25 })
   assert.ok(afterTestReview.words.some((word) => word.datasetId === currentDataset.id))
   assert.ok(afterTestReview.recentReviewWordIds.some((id) => currentDataset.words.some((word) => word.id === id)))
 })
 
 test('newly Mastered datasets replace stale active-lifecycle categories with Recent Review', () => {
   const word = currentDataset.words[0]
-  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: new Date(2026, 8, 28), childWordStates: [
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: [...importedDatasets, replacementDataset], results: [], childId: 'maya', today: testDate(2026, 8, 28), childWordStates: [
     { id: `maya::${word.id}`, childId: 'maya', wordId: word.id, datasetId: currentDataset.id, category: 'errored-word', correctStreak: 0, lastReviewedAt: '2026-09-23T12:00:00.000Z', lastIncorrectAt: '2026-09-23T12:00:00.000Z' },
   ], random: () => 0.25 })
   assert.ok(selection.words.some((candidate) => candidate.id === word.id))
@@ -369,7 +375,7 @@ test('newly Mastered datasets replace stale active-lifecycle categories with Rec
 })
 
 test('a delayed valid replacement starts Recent Review when the prior Test Review becomes Mastered', () => {
-  const lifecycleDate = new Date(2026, 9, 12)
+  const lifecycleDate = testDate(2026, 9, 12)
   const datasets = [...importedDatasets, delayedReplacementDataset]
   const active = getActiveLifecycleDatasets(datasets, lifecycleDate)
   assert.equal(active.acquisition?.id, delayedReplacementDataset.id)
@@ -384,7 +390,7 @@ test('a delayed valid replacement starts Recent Review when the prior Test Revie
 
 test('adaptive warmup promotes Recent Review after two correct responses', () => {
   const word = priorDataset.words[0]
-  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [result({ id: 'recent-correct-1', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-21T12:00:00.000Z' }), result({ id: 'recent-correct-2', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-22T12:00:00.000Z' })], childId: 'maya', today: new Date(2026, 8, 23), random: () => 0.25 })
+  const selection = buildWarmupSelection({ grade: 'Grade 2', datasets: importedDatasets, results: [result({ id: 'recent-correct-1', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-21T12:00:00.000Z' }), result({ id: 'recent-correct-2', datasetId: word.datasetId, datasetDateRange: priorDataset.dateRange, wordId: word.id, correct: true, completedAt: '2026-09-22T12:00:00.000Z' })], childId: 'maya', today: testDate(2026, 8, 23), random: () => 0.25 })
   assert.ok(!selection.recentReviewWordIds.includes(word.id))
 })
 
@@ -840,11 +846,11 @@ test('warmup-only sessions preserve mastery results without creating a primary s
     queue: priorDataset.words, warmupQueue: priorDataset.words, primaryQueue: [], index: priorDataset.words.length - 1, startedAt: '2026-09-22T12:00:00.000Z',
     warmupAnswers: priorDataset.words.map((word) => ({ word, correct: true, revealMethod: 'timer' })), primaryAnswers: [],
   }
-  const committed = commitCompletedSession(state, session, new Date(2026, 8, 22))
+  const committed = commitCompletedSession(state, session, testDate(2026, 8, 22))
   assert.equal(committed.results.length, priorDataset.words.length)
   assert.equal(committed.scores.length, 0)
   assert.equal(committed.completedSessions.length, 0)
-  assert.equal(commitCompletedSession(committed, session, new Date(2026, 8, 22)), committed)
+  assert.equal(commitCompletedSession(committed, session, testDate(2026, 8, 22)), committed)
 })
 
 test('partial sessions create no results or graph points', () => {

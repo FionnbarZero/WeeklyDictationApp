@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 import path from 'node:path'
 import { openGrade2LearningActivity } from './learningHub.ts'
 
