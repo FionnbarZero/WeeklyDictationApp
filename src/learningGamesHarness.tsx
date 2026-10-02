@@ -24,9 +24,10 @@ import {
 } from './learningGames/index.ts'
 import { ReadingResponsePanel } from './readingPractice/ReadingResponsePanel.tsx'
 import './styles.css'
-import './tier2Lab/readingLab.css'
 import './learningGamesHarness.css'
 import './learningGamesHarnessCool.css'
+
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 
 type HarnessView = 'gallery' | 'game' | 'results'
 
@@ -215,7 +216,7 @@ function LearningGamesHarness() {
   const [runId, setRunId] = useState(0)
   const [summary, setSummary] = useState<LearningGameSummary | null>(null)
 
-  if (!import.meta.env.DEV) return <main className="lgh-unavailable">This development harness is unavailable in production.</main>
+  if (!import.meta.env.DEV && !prototypeBaselineEnabled) return <main className="lgh-unavailable">This development harness is unavailable in production.</main>
 
   function returnToTop() {
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))

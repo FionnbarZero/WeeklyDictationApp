@@ -9,6 +9,8 @@ import {
 } from './skywriting/grade5AcquisitionSample.ts'
 import './skywritingAcquisitionHarness.css'
 
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
+
 type PrototypeAssessment = {
   word: string
   correct: boolean
@@ -55,12 +57,12 @@ function SkyWritingAcquisitionHarness() {
   const complete = index >= grade5SkyWritingAcquisitionSample.length
 
   useEffect(() => {
-    if (!import.meta.env.DEV || !target || phase !== 'writing') return
+    if ((!import.meta.env.DEV && !prototypeBaselineEnabled) || !target || phase !== 'writing') return
     setSequenceStep(0)
     return playAcquisitionSequence(target, setSequenceStep)
   }, [target, phase, runId])
 
-  if (!import.meta.env.DEV) return <main className="sky-acq-unavailable">This development harness is unavailable in production.</main>
+  if (!import.meta.env.DEV && !prototypeBaselineEnabled) return <main className="sky-acq-unavailable">This development harness is unavailable in production.</main>
 
   function assess(correct: boolean) {
     if (!target) return

@@ -24,6 +24,8 @@ import {
   type Tier2SmokeGrade,
 } from './tier2Lab/fixtures.ts'
 
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
+
 type SmokeAttempt = {
   promptKind: string
   target: Tier2ReadingTarget
@@ -357,7 +359,7 @@ function Tier2ReadingSmokeLab() {
 }
 
 function Tier2ReadingLabEntry() {
-  if (!import.meta.env.DEV) return <main className="t2-shell"><p className="t2-safety">This Tier 2 smoke-test page is available only from the local development server.</p></main>
+  if (!import.meta.env.DEV && !prototypeBaselineEnabled) return <main className="t2-shell"><p className="t2-safety">This Tier 2 smoke-test page is available only from the local development server.</p></main>
   return <Tier2ReadingSmokeLab />
 }
 

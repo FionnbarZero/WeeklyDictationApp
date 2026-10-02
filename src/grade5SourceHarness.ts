@@ -1,7 +1,8 @@
 import { extractGrade5Presentation } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 
-const fixtureUrl = '/tests/fixtures/grade5-presentation.json'
+const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -195,7 +196,7 @@ function clearResults() {
   setStatus('Results cleared. No project or source data changed.')
 }
 
-if (!import.meta.env.DEV) {
+if (!import.meta.env.DEV && !prototypeBaselineEnabled) {
   loadFixtureButton.disabled = true
   fileInput.disabled = true
   setStatus('This Grade 5 source harness is available only in local development.', true)
