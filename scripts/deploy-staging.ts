@@ -37,7 +37,7 @@ run('npx', [
   '--project',
   validated.projectId,
   '--only',
-  'hosting,firestore:rules',
+  'hosting,firestore:rules,auth',
   '--message',
   `staging-${revision}`,
   ...(dryRun ? ['--dry-run'] : []),

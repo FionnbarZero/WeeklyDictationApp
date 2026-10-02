@@ -1,6 +1,6 @@
 # Staging foundation
 
-Status: repository guardrails implemented; cloud project provisioning pending authenticated owner approval.
+Status: repository guardrails and the isolated cloud foundation are provisioned; first live deployment and synthetic smoke evidence are pending.
 
 Program B1 creates a Firebase environment that is operationally separate from any production project. It begins with synthetic, production-shaped data only. No real child profile, email address, recording, source credential, refresh token, or copied production document is permitted during B1.
 
@@ -24,7 +24,7 @@ Copy `.env.staging.example` to the ignored `.env.staging.local` file and add onl
 npm run deploy:staging -- --confirm-project <staging-project-id>
 ```
 
-The deployment wrapper always builds first and targets the validated project explicitly. It deploys only Firebase Hosting and Firestore rules; it never uses `--force` and cannot target a project whose ID lacks a staging marker.
+The deployment wrapper always builds first and targets the validated project explicitly. It deploys only Firebase Hosting, Firestore rules, and the checked-in Authentication provider configuration; it never uses `--force` and cannot target a project whose ID lacks a staging marker.
 
 ## Provisioning sequence
 
@@ -39,15 +39,21 @@ Provisioning must use the Firebase-owning Google account and record the selected
 7. Register the staging web app with reCAPTCHA Enterprise App Check.
 8. Deploy Hosting and Firestore rules, then exercise only synthetic fixtures.
 
-Recommended initial values, pending owner confirmation:
+Confirmed initial values (provisioned 2026-10-02):
 
-| Setting | Recommended value | Status |
+| Setting | Value | Status |
 | --- | --- | --- |
-| Display name | Weekly Dictation Staging | Pending |
-| Project ID | `weekly-dictation-staging` if globally available | Pending |
-| Firestore location | `nam5` US multi-region | Pending irreversible choice |
+| Display name | Weekly Dictation Staging | Active |
+| Project ID | `weekly-dictation-staging` | Active; project number `868493008635` |
+| Web app | Weekly Dictation Staging Web | Active; app ID `1:868493008635:web:8bc63d91bda495ac6ada5e` |
+| Hosting site | `weekly-dictation-staging` | Active; `https://weekly-dictation-staging.web.app` |
+| Firestore location | `nam5` US multi-region | Created; native mode; deletion protection enabled; PITR disabled |
+| Authentication | Email/Password | Enabled; password required |
+| App Check | reCAPTCHA Enterprise | Registered; one-hour token TTL; enforcement remains disabled for monitoring |
 | Data class | Synthetic production-shaped fixtures only | Approved by roadmap |
 | Hosting source | `dist` from `npm run build:staging` | Implemented |
+
+The reCAPTCHA Enterprise key is restricted to `weekly-dictation-staging.web.app`, `weekly-dictation-staging.firebaseapp.com`, and `localhost`. Its public site key and the Firebase public web configuration live only in the ignored `.env.staging.local` file on the provisioning workstation.
 
 ## App Check rollout
 
@@ -68,11 +74,13 @@ Before B1 closes, record screenshots or exported configuration showing:
 - a billing budget and alerts if billing is attached, or written confirmation that the project remains on the no-billing plan;
 - named operational owner and notification destination.
 
-A Cloud Billing budget is an alert, not a spending cap. No paid service may be enabled merely to satisfy this checklist without explicit owner approval.
+A Cloud Billing budget is an alert, not a spending cap. The project remains on the no-billing plan for B1, so no billing budget is attached. No paid service may be enabled merely to satisfy this checklist without explicit owner approval. Operational notifications go to the authenticated project owner, `meghan.oreillygreen@gmail.com`.
 
 ## Retention and deletion
 
 B1 retains synthetic staging accounts and documents for no more than 30 days after their last rehearsal. The operational owner deletes expired synthetic users and their family trees, then records the deletion date. Automated Firestore TTL is deferred until the persisted schema has an approved expiration field and B2 verifies that TTL cannot remove continuation-critical records.
+
+The initial operational and retention owner is `meghan.oreillygreen@gmail.com`; the first deletion review is due 2026-11-01.
 
 Real child data is prohibited. Any proposal to copy real data requires separate authorization, data minimization, an access list, a deletion deadline, and a rehearsed deletion verification procedure.
 
@@ -104,5 +112,13 @@ B1 is not complete until all of the following are recorded here:
 - budget/no-billing decision and notification path;
 - retention owner and first deletion-review date;
 - successful synthetic smoke results and rollback evidence.
+
+Provisioning evidence recorded 2026-10-02:
+
+- authenticated Firebase owner: `meghan.oreillygreen@gmail.com`;
+- project, web app, Hosting site, Firestore location, deletion protection, Authentication provider, and App Check registration verified through authenticated admin APIs;
+- App Check service enforcement is intentionally unset during the monitoring period;
+- `npm run deploy:staging:dry-run` passed with the real staging configuration, including the production build, bundle budgets, Firestore rules compilation, Hosting plan, and Auth target;
+- live deployment URL, smoke results, App Check traffic metrics, and rollback evidence remain pending.
 
 References: [Firebase CLI environments](https://firebase.google.com/docs/cli#project_aliases), [Firebase Hosting configuration](https://firebase.google.com/docs/hosting/full-config), [App Check enforcement](https://firebase.google.com/docs/app-check/enable-enforcement), and [Cloud Billing budgets](https://cloud.google.com/billing/docs/how-to/budgets).

@@ -61,11 +61,15 @@ test('a live staging deploy requires the exact project ID as an explicit confirm
 
   const deployScript = readFileSync(resolve(root, 'scripts/deploy-staging.ts'), 'utf8')
   assert.match(deployScript, /git', \['status', '--porcelain'\]/)
+  assert.match(deployScript, /hosting,firestore:rules,auth/)
   assert.doesNotMatch(deployScript, /--force/)
 })
 
 test('Firebase Hosting serves only the production dist and deploys restrictive baseline headers', () => {
+  const aliases = JSON.parse(readFileSync(resolve(root, '.firebaserc'), 'utf8'))
   const config = JSON.parse(readFileSync(resolve(root, 'firebase.json'), 'utf8'))
+  assert.deepEqual(aliases.projects, { staging: 'weekly-dictation-staging' })
+  assert.deepEqual(config.auth, { providers: { emailPassword: true } })
   assert.equal(config.hosting.public, 'dist')
   assert.deepEqual(config.hosting.rewrites, [{ source: '**', destination: '/index.html' }])
   assert.ok(config.hosting.headers.some((entry: { source: string }) => entry.source === '/assets/**'))
