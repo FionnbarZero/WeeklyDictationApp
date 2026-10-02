@@ -1,7 +1,8 @@
 import type { SheetsWorkbookPayload } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook, kindergartenSheetsDryRunSummary } from './kindergartenSheetsImporter.ts'
 
-const fixtureUrl = '/tests/fixtures/kindergarten-workbook.json'
+const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -105,7 +106,7 @@ async function loadFixture() {
   }
 }
 
-if (!import.meta.env.DEV) {
+if (!import.meta.env.DEV && !prototypeBaselineEnabled) {
   loadFixtureButton.disabled = true
   fileInput.disabled = true
   setStatus('This Kindergarten source harness is available only in local development.', true)

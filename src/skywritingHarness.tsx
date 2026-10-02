@@ -9,6 +9,8 @@ import {
 } from './skywriting/harnessSample.ts'
 import './skywritingHarness.css'
 
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
+
 type HarnessView = 'intro' | 'activity' | 'results'
 
 function speakText(text: string) {
@@ -29,7 +31,7 @@ function SkyWritingHarness() {
   const [runId, setRunId] = useState(0)
   const [result, setResult] = useState<SkyWritingResult | null>(null)
 
-  if (!import.meta.env.DEV) return <main className="sky-lab-unavailable">This development harness is unavailable in production.</main>
+  if (!import.meta.env.DEV && !prototypeBaselineEnabled) return <main className="sky-lab-unavailable">This development harness is unavailable in production.</main>
 
   function startRun() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()

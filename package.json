@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:public-preview": "tsc -b && vite build --mode public-preview",
+    "build:prototype-baseline": "tsc -b && vite build --mode prototype-baseline --outDir prototype-dist",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "playwright test",
+    "test:prototype-baseline": "npm run build:prototype-baseline && playwright test tests/browser/prototypeRoutes.spec.ts tests/browser/kindergartenActivityExit.spec.ts tests/browser/prototypeVisuals.spec.ts --config playwright.prototype-baseline.config.ts",
     "test:public-preview": "npm run build:public-preview && playwright test --config playwright.public-preview.config.ts",
     "test:firestore": "firebase emulators:exec --only firestore --project weekly-dictation-test \"node --experimental-strip-types --test tests/firestoreEmulator.emulator.ts\"",
     "import:slides": "node --experimental-strip-types scripts/import-slides.ts",
@@ -16,6 +18,7 @@
     "hydrate:slides": "node --experimental-strip-types scripts/hydrate-google-slides.ts",
     "inspect:kindergarten": "node --experimental-strip-types scripts/inspect-kindergarten-sheets.ts",
     "import:server": "node --experimental-strip-types backend/server.ts",
+    "package:prototype-baseline": "npm run build:prototype-baseline && node --experimental-strip-types scripts/package-prototype-baseline.ts",
     "preview": "vite preview"
   },
   "dependencies": {

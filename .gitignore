@@ -1,5 +1,8 @@
 node_modules
 dist
+prototype-dist
+prototype-baseline-*.tar.gz
+prototype-baseline-*.tar.gz.sha256
 .DS_Store
 *.local
 *.tsbuildinfo

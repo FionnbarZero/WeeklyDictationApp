@@ -34,6 +34,7 @@ import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
 
 function requiredElement<T extends HTMLElement>(id: string) {
@@ -450,7 +451,7 @@ dismissButton.addEventListener('click', () => {
   requestActions.replaceChildren()
 })
 
-if (!import.meta.env.DEV && !publicPreviewEnabled) {
+if (!import.meta.env.DEV && !publicPreviewEnabled && !prototypeBaselineEnabled) {
   setStatus('This Grade 5 learning hub is available only in local development or an approved public preview.', true)
 } else {
   void loadHub()

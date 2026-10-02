@@ -20,10 +20,12 @@ When the Vite development server is running, these isolated pages can be opened 
 - `/grade5-learning-hub.html` — test the Grade 5 child lab through the shared Kindergarten-inspired Learning Hub UI.
 - `/kindergarten-source-harness.html` — inspect the trusted Kindergarten Sheets fixture and Monday–Sunday normalization.
 - `/kindergarten-learning-lab.html` — test **Enter the Dojo**, weekly Tier 1 writing, shared recorded Tier 2 reading, and the explicit Unit 1 review fixture.
+- `/tier2-reading-lab.html` — exercise the separate reading lifecycle for Kindergarten, Grade 2, and Grade 5 entirely in memory.
+- `/grade2-test-review-prototype.html` — test the approved collect-all, one-page final review pattern for one Grade 2 writing and reading week.
+- `/learning-games-harness.html` — test all ten modular learning-game components with synthetic interaction values.
 - `/skywriting-harness.html` — test the standalone Sky Writing module with ten source-derived Tier 1 targets across Kindergarten, Grade 2, and Grade 5.
 - `/skywriting-acquisition-harness.html` — test the Acquisition-controlled Sky Writing response with three source-derived Grade 5 Tier 1 targets.
 - `/skywriting-font-comparison.html` — compare Songti SC Light and Kaiti SC Regular using the Grade 5 Sky Writing prototype targets.
-- `/grade2-test-review-prototype.html` — test the approved collect-all, one-page final review pattern for one Grade 2 writing and reading week.
 
 The lab pages are not linked from `index.html` or `App.tsx`, do not activate a curriculum source, and do not persist progress. The two browser source labs read checked-in fixtures or user-selected local JSON only. Kindergarten now also has a separately owned production-practice profile, but its source-registry release flag remains off. The grade-neutral Learning Hub presentation boundary is documented in [`docs/shared-learning-hub-ui.md`](./docs/shared-learning-hub-ui.md); grade lifecycle, source parsing, and practice engines remain outside it.
 
@@ -35,6 +37,8 @@ npm run test:public-preview
 ```
 
 The preview flag makes the two fixture-backed labs available in that build without activating their production source registrations or enabling persistence. Grade 5 includes current Tier 1 writing and Tier 2 reading plus cohort-specific Spirit Realm reacquisition; reacquisition repeats the teaching routine without moving the cohort out of Mastery.
+
+The approved prototypes also have a separately tagged, packaged baseline. Its exact route inventory, limitations, regression tests, build command, and immutable-publication rules are recorded in [`docs/prototype-baseline.md`](./docs/prototype-baseline.md). The prototype-baseline mode does not alter the normal production or public-preview entry lists.
 
 ## Firebase setup
 

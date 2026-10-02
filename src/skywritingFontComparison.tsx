@@ -4,6 +4,8 @@ import { WritingPad, type WritingPadTraceFont } from './skywriting/index.ts'
 import { grade5SkyWritingAcquisitionSample } from './skywriting/grade5AcquisitionSample.ts'
 import './skywritingFontComparison.css'
 
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
+
 type FontAvailability = {
   songti: boolean
   kaiti: boolean
@@ -34,7 +36,7 @@ function SkyWritingFontComparison() {
     })
   }, [])
 
-  if (!import.meta.env.DEV) return <main className="font-compare-unavailable">This development comparison is unavailable in production.</main>
+  if (!import.meta.env.DEV && !prototypeBaselineEnabled) return <main className="font-compare-unavailable">This development comparison is unavailable in production.</main>
 
   return <main className="font-compare-shell">
     <header className="font-compare-header">

@@ -41,6 +41,7 @@ import { selectWarmupWords } from './warmup/engine.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
+const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
@@ -176,7 +177,7 @@ function KindergartenLearningLab() {
   const [masteryWords, setMasteryWords] = useState<Word[]>([])
 
   useEffect(() => {
-    if (!import.meta.env.DEV && !publicPreviewEnabled) {
+    if (!import.meta.env.DEV && !publicPreviewEnabled && !prototypeBaselineEnabled) {
       setStatus('This Kindergarten learning lab is available only in local development or an approved public preview.')
       setError(true)
       return
@@ -500,7 +501,7 @@ function KindergartenLearningLab() {
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting
     words={tier1Words}
-    onExit={returnToHub}
+    onExit={() => returnToHub()}
     onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
     speak={speak}
   />
