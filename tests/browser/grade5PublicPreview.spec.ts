@@ -53,7 +53,7 @@ test('the public Grade 5 preview opens current writing and reading Acquisition',
   await page.getByRole('button', { name: 'Exit reading' }).click()
 })
 
-test('the Spirit Realm offers cohort-specific writing and reading reacquisition without changing its stage', async ({ page }) => {
+test('the Spirit Realm reentry offers guided writing and reading plus both Test Review formats', async ({ page }) => {
   await openSection(page, 'Enter the Spirit Realm')
   await page.getByRole('button', { name: 'Reenter the Training Dojo' }).click()
 
@@ -61,6 +61,9 @@ test('the Spirit Realm offers cohort-specific writing and reading reacquisition 
   const reading = page.getByRole('button', { name: 'Relearn Reading · 8/31–9/4' })
   await expect(writing).toBeVisible()
   await expect(reading).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start Writing Test · 8/31–9/4' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start Reading Test · 8/31–9/4' })).toBeVisible()
+  await expect(page.getByText(/guided practice or the collect-first Test Review format/i)).toBeVisible()
 
   await writing.click()
   await expect(page.getByRole('heading', { name: 'Warm up' })).toBeVisible()

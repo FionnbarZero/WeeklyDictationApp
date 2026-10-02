@@ -146,7 +146,7 @@ test('both Test Review stages offer guided Acquisition and collect-first Test Re
   }
 })
 
-test('mastery requests preserve separate writing and reading queues', () => {
+test('mastery requests preserve separate writing and reading queues and offer both guided and Test Review reentry', () => {
   const review = section('review')
   const writingWarmup = activity(review, 'mastery-writing-warmup').launchRequests[0]
   const readingWarmup = activity(review, 'mastery-reading-warmup').launchRequests[0]
@@ -158,8 +158,18 @@ test('mastery requests preserve separate writing and reading queues', () => {
   assert.equal(readingWarmup.warmupMaximum, null)
   assert.equal(writingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.equal(readingWarmup.preActivityWarmupRequirement, 'not-applicable')
-  assert.deepEqual(reteach.map((request) => request.learningChannel), ['tier-1-writing', 'tier-2-reading'])
-  assert.ok(reteach.every((request) => request.activityKind === 'reacquisition'))
+  assert.deepEqual(reteach.map((request) => request.learningChannel), [
+    'tier-1-writing',
+    'tier-2-reading',
+    'tier-1-writing',
+    'tier-2-reading',
+  ])
+  assert.deepEqual(reteach.map((request) => request.activityKind), [
+    'reacquisition',
+    'reacquisition',
+    'test-review',
+    'test-review',
+  ])
   assert.ok(reteach.every((request) => request.stage === 'mastery'))
   assert.ok(reteach.every((request) => request.cohortId === 'grade-5__2026-27__2026-08-31__2026-09-04'))
   assert.ok(reteach.every((request) => request.warmupMaximum === 6))

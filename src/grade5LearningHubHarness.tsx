@@ -392,7 +392,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
         key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
         mode="reading"
         targets={targets}
-        activityLabel={`Reading Test Review ${pathway.cycle || 1}`}
+        activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
         onPlayReference={speakReadingReference}
         onDiscard={() => leavePractice('Reading Test Review was abandoned. Temporary recordings and provisional answers were discarded.')}
         onComplete={(completion) => leavePractice(`Reading Test Review complete: ${completion.correct}/${completion.total} correct. This lab result was not saved.`)}
@@ -437,7 +437,7 @@ function launchFromLearningHub(launch: Grade5HubLaunch) {
 
 function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[]) {
   requestTitle.textContent = label
-  const includesGuidedAndReview = requests.some((request) => request.activityKind === 'acquisition')
+  const includesGuidedAndReview = requests.some((request) => request.activityKind === 'acquisition' || request.activityKind === 'reacquisition')
     && requests.some((request) => request.activityKind === 'test-review')
   requestMessage.textContent = includesGuidedAndReview
     ? 'Choose guided practice or the collect-first Test Review format for Tier 1 writing or Tier 2 reading.'
