@@ -54,6 +54,8 @@ test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 readi
   assert.match(harnessSource, /not connected yet/i)
   assert.match(harnessSource, /startGrade5AcquisitionLab/)
   assert.match(harnessSource, /<Tier2ReadingPractice/)
+  assert.match(harnessSource, /<DeferredTestReview/)
+  assert.match(harnessSource, /mode="reading"/)
   assert.match(harnessSource, /grade5LabReadingPathway/)
   assert.match(harnessSource, /grade5LabWarmupSelection/)
   assert.match(harnessSource, /skip-warmup/)

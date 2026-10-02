@@ -73,3 +73,20 @@ test('the Spirit Realm offers cohort-specific writing and reading reacquisition 
   await expect(page.getByRole('button', { name: 'Exit reading' })).toBeVisible()
   await expect(page.getByText(/Grade 5 development reading · recording and results are not saved/)).toBeVisible()
 })
+
+test('Reenter the Training Dojo offers collect-first writing and reading Test Review formats', async ({ page }) => {
+  await openSection(page, 'Practice your Ninja Skills')
+  await page.getByRole('button', { name: 'Reenter the Training Dojo' }).click()
+
+  await expect(page.getByText(/guided practice or the collect-first Test Review format/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start Writing Dojo · 9/14–9/18' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start Reading Dojo · 9/14–9/18' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start Writing Test · 9/14–9/18' })).toBeVisible()
+  const readingTest = page.getByRole('button', { name: 'Start Reading Test · 9/14–9/18' })
+  await expect(readingTest).toBeVisible()
+
+  await readingTest.click()
+  await expect(page.getByText('Reading responses')).toBeVisible()
+  await expect(page.getByText('Reading Test Review 1')).toBeVisible()
+  await expect(page.getByText(/collect every response first/i)).toBeVisible()
+})

@@ -159,6 +159,7 @@ test('shared deferred review is activated through writing practice and the Kinde
     .filter((file) => /(?:^|\/)DeferredTestReview(?:\.tsx)?['"]/.test(readFileSync(file, 'utf8')))
     .map((file) => relative(repositoryRoot, file).split(sep).join('/'))
   assert.deepEqual(consumers, [
+    'src/grade5LearningHubHarness.tsx',
     'src/kindergartenLearningLabHarness.tsx',
     'src/practice/PracticeView.tsx',
     'src/testReviewPrototype/TestReviewPrototype.tsx',
@@ -178,6 +179,8 @@ test('shared deferred review is activated through writing practice and the Kinde
   assert.doesNotMatch(source('src/testReview/WritingResponseCollector.tsx'), /write the response on paper/i)
   assert.match(app, /completeDeferredWritingTestReview/)
   assert.match(grade5, /deferred-writing-test-review/)
+  assert.match(grade5, /mode="reading"/)
+  assert.match(grade5, /Reading Test Review/)
   assert.match(kindergarten, /deferred-writing-test-review/)
   assert.match(kindergarten, /mode="reading"/)
   assert.match(kindergarten, /Final Boss Reading Test/)

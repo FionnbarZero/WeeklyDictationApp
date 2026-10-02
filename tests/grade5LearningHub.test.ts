@@ -123,16 +123,23 @@ test('Test Review 1 and Test Review 2 requests reference different cohorts', () 
   assert.equal(test2.preActivityWarmupRequirement, 'undecided')
 })
 
-test('both Test Review stages can request Acquisition help without changing curriculum stage', () => {
+test('both Test Review stages offer guided Acquisition and collect-first Test Review options without changing curriculum stage', () => {
   for (const stage of ['test-review-1', 'test-review-2'] as const) {
     const requests = activity(section(stage), `${stage}-reenter-training-dojo`).launchRequests
 
     assert.deepEqual(requests.map((request) => request.learningChannel), [
       'tier-1-writing',
       'tier-2-reading',
+      'tier-1-writing',
+      'tier-2-reading',
     ])
     assert.ok(requests.every((request) => request.stage === stage))
-    assert.ok(requests.every((request) => request.activityKind === 'acquisition'))
+    assert.deepEqual(requests.map((request) => request.activityKind), [
+      'acquisition',
+      'acquisition',
+      'test-review',
+      'test-review',
+    ])
     assert.ok(requests.every((request) => request.warmupMaximum === 6))
     assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'undecided'))
     assert.equal(new Set(requests.map((request) => request.cohortId)).size, 1)

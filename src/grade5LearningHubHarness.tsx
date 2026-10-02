@@ -30,6 +30,8 @@ import {
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
+import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
+import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
@@ -107,6 +109,22 @@ function speakWord(word: Word) {
   utterance.rate = 0.55
   window.speechSynthesis.speak(utterance)
   return () => window.speechSynthesis.cancel()
+}
+
+function speakReadingReference(word: Word): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      reject(new Error('Mandarin speech playback is unavailable.'))
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(word.text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.55
+    utterance.onend = () => resolve()
+    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
+    window.speechSynthesis.speak(utterance)
+  })
 }
 
 function speakCurrentWord() {
@@ -367,6 +385,22 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     statusElement.hidden = true
     practicePanel.hidden = false
     document.body.classList.add('practice-active')
+    if (pathway.kind === 'test-review') {
+      const targets = tier2ReadingPathwayTargets(pathway)
+      practiceSummary.textContent = 'Tier 2 reading Test Review collects every temporary recording before one final self-assessment page. Nothing from this lab run is saved.'
+      practiceRoot.render(<DeferredTestReview
+        key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
+        mode="reading"
+        targets={targets}
+        activityLabel={`Reading Test Review ${pathway.cycle || 1}`}
+        onPlayReference={speakReadingReference}
+        onDiscard={() => leavePractice('Reading Test Review was abandoned. Temporary recordings and provisional answers were discarded.')}
+        onComplete={(completion) => leavePractice(`Reading Test Review complete: ${completion.correct}/${completion.total} correct. This lab result was not saved.`)}
+        sessionNote="Grade 5 reading Test Review · collect every response first · recordings and results are not saved"
+      />)
+      practicePanel.scrollTop = 0
+      return
+    }
     practiceSummary.textContent = 'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
     practiceRoot.render(<Tier2ReadingPractice
       key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
@@ -403,8 +437,12 @@ function launchFromLearningHub(launch: Grade5HubLaunch) {
 
 function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[]) {
   requestTitle.textContent = label
-  requestMessage.textContent = requests.length > 1
-    ? 'Choose the connected Tier 1 writing or Tier 2 reading pathway.'
+  const includesGuidedAndReview = requests.some((request) => request.activityKind === 'acquisition')
+    && requests.some((request) => request.activityKind === 'test-review')
+  requestMessage.textContent = includesGuidedAndReview
+    ? 'Choose guided practice or the collect-first Test Review format for Tier 1 writing or Tier 2 reading.'
+    : requests.length > 1
+      ? 'Choose the connected Tier 1 writing or Tier 2 reading pathway.'
     : 'This activity is not connected yet. The portable request below is preserved for its future practice engine.'
   requestOutput.textContent = JSON.stringify(requests.length === 1 ? requests[0] : requests, null, 2)
   requestActions.replaceChildren()

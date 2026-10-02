@@ -222,6 +222,14 @@ test('Grade 5 writing and reading launch requests are connected, including maste
   assert.equal(grade5LabWritingRequestIsConnected(test2Writing.launchRequests[0]), true)
   assert.equal(grade5LabWritingRequestIsConnected(reentry.launchRequests[0]), true)
   assert.equal(grade5LabReadingRequestIsConnected(reentry.launchRequests[1]), true)
+  assert.equal(grade5LabWritingRequestIsConnected(reentry.launchRequests[2]), true)
+  assert.equal(grade5LabReadingRequestIsConnected(reentry.launchRequests[3]), true)
+  assert.deepEqual(reentry.launchRequests.map((request) => request.activityKind), [
+    'acquisition',
+    'acquisition',
+    'test-review',
+    'test-review',
+  ])
   assert.equal(grade5LabWritingRequestIsConnected(masteryReentry.launchRequests[0]), true)
   assert.equal(grade5LabReadingRequestIsConnected(masteryReentry.launchRequests[1]), true)
   assert.ok(masteryReentry.launchRequests.every((request) => request.stage === 'mastery'))

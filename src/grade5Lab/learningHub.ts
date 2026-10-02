@@ -172,13 +172,15 @@ function cohortActivities(
     activities.push({
       id: `${stage}-reenter-training-dojo`,
       label: 'Reenter the Training Dojo',
-      description: 'Return to guided writing or reading Acquisition for this word set when more help is needed.',
+      description: 'Choose guided practice or a collect-first Test Review for writing or reading.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
       launchRequests: candidate
         ? [
             launchRequest(candidate, stage, 'tier-1-writing', 'acquisition'),
             launchRequest(candidate, stage, 'tier-2-reading', 'acquisition'),
+            launchRequest(candidate, stage, 'tier-1-writing', 'test-review'),
+            launchRequest(candidate, stage, 'tier-2-reading', 'test-review'),
           ]
         : [],
     })
