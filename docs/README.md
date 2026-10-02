@@ -33,6 +33,7 @@
 
 ## Operations and verification
 
+- [Controlled family beta operations](./family-beta-operations.md)
 - [Staging foundation](./staging-foundation.md)
 - [Backend importer](./backend-import.md)
 - [Manual UI verification](./manual-ui-verification.md)

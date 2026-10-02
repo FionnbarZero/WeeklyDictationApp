@@ -1,8 +1,14 @@
 # Weekly Dictation status
 
-Last verified: 2026-10-02; Program B1 staging foundation complete
+Last verified: 2026-10-02; Program B1 staging foundation complete; controlled family beta safety is the current planning priority
 
 This is the authoritative capability matrix for what exists today. A visible UI is not evidence that a capability is durable or eligible for production. Product direction and sequencing live in [ROADMAP.md](./ROADMAP.md); durable architecture decisions live in [docs/decisions](./docs/decisions/README.md).
+
+## Current operating posture
+
+The product owner reports that one child currently uses each of the Kindergarten, Grade 2, and Grade 5 applications. This is treated as a closed, adult-supervised family beta rather than a public production launch. The immediate priority is Program C0: preserve one known-good release per grade and add safe preview, backup, promotion, bug-response, and rollback controls before resuming B2 migration rehearsal or broadening activation.
+
+The synthetic staging project remains separate from the family beta. Real child data, email addresses, recordings, authentication state, and copied family documents are still prohibited in synthetic staging. See [Controlled family beta operations](./docs/family-beta-operations.md).
 
 ## Repository health
 
@@ -30,15 +36,15 @@ Combinations must be validated centrally before the planned capability registry 
 
 ## Current capability matrix
 
-| Grade / capability | Availability | Results | Recording | Production eligibility | Principal blocker |
-| --- | --- | --- | --- | --- | --- |
-| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | `blocked` | Migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
-| Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | `blocked` | Versioned Tier 2 persistence and approved reference-audio/privacy gates |
-| Kindergarten Tier 1 writing | `development` | `session-only` | N/A | `blocked` | Trusted importer deployment, source activation review, staging recovery, and release relationship with Tier 2 |
-| Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
-| Grade 5 Tier 1 writing | `development` | `session-only` | N/A | `blocked` | Importer activation, Warmup policy, and durable two-review-cycle persistence |
-| Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
-| Trusted curriculum importer | `development` | N/A | N/A | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
+| Grade / capability | Availability | Results | Recording | Family beta posture | Production eligibility | Principal blocker |
+| --- | --- | --- | --- | --- | --- | --- |
+| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta; known-good release and child-scoped backup/restore controls must be documented | `blocked` | C0 safeguards, migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
+| Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | Experimental only; must not imply retained progress | `blocked` | Approved behavior contract, versioned Tier 2 persistence, and reference-audio/privacy gates |
+| Kindergarten Tier 1 writing | `development` | `session-only` | N/A | Used in closed beta; stable release and explicit session-only status required | `blocked` | C0 safeguards, trusted importer deployment, source activation review, staging recovery, and release relationship with Tier 2 |
+| Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
+| Grade 5 Tier 1 writing | `development` | `session-only` | N/A | Used in closed beta; stable release and unresolved-policy notice required | `blocked` | C0 safeguards, approved behavior contract, importer activation, Warmup policy, and durable two-review-cycle persistence |
+| Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
+| Trusted curriculum importer | `development` | N/A | N/A | Not part of the current child beta delivery path | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
 
 ## Frozen contracts during Program A
 
@@ -65,7 +71,11 @@ Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73
 
 ## Known active risks
 
-- Program B1 is complete. Synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill are the next Program B risks in B2.
+- The three child-facing beta deployments, exact build identities, persistence notices, and rollback targets are not yet recorded in one verified release inventory.
+- Grade 2 durable state needs a rehearsed child-scoped export, checksum, preview restore, and lossless restore before persistence-affecting beta updates.
+- Kindergarten and Grade 5 are session-only development experiences; beta availability must not be presented as saved progress or production eligibility.
+- Current activity tests largely characterize the implemented activity models rather than independently proving that every child-facing activity is product-correct. Activity corrections remain grade-specific behavior changes.
+- Program B1 is complete. B2 synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill wait until C0 beta safety controls pass.
 - The authorized cross-device Grade 2 pilot with real profile data remains B3 work and cannot begin until B2 passes.
 - The initial JavaScript budget passes with limited headroom. Dependency updates must run the complete build budget before merge.
 - The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before pilot or production acceptance.
@@ -84,4 +94,5 @@ Commit `29e0f972f7ec` is live at `https://weekly-dictation-staging.web.app`. A s
 2. [ROADMAP.md](./ROADMAP.md) states approved execution order and exit gates.
 3. [docs/decisions](./docs/decisions/README.md) records durable decisions and their consequences.
 4. [docs/prototype-baseline.md](./docs/prototype-baseline.md) records the immutable and living prototype references.
-5. [PROJECT_PLAN.md](./PROJECT_PLAN.md) is a preserved historical archive and is not an active status source.
+5. [docs/family-beta-operations.md](./docs/family-beta-operations.md) defines the closed beta release, backup, bug-response, and rollback procedure.
+6. [PROJECT_PLAN.md](./PROJECT_PLAN.md) is a preserved historical archive and is not an active status source.
