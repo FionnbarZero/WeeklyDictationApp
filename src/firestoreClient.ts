@@ -20,6 +20,7 @@ export type { CloudWarmupRotation } from './persistence/warmup/cloudContracts.ts
 type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue>; createTime?: string; updateTime?: string }
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
 type FirestoreRunQueryResult = { document?: FirestoreDocument }
+type FirestoreBatchGetResult = { found?: FirestoreDocument; missing?: string }
 
 export const INITIAL_WORKSPACE_RECORD_BUDGETS = {
   datasetWords: 10_000,
@@ -145,15 +146,14 @@ function updateWrite(parts: string[], value: Record<string, unknown>, currentDoc
 }
 
 async function getDoc<T>(path: string) {
-  try {
-    return decodeDocument<T>(await firestoreRequest<FirestoreDocument>(path))
-  } catch (error) {
-    // Firestore REST can report a missing document as either NOT_FOUND or
-    // a human-readable "Document ... not found" message. A missing user,
-    // family, or child is expected during first-time account setup.
-    if (/not[ _-]?found/i.test(String(error))) return null
-    throw error
-  }
+  const documentName = fullDocumentName(path.split('/').map((part) => decodeURIComponent(part)))
+  const [result] = await authorizedFirestoreRequest<FirestoreBatchGetResult[]>(
+    `${firestoreDatabaseBase()}/documents:batchGet`,
+    { method: 'POST', body: JSON.stringify({ documents: [documentName] }) },
+  )
+  if (result?.found) return decodeDocument<T>(result.found)
+  if (result?.missing === documentName) return null
+  throw new Error(`Firestore batch get returned no result for ${documentName}.`)
 }
 async function putDoc(path: string, value: Record<string, unknown>) { await firestoreRequest(path, { method: 'PATCH', body: JSON.stringify(encodeFields(value)) }) }
 async function listDocs<T>(path: string, signal?: AbortSignal) {

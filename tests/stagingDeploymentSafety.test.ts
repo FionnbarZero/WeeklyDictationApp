@@ -88,6 +88,7 @@ test('staging requests carry App Check and staging telemetry stays outside the i
 
   assert.match(authClient, /firebaseAppCheckHeaders/)
   assert.match(firestoreClient, /firebaseAppCheckHeaders/)
+  assert.match(firestoreClient, /documents:batchGet/)
   assert.match(sdkRuntime, /ReCaptchaEnterpriseProvider/)
   assert.match(sdkRuntime, /import\('firebase\/app-check'\)/)
   assert.match(observability, /import\('firebase\/performance'\)/)
