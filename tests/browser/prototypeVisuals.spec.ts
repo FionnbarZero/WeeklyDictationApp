@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 import { waitForStablePrototypeFrame, watchForUnexpectedBrowserErrors } from './prototypeSupport.ts'
 
 test.use({

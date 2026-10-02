@@ -7,7 +7,7 @@ The Kindergarten learning lab is a development-only child-experience harness at 
 - The opening action says **Enter the Dojo**.
 - A tester manually selects one vocabulary-bearing tab from the checked-in workbook fixture. The default is explicitly `Week 6 09/21`; it is not chosen from today's date.
 - Tier 1 `Writing character` targets enter the shared `PracticeView` and shared Acquisition engine.
-- Tier 2 `High frequency word` targets remain in a separate visible look-listen-say prototype with no recording or scoring.
+- Tier 2 `High frequency word` targets use the shared reading runner with prompt-local microphone recording and session-only self-assessment. No recording, reading result, or reading progress is retained.
 - The **Prepare for your test** card aggregates the explicit Unit 1 fixture window, August 31 through September 27. Its shared Test Review presentation uses the 14 observed Tier 1 writing targets; the nine Tier 2 words remain preserved and displayed separately.
 
 ## Acquisition ownership
@@ -28,7 +28,7 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - The production lifecycle and writing-practice profiles are registered, but the source release flag remains inactive.
 - No active week is inferred.
 - No Warmup policy is assumed or simulated.
-- No Tier 2 assessment engine, microphone capture, score, or progress record exists.
+- No durable Tier 2 attempt, score, adaptive state, progress record, or retained microphone audio exists.
 - Unit 1 dates are explicit in both the lab fixture and the lifecycle profile; they are not inferred from workbook order.
 - The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
 - Refreshing or leaving discards all lab state.

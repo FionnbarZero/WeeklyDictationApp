@@ -45,7 +45,8 @@ test('Kindergarten writing uses the shared PracticeView with an independent stra
   const labAdapter = source('src/kindergartenLab/acquisitionLab.ts')
   const registry = source('src/practice/profiles/registry.ts')
 
-  assert.match(appSource, /import \{ PracticeView, type PracticeAnswer \} from '\.\/practice\/PracticeView'/)
+  assert.match(appSource, /import type \{ PracticeAnswer \} from '\.\/practice\/PracticeView'/)
+  assert.match(appSource, /import\('\.\/practice\/PracticeView\.tsx'\)[\s\S]*module\.PracticeView/)
   assert.match(harnessSource, /import \{ PracticeView, type PracticeAnswer \} from '\.\/practice\/PracticeView\.tsx'/)
   assert.match(harnessSource, /<PracticeView/)
   assert.match(harnessSource, /deferred-writing-test-review/)

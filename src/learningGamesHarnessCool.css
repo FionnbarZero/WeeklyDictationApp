@@ -1,6 +1,6 @@
 :root { --coral: #ff5c7c; color: #f8f9ff; background: #080c1d; }
 
-body {
+html body {
   color: #f8f9ff;
   background:
     radial-gradient(circle at 8% -4%, rgb(122 91 255 / 35%) 0, transparent 29rem),

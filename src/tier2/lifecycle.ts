@@ -22,7 +22,9 @@ function cohortFor(datasetId: string, datasetsById: Map<string, Dataset>): Tier2
     datasetId,
     targets,
     available: targets.length > 0,
-    ...(targets.length === 0 ? { unavailableReason: 'This curriculum cohort has no canonical Tier 2 reading targets.' } : {}),
+    ...(targets.length === 0
+      ? { unavailableReason: 'This curriculum cohort has no canonical Tier 2 reading targets.' }
+      : {}),
   }
 }
 
@@ -71,12 +73,15 @@ export function resolveTier2ReadingLifecycle(
   context: LifecycleContext,
   datasets: readonly Dataset[],
 ): Tier2ReadingLifecycle {
-  if (profile.activityModule !== TIER2_READING_ACTIVITY_MODULE) throw new Error('Tier 2 reading profile has the wrong activity module.')
+  if (profile.activityModule !== TIER2_READING_ACTIVITY_MODULE)
+    throw new Error('Tier 2 reading profile has the wrong activity module.')
   if (context.scope.grade !== profile.grade || context.scope.schoolYearKey !== profile.schoolYearKey) {
     throw new Error('Tier 2 reading requires the exact grade and school-year profile scope.')
   }
-  if (profile.lifecycleStrategy.grade !== profile.grade
-    || profile.lifecycleStrategy.schoolYearKey !== profile.schoolYearKey) {
+  if (
+    profile.lifecycleStrategy.grade !== profile.grade ||
+    profile.lifecycleStrategy.schoolYearKey !== profile.schoolYearKey
+  ) {
     throw new Error('Tier 2 reading profile has a mismatched lifecycle strategy.')
   }
   const datasetsById = new Map<string, Dataset>()
@@ -90,12 +95,12 @@ export function resolveTier2ReadingLifecycle(
   const acquisition = resolution.acquisitionDatasetId
     ? pathway('acquisition', [resolution.acquisitionDatasetId], datasetsById)
     : null
-  const testReviews = groupedReviews(resolution.testReviews).map((review) => pathway(
-    'test-review',
-    review.datasetIds,
-    datasetsById,
-    { cycle: review.cycle, ...(review.reviewGroupId ? { reviewGroupId: review.reviewGroupId } : {}) },
-  ))
+  const testReviews = groupedReviews(resolution.testReviews).map((review) =>
+    pathway('test-review', review.datasetIds, datasetsById, {
+      cycle: review.cycle,
+      ...(review.reviewGroupId ? { reviewGroupId: review.reviewGroupId } : {}),
+    }),
+  )
 
   return {
     grade: profile.grade,

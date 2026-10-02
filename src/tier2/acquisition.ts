@@ -26,7 +26,9 @@ function readingFamiliarTargets(options: ReadingStrategyOptions): Tier2ReadingTa
  * Bumping the grade-owned pattern version also bumps the mirrored reading
  * strategy version, preventing a silent reinterpretation of saved progress.
  */
-export function acquisitionStrategyForTier2Reading(options: ReadingStrategyOptions): AcquisitionStrategy<Tier2ReadingTarget> {
+export function acquisitionStrategyForTier2Reading(
+  options: ReadingStrategyOptions,
+): AcquisitionStrategy<Tier2ReadingTarget> {
   return {
     id: options.id,
     version: options.pattern.version,
@@ -40,7 +42,5 @@ export function acquisitionStrategyForTier2Reading(options: ReadingStrategyOptio
 }
 
 export function isTier2ReadingTarget(target: AcquisitionTarget): target is Tier2ReadingTarget {
-  return target.language === 'mandarin'
-    && target.tier === 'tier-2'
-    && target.activityType === 'reading'
+  return target.language === 'mandarin' && target.tier === 'tier-2' && target.activityType === 'reading'
 }

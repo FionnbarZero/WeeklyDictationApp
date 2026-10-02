@@ -657,6 +657,17 @@ service cloud.firestore {
       }
     }
 
+    // Collection-group reads keep initial hydration to one bounded request for
+    // dataset vocabulary and one for a selected child's historical attempts.
+    // Writes remain governed by the narrower resource rules above.
+    match /{path=**}/words/{wordId} {
+      allow read: if signedIn();
+    }
+
+    match /families/{familyId}/children/{childId}/{path=**}/attempts/{attemptId} {
+      allow read: if childExists(familyId, childId);
+    }
+
     match /importLogs/{logId} {
       allow read, write: if false;
     }

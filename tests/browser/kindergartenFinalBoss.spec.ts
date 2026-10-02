@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
 
 test.use({ viewport: { width: 390, height: 844 }, permissions: [] })
 
@@ -19,9 +19,9 @@ test('Kindergarten writing Final Boss retains Sky Writing and opens an unobscure
   const pad = page.getByRole('img', { name: 'Blank word drawing pad' })
   const bounds = await pad.boundingBox()
   expect(bounds).not.toBeNull()
-  await page.mouse.move(bounds!.x + bounds!.width * .25, bounds!.y + bounds!.height * .3)
+  await page.mouse.move(bounds!.x + bounds!.width * 0.25, bounds!.y + bounds!.height * 0.3)
   await page.mouse.down()
-  await page.mouse.move(bounds!.x + bounds!.width * .7, bounds!.y + bounds!.height * .7, { steps: 5 })
+  await page.mouse.move(bounds!.x + bounds!.width * 0.7, bounds!.y + bounds!.height * 0.7, { steps: 5 })
   await page.mouse.up()
   await expect(page.getByRole('img', { name: 'Your word drawing' })).toBeVisible()
 
@@ -48,7 +48,10 @@ test('Kindergarten writing Final Boss submits one mixed final score', async ({ p
 
   const rows = page.locator('.deferred-review-row')
   for (let index = 0; index < 14; index += 1) {
-    await rows.nth(index).getByRole('button', { name: index % 2 === 0 ? 'Yes' : 'Not yet' }).click()
+    await rows
+      .nth(index)
+      .getByRole('button', { name: index % 2 === 0 ? 'Yes' : 'Not yet' })
+      .click()
   }
   await page.getByRole('button', { name: 'Submit final review' }).click()
 
@@ -59,14 +62,18 @@ test('Kindergarten writing Final Boss submits one mixed final score', async ({ p
 test('Kindergarten Final Boss confirms before discarding an unfinished response', async ({ page }) => {
   await openFinalBoss(page, 'Writing Test')
   await page.getByRole('button', { name: 'Skip Timer' }).click()
-  await page.getByRole('button', { name: 'Exit without saving' }).click()
+  const exitButton = page.getByRole('button', { name: 'Exit without saving' })
+  await exitButton.click()
 
   const confirmation = page.getByRole('dialog', { name: 'Exit without saving?' })
   await expect(confirmation).toBeVisible()
-  await confirmation.getByRole('button', { name: 'Keep working' }).click()
+  await expect(confirmation.getByRole('button', { name: 'Keep working' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toBeHidden()
+  await expect(exitButton).toBeFocused()
   await expect(page.getByText('Writing responses · 2 of 14')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Exit without saving' }).click()
+  await exitButton.click()
   await confirmation.getByRole('button', { name: 'Exit without saving' }).click()
   await expect(page.getByRole('heading', { name: /Ready for your next adventure/ })).toBeVisible()
   await expect(page.getByText('No scores yet')).toBeVisible()
@@ -87,7 +94,10 @@ test('Kindergarten reading Final Boss defers microphone fallbacks to one final r
   const rows = page.locator('.deferred-review-row')
   await expect(rows).toHaveCount(9)
   for (let index = 0; index < 9; index += 1) {
-    await rows.nth(index).getByRole('button', { name: index < 5 ? 'Yes' : 'Not yet' }).click()
+    await rows
+      .nth(index)
+      .getByRole('button', { name: index < 5 ? 'Yes' : 'Not yet' })
+      .click()
   }
   await page.getByRole('button', { name: 'Submit final review' }).click()
 

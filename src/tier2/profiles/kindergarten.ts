@@ -18,5 +18,8 @@ export const kindergartenTier2ReadingProfile = {
     pattern: kindergartenAcquisitionStrategy,
   }),
   preActivityWarmupRequirement: 'optional',
-  releaseStatus: 'inactive',
+  availability: 'development',
+  results: 'session-only',
+  recording: 'prompt-local',
+  productionEligibility: 'blocked',
 } as const satisfies Tier2ReadingProfile

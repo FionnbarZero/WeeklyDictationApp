@@ -24,10 +24,19 @@ before(async () => {
     await setDoc(doc(database, 'families/family-parent/children/maya/sessions/session-1'), {
       id: 'session-1', childId: 'maya', familyId: 'family-parent', status: 'in_progress', primaryPhase: 'acquisition',
     })
+    await setDoc(doc(database, 'families/family-parent/children/maya/sessions/session-1/attempts/seed-attempt'), {
+      id: 'seed-attempt', sessionId: 'session-1', wordId: 'word-1', sourceDatasetId: 'dataset-1',
+      phase: 'acquisition', correct: true, reviewedAt: '2026-09-29T15:59:00.000Z', completionStatus: 'complete',
+    })
     await setDoc(doc(database, 'datasets/dataset-1'), { id: 'dataset-1' })
     await setDoc(doc(database, 'datasets/dataset-1/words/word-1'), { id: 'word-1' })
     await setDoc(doc(database, 'users/intruder'), { familyId: 'family-intruder', role: 'parent' })
     await setDoc(doc(database, 'families/family-intruder'), { ownerParentId: 'intruder' })
+    await setDoc(doc(database, 'families/family-intruder/children/other'), { id: 'other', active: true })
+    await setDoc(doc(database, 'families/family-intruder/children/other/sessions/other-session/attempts/other-attempt'), {
+      id: 'other-attempt', sessionId: 'other-session', wordId: 'word-1', sourceDatasetId: 'dataset-1',
+      phase: 'acquisition', correct: true, reviewedAt: '2026-09-29T15:59:00.000Z', completionStatus: 'complete',
+    })
   })
 })
 
@@ -46,6 +55,41 @@ function receipt(transitionId: string, expectedRevision: number) {
     appliedRevision: expectedRevision + 1,
     appliedAt: `2026-09-29T16:00:0${expectedRevision + 1}.000Z`,
   }
+}
+
+function mockToken(uid: string) {
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
+  return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({
+    iss: 'https://securetoken.google.com/weekly-dictation-test',
+    aud: 'weekly-dictation-test',
+    iat: 0,
+    exp: 3600,
+    auth_time: 0,
+    sub: uid,
+    user_id: uid,
+    firebase: { sign_in_provider: 'custom', identities: {} },
+  })}.`
+}
+
+async function runCollectionGroupQuery(uid: string, parent: string, collectionId: string) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST
+  assert.ok(host, 'The Firestore Emulator host must be configured.')
+  return fetch(
+    `http://${host}/v1/projects/weekly-dictation-test/databases/(default)/documents${parent}:runQuery`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${mockToken(uid)}`,
+      },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId, allDescendants: true }],
+          limit: 100,
+        },
+      }),
+    },
+  )
 }
 
 function progression(revision: number, transitionId: string) {
@@ -176,6 +220,29 @@ function warmupTransitionBatch(uid: 'parent' | 'intruder', transition = warmupTr
 
 test('an owner can atomically create a progression and immutable receipt', async () => {
   await assertSucceeds(atomicCheckpointBatch('parent', 1, 'transition-1').commit())
+})
+
+test('bounded collection-group hydration reads vocabulary and only the selected family child attempts', async () => {
+  const words = await runCollectionGroupQuery('parent', '', 'words')
+  assert.equal(words.status, 200, words.status === 200 ? undefined : await words.text())
+
+  const attempts = await runCollectionGroupQuery(
+    'parent',
+    '/families/family-parent/children/maya',
+    'attempts',
+  )
+  assert.equal(attempts.status, 200, attempts.status === 200 ? undefined : await attempts.text())
+  const attemptRows = (await attempts.json()) as Array<{ document?: { name?: string } }>
+  const names = attemptRows.flatMap((row) => (row.document?.name ? [row.document.name] : []))
+  assert.ok(names.some((name) => name.endsWith('/attempts/seed-attempt')))
+  assert.ok(names.every((name) => name.includes('/families/family-parent/children/maya/')))
+
+  const crossFamily = await runCollectionGroupQuery(
+    'intruder',
+    '/families/family-parent/children/maya',
+    'attempts',
+  )
+  assert.equal(crossFamily.status, 403)
 })
 
 test('the next revision, scored attempt, and DT observation require the same atomic receipt', async () => {

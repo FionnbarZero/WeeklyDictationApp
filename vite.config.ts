@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'public-preview' ? '/WeeklyDictationApp/' : '/',
   plugins: [react()],
   build: {
+    manifest: true,
     rollupOptions: {
       input: {
         app: page('./index.html'),

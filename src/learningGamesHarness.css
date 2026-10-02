@@ -1,4 +1,4 @@
-:root { --coral: #b85647; color: #26313c; background: #f7f3ed; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; }
+html:root { --coral: #b85647; color: #26313c; background: #f7f3ed; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; }
 * { box-sizing: border-box; }
 body { min-width: 320px; min-height: 100vh; margin: 0; background: radial-gradient(circle at 2% 0, #f5d87d 0, transparent 25rem), radial-gradient(circle at 98% 8%, #d8cbef 0, transparent 28rem), #f7f3ed; }
 button { font: inherit; }

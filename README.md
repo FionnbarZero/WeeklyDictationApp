@@ -1,6 +1,6 @@
 # Weekly Dictation
 
-React/Vite prototype for a Mandarin dictation practice app. Stage 2 keeps the existing child-friendly practice flow while adding authenticated parent families, multiple child profiles, Firestore-backed sessions/scores, grade-aware datasets, and a configurable Grade 2 Google Slides importer.
+React/Vite Mandarin dictation practice application with authenticated family profiles, durable Grade 2 Tier 1 practice, and isolated multi-grade development labs. Current capability and release status are tracked in [`STATUS.md`](./STATUS.md); implementation order and exit gates are tracked in [`ROADMAP.md`](./ROADMAP.md).
 
 ## Run locally
 
@@ -144,7 +144,7 @@ The intended production flow is **Google Slides/Sheets → trusted read-only imp
 
 The checksum-verified browser backup and isolated restore page are temporary migration safeguards for progress that currently lives in local browser storage. They are not the permanent backend and are not intended as a weekly parent task. Before production, one reviewed migration will copy each child's valid local Acquisition, Warmup, graph, and preserved legacy history into child-owned Firestore records; a second-device verification and rollback window must pass before the original backup or compatibility readers are retired.
 
-Production activation remains grade-specific. Grade 2 Tier 1 writing is the first pilot because its versioned Acquisition and Adaptive Warmup persistence paths are complete in code. Shared lifecycle, session, score, and cloud contracts now retain explicit Test Review cycle identity, with legacy single-review records normalized to cycle 1. Grade 5 remains blocked on its production practice and per-cycle provisional Test Review persistence gates. Kindergarten remains blocked on future unit/source decisions and its own production activation. Tier 2 reading is currently session-only for every grade and requires a separate durable persistence boundary. The complete ordered cutover is recorded in `PROJECT_PLAN.md` under **Production operating model and cutover roadmap**.
+Production activation remains grade-specific. Grade 2 Tier 1 writing is the first pilot because its versioned Acquisition and Adaptive Warmup persistence paths are complete in code. Shared lifecycle, session, score, and cloud contracts now retain explicit Test Review cycle identity, with legacy single-review records normalized to cycle 1. Grade 5 remains blocked on its production practice and per-cycle provisional Test Review persistence gates. Kindergarten remains blocked on trusted source activation and the explicit Kindergarten/Tier 2 release decision. Tier 2 reading is currently session-only for every grade and requires a separate durable persistence boundary before it can represent retained progress. See [`ROADMAP.md`](./ROADMAP.md) for the independent dependency graph.
 
 ## Adaptive Warmup architecture status
 

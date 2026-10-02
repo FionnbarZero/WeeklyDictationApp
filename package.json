@@ -3,11 +3,22 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": "24.x",
+    "npm": "11.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:performance": "node --experimental-strip-types scripts/check-performance-budgets.ts",
+    "build:check": "npm run build && npm run check:performance",
     "build:public-preview": "tsc -b && vite build --mode public-preview",
     "build:prototype-baseline": "tsc -b && vite build --mode prototype-baseline --outDir prototype-dist",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "biome lint src backend scripts tests vite.config.ts playwright.config.ts playwright.public-preview.config.ts playwright.prototype-baseline.config.ts",
+    "format": "biome format --write biome.json package.json performance-budgets.json tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts playwright.config.ts playwright.public-preview.config.ts playwright.prototype-baseline.config.ts scripts/package-prototype-baseline.ts scripts/check-performance-budgets.ts src/main.tsx src/AppErrorBoundary.tsx src/accessibility src/application/practice src/application/workspace src/infrastructure src/persistence/cloudRecords.ts src/progress/HistoryView.tsx src/testReview/DeferredTestReview.tsx src/tier2 tests/applicationOrchestrationArchitecture.test.ts tests/practiceCoordinator.test.ts tests/workspaceSynchronization.test.ts tests/browser/fixtures.ts tests/browser/accessibility.spec.ts tests/browser/kindergartenFinalBoss.spec.ts",
+    "format:check": "biome format biome.json package.json performance-budgets.json tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts playwright.config.ts playwright.public-preview.config.ts playwright.prototype-baseline.config.ts scripts/package-prototype-baseline.ts scripts/check-performance-budgets.ts src/main.tsx src/AppErrorBoundary.tsx src/accessibility src/application/practice src/application/workspace src/infrastructure src/persistence/cloudRecords.ts src/progress/HistoryView.tsx src/testReview/DeferredTestReview.tsx src/tier2 tests/applicationOrchestrationArchitecture.test.ts tests/practiceCoordinator.test.ts tests/workspaceSynchronization.test.ts tests/browser/fixtures.ts tests/browser/accessibility.spec.ts tests/browser/kindergartenFinalBoss.spec.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "playwright test",
     "test:prototype-baseline": "npm run build:prototype-baseline && playwright test tests/browser/prototypeRoutes.spec.ts tests/browser/kindergartenActivityExit.spec.ts tests/browser/prototypeVisuals.spec.ts --config playwright.prototype-baseline.config.ts",
@@ -22,20 +33,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "lucide-react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "firebase": "12.19.0",
+    "lucide-react": "1.47.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.2",
-    "@playwright/test": "^1.63.0",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "firebase": "^12.19.0",
-    "firebase-tools": "^15.32.0"
+    "@biomejs/biome": "2.5.15",
+    "@firebase/rules-unit-testing": "5.0.2",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "firebase-tools": "15.32.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
   }
 }

@@ -10,17 +10,34 @@ import { acquisitionPersistenceContext } from './application/acquisitionPersiste
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
 import { isTestReviewCycle, storedTestReviewCycle, type TestReviewCycle } from './testReview/contracts.ts'
+import type { ChildProfile, CloudAdaptiveState, CloudAttempt, CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
 
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
-export type FamilyRecord = { id: string; ownerParentId: string; createdAt: string; updatedAt: string }
-export type ChildProfile = { id: string; nickname: string; grade: string; schoolYear: string; active: boolean; gradeEffectiveDate: string; createdAt: string; updatedAt: string }
-export type CloudSession = { id: string; childId: string; familyId: string; sessionDate: string; localDate: string; startedAt: string; completedAt?: string; primaryPhase: 'acquisition' | 'test-review'; datasetId: string; datasetIds?: string[]; reviewGroupId?: string; reviewCycle?: TestReviewCycle; warmupOnly?: boolean; status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'; warmupStatus: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'not_started'; applicationVersion: string }
-export type CloudAttempt = { id: string; sessionId: string; wordId: string; sourceDatasetId: string; phase: 'warmup' | 'acquisition' | 'test-review'; reviewCycle?: TestReviewCycle; correct: boolean; reviewedAt: string; completionStatus: 'temporary' | 'complete'; countsTowardWeeklyScore?: boolean; acquisitionKind?: string }
-export type CloudAdaptiveState = { childId: string; childWordStates: ChildWordState[]; monthlyRotationScores: MonthlyRotationScore[]; rotationCycleId: number; updatedAt: string }
+export type { ChildProfile, CloudAdaptiveState, CloudAttempt, CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
 export type { CloudWarmupRotation } from './persistence/warmup/cloudContracts.ts'
 
 type FirestoreDocument = { name?: string; fields?: Record<string, FirestoreValue>; createTime?: string; updateTime?: string }
 type FirestoreValue = { stringValue?: string; booleanValue?: boolean; integerValue?: string; doubleValue?: number; timestampValue?: string; arrayValue?: { values?: FirestoreValue[] }; mapValue?: { fields?: Record<string, FirestoreValue> } }
+type FirestoreRunQueryResult = { document?: FirestoreDocument }
+
+export const INITIAL_WORKSPACE_RECORD_BUDGETS = {
+  datasetWords: 10_000,
+  childAttempts: 5_000,
+} as const
+
+export const FIRESTORE_QUERY_TIMING_PREFIX = 'weekly-dictation:firestore-query:'
+
+export function collectionGroupStructuredQuery(collectionId: string, maximumRecords: number) {
+  if (!collectionId || !Number.isSafeInteger(maximumRecords) || maximumRecords < 1) {
+    throw new Error('A collection-group hydration query requires a positive record budget.')
+  }
+  return {
+    structuredQuery: {
+      from: [{ collectionId, allDescendants: true }],
+      limit: maximumRecords + 1,
+    },
+  }
+}
 
 function firestoreBase() { return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents` }
 function firestoreDatabaseBase() { return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)` }
@@ -45,17 +62,63 @@ function encodeFields(value: Record<string, unknown>) { return { fields: Object.
 function decodeDocument<T>(document: FirestoreDocument): T { return Object.fromEntries(Object.entries(document.fields || {}).map(([key, item]) => [key, plainValue(item)])) as T }
 function docPath(parts: string[]) { return parts.map((part) => encodeURIComponent(part)).join('/') }
 
-async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  if (!firebaseConfigReady) throw new Error('Firebase configuration is missing.')
-  const token = await getIdToken()
-  const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
-  return body as T
+function recordFirestoreQueryTiming(label: string | undefined, startedAt: number) {
+  if (!label || typeof performance === 'undefined' || typeof performance.measure !== 'function') return
+  try {
+    performance.measure(`${FIRESTORE_QUERY_TIMING_PREFIX}${label}`, {
+      start: startedAt,
+      end: performance.now(),
+    })
+  } catch {
+    // Query timing is diagnostic telemetry and must never affect persistence.
+  }
 }
 
-async function firestoreRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  return authorizedFirestoreRequest<T>(`${firestoreBase()}/${path}`, init)
+async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit, timingLabel?: string): Promise<T> {
+  const startedAt = typeof performance === 'undefined' ? 0 : performance.now()
+  if (!firebaseConfigReady) throw new Error('Firebase configuration is missing.')
+  try {
+    const token = await getIdToken()
+    const response = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init?.headers || {}) } })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
+    return body as T
+  } finally {
+    recordFirestoreQueryTiming(timingLabel, startedAt)
+  }
+}
+
+async function firestoreRequest<T>(path: string, init?: RequestInit, timingLabel?: string): Promise<T> {
+  return authorizedFirestoreRequest<T>(`${firestoreBase()}/${path}`, init, timingLabel)
+}
+
+async function collectionGroupQuery<T>(input: {
+  parentParts?: string[]
+  collectionId: string
+  maximumRecords: number
+  signal?: AbortSignal
+}) {
+  const parent = input.parentParts?.length ? `/${docPath(input.parentParts)}` : ''
+  const response = await authorizedFirestoreRequest<FirestoreRunQueryResult[]>(
+    `${firestoreDatabaseBase()}/documents${parent}:runQuery`,
+    {
+      method: 'POST',
+      signal: input.signal,
+      body: JSON.stringify(collectionGroupStructuredQuery(input.collectionId, input.maximumRecords)),
+    },
+    `collection-group:${input.collectionId}`,
+  )
+  const records = response.flatMap((result) =>
+    result.document
+      ? [{ id: result.document.name?.split('/').pop() || '', ...decodeDocument<T>(result.document) }]
+      : [],
+  ) as Array<T & { id: string }>
+  if (records.length > input.maximumRecords) {
+    throw new Error(
+      `Initial ${input.collectionId} hydration exceeds its ${input.maximumRecords}-record safety budget.`,
+    )
+  }
+  return records
 }
 
 async function firestoreCommit(writes: unknown[]) {
@@ -85,12 +148,13 @@ async function getDoc<T>(path: string) {
   }
 }
 async function putDoc(path: string, value: Record<string, unknown>) { await firestoreRequest(path, { method: 'PATCH', body: JSON.stringify(encodeFields(value)) }) }
-async function listDocs<T>(path: string) {
+async function listDocs<T>(path: string, signal?: AbortSignal) {
   const documents: FirestoreDocument[] = []
   let pageToken = ''
+  const collectionId = path.split('/').pop() || 'unknown'
   do {
     const query = new URLSearchParams({ pageSize: '300' }); if (pageToken) query.set('pageToken', pageToken)
-    const response = await firestoreRequest<{ documents?: FirestoreDocument[]; nextPageToken?: string }>(`${path}?${query}`)
+    const response = await firestoreRequest<{ documents?: FirestoreDocument[]; nextPageToken?: string }>(`${path}?${query}`, { signal }, `list:${collectionId}`)
     documents.push(...(response.documents || []))
     pageToken = response.nextPageToken || ''
   } while (pageToken)
@@ -110,13 +174,28 @@ export async function listChildren(familyId: string) { return listDocs<ChildProf
 export async function createChild(familyId: string, input: Pick<ChildProfile, 'nickname' | 'grade' | 'schoolYear'>) { const now = new Date().toISOString(); const id = `child-${crypto.randomUUID()}`; const child: ChildProfile = { id, ...input, active: true, gradeEffectiveDate: now.slice(0, 10), createdAt: now, updatedAt: now }; await putDoc(docPath(['families', familyId, 'children', id]), child); return child }
 export async function updateChild(familyId: string, childId: string, patch: Partial<Pick<ChildProfile, 'nickname' | 'grade' | 'schoolYear' | 'active' | 'gradeEffectiveDate'>>) { const current = await getDoc<ChildProfile>(docPath(['families', familyId, 'children', childId])); if (!current) throw new Error('Child profile was not found.'); const child = { ...current, ...patch, updatedAt: new Date().toISOString() }; await putDoc(docPath(['families', familyId, 'children', childId]), child); return child }
 
-export async function listDatasets() { return listDocs<Dataset>(docPath(['datasets'])) }
+export async function listDatasets(signal?: AbortSignal) { return listDocs<Dataset>(docPath(['datasets']), signal) }
 export async function listDatasetWords(datasetId: string) { return listDocs<Word>(docPath(['datasets', datasetId, 'words'])) }
+export async function listAllDatasetWords(signal?: AbortSignal) {
+  return collectionGroupQuery<Word>({
+    collectionId: 'words',
+    maximumRecords: INITIAL_WORKSPACE_RECORD_BUDGETS.datasetWords,
+    signal,
+  })
+}
 // Shared dataset and import-log writes are intentionally server-only. The browser
 // client may read shared datasets, but never exposes those write operations.
 
-export async function listSessions(familyId: string, childId: string) { return listDocs<CloudSession>(docPath(['families', familyId, 'children', childId, 'sessions'])) }
+export async function listSessions(familyId: string, childId: string, signal?: AbortSignal) { return listDocs<CloudSession>(docPath(['families', familyId, 'children', childId, 'sessions']), signal) }
 export async function listAttempts(familyId: string, childId: string, sessionId: string) { return listDocs<CloudAttempt>(docPath(['families', familyId, 'children', childId, 'sessions', sessionId, 'attempts'])) }
+export async function listChildAttempts(familyId: string, childId: string, signal?: AbortSignal) {
+  return collectionGroupQuery<CloudAttempt>({
+    parentParts: ['families', familyId, 'children', childId],
+    collectionId: 'attempts',
+    maximumRecords: INITIAL_WORKSPACE_RECORD_BUDGETS.childAttempts,
+    signal,
+  })
+}
 export async function listScores(familyId: string, childId: string) { return listDocs<DatasetScore>(docPath(['families', familyId, 'children', childId, 'scores'])) }
 export async function listAcquisitionProgressions(familyId: string, childId: string) { return listDocs<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions'])) }
 export async function listDistractorTargetObservations(familyId: string, childId: string) { return listDocs<DistractorTargetObservation>(docPath(['families', familyId, 'children', childId, 'dtObservations'])) }
