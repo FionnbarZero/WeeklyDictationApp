@@ -33,6 +33,7 @@
 
 ## Operations and verification
 
+- [Product and production readiness audit](./product-production-readiness-audit-2026-10-02.md)
 - [Controlled family beta operations](./family-beta-operations.md)
 - [Family beta release inventory](./family-beta-release-inventory.md)
 - [Family beta release manifest template](./family-beta-release-manifest-template.md)
