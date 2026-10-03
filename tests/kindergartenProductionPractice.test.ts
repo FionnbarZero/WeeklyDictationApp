@@ -60,14 +60,13 @@ test('Kindergarten production practice has an owned profile but remains behind t
 })
 
 test('the Unit 1 review creates one cumulative session and persists one score per source week', () => {
-  const lifecycle = resolveDatasetLifecycles(datasets, new Date(2026, 8, 27, 12, 0))
+  const lifecycle = resolveDatasetLifecycles(datasets, new Date(2026, 9, 3, 12, 0))
   const targets = practiceTargetsForLifecycle(lifecycle)
   const acquisition = targets.find((target) => target.phase === 'acquisition')
   const review = targets.find((target) => target.phase === 'test-review')
 
-  assert.ok(acquisition)
+  assert.equal(acquisition, undefined)
   assert.ok(review)
-  assert.equal(acquisition.dataset.startDate, '2026-09-21')
   assert.equal(review.reviewCycle, 1)
   assert.equal(review.reviewGroupId, 'kindergarten-2026-27-unit-1')
   assert.deepEqual(review.reviewDatasets?.map((dataset) => dataset.startDate), [
@@ -81,7 +80,7 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
     grade: 'Kindergarten',
     target: review,
     warmup: { words: [], randomRotationWordIds: [], recentReviewWordIds: [], erroredWordIds: [], rotationCycleId: 1 },
-    startedAt: '2026-09-27T19:00:00.000Z',
+    startedAt: '2026-10-03T19:00:00.000Z',
     random: () => 0,
   })
   assert.equal(session.primaryQueue.length, 14)
@@ -96,7 +95,7 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
     warmupSkipped: true,
     primaryAnswers: session.primaryQueue.map((word) => ({ word, correct: true, revealMethod: 'timer' })),
   }
-  const committed = commitCompletedSession(createInitialState(datasets), completed, new Date(2026, 8, 27, 12, 0))
+  const committed = commitCompletedSession(createInitialState(datasets), completed, new Date(2026, 9, 3, 12, 0))
 
   assert.equal(committed.results.filter((result) => result.phase === 'test-review').length, 14)
   assert.deepEqual(committed.scores.map((score) => score.datasetId), review.reviewDatasets?.map((dataset) => dataset.id))

@@ -10,18 +10,23 @@ export type KindergartenUnitBoundary = {
   id: string
   instructionStartDate: string
   instructionEndDate: string
+  reviewStartDate: string
+  reviewEndDate: string
   reviewCycle: number
 }
 
 /**
- * Unit 1 is an explicit product rule, not an inference from workbook order or
- * from an empty tab. Additional units must be approved and added explicitly.
+ * Unit 1 projects the explicit teaching and review boundaries in the
+ * authoritative Kindergarten Weekly Focus workbook. Additional units must be
+ * grounded in that workbook and added explicitly.
  */
 export const kindergarten2026UnitPlan: readonly KindergartenUnitBoundary[] = [
   {
     id: 'kindergarten-2026-27-unit-1',
     instructionStartDate: '2026-08-31',
     instructionEndDate: '2026-09-27',
+    reviewStartDate: '2026-09-28',
+    reviewEndDate: '2026-10-04',
     reviewCycle: 1,
   },
 ]
@@ -72,11 +77,17 @@ function validateUnitPlan(units: readonly KindergartenUnitBoundary[]) {
     if (unit.instructionEndDate < unit.instructionStartDate) {
       throw new Error(`Kindergarten unit ${unit.id} ends before it starts.`)
     }
+    if (unit.reviewStartDate !== addDays(unit.instructionEndDate, 1)) {
+      throw new Error(`Kindergarten unit ${unit.id} review must begin on the Monday after instruction ends.`)
+    }
+    if (parseDateKey(unit.reviewStartDate).getUTCDay() !== 1 || unit.reviewEndDate !== addDays(unit.reviewStartDate, 6)) {
+      throw new Error(`Kindergarten unit ${unit.id} review must use one Monday-through-Sunday cycle.`)
+    }
     if (!Number.isInteger(unit.reviewCycle) || unit.reviewCycle < 1) {
       throw new Error(`Kindergarten unit ${unit.id} must have a positive review cycle.`)
     }
     const prior = ordered[index - 1]
-    if (prior && unit.instructionStartDate <= prior.instructionEndDate) {
+    if (prior && unit.instructionStartDate <= prior.reviewEndDate) {
       throw new Error(`Kindergarten units ${prior.id} and ${unit.id} overlap.`)
     }
   }
@@ -143,8 +154,8 @@ export function resolveKindergartenUnitLifecycle(
       assignmentByDatasetId[set.datasetId] = { datasetId: set.datasetId, stage: { kind: 'future' } }
       continue
     }
-    if (context.scope.currentDateKey > unit.instructionEndDate) {
-      const masteredAt = addDays(unit.instructionEndDate, 1)
+    if (context.scope.currentDateKey > unit.reviewEndDate) {
+      const masteredAt = addDays(unit.reviewEndDate, 1)
       masteryDatasetIds.push(set.datasetId)
       masteredAtByDatasetId[set.datasetId] = masteredAt
       assignmentByDatasetId[set.datasetId] = {

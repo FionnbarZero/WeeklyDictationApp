@@ -129,7 +129,8 @@ const grade5ProgressionEvents: LifecycleProgressionEvent[] = grade5Datasets.map(
 const scenarioOptions: Record<Tier2SmokeGrade, readonly Tier2SmokeScenarioOption[]> = {
   Kindergarten: [
     { id: 'active-unit', label: 'Active Unit 1 · Acquisition and cumulative review' },
-    { id: 'completed-unit', label: 'After Unit 1 · Mastery eligibility' },
+    { id: 'review-week', label: 'Unit 1 review week · cumulative assessment review' },
+    { id: 'completed-unit', label: 'After Unit 1 review · Mastery eligibility' },
   ],
   'Grade 2': [{ id: 'current-week', label: 'Current week · Acquisition, Test Review, and Mastery' }],
   'Grade 5': [{ id: 'current-week', label: 'Current week · Acquisition, Test Review 1, Test Review 2, and Mastery' }],
@@ -142,9 +143,16 @@ export function tier2SmokeScenarioOptions(grade: Tier2SmokeGrade) {
 function scenarioInputs(grade: Tier2SmokeGrade, scenarioId: string) {
   if (grade === 'Kindergarten') {
     if (scenarioId === 'completed-unit') return {
-      label: 'Kindergarten after Unit 1',
-      description: 'The approved unit has ended, so its Tier 2 reading occurrences are now in Mastery.',
-      currentDateKey: '2026-09-28',
+      label: 'Kindergarten after Unit 1 review',
+      description: 'The approved teaching, review, and assessment periods have ended, so the Tier 2 reading occurrences are now in Mastery.',
+      currentDateKey: '2026-10-05',
+      datasets: kindergartenDatasets,
+      progressionEvents: [] as LifecycleProgressionEvent[],
+    }
+    if (scenarioId === 'review-week') return {
+      label: 'Kindergarten Unit 1 review week',
+      description: 'Teaching has ended, so there is no Acquisition cohort and every Unit 1 cohort remains in cumulative Test Review through the assessment period.',
+      currentDateKey: '2026-10-03',
       datasets: kindergartenDatasets,
       progressionEvents: [] as LifecycleProgressionEvent[],
     }

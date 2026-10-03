@@ -22,15 +22,15 @@ Every Kindergarten cycle starts Monday and ends the following Sunday. The adapte
 
 ## Validated source with an inactive release gate
 
-Vocabulary-bearing tabs now become canonical source-neutral candidates with workbook/tab provenance and normalized dates. The Kindergarten lifecycle activates a vocabulary cycle on its Monday, holds the latest available teaching set across a missing replacement, and groups every arrived Unit 1 set into one cumulative review. Unit 1 is explicitly configured as August 31 through September 27; its boundary is never inferred from tab order or an empty tab.
+Vocabulary-bearing tabs now become canonical source-neutral candidates with workbook/tab provenance and normalized dates. The Kindergarten lifecycle activates a vocabulary cycle on its Monday, holds the latest available teaching set across a missing replacement, and groups every arrived Unit 1 set into one cumulative review. The authoritative workbook defines Unit 1 teaching as August 31 through September 27 and the `Week 7 09/28` tab explicitly identifies the following September 28 through October 4 cycle as end-of-unit project making and assessment review. During that review week there is no Acquisition set; the Unit 1 cohorts stay in cumulative Test Review. They enter Mastery on October 5, after the review and assessment period ends.
 
 Validated vocabulary candidates can now become canonical source-neutral datasets that preserve Tier 1, Tier 2, Tier 3, workbook provenance, tab provenance, and the content fingerprint. Tier 1 remains the shared writing-practice compatibility view. The Kindergarten writing profile and child-facing integration are implemented, but the source registry entry remains inactive, so these datasets cannot yet enter normal child practice.
 
-Empty tabs still receive `kindergarten_no_instruction_unresolved` and remain malformed because the workbook has no approved machine-readable no-instruction marker.
+The explicit `End of Unit Project Making` and `End of Unit Assessment Review` wording on `Week 7 09/28` is recognized as the Unit 1 review marker. It creates no new vocabulary dataset. Other empty tabs still receive `kindergarten_no_instruction_unresolved` and remain malformed because their instructional meaning is not explicit.
 
 Still unresolved:
 
-- an approved machine-readable meaning for empty tabs such as review or no instruction;
+- an approved machine-readable meaning for empty tabs other than the explicit Unit 1 review week;
 - full Tier 2 assessment, recording, and scoring behavior beyond the unscored look-listen-say teaching module;
 - the trusted production sync deployment and administrator authorization.
 
