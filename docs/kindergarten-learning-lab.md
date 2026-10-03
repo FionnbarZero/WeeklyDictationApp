@@ -8,7 +8,7 @@ The Kindergarten learning lab is a development-only child-experience harness at 
 - A tester manually selects one vocabulary-bearing tab from the checked-in workbook fixture. The default is explicitly `Week 6 09/21`; it is not chosen from today's date.
 - Tier 1 `Writing character` targets enter the shared `PracticeView` and shared Acquisition engine.
 - Tier 2 `High frequency word` targets use the shared reading runner with prompt-local microphone recording and session-only self-assessment. No recording, reading result, or reading progress is retained.
-- The **Prepare for your test** card aggregates the explicit Unit 1 fixture window, August 31 through September 27. Its shared Test Review presentation uses the 14 observed Tier 1 writing targets; the nine Tier 2 words remain preserved and displayed separately.
+- The **Prepare for your test** card aggregates Unit 1 teaching from August 31 through September 27 and its authoritative review week from September 28 through October 4. Its shared Test Review presentation uses the 14 observed Tier 1 writing targets; the nine Tier 2 words remain preserved and displayed separately. Unit 1 becomes eligible for Mastery on October 5, after the review period and end-of-unit assessment.
 
 ## Acquisition ownership
 
@@ -29,9 +29,9 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - No active week is inferred.
 - No Warmup policy is assumed or simulated.
 - No durable Tier 2 attempt, score, adaptive state, progress record, or retained microphone audio exists.
-- Unit 1 dates are explicit in both the lab fixture and the lifecycle profile; they are not inferred from workbook order.
+- Unit 1 teaching and review dates are explicit in both the lab fixture and the lifecycle profile and are grounded in the Weekly Focus workbook; they are not inferred from workbook order.
 - The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
 - Refreshing or leaving discards all lab state.
 - The lab does not import Firebase/Firestore code or use browser storage.
 
-The production path now has an explicit optional-Warmup profile, shared Tier 1 Acquisition, cumulative per-source-week Test Review persistence, Dojo presentation labels, an unscored Tier 2 teaching module, and child-facing integration tests. Activation still requires trusted sync deployment and a deliberate release review; empty tabs remain blocked until their machine-readable meaning is approved. A scored Tier 2 assessment remains a separate future capability.
+The production path now has an explicit optional-Warmup profile, shared Tier 1 Acquisition, cumulative per-source-week Test Review persistence, Dojo presentation labels, an unscored Tier 2 teaching module, and child-facing integration tests. Activation still requires trusted sync deployment and a deliberate release review. The explicit Unit 1 review tab is recognized; other empty tabs remain blocked until their machine-readable meaning is approved. A scored Tier 2 assessment remains a separate future capability.

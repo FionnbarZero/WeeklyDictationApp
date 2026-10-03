@@ -86,7 +86,7 @@ test('weekly tab dates normalize to the containing Monday-through-Sunday cycle',
   })
 })
 
-test('vocabulary candidates become canonical while empty tabs remain blocked and production stays inactive', () => {
+test('vocabulary candidates become canonical and the authoritative Unit 1 review tab is recognized', () => {
   assert.ok(candidates.every((candidate) => candidate.datasetId !== null && candidate.assignedWeek !== null))
   assert.ok(candidates.every((candidate) => candidate.instructionalRole === 'unassigned'))
   assert.ok(candidates.every((candidate) => !candidate.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_date_policy_unresolved')))
@@ -97,8 +97,13 @@ test('vocabulary candidates become canonical while empty tabs remain blocked and
 
   const emptyUnits = candidates.filter((candidate) => candidate.tier1.length === 0 && candidate.tier2.length === 0)
   assert.deepEqual(emptyUnits.map((candidate) => candidate.rawDate), ['Week 7 09/28', 'Week 2 08/24', 'Week 1 08/17'])
-  assert.ok(emptyUnits.every((candidate) => candidate.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_no_instruction_unresolved')))
-  assert.ok(emptyUnits.every((candidate) => candidate.status !== 'no-instruction'))
+  const reviewWeek = emptyUnits.find((candidate) => candidate.rawDate === 'Week 7 09/28')
+  assert.equal(reviewWeek?.status, 'no-instruction')
+  assert.equal(reviewWeek?.noInstructionReason, 'unit-review')
+  assert.ok(!reviewWeek?.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_no_instruction_unresolved'))
+  assert.ok(emptyUnits
+    .filter((candidate) => candidate !== reviewWeek)
+    .every((candidate) => candidate.validationOutcomes.some((outcome) => outcome.code === 'kindergarten_no_instruction_unresolved')))
 })
 
 test('only the Mandarin column contributes Kindergarten vocabulary', () => {
@@ -149,5 +154,8 @@ test('the dry-run summary exposes normalized dates, vocabulary, and activation b
   assert.equal(summary.sourceUnitCount, 7)
   assert.equal(summary.vocabularyUnitCount, 4)
   assert.ok(summary.units.filter((unit) => unit.tier1.length > 0).every((unit) => unit.blockers.length === 0))
-  assert.ok(summary.units.filter((unit) => unit.tier1.length === 0).every((unit) => unit.blockers.includes('kindergarten_no_instruction_unresolved')))
+  assert.deepEqual(summary.units.find((unit) => unit.tabTitle === 'Week 7 09/28')?.blockers, [])
+  assert.ok(summary.units
+    .filter((unit) => unit.tier1.length === 0 && unit.tabTitle !== 'Week 7 09/28')
+    .every((unit) => unit.blockers.includes('kindergarten_no_instruction_unresolved')))
 })

@@ -17,6 +17,7 @@ export const kindergartenSheetsProfile: SheetsParserProfile = {
   academicYearStartMonth: 8,
   writingCharacterHeading: /Writing\s+character\s*[:：]?/i,
   highFrequencyWordHeading: /High(?:\s*[-–—]\s*|\s+)frequency(?:\s+reading)?\s+words?\s*[:：]?/i,
+  reviewWeekHeading: /End\s+of\s+Unit(?:\s+Project\s+Making)?[\s\S]*End\s+of\s+Unit\s+Assessment\s+Review/i,
   termSeparators: /[、,，;；]+/,
 }
 

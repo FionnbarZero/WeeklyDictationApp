@@ -7,8 +7,10 @@ import { kindergartenCandidateIsUsableInLab } from './acquisitionLab.ts'
 export const KINDERGARTEN_UNIT_ONE_LAB_FIXTURE = {
   id: '__kindergarten-unit-1-review-lab__',
   label: 'Unit 1',
-  startDate: '2026-08-31',
-  endDate: '2026-09-27',
+  instructionStartDate: '2026-08-31',
+  instructionEndDate: '2026-09-27',
+  reviewStartDate: '2026-09-28',
+  reviewEndDate: '2026-10-04',
 } as const
 
 export type KindergartenUnitReviewLab = {
@@ -22,8 +24,8 @@ export type KindergartenUnitReviewLab = {
 export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[]): KindergartenUnitReviewLab {
   const included = candidates
     .filter(kindergartenCandidateIsUsableInLab)
-    .filter((candidate) => candidate.normalizedStartDate! >= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.startDate
-      && candidate.normalizedStartDate! <= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate)
+    .filter((candidate) => candidate.normalizedStartDate! >= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.instructionStartDate
+      && candidate.normalizedStartDate! <= KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.instructionEndDate)
     .sort((left, right) => left.normalizedStartDate!.localeCompare(right.normalizedStartDate!))
   const tier1: Word[] = []
   const tier2: Word[] = []
@@ -63,9 +65,9 @@ export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[
     tier2Words: tier2.map((word) => word.text),
     dataset: {
       id: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.id,
-      dateRange: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.startDate}–${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate}`,
-      startDate: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.startDate,
-      endDate: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.endDate,
+      dateRange: `${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.instructionStartDate}–${KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.reviewEndDate}`,
+      startDate: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.instructionStartDate,
+      endDate: KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.reviewEndDate,
       grade: 'Kindergarten',
       schoolYear: '2026–2027',
       description: 'Development-only cumulative Kindergarten Unit 1 review fixture',

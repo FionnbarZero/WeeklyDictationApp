@@ -108,6 +108,8 @@ The first Grade 2 safeguard is implemented in candidate source: an application-l
 
 The current prototypes and tests are evidence of implementation, not independent proof that every activity is correct. Before changing an activity, record its approved grade, lifecycle stage, vocabulary tier, child-facing label, teaching or assessment behavior, Warmup policy, persistence promise, and availability. Behavior corrections and architectural refactors remain separate changes.
 
+For Kindergarten, the Weekly Focus spreadsheet is the curriculum and lifecycle authority. Unit 1 teaching ends September 27, 2026; the explicit `Week 7 09/28` source tab defines September 28 through October 4 as a cumulative review period ending in the unit assessment. Unit 1 enters Mastery on October 5, after that review week, not immediately after teaching ends. Future unit and review boundaries must be grounded in the same authoritative workbook before they are added to the lifecycle plan.
+
 C1 may proceed one grade at a time without interrupting a child's stable beta release. Its finish line is an adult-approved acceptance matrix and independent tests for every activity being promoted; unresolved activities remain hidden or explicitly experimental rather than appearing as production-ready.
 
 ### Product rollout dependencies

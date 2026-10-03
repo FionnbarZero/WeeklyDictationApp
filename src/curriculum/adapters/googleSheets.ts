@@ -13,6 +13,7 @@ export type SheetsParserProfile = {
   academicYearStartMonth: number
   writingCharacterHeading: RegExp
   highFrequencyWordHeading: RegExp
+  reviewWeekHeading?: RegExp
   termSeparators: RegExp
 }
 
@@ -97,6 +98,7 @@ function activationBlockers(
   cycle: MondaySundayCycle | null,
   tier1Count: number,
   tier2Count: number,
+  isReviewWeek: boolean,
   sourceDocumentId: string,
   profile: SheetsParserProfile,
 ): ValidationOutcome[] {
@@ -115,7 +117,7 @@ function activationBlockers(
       message: 'The sheet title does not contain a real date in the observed Kindergarten weekly-tab convention.',
     })
   }
-  if (tier1Count === 0 && tier2Count === 0) {
+  if (tier1Count === 0 && tier2Count === 0 && !isReviewWeek) {
     outcomes.push({
       code: 'kindergarten_no_instruction_unresolved',
       severity: 'error',
@@ -138,6 +140,7 @@ export function candidateFromSheet(
   const text = mandarinSectionText(sheet)
   const tier1 = extractLabeledTerms(text, profile.writingCharacterHeading, profile)
   const tier2 = extractLabeledTerms(text, profile.highFrequencyWordHeading, profile)
+  const isReviewWeek = Boolean(profile.reviewWeekHeading && stableMatch(profile.reviewWeekHeading, text))
   const assignedWeek = cycle ? { startDate: cycle.startDate, endDate: cycle.endDate } : null
 
   return canonicalizeWeeklyDatasetCandidate({
@@ -159,8 +162,9 @@ export function candidateFromSheet(
     tier1,
     tier2,
     tier3: [],
-    requestedStatus: 'valid',
-    validationOutcomes: activationBlockers(title, cycle, tier1.length, tier2.length, sourceDocumentId, profile),
+    requestedStatus: isReviewWeek ? 'no-instruction' : 'valid',
+    ...(isReviewWeek ? { noInstructionReason: 'unit-review' } : {}),
+    validationOutcomes: activationBlockers(title, cycle, tier1.length, tier2.length, isReviewWeek, sourceDocumentId, profile),
   })
 }
 

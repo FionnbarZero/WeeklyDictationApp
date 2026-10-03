@@ -41,9 +41,19 @@ test('the Tier 2 smoke fixtures expose each grade’s actual lifecycle pattern',
 })
 
 test('Kindergarten smoke scenarios preserve active cumulative review and later Mastery', () => {
-  assert.deepEqual(tier2SmokeScenarioOptions('Kindergarten').map((option) => option.id), ['active-unit', 'completed-unit'])
+  assert.deepEqual(tier2SmokeScenarioOptions('Kindergarten').map((option) => option.id), ['active-unit', 'review-week', 'completed-unit'])
   assert.deepEqual(summary('Kindergarten', 'active-unit'), [
     { kind: 'acquisition', cycle: undefined, reviewGroupId: undefined, datasetIds: ['kindergarten-smoke-w4'], available: true },
+    {
+      kind: 'test-review',
+      cycle: 1,
+      reviewGroupId: 'kindergarten-2026-27-unit-1',
+      datasetIds: ['kindergarten-smoke-w1', 'kindergarten-smoke-w2', 'kindergarten-smoke-w3', 'kindergarten-smoke-w4'],
+      available: true,
+    },
+    { kind: 'mastery', cycle: undefined, reviewGroupId: undefined, datasetIds: [], available: false },
+  ])
+  assert.deepEqual(summary('Kindergarten', 'review-week'), [
     {
       kind: 'test-review',
       cycle: 1,

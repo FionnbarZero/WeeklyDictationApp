@@ -44,11 +44,13 @@ function id(startDate: string) {
   return datasetId
 }
 
-test('Kindergarten Unit 1 is an explicit Monday-through-Sunday lifecycle boundary', () => {
+test('Kindergarten Unit 1 has explicit teaching and review boundaries from the source workbook', () => {
   assert.deepEqual(kindergarten2026UnitPlan, [{
     id: 'kindergarten-2026-27-unit-1',
     instructionStartDate: '2026-08-31',
     instructionEndDate: '2026-09-27',
+    reviewStartDate: '2026-09-28',
+    reviewEndDate: '2026-10-04',
     reviewCycle: 1,
   }])
   const profile = lifecycleStrategyForGradeAndSchoolYear('Kindergarten', '2026–2027')
@@ -109,8 +111,25 @@ test('the final Unit 1 Sunday reviews every learned week without a weekly-review
   assert.deepEqual(resolution.futureDatasetIds, [])
 })
 
-test('Unit 1 becomes mastery on the Monday after its approved end', () => {
+test('the week after instruction is a cumulative Unit 1 review with no Acquisition set', () => {
   const resolution = resolveLifecycle(context('2026-09-28'))
+  const orderedIds = vocabularySets
+    .slice()
+    .sort((left, right) => left.activationDate.localeCompare(right.activationDate))
+    .map((set) => set.datasetId)
+
+  assert.equal(resolution.acquisitionDatasetId, null)
+  assert.deepEqual(resolution.testReviews, orderedIds.map((datasetId) => ({
+    datasetId,
+    cycle: 1,
+    reviewGroupId: 'kindergarten-2026-27-unit-1',
+  })))
+  assert.deepEqual(resolution.masteryDatasetIds, [])
+  assert.deepEqual(resolution.masteredAtByDatasetId, {})
+})
+
+test('Unit 1 becomes mastery only after the review week and its assessment end', () => {
+  const resolution = resolveLifecycle(context('2026-10-05'))
   const orderedIds = vocabularySets
     .slice()
     .sort((left, right) => left.activationDate.localeCompare(right.activationDate))
@@ -120,7 +139,7 @@ test('Unit 1 becomes mastery on the Monday after its approved end', () => {
   assert.deepEqual(resolution.testReviews, [])
   assert.deepEqual(resolution.masteryDatasetIds, orderedIds)
   assert.deepEqual(resolution.masteredAtByDatasetId, Object.fromEntries(
-    orderedIds.map((datasetId) => [datasetId, '2026-09-28']),
+    orderedIds.map((datasetId) => [datasetId, '2026-10-05']),
   ))
 })
 
@@ -191,6 +210,8 @@ test('an invalid or overlapping Kindergarten unit plan fails before assigning pr
       id: 'not-a-monday',
       instructionStartDate: '2026-09-01',
       instructionEndDate: '2026-09-06',
+      reviewStartDate: '2026-09-07',
+      reviewEndDate: '2026-09-13',
       reviewCycle: 1,
     }]),
     /must start on Monday/,
@@ -202,6 +223,8 @@ test('an invalid or overlapping Kindergarten unit plan fails before assigning pr
         id: 'overlap',
         instructionStartDate: '2026-09-21',
         instructionEndDate: '2026-10-04',
+        reviewStartDate: '2026-10-05',
+        reviewEndDate: '2026-10-11',
         reviewCycle: 1,
       },
     ]),

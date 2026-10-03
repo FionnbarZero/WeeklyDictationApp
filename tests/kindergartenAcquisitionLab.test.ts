@@ -116,7 +116,7 @@ test('the explicit Unit 1 lab fixture accumulates Tier 1 and preserves Tier 2 se
   assert.deepEqual(review.tier2Words, ['爸爸', '妈妈', '小', '我', '开心', '有', '没有', '红色', '蓝色'])
   assert.equal(review.dataset.id, '__kindergarten-unit-1-review-lab__')
   assert.equal(review.dataset.startDate, '2026-08-31')
-  assert.equal(review.dataset.endDate, '2026-09-27')
+  assert.equal(review.dataset.endDate, '2026-10-04')
   assert.ok(review.dataset.words.every((word) => word.tier === 'tier-1' && word.activityType === 'dictation'))
   assert.ok(review.tier2Words.every((word) => !review.dataset.words.some((target) => target.text === word)))
 })
