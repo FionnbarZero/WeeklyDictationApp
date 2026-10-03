@@ -154,7 +154,7 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .add-child-form h3{margin:0 0 2px}
 .promotion-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:12px 15px;border-radius:12px;background:#fff4cf;color:#6d5722;font-size:12px}.promotion-banner button{padding:7px 10px;border-radius:8px;background:#f4d071;color:#57451e;font-size:11px;font-weight:700}
 
-/* Local Grade 2 backup and read-only restore preview */
+/* Local Grade 2 backup and selected-profile restore */
 .backup-modal{width:min(680px,100%);max-height:min(760px,calc(100dvh - 40px));overflow:auto;padding:27px;border-radius:21px;background:#fffdf9;box-shadow:0 20px 60px rgba(35,49,57,.25)}
 .backup-introduction{margin:17px 0 22px;color:var(--muted);font-size:13px;line-height:1.6}
 .backup-action-card{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#f8f5ef}
@@ -180,6 +180,13 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .backup-checksum{display:grid;gap:5px;margin:0;color:#31734b;font-size:10px}
 .backup-checksum code{overflow-wrap:anywhere;color:var(--ink);font-size:9px}
 .backup-no-write{margin:14px 0 0;padding-top:13px;border-top:1px solid #d9eadf;color:#31734b;font-size:11px;font-weight:700}
+.backup-restore-report{margin-top:14px;padding-top:13px;border-top:1px solid #d9eadf}
+.backup-restore-report h4{margin:0 0 10px;font-size:13px}
+.backup-restore-report dl{margin:0}
+.backup-apply-controls{display:grid;gap:12px;margin-top:15px;padding:14px;border:1px solid #d5c8f0;border-radius:13px;background:#f8f5ff}
+.backup-apply-controls label{display:flex;align-items:flex-start;gap:9px;color:#4d4568;font-size:11px;font-weight:700;line-height:1.5}
+.backup-apply-controls input{margin-top:2px}
+.backup-apply-controls .backup-action{justify-self:start}
 @media (max-width:760px){.local-backup-control{font-size:0}.local-backup-control svg{width:18px;height:18px}.local-import-control{display:none}.local-import-status{display:none}.backup-action-card{align-items:stretch;flex-direction:column;gap:14px}.backup-action,.backup-file-control{align-self:stretch}.backup-preview dl{grid-template-columns:1fr}}
 
 /* Practice controls may include Exit, Done/Skip, and the position label together. */
