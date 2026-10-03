@@ -35,6 +35,8 @@ Every stable deployment retains at least one previous known-good Hosting release
 
 The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. The inventory confirms that the three current entry routes share one GitHub Pages artifact; that shared deployment is a temporary baseline, not the required independent grade delivery model.
 
+The repository-side Kindergarten and Grade 5 artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). They deliberately exclude Grade 2 and the shared GitHub Pages branch.
+
 Every child-facing beta displays a concise identifier containing:
 
 - grade;

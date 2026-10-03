@@ -20,6 +20,11 @@ const archivedPrototypeInputs = {
   kindergartenSourceHarness: page('./kindergarten-source-harness.html'),
 }
 
+const familyBetaInputByGrade = {
+  kindergarten: page('./kindergarten-learning-lab.html'),
+  grade5: page('./grade5-learning-hub.html'),
+} as const
+
 const releaseIdentityByPage = {
   'index.html': {
     grade: 'Grade 2',
@@ -57,6 +62,10 @@ function releaseIdentityHtml(fileName: string, gitRevision: string) {
 }
 
 export default defineConfig(({ command, mode }) => {
+  const familyBetaGrade = process.env.VITE_FAMILY_BETA_GRADE
+  if (mode === 'family-beta' && familyBetaGrade !== 'kindergarten' && familyBetaGrade !== 'grade5') {
+    throw new Error('A family-beta build requires VITE_FAMILY_BETA_GRADE=kindergarten or grade5.')
+  }
   const gitRevision = resolveBuildGitRevision({
     environmentRevision: process.env.VITE_GIT_REVISION,
     repositoryRevision: () => readRepositoryGitRevision(page('.')),
@@ -78,13 +87,16 @@ export default defineConfig(({ command, mode }) => {
     build: {
       manifest: true,
       rollupOptions: {
-        input: {
-          app: page('./index.html'),
-          grade5LearningHub: page('./grade5-learning-hub.html'),
-          kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
-          testing: page('./testing.html'),
-          ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
-        },
+        input:
+          mode === 'family-beta'
+            ? { app: familyBetaInputByGrade[familyBetaGrade as keyof typeof familyBetaInputByGrade] }
+            : {
+                app: page('./index.html'),
+                grade5LearningHub: page('./grade5-learning-hub.html'),
+                kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
+                testing: page('./testing.html'),
+                ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
+              },
       },
     },
   }

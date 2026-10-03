@@ -1,6 +1,9 @@
 node_modules
 dist
 prototype-dist
+family-beta-dist
+family-beta-artifacts
+.firebase-family-beta-*.generated.json
 prototype-baseline-*.tar.gz
 prototype-baseline-*.tar.gz.sha256
 .DS_Store
