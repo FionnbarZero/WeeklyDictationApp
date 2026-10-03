@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   completePractice,
   leavePractice,
+  prepareCloudCompletionAttempt,
   startPractice,
   type PracticeCompletionPersistence,
   type PracticeTransitionPersistence,
@@ -237,14 +238,11 @@ test('local completion commits immediately while cloud completion uses the same 
 
   const writes: string[] = []
   const persistence: PracticeCompletionPersistence = {
-    completeSession: async (_session, attempts, scores) => {
-      writes.push(`complete:${attempts.length}:${scores.length}`)
+    completeSession: async (_session, attempts, scores, nextState, completedAt) => {
+      writes.push(`complete:${attempts.length}:${scores.length}:${nextState.childWordStates.length}:${completedAt}`)
     },
     finishSession: async () => undefined,
     discardTestReview: async () => undefined,
-    saveAdaptiveState: async () => {
-      writes.push('adaptive')
-    },
   }
   const cloud = completePractice({
     state: stateWithDataset(),
@@ -253,6 +251,16 @@ test('local completion commits immediately while cloud completion uses the same 
     cloud: { session: cloudSession('test-review'), persistence },
   })
   await cloud.cloudCommit
-  assert.deepEqual(writes, ['complete:1:1', 'adaptive'])
+  assert.deepEqual(writes, ['complete:1:1:1:2026-10-01T16:00:00.000Z'])
   assert.deepEqual(cloud.state, local.state)
+})
+
+test('a cloud completion retry reuses the first completion timestamp', () => {
+  const first = prepareCloudCompletionAttempt(cloudSession('test-review'), startedAt)
+  const retry = prepareCloudCompletionAttempt(first.session, new Date('2026-10-01T16:05:00.000Z'))
+
+  assert.equal(first.completedAt.toISOString(), startedAt.toISOString())
+  assert.equal(first.session?.completedAt, startedAt.toISOString())
+  assert.equal(retry.completedAt.toISOString(), startedAt.toISOString())
+  assert.equal(retry.session?.completedAt, startedAt.toISOString())
 })

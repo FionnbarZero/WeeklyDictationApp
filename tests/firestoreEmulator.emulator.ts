@@ -270,10 +270,14 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
     id: 'review-attempt', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
     reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete',
   }))
-  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/scores/review-score'), {
+  const scoreReference = doc(database, 'families/family-parent/children/maya/scores/review-score')
+  const score = {
     id: 'review-score', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
     phase: 'test-review', reviewCycle: 2, percent: 100, correct: 1, wordCount: 1,
-  }))
+  }
+  await assertSucceeds(setDoc(scoreReference, score))
+  await assertSucceeds(setDoc(scoreReference, score))
+  await assertFails(setDoc(scoreReference, { ...score, percent: 0, correct: 0 }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/invalid-review-cycle'), { ...session, id: 'invalid-review-cycle', reviewCycle: 0 }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/acquisition-with-review-cycle'), { ...session, id: 'acquisition-with-review-cycle', primaryPhase: 'acquisition' }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/acquisition-with-review-cycle'), {

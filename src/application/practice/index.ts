@@ -2,6 +2,7 @@ export {
   completeAcquisitionForToday,
   completePractice,
   discardTestReview,
+  prepareCloudCompletionAttempt,
   type PracticeCompletionPersistence,
 } from './completion.ts'
 export { startPractice, type StartPracticePersistence, type StartPracticeResult } from './startPractice.ts'

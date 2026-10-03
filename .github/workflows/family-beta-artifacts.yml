@@ -1,0 +1,64 @@
+name: Package independent family beta artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: Full reviewed Git revision to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify source revision
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_revision }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+  package:
+    name: Package ${{ matrix.grade }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        grade: [kindergarten, grade5]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_revision }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Package one isolated grade artifact
+        run: npm run package:family-beta -- --grade ${{ matrix.grade }}
+        env:
+          GITHUB_SHA: ${{ inputs.source_revision }}
+      - name: Upload immutable artifact and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-beta-${{ matrix.grade }}-${{ inputs.source_revision }}
+          path: |
+            family-beta-dist/${{ matrix.grade }}
+            family-beta-artifacts/${{ matrix.grade }}-${{ inputs.source_revision }}.tar.gz
+            family-beta-artifacts/${{ matrix.grade }}-${{ inputs.source_revision }}.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30

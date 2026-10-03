@@ -5,7 +5,16 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "allowSyntheticDefaultImports": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "scripts/buildMetadata.ts",
+    "scripts/deploy-family-beta.ts",
+    "scripts/familyBetaDelivery.ts",
+    "scripts/familyBetaRelease.ts",
+    "scripts/package-family-beta.ts",
+    "src/releaseMetadata.ts"
+  ]
 }

@@ -4,7 +4,7 @@ import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 
-export const APP_VERSION = '0.2.0-stage2'
+export { APP_VERSION } from './releaseMetadata.ts'
 export const DEFAULT_TIME_ZONE = 'America/Los_Angeles'
 export const SUPPORTED_GRADES = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 export type SupportedGrade = typeof SUPPORTED_GRADES[number]
