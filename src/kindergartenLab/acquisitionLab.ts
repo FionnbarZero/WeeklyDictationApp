@@ -9,6 +9,7 @@ import { transitionAcquisition } from '../acquisition/transition.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import type { Dataset } from '../domain/contracts.ts'
 import { kindergartenWritingLabProfile } from './practiceProfile.ts'
+import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 
 export type KindergartenLabRevealMethod = 'timer' | 'skip_timer'
 
@@ -35,6 +36,7 @@ export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandi
     && Boolean(candidate.datasetId && candidate.assignedWeek)
     && candidate.tier1.length > 0
     && candidate.tier1.every((target) => Boolean(target.targetOccurrenceId))
+    && candidate.tier1.every((target) => Boolean(kindergartenAudioForText(target.text)?.storagePath))
     && candidate.status === 'valid'
     && blockers.length === 0
 }
@@ -61,6 +63,7 @@ export function kindergartenAcquisitionTargetSet(candidate: WeeklyDatasetCandida
       language: 'mandarin',
       tier: 'tier-1',
       activityType: 'dictation',
+      audio: kindergartenAudioForText(word.text),
     })),
   }
 }

@@ -1,6 +1,7 @@
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import type { Dataset, Word } from '../domain/contracts.ts'
 import { kindergartenCandidateIsUsableInLab } from './acquisitionLab.ts'
+import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 
 // This is an explicit development fixture based on the product example. It is
 // not a production lifecycle rule and is intentionally not exported elsewhere.
@@ -41,6 +42,7 @@ export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[
         language: 'mandarin',
         tier: 'tier-1',
         activityType: 'dictation',
+        audio: kindergartenAudioForText(occurrence.text),
       })
     }
     for (const occurrence of candidate.tier2) {

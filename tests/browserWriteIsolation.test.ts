@@ -87,7 +87,7 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   assert.match(source, /Write the word on the screen before the timer ends\./)
   assert.doesNotMatch(source, /write the word on paper|check your paper/i)
   assert.match(source, /practicePosition\(session\)/)
-  assert.match(source, /<PromptCountdown key=\{stageKey\} durationSeconds=\{timerSeconds\} onComplete=\{\(\) => onDictationComplete\('timer'\)\}/)
+  assert.match(source, /<PromptCountdown key=\{stageKey\} durationSeconds=\{timerSeconds\} active=\{audibleStageKey === stageKey\} onComplete=\{\(\) => onDictationComplete\('timer'\)\}/)
   assert.match(source, /checkpoint = createAcquisitionAnswerCheckpoint\(/)
   assert.match(source, /acquisition: checkpoint\.nextFlow/)
   assert.match(source, /sessionAnswerForCheckpoint\(checkpoint\)/)
@@ -98,7 +98,7 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   assert.doesNotMatch(source, /answerAcquisitionPrompt\(current\.acquisition/)
   assert.doesNotMatch(source, /saveCloudAcquisitionProgress/)
   assert.match(source, /const session: PracticeSession = \{[\s\S]*acquisition: checkpoint\.nextFlow,[\s\S]*primaryAnswers/)
-  assert.match(source, /className="replay-button" onClick=\{onReplay\}/)
+  assert.match(source, /className="replay-button" onClick=\{replayAudio\}/)
   assert.doesNotMatch(source, /setInterval\(\(\) => setSeconds/)
 })
 

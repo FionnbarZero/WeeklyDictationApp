@@ -101,6 +101,8 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .tier1-review-controls .answer-note { grid-column: 1 / -1; margin: -3px 0 0; }
 .tier1-writing-card .dictation-status { margin: 0 auto; max-width: none; }
 .practice-page.has-skywriting-response .practice-footnote { margin: 7px 0 0; }
+.audio-playback-error { flex-wrap: wrap; color: #a24236; }
+.audio-playback-error button { padding: 5px 8px; border-radius: 7px; color: #8f352d; background: #fff0ed; font-size: 10px; font-weight: 800; }
 @media (max-width: 800px) {
   .main-content:has(.practice-page.has-skywriting-response) { width: calc(100% - 8px); padding-top: 5px; }
   .practice-page.has-skywriting-response { height: calc(100dvh - 76px); }

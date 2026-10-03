@@ -37,6 +37,7 @@
     "hydrate:local": "node --experimental-strip-types scripts/hydrate-local.ts",
     "hydrate:slides": "node --experimental-strip-types scripts/hydrate-google-slides.ts",
     "inspect:kindergarten": "node --experimental-strip-types scripts/inspect-kindergarten-sheets.ts",
+    "generate:kindergarten-audio": "node --experimental-strip-types scripts/generate-kindergarten-audio.ts",
     "import:server": "node --experimental-strip-types backend/server.ts",
     "package:prototype-baseline": "npm run build:prototype-baseline && node --experimental-strip-types scripts/package-prototype-baseline.ts",
     "preview": "vite preview"

@@ -85,6 +85,7 @@ test('only a canonical source-inspected vocabulary tab can enter the lab', () =>
   assert.equal(dataset.id, targetSet.id)
   assert.deepEqual(targetSet.targets.map((target) => target.text), ['九', '十', '白'])
   assert.ok(targetSet.targets.every((target) => target.tier === 'tier-1' && target.activityType === 'dictation'))
+  assert.ok(targetSet.targets.every((target) => target.audio?.storagePath?.endsWith('.wav')))
   assert.ok(targetSet.targets.every((target) => !candidate.tier2.some((tier2) => tier2.text === target.text)))
 
   const extraBlocker: WeeklyDatasetCandidate = {
@@ -93,6 +94,10 @@ test('only a canonical source-inspected vocabulary tab can enter the lab', () =>
   }
   assert.equal(kindergartenCandidateIsUsableInLab(extraBlocker), false)
   assert.equal(kindergartenCandidateIsUsableInLab({ ...candidate, tier1: [] }), false)
+  assert.equal(kindergartenCandidateIsUsableInLab({
+    ...candidate,
+    tier1: candidate.tier1.map((target, index) => index === 0 ? { ...target, text: '新' } : target),
+  }), false)
 })
 
 test('the Kindergarten lab runs the shared engine and keeps Familiar-DT diagnostics separate', () => {
@@ -118,5 +123,6 @@ test('the explicit Unit 1 lab fixture accumulates Tier 1 and preserves Tier 2 se
   assert.equal(review.dataset.startDate, '2026-08-31')
   assert.equal(review.dataset.endDate, '2026-10-04')
   assert.ok(review.dataset.words.every((word) => word.tier === 'tier-1' && word.activityType === 'dictation'))
+  assert.ok(review.dataset.words.every((word) => word.audio?.storagePath?.endsWith('.wav')))
   assert.ok(review.tier2Words.every((word) => !review.dataset.words.some((target) => target.text === word)))
 })

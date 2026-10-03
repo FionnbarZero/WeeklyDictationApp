@@ -38,6 +38,8 @@ import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.t
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
+import { playCachedWordAudio } from './audio/promptAudio.ts'
+import { withKindergartenAudio } from './audio/kindergartenAudio.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
@@ -74,9 +76,7 @@ function speakText(text: string, language = 'zh-CN', rate = 0.55) {
   return () => window.speechSynthesis.cancel()
 }
 
-function speakWord(word: Word) {
-  return speakText(word.text)
-}
+function speakWord(word: Word, warmup = false) { return playCachedWordAudio(withKindergartenAudio(word), warmup) }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -96,6 +96,9 @@ function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
 
 function writingSessionFor(practice: WritingPractice): PracticeSession {
   const prompt = practice.state.flow.prompt
+  const acquisition = prompt
+    ? { ...practice.state.flow, prompt: { ...prompt, word: withKindergartenAudio(prompt.word) } }
+    : practice.state.flow
   return {
     id: `kindergarten-lab-${practice.state.cohortId}`,
     childId: 'kindergarten-lab-child',
@@ -114,7 +117,7 @@ function writingSessionFor(practice: WritingPractice): PracticeSession {
     warmupCategoryByWordId: {},
     warmupRandomRotationWordIds: [],
     warmupRotationCycleId: 1,
-    acquisition: practice.state.flow as PracticeSession['acquisition'],
+    acquisition: acquisition as PracticeSession['acquisition'],
     currentRevealMethod: practice.revealMethod,
     warmupOnly: false,
   }

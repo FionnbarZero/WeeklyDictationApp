@@ -7,6 +7,7 @@ The Kindergarten learning lab is a development-only child-experience harness at 
 - The opening action says **Enter the Dojo**.
 - A tester manually selects one vocabulary-bearing tab from the checked-in workbook fixture. The default is explicitly `Week 6 09/21`; it is not chosen from today's date.
 - Tier 1 `Writing character` targets enter the shared `PracticeView` and shared Acquisition engine.
+- Tier 1 writing uses checked-in cached Mandarin prompt recordings derived from the registered workbook targets. A prompt plays three times with one-second pauses, Replay starts the same cached recording sequence, and the timer does not start until the first recording starts successfully.
 - Tier 2 `High frequency word` targets use the shared reading runner with prompt-local microphone recording and session-only self-assessment. No recording, reading result, or reading progress is retained.
 - The **Prepare for your test** card aggregates Unit 1 teaching from August 31 through September 27 and its authoritative review week from September 28 through October 4. Its shared Test Review presentation uses the 14 observed Tier 1 writing targets; the nine Tier 2 words remain preserved and displayed separately. Unit 1 becomes eligible for Mastery on October 5, after the review period and end-of-unit assessment.
 
@@ -19,6 +20,7 @@ The lab creates an ephemeral target set whose ID starts with `__kindergarten-lab
 - belongs to the Kindergarten Sheets profile;
 - has an assigned Monday–Sunday week and canonical occurrence identities;
 - has at least one Tier 1 target; and
+- has a cached audio artifact for every Tier 1 target; and
 - is a valid canonical source candidate with no error blockers.
 
 The original source candidate remains unchanged. The ephemeral dataset is never sent through application hydration or persistence.
@@ -31,6 +33,7 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - No durable Tier 2 attempt, score, adaptive state, progress record, or retained microphone audio exists.
 - Unit 1 teaching and review dates are explicit in both the lab fixture and the lifecycle profile and are grounded in the Weekly Focus workbook; they are not inferred from workbook order.
 - The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
+- The current family-beta audio artifacts use the local Mainland Mandarin `Tingting` voice and preserve that provenance in `public/audio/kindergarten/manifest.json`. The generation script is ready for the planned `cmn-CN-Wavenet-C` replacement, but the configured Google Cloud project must enable Text-to-Speech before those production files can be generated.
 - Refreshing or leaving discards all lab state.
 - The lab does not import Firebase/Firestore code or use browser storage.
 

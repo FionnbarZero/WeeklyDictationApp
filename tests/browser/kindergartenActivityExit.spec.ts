@@ -71,6 +71,68 @@ for (const exitCase of exitCases) {
   })
 }
 
+test('Kindergarten writing automatically plays and replays a cached Mandarin recording', async ({ page }) => {
+  const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
+  await page.addInitScript(() => {
+    const promptAudioPlays: string[] = []
+    Object.defineProperty(window, '__promptAudioPlays', { value: promptAudioPlays })
+    HTMLMediaElement.prototype.play = function () {
+      promptAudioPlays.push(this.src)
+      return Promise.resolve()
+    }
+  })
+
+  await page.goto('/kindergarten-learning-lab.html')
+  await page.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
+
+  await expect.poll(() => page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays.length)).toBe(1)
+  const firstSource = await page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays[0])
+  expect(firstSource).toMatch(/\/audio\/kindergarten\/u[0-9a-f]+\.wav$/)
+  await expect(page.getByText('Prompt audio plays automatically · You can replay it anytime')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Replay sequence' }).click()
+  await expect.poll(() => page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays.length)).toBe(2)
+  expectNoBrowserErrors()
+})
+
+test('Kindergarten cached Mandarin audio is served and accepted by the browser media engine', async ({ page }) => {
+  const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
+  await page.goto('/kindergarten-learning-lab.html')
+  await page.getByRole('button', { name: /Enter the Dojo/ }).click()
+  const audioResponse = page.waitForResponse((response) => /\/audio\/kindergarten\/u[0-9a-f]+\.wav$/.test(response.url()))
+  await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
+
+  const response = await audioResponse
+  expect([200, 206]).toContain(response.status())
+  expect(response.headers()['content-type']).toContain('audio/wav')
+  await expect(page.getByText('Prompt audio plays automatically · You can replay it anytime')).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expectNoBrowserErrors()
+})
+
+test('Kindergarten writing exposes an actionable error when browser playback fails', async ({ page }) => {
+  const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function () {
+      return Promise.reject(new DOMException('Playback was blocked.', 'NotAllowedError'))
+    }
+  })
+
+  await page.goto('/kindergarten-learning-lab.html')
+  await page.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
+
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('The Mandarin recording could not play.')
+  await expect(alert.getByRole('button', { name: 'Try audio again' })).toBeVisible()
+  const timer = page.locator('.timer')
+  const blockedTimerValue = await timer.innerText()
+  await page.waitForTimeout(1_100)
+  await expect(timer).toHaveText(blockedTimerValue)
+  expectNoBrowserErrors()
+})
+
 test('Kindergarten Reading Final Boss confirms and exits without retaining a score', async ({ page }) => {
   const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
 
