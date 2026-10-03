@@ -7,6 +7,16 @@ export type FamilyBetaDeliveryIdentity = {
   siteId: string
 }
 
+export type FamilyBetaHostingChannel = {
+  name: string
+  url: string
+  release?: { version?: { name?: string } }
+}
+
+export function channelHasRelease(channel: FamilyBetaHostingChannel | undefined) {
+  return Boolean(channel?.release?.version?.name)
+}
+
 export const familyBetaHostingHeaders = [
   { source: '**/*.html', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
   { source: '/assets/**', headers: [{ key: 'Cache-Control', value: 'public,max-age=31536000,immutable' }] },

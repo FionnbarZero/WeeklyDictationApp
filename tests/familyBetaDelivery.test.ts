@@ -14,7 +14,12 @@ import {
   verifyFamilyBetaArtifact,
   type FamilyBetaArtifactManifest,
 } from '../scripts/familyBetaRelease.ts'
-import { previewDeliveryPlan, promotionDeliveryPlan, rollbackDeliveryPlan } from '../scripts/familyBetaDelivery.ts'
+import {
+  channelHasRelease,
+  previewDeliveryPlan,
+  promotionDeliveryPlan,
+  rollbackDeliveryPlan,
+} from '../scripts/familyBetaDelivery.ts'
 
 const revision = '1234567890abcdef1234567890abcdef12345678'
 const previousRevision = 'abcdef1234567890abcdef1234567890abcdef12'
@@ -112,6 +117,21 @@ test('preview, exact promotion, and rollback plans remain grade-specific', () =>
 test('packaging cannot label a different checked-out revision as its source', () => {
   assert.equal(requireMatchingSourceRevision(revision, revision), revision)
   assert.throws(() => requireMatchingSourceRevision(previousRevision, revision), /not checked out at HEAD/)
+})
+
+test('an automatically provisioned empty live channel is not an existing release', () => {
+  assert.equal(
+    channelHasRelease({ name: 'projects/example/sites/example/channels/live', url: 'https://example.web.app' }),
+    false,
+  )
+  assert.equal(
+    channelHasRelease({
+      name: 'projects/example/sites/example/channels/live',
+      url: 'https://example.web.app',
+      release: { version: { name: 'projects/example/sites/example/versions/abc123' } },
+    }),
+    true,
+  )
 })
 
 test('the packaging workflow cannot deploy or replace the shared Grade 2 site', () => {

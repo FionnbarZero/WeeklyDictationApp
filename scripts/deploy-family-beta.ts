@@ -15,10 +15,12 @@ import {
 } from './familyBetaRelease.ts'
 import {
   familyBetaHostingConfig,
+  channelHasRelease,
   previewDeliveryPlan,
   promotionDeliveryPlan,
   rollbackDeliveryPlan,
   type FamilyBetaDeliveryIdentity,
+  type FamilyBetaHostingChannel,
 } from './familyBetaDelivery.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -91,8 +93,6 @@ function renderPlan(commands: readonly (readonly string[])[]) {
   if (!execute) console.log('No Firebase state changed. Repeat with --execute after review.')
 }
 
-type FirebaseChannel = { name: string; url: string }
-
 function channels(identity: FamilyBetaDeliveryIdentity) {
   const raw = run([
     'npx',
@@ -104,7 +104,7 @@ function channels(identity: FamilyBetaDeliveryIdentity) {
     identity.projectId,
     '--json',
   ])
-  const parsed = JSON.parse(raw) as { result?: { channels?: FirebaseChannel[] } }
+  const parsed = JSON.parse(raw) as { result?: { channels?: FamilyBetaHostingChannel[] } }
   return parsed.result?.channels || []
 }
 
@@ -116,7 +116,7 @@ function channel(identity: FamilyBetaDeliveryIdentity, channelId: string) {
 
 function assertNoLiveRelease(identity: FamilyBetaDeliveryIdentity) {
   const live = channels(identity).find((item) => item.name.endsWith('/channels/live'))
-  if (live) {
+  if (channelHasRelease(live)) {
     throw new Error(
       `Hosting site ${identity.siteId} already has a live release. Use --previous-revision instead of --initial-release.`,
     )
