@@ -34,6 +34,8 @@
 ## Operations and verification
 
 - [Controlled family beta operations](./family-beta-operations.md)
+- [Family beta release inventory](./family-beta-release-inventory.md)
+- [Family beta release manifest template](./family-beta-release-manifest-template.md)
 - [Staging foundation](./staging-foundation.md)
 - [Backend importer](./backend-import.md)
 - [Manual UI verification](./manual-ui-verification.md)

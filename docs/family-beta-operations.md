@@ -12,7 +12,7 @@ The objective is not to freeze development. It is to ensure that every child can
 - Real beta data stays in its authorized family scope and is minimized to what the active capability requires.
 - Microphone audio remains prompt-local and is released when the prompt or visit ends.
 - Kindergarten and Grade 5 remain session-only until separate durable persistence contracts are approved.
-- Grade 2 Tier 1 writing is durable and requires backup, restore, migration, retry, and rollback protection.
+- Grade 2 Tier 1 writing is browser-local durable in the current family-beta build and requires backup, restore, migration, retry, and rollback protection.
 - Closed beta availability does not mean production eligibility.
 
 ## Grade-specific safety posture
@@ -20,7 +20,7 @@ The objective is not to freeze development. It is to ensure that every child can
 | Grade | Current beta posture | Required release protection |
 | --- | --- | --- |
 | Kindergarten | Session-only development experience | Stable known-good build, visible session-only notice, no retained result or audio, independent rollback |
-| Grade 2 | Durable Tier 1 writing; Tier 2 remains session-only | Child-scoped backup and restore, schema compatibility, exact retry checks, second-browser verification, independent rollback |
+| Grade 2 | Browser-local durable Tier 1 writing; Tier 2 remains session-only | Browser-state export and restore, schema compatibility, exact retry checks, second-browser verification after migration, independent rollback |
 | Grade 5 | Session-only development experience with unresolved product policies | Stable known-good build, visible session-only and experimental notices, no production source activation, independent rollback |
 
 ## Stable and preview deployments
@@ -32,6 +32,8 @@ Each proposed update receives a temporary preview deployment. The adult reviewer
 Every stable deployment retains at least one previous known-good Hosting release. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
 ## Release identity and manifest
+
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. The inventory confirms that the three current entry routes share one GitHub Pages artifact; that shared deployment is a temporary baseline, not the required independent grade delivery model.
 
 Every child-facing beta displays a concise identifier containing:
 
@@ -72,6 +74,18 @@ Every promotion records:
 11. Observe the release and either record acceptance or roll back. Do not continue exposing a release while investigating a critical or high-severity data defect.
 
 ## Grade 2 backup and restore
+
+The local Grade 2 beta includes a parent-facing **Protect progress** control in candidate source. **Download backup** exports application state version 2 together with the Acquisition and Warmup recovery journals inside a `weekly-dictation-verified-backup-v1` envelope. The envelope carries a SHA-256 checksum over canonical payload content. Export fails closed if either journal is malformed.
+
+**Preview restore** verifies the checksum, application schema, recovery journals, and record counts without writing any browser key. The preview reports explicitly that no browser data changed. Applying a restore remains unavailable until the write path is idempotent, preserves a newer valid backup, produces a before/after comparison, and passes rollback rehearsal. Therefore, the current control protects extraction and validation but does not by itself close the C0 restore gate.
+
+For each pre-release backup:
+
+1. Open the exact Grade 2 child-facing origin and select **Protect progress** outside an active activity.
+2. Download the verified JSON file and keep it in private family-controlled storage.
+3. Select that same file under **Preview restore** and require a verified result.
+4. Record the filename, complete SHA-256 value, creation time, application version, and preview result in the release manifest. Do not attach the backup itself to a bug report.
+5. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup has been independently retained.
 
 Before any Grade 2 change that can affect persistence, create a child-scoped export containing:
 

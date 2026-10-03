@@ -98,7 +98,11 @@ Program C begins by protecting the three grade-level applications already used b
 | Safe update workflow | Require synthetic reproduction, regression coverage, complete relevant gates, adult preview approval, one-child canary, observation, and rollback | No update reaches a child directly from an unreviewed development build |
 | Bug response | Define privacy-safe intake and critical/high/medium/low response rules; stop and roll back for privacy, identity, loss, duplication, or lifecycle corruption | Every reported defect has an owner, severity, affected build, containment decision, and regression test when reproducible |
 
-The detailed operating procedure and release manifest are maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md).
+The detailed operating procedure is maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md), with a reusable manifest in [`docs/family-beta-release-manifest-template.md`](./docs/family-beta-release-manifest-template.md).
+
+The initial deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). It confirms that all three current routes share one GitHub Pages artifact. The inventory record is complete, but the workstream exit gate remains open until the exact child bookmarks receive adult confirmation, Grade 2 state is backed up, and each grade has an independently promotable and reversible destination.
+
+The first Grade 2 safeguard is implemented in candidate source: an application-level browser export with SHA-256 verification and a restore preview that performs no writes. It is not complete operational protection until the exact child browser produces and verifies a backup, the candidate is promoted through preview, and an idempotent lossless apply-restore path passes rehearsal.
 
 ### C1 product behavior contracts
 
