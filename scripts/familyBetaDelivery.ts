@@ -18,7 +18,7 @@ export function channelHasRelease(channel: FamilyBetaHostingChannel | undefined)
 }
 
 export const familyBetaHostingHeaders = [
-  { source: '**/*.html', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
+  { source: '**', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
   { source: '/assets/**', headers: [{ key: 'Cache-Control', value: 'public,max-age=31536000,immutable' }] },
   {
     source: '**',

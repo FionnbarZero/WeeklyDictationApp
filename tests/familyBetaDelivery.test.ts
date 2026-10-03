@@ -4,22 +4,24 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import test from 'node:test'
 import {
-  FAMILY_BETA_ARTIFACT_SCHEMA,
+  channelHasRelease,
+  familyBetaHostingConfig,
+  familyBetaHostingHeaders,
+  previewDeliveryPlan,
+  promotionDeliveryPlan,
+  rollbackDeliveryPlan,
+} from '../scripts/familyBetaDelivery.ts'
+import {
   artifactFileRecords,
   candidateChannelId,
+  FAMILY_BETA_ARTIFACT_SCHEMA,
+  type FamilyBetaArtifactManifest,
   familyBetaGradeConfig,
   fileTreeSha256,
   requireMatchingSourceRevision,
   rollbackChannelId,
   verifyFamilyBetaArtifact,
-  type FamilyBetaArtifactManifest,
 } from '../scripts/familyBetaRelease.ts'
-import {
-  channelHasRelease,
-  previewDeliveryPlan,
-  promotionDeliveryPlan,
-  rollbackDeliveryPlan,
-} from '../scripts/familyBetaDelivery.ts'
 
 const revision = '1234567890abcdef1234567890abcdef12345678'
 const previousRevision = 'abcdef1234567890abcdef1234567890abcdef12'
@@ -132,6 +134,21 @@ test('an automatically provisioned empty live channel is not an existing release
     }),
     true,
   )
+})
+
+test('family beta routes bypass caches while fingerprinted assets remain immutable', () => {
+  assert.deepEqual(familyBetaHostingHeaders.slice(0, 2), [
+    { source: '**', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
+    {
+      source: '/assets/**',
+      headers: [{ key: 'Cache-Control', value: 'public,max-age=31536000,immutable' }],
+    },
+  ])
+
+  const config = familyBetaHostingConfig('weeklydictation-g5-beta', 'family-beta-dist/grade5')
+  assert.equal(config.hosting.site, 'weeklydictation-g5-beta')
+  assert.deepEqual(config.hosting.headers, familyBetaHostingHeaders)
+  assert.deepEqual(config.hosting.rewrites, [{ source: '**', destination: '/index.html' }])
 })
 
 test('the packaging workflow cannot deploy or replace the shared Grade 2 site', () => {
