@@ -8,7 +8,7 @@ This roadmap separates three programs with independent finish lines:
 
 Program A must not stay open because a curriculum or release decision in Program C is unresolved. The frozen references protect approved behavior while the integrated application is assembled one vertical slice at a time.
 
-As of 2026-10-02, Program A is merged and Program B1 is complete on `ops/staging-foundation`. The current priority is C0: make the three existing grade-level apps safe to update for the closed family beta. Program B2 and any broader product activation wait until the beta release, backup, rollback, and bug-response controls are in place.
+As of 2026-10-03, Program A and Program B1 are complete. C0 has independent Kindergarten and Grade 5 sites, visible release identity, exact-artifact delivery tooling, and a merged Grade 2 selected-child restore. C0 remains open for retained rollback targets, real Grade 2 backup/restore rehearsal, adult activity acceptance, observation records, and promotion of the Grade 2 safety release. Program B2 and broader product activation continue to wait for those controls.
 
 ## Operating model
 
@@ -94,15 +94,15 @@ Program C begins by protecting the three grade-level applications already used b
 | Beta inventory | Record each grade's stable URL, build commit, activity surface, persistence promise, child-data location, and known limitations | Every child has one documented known-good release and no beta URL silently tracks an unverified branch |
 | Release identity | Display grade, beta status, application version, and Git revision in every app; create one release manifest per promotion | A bug report can identify the exact code, curriculum, schema, and deployment under test without child-identifying data |
 | Grade-specific delivery | Maintain stable grade-specific beta destinations and temporary preview deployments; promote the exact reviewed artifact rather than rebuilding it | A change to one grade cannot unintentionally replace another grade's known-good app |
-| Data protection | Add child-scoped checksum-verifiable export and restore for durable Grade 2 state; keep Kindergarten and Grade 5 explicitly session-only; retain no microphone audio | A pre-release Grade 2 backup can be restored losslessly and session-only apps make no durable-progress promise |
+| Data protection | Add a truthfully labelled checksum-verifiable whole-local-state backup and selected-child restore for durable Grade 2 state; keep Kindergarten and Grade 5 explicitly session-only; retain no microphone audio | A pre-release Grade 2 backup can restore the selected profile losslessly without replacing unrelated profiles or current shared curriculum, and session-only apps make no durable-progress promise |
 | Safe update workflow | Require synthetic reproduction, regression coverage, complete relevant gates, adult preview approval, one-child canary, observation, and rollback | No update reaches a child directly from an unreviewed development build |
 | Bug response | Define privacy-safe intake and critical/high/medium/low response rules; stop and roll back for privacy, identity, loss, duplication, or lifecycle corruption | Every reported defect has an owner, severity, affected build, containment decision, and regression test when reproducible |
 
 The detailed operating procedure is maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md), with a reusable manifest in [`docs/family-beta-release-manifest-template.md`](./docs/family-beta-release-manifest-template.md).
 
-The initial deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). It confirms that all three current routes share one GitHub Pages artifact. The inventory record is complete, but the workstream exit gate remains open until the exact child bookmarks receive adult confirmation, Grade 2 state is backed up, and each grade has an independently promotable and reversible destination.
+The current deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). Kindergarten and Grade 5 now have independently promotable stable destinations; Grade 2 deliberately remains on its browser-storage origin. The inventory exit gate remains open until the exact child bookmarks receive adult confirmation, retained rollback channels exist, and Grade 2 state is backed up and restore-rehearsed.
 
-The first Grade 2 safeguard is implemented in candidate source: an application-level browser export with SHA-256 verification and a restore preview that performs no writes. It is not complete operational protection until the exact child browser produces and verifies a backup, the candidate is promoted through preview, and an idempotent lossless apply-restore path passes rehearsal.
+The Grade 2 safeguard is merged in source: a truthfully labelled whole-local-state SHA-256 backup, selected-child deep zero-write preview and merge, before/after reporting, automatic pre-restore backup, transactional writes across all three local storage keys, startup recovery, and idempotent replay. It is not complete operational protection until a disposable copy of the real family-browser state passes backup, preview, restore, interruption, repeat, and rollback rehearsal and the exact candidate is promoted without changing origin.
 
 ### C1 product behavior contracts
 
@@ -148,13 +148,13 @@ Recommended integration order remains Grade 2 Tier 1 writing, Kindergarten, dura
 
 ## Immediate execution order
 
-1. Inventory the three current child-facing beta deployments and designate one known-good release per grade.
-2. Add visible release identity, persistence status, grade-specific stable destinations, and privacy-safe bug intake.
-3. Implement and rehearse checksum-verifiable Grade 2 backup and restore before any persistence-affecting beta update.
-4. Establish preview, adult approval, one-child canary, observation, and rollback gates for every beta promotion.
-5. Define and approve activity contracts one grade at a time; keep unresolved capabilities hidden or explicitly experimental.
-6. Resume B2 synthetic migration, restore, failure-injection, and full rollback rehearsal after C0 passes.
-7. Deploy the trusted importer through shadow, idempotency, IAM, monitoring, and rollback gates.
-8. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005.
-9. Implement durable Grade 2 Tier 2 independently where useful.
+1. Preserve one retained rollback channel for each independent session-only site and finish the Kindergarten and Grade 5 release records.
+2. Rehearse the merged Grade 2 backup and restore against a disposable copy of the real browser state; do not use the only live profile as the first restore target.
+3. Promote the exact Grade 2 safety artifact on the existing origin only after backup, preview, rollback, bookmark, and adult-approval evidence is recorded.
+4. Complete the Kindergarten defect inventory and grade-specific activity acceptance matrix; keep unapproved behavior experimental or contained.
+5. Complete Grade 5 activity acceptance and observation without changing its session-only promise.
+6. Close C0 only after every stable destination, manifest, rollback target, and critical/high-severity response rehearsal is recorded.
+7. Resume B2 synthetic migration, restore, failure-injection, and full rollback rehearsal after C0 passes.
+8. Deploy the trusted importer through shadow, idempotency, IAM, monitoring, and rollback gates.
+9. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005; implement durable Grade 2 Tier 2 independently where useful.
 10. Activate Grade 5 for production only after importer, Warmup-policy, and multi-review persistence gates pass.
