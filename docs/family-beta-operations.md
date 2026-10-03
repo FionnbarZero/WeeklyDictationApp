@@ -31,9 +31,17 @@ Each proposed update receives a temporary preview deployment. The adult reviewer
 
 Every stable deployment retains at least one previous known-good Hosting release. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
+Verified on 2026-10-03:
+
+| Grade | Stable destination | Live source | Current operational gap |
+| --- | --- | --- | --- |
+| Kindergarten | `https://weeklydictation-k-beta.web.app` | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | Adult defect review is active; no retained `rollback-*` channel; rewritten-root cache fix not yet promoted |
+| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | `a6df41db07331fd0c8dde190dbf80b10650184df` through Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023` | Restore release is merged but not live or rehearsed against family-browser state |
+| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | No retained `rollback-*` channel; detailed adult acceptance and observation record incomplete |
+
 ## Release identity and manifest
 
-The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. The inventory confirms that the three current entry routes share one GitHub Pages artifact; that shared deployment is a temporary baseline, not the required independent grade delivery model.
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. Kindergarten and Grade 5 now use dedicated Firebase Hosting sites. The legacy GitHub Pages artifact still serves all historical routes, but it remains the stable Grade 2 origin only; it is not the promotion path for the two independent session-only apps.
 
 The repository-side Kindergarten and Grade 5 artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). They deliberately exclude Grade 2 and the shared GitHub Pages branch.
 
@@ -70,16 +78,18 @@ Every promotion records:
 5. Run the relevant unit, typecheck, lint, format, build, browser, performance, and Firestore Emulator gates.
 6. Deploy the exact candidate to a temporary preview destination.
 7. Obtain adult approval of the affected activity and confirm that unrelated activities still open and exit correctly.
-8. For a Grade 2 persistence-affecting change, create and verify a child-scoped backup before promotion.
+8. For a Grade 2 persistence-affecting change, create and verify the whole-local-state backup, then confirm the selected-profile restore plan before promotion.
 9. Promote the exact reviewed artifact to the affected grade's stable beta destination.
 10. Use one child as the canary only for that child's grade. Confirm launch, exit, resume, completion, and persistence promises appropriate to the activity.
 11. Observe the release and either record acceptance or roll back. Do not continue exposing a release while investigating a critical or high-severity data defect.
 
 ## Grade 2 backup and restore
 
-The local Grade 2 beta includes a parent-facing **Protect progress** control in candidate source. **Download backup** exports application state version 2 together with the Acquisition and Warmup recovery journals inside a `weekly-dictation-verified-backup-v1` envelope. The envelope carries a SHA-256 checksum over canonical payload content. Export fails closed if either journal is malformed.
+Merged Grade 2 source includes a parent-facing **Protect progress** control. **Download backup** exports application state version 2 together with the Acquisition and Warmup recovery journals inside a `weekly-dictation-verified-backup-v1` envelope. The envelope carries a SHA-256 checksum over canonical payload content. Export fails closed if either journal is malformed.
 
-**Preview restore** verifies the checksum, application schema, recovery journals, and record counts without writing any browser key. The preview reports explicitly that no browser data changed. Applying a restore remains unavailable until the write path is idempotent, preserves a newer valid backup, produces a before/after comparison, and passes rollback rehearsal. Therefore, the current control protects extraction and validation but does not by itself close the C0 restore gate.
+**Preview restore** verifies the checksum, current origin, selected profile, application schema, recovery journals, and deep record relationships without writing any browser key. It reports the selected profile's before/after counts while preserving current shared curriculum, unrelated profiles, and newer unrelated records.
+
+**Apply selected-profile restore** requires explicit confirmation and first downloads an automatic pre-restore backup. It writes application state and both recovery journals through one restore journal, verifies every write, rolls back a failed transaction, replays a known partial transaction at startup, and fails closed without overwriting unexpected newer storage. Exact replay is idempotent. These controls are code-complete but do not close C0 until they pass an operator rehearsal with a disposable copy of real family-browser state.
 
 For each pre-release backup:
 
@@ -87,13 +97,14 @@ For each pre-release backup:
 2. Download the verified JSON file and keep it in private family-controlled storage.
 3. Select that same file under **Preview restore** and require a verified result.
 4. Record the filename, complete SHA-256 value, creation time, application version, and preview result in the release manifest. Do not attach the backup itself to a bug report.
-5. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup has been independently retained.
+5. Import the backup into an isolated rehearsal copy of the same-origin browser state and verify the before/after report, automatic pre-restore backup, exact replay, and startup recovery. Never use the only live child profile as the first apply target.
+6. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup and rehearsal evidence have been independently retained.
 
-Before any Grade 2 change that can affect persistence, create a child-scoped export containing:
+Before any Grade 2 change that can affect persistence, create a verified whole-local-practice-state backup. It deliberately contains records for every profile stored in that browser so recovery evidence is not discarded, while preview and apply are bound to the recorded origin and selected profile. Treat the file as private family data. It contains:
 
 - export format and schema version;
 - application and Git revision;
-- family and child scope identifiers without adding unnecessary identifying information;
+- origin and selected-profile scope identifiers without adding unnecessary identifying information;
 - datasets and lifecycle identities referenced by the child state;
 - Acquisition progress and transition receipts;
 - Warmup visits, queue entries, attempts, mastery state, graph points, rotations, and receipts;
@@ -101,7 +112,7 @@ Before any Grade 2 change that can affect persistence, create a child-scoped exp
 - export timestamp; and
 - deterministic checksum.
 
-Restore first runs in preview mode. It validates scope, schema, referential integrity, transition identities, duplicate protection, and checksum without writing. A real restore must be idempotent, preserve newer unrelated records, and produce a comparison report.
+Restore first runs in preview mode. It validates scope, schema, referential integrity, transition identities, duplicate protection, and checksum without writing. Apply must remain idempotent, preserve current shared curriculum and unrelated profiles, and produce a comparison report. Rehearsal must cover wrong-profile input, interrupted writes, duplicate restore, malformed journals, unexpected newer storage, and rollback.
 
 The beta cannot rely on Firestore managed export/import while the project remains on the no-billing plan. Enabling billing, scheduled backups, or point-in-time recovery requires a separate cost and operations decision.
 
@@ -145,7 +156,7 @@ C0 is complete when:
 - each grade has a stable documented beta destination and known-good release;
 - each app displays build and persistence status;
 - preview and exact-artifact promotion are documented and rehearsed;
-- Grade 2 child-scoped export, checksum, preview restore, and lossless restore pass;
+- Grade 2 whole-local-state export, checksum, scope-aware preview, and selected-child lossless restore pass;
 - every promotion has a release manifest and rollback target;
 - the adult reviewer has rehearsed critical and high-severity rollback decisions;
 - bug intake avoids child-identifying response content;

@@ -1,6 +1,6 @@
 # Independent family beta delivery
 
-Status: repository controls implemented; Kindergarten and Grade 5 Hosting sites and preview releases require provisioning before promotion.
+Status: repository controls implemented; both Hosting sites are provisioned and initial stable releases are active; retained rollback channels and complete acceptance records remain open.
 
 This delivery path isolates the two session-only applications without moving Grade 2. The existing GitHub Pages origin remains the Grade 2 data origin until verified lossless restore makes an origin change safe.
 
@@ -13,6 +13,19 @@ This delivery path isolates the two session-only applications without moving Gra
 | Grade 2 | unchanged | unchanged | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Browser-local Tier 1 writing |
 
 The two additional Hosting sites are independent release channels. Deploying or rolling back either site does not replace the other site or the GitHub Pages artifact.
+
+## Current live records
+
+Verified through the authenticated Firebase Hosting channel inventory on 2026-10-03:
+
+| Grade | Source revision | Hosting version | Artifact SHA-256 | Preview channel | Live release time |
+| --- | --- | --- | --- | --- | --- |
+| Kindergarten | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | `856c70eaec380dc5` | `71d59ef35fa3cb9a2c856973c751ff56ce5f7e64dc5d9724ba44bed89923a5d0` | `candidate-250d348f5279` | `2026-10-03T19:47:10.709Z` |
+| Grade 5 | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | `d9bf9c316262a8a8` | `37d0c7fd366ea59a530f5ad29682b8bc6d8cf592273d2f00e33b5d7a04dbacdb` | `candidate-a55d972ccb6f` | `2026-10-03T22:53:37.183Z` |
+
+Both live roots display the recorded revision and session-only status. Grade 5 uses the corrected `Cache-Control: no-store` rule for rewritten roots. Kindergarten still uses the earlier HTML-only rule, so `/` can receive Firebase's one-hour default cache; fix this only through an approved exact-artifact promotion.
+
+Neither site currently has a retained `rollback-*` channel. The candidate channels expire on 2026-10-10 and must not be treated as permanent rollback targets. Before the next promotion, preserve the current accepted live version under `rollback-<current-revision>` and record it in the next manifest.
 
 ## Immutable artifact contract
 
@@ -79,7 +92,7 @@ Append `--execute` only after the dry-run plan, manifest, preview, and adult acc
 
 ## Provisioning and release gates
 
-One-time site creation requires the Firebase-owning account:
+The one-time site creation was completed on 2026-10-03 with the Firebase-owning account. The provisioning commands remain here for recovery documentation only:
 
 ```sh
 npx firebase hosting:sites:create weeklydictation-k-beta --project weeklydictationapp

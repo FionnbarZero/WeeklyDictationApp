@@ -62,7 +62,7 @@ Copy this template for every proposed family-beta promotion. Keep the manifest f
 - Audio-retention check:
 - Privacy review:
 
-For Grade 2, a persistence-affecting promotion cannot proceed without a checksum-verified browser or child-scoped backup and a successful non-writing preview restore. For Kindergarten and Grade 5, record `not applicable — session only` only after confirming that no progress, answer, score, or audio is retained.
+For Grade 2, a persistence-affecting promotion cannot proceed without a checksum-verified whole-local-practice-state backup and a successful selected-profile, non-writing preview restore. The backup contains records for every profile stored in that browser and must remain private family data; apply restores only the selected profile. For Kindergarten and Grade 5, record `not applicable — session only` only after confirming that no progress, answer, score, or audio is retained.
 
 ## Promotion and observation
 
