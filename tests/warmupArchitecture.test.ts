@@ -97,6 +97,7 @@ test('production uses the Adaptive Warmup model only through the approved applic
   const adaptiveConsumers = productionFiles.filter((file) => /warmup\/adaptive/.test(readFileSync(file, 'utf8')))
     .map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort()
   assert.deepEqual(adaptiveConsumers, [
+    'src/application/backup/selectedChildRestore.ts',
     'src/application/warmup/activation.ts',
     'src/application/warmup/cloudCoordinator.ts',
     'src/application/warmup/hydration.ts',

@@ -1,7 +1,16 @@
 import { useState, type ChangeEvent } from 'react'
 import { Download, ShieldCheck, Upload, X } from 'lucide-react'
-import type { ApplicationBackupPreview } from '../persistence/applicationBackup.ts'
+import {
+  applyLocalApplicationRestore,
+  exportLocalApplicationBackup,
+  previewLocalApplicationRestore,
+  type LocalApplicationRestorePreview,
+} from '../application/backup/index.ts'
+import { loadLocalWorkspace, type LocalWorkspacePort } from '../application/workspace/index.ts'
 import { useDialogFocus } from '../accessibility/useDialogFocus.ts'
+import { APP_VERSION } from '../config.ts'
+import type { AppState } from '../domain.ts'
+import { createBrowserLocalRestore } from '../infrastructure/browserLocalRestore.ts'
 
 export type LocalBackupExport = {
   fileName: string
@@ -22,18 +31,57 @@ function downloadBackup(backup: LocalBackupExport) {
 
 export function LocalBackupTools({
   onClose,
-  createBackup,
-  previewBackup,
+  state,
+  selectedChildId,
+  localWorkspace,
+  onStateRestored,
 }: {
   onClose: () => void
-  createBackup: () => Promise<LocalBackupExport>
-  previewBackup: (raw: string) => Promise<ApplicationBackupPreview>
+  state: AppState
+  selectedChildId: string
+  localWorkspace: LocalWorkspacePort
+  onStateRestored: (state: AppState) => void
 }) {
-  const [busy, setBusy] = useState<'export' | 'preview' | null>(null)
+  const [busy, setBusy] = useState<'export' | 'preview' | 'apply' | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [preview, setPreview] = useState<ApplicationBackupPreview | null>(null)
+  const [preview, setPreview] = useState<LocalApplicationRestorePreview | null>(null)
+  const [previewRaw, setPreviewRaw] = useState<string | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [applied, setApplied] = useState(false)
   const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose)
+  const expectedScope = {
+    mode: 'local-browser' as const,
+    grade: 'Grade 2' as const,
+    selectedChildId,
+    origin: window.location.origin,
+  }
+  const createBackup = () => {
+    const createdAt = new Date().toISOString()
+    return exportLocalApplicationBackup({
+      state,
+      createdAt,
+      applicationVersion: APP_VERSION,
+      scope: { ...expectedScope, dataScope: 'whole-local-practice-state' },
+      capabilities: localWorkspace,
+    })
+  }
+  const previewBackup = (raw: string) =>
+    previewLocalApplicationRestore({ raw, currentState: state, expectedScope, capabilities: localWorkspace })
+  const applyBackup = async (raw: string, previewChecksum: string) => {
+    const createdAt = new Date().toISOString()
+    const restored = await applyLocalApplicationRestore({
+      raw,
+      previewChecksum,
+      currentState: state,
+      expectedScope,
+      capabilities: createBrowserLocalRestore(window.localStorage),
+      transactionId: `grade2-restore-${createdAt}`,
+      createdAt,
+    })
+    onStateRestored(loadLocalWorkspace(localWorkspace))
+    return restored
+  }
 
   const exportBackup = async () => {
     setBusy('export')
@@ -58,12 +106,40 @@ export function LocalBackupTools({
     setMessage(null)
     setError(null)
     setPreview(null)
+    setPreviewRaw(null)
+    setConfirmed(false)
+    setApplied(false)
     try {
-      const result = await previewBackup(await file.text())
+      const raw = await file.text()
+      const result = await previewBackup(raw)
       setPreview(result)
+      setPreviewRaw(raw)
       setMessage('Backup verified. This preview did not change any browser data.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The backup could not be previewed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const applyRestore = async () => {
+    if (!preview || !previewRaw || !confirmed) return
+    setBusy('apply')
+    setMessage(null)
+    setError(null)
+    try {
+      const safetyBackup = await createBackup()
+      downloadBackup({ ...safetyBackup, fileName: safetyBackup.fileName.replace('backup-', 'pre-restore-backup-') })
+      const result = await applyBackup(previewRaw, preview.checksum)
+      setApplied(true)
+      setConfirmed(false)
+      setMessage(
+        result.status === 'idempotent'
+          ? 'This profile already matched the backup. A pre-restore safety backup was downloaded; no browser data changed.'
+          : 'Restore complete. A pre-restore safety backup was downloaded first, and other profiles were preserved.',
+      )
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The restore could not be applied.')
     } finally {
       setBusy(null)
     }
@@ -203,8 +279,66 @@ export function LocalBackupTools({
               <code>{preview.checksum}</code>
             </p>
             <p className="backup-no-write">
-              No browser data was changed. Applying a restore is deliberately unavailable in this safety phase.
+              No browser data was changed. Applying this restore replaces only the selected profile’s records.
             </p>
+            <div className="backup-restore-report" aria-label="Selected profile restore report">
+              <h4>Before → after</h4>
+              <dl>
+                <div>
+                  <dt>Practice records</dt>
+                  <dd>
+                    {preview.restore.before.practiceRecords} → {preview.restore.after.practiceRecords}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Acquisition records</dt>
+                  <dd>
+                    {preview.restore.before.acquisitionRecords} → {preview.restore.after.acquisitionRecords}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Warmup records</dt>
+                  <dd>
+                    {preview.restore.before.warmupRecords} → {preview.restore.after.warmupRecords}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Pending recovery</dt>
+                  <dd>
+                    {preview.restore.before.pendingRecovery} → {preview.restore.after.pendingRecovery}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Other-profile records</dt>
+                  <dd>{preview.restore.preservedOtherChildRecords} preserved</dd>
+                </div>
+                <div>
+                  <dt>Historical datasets</dt>
+                  <dd>{preview.restore.addedHistoricalDatasets} added</dd>
+                </div>
+              </dl>
+            </div>
+            {!applied && (
+              <div className="backup-apply-controls">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    disabled={busy !== null}
+                    onChange={(event) => setConfirmed(event.target.checked)}
+                  />
+                  Restore only the selected Grade 2 profile. Download a safety backup first.
+                </label>
+                <button
+                  className="primary-button backup-action"
+                  type="button"
+                  disabled={!confirmed || busy !== null}
+                  onClick={() => void applyRestore()}
+                >
+                  <ShieldCheck size={16} /> {busy === 'apply' ? 'Restoring…' : 'Apply selected-profile restore'}
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>
