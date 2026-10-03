@@ -615,6 +615,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       scope: {
         mode: 'local-browser',
         grade: 'Grade 2',
+        dataScope: 'whole-local-practice-state',
         selectedChildId: selectedChild.id,
         origin: window.location.origin,
       },
@@ -623,7 +624,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const previewLocalBackup = async (raw: string) => {
     const { previewLocalApplicationBackup } = await import('./application/backup/index.ts')
-    return previewLocalApplicationBackup(raw)
+    return previewLocalApplicationBackup(raw, {
+      mode: 'local-browser',
+      grade: 'Grade 2',
+      selectedChildId: selectedChild.id,
+      origin: window.location.origin,
+    })
   }
 
   if (dataLoading && auth.user && familyChildren.length === 0) return <div className="auth-shell"><div className="auth-card"><Sparkles size={28} /><h1>Loading your family</h1><p>Securely loading children and weekly datasets…</p></div></div>

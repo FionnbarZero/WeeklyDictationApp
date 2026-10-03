@@ -35,10 +35,13 @@ test('Grade 2 exports a verified backup and previews it without writing browser 
   expect(parsed.schema).toBe('weekly-dictation-verified-backup-v1')
   expect(parsed.checksum.algorithm).toBe('SHA-256')
   expect(parsed.checksum.value).toMatch(/^[a-f0-9]{64}$/)
+  expect(parsed.payload.scope.dataScope).toBe('whole-local-practice-state')
 
   await page.getByLabel('Select a Grade 2 backup to preview').setInputFiles(downloadedPath!)
   await expect(page.getByRole('heading', { name: 'Restore preview verified' })).toBeVisible()
   await expect(page.getByText('No browser data was changed.')).toBeVisible()
+  await expect(page.locator('.backup-preview')).toContainText('Whole local practice state')
+  await expect(page.locator('.backup-preview')).toContainText('Current Grade 2 profile matched')
   await expect(page.locator('.backup-preview dl div').filter({ hasText: 'Datasets' })).toContainText('4')
   expect(await storedValues(page)).toEqual(before)
 })

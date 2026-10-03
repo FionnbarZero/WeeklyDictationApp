@@ -13,6 +13,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev -- --mode public-preview --host 127.0.0.1 --port 5196',
     url: 'http://127.0.0.1:5196/WeeklyDictationApp/',
+    env: { VITE_GIT_REVISION: '0000000000000000000000000000000000000000' },
     reuseExistingServer: false,
     timeout: 120_000,
   },

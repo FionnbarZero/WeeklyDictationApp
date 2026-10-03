@@ -95,8 +95,9 @@ export function LocalBackupTools({
           </button>
         </div>
         <p className="backup-introduction">
-          Download the current application state and both recovery journals in one SHA-256 verified file. Keep the file
-          private because it contains learning records.
+          Download the whole local practice state and both recovery journals in one SHA-256 verified file. This includes
+          records for every profile stored in this browser, not only the profile currently selected. Keep the file
+          private.
         </p>
 
         <section className="backup-action-card" aria-labelledby="backup-export-title">
@@ -120,8 +121,8 @@ export function LocalBackupTools({
             <p className="eyebrow">Step 2</p>
             <h3 id="backup-preview-title">Preview restore</h3>
             <p>
-              Select a backup to verify its checksum, schema, journals, and record counts. Preview never writes to
-              browser storage.
+              Select a backup to verify its checksum, schema, journals, browser origin, selected-profile context, and
+              record counts. Preview never writes to browser storage.
             </p>
           </div>
           <label className={`backup-file-control${busy !== null ? ' disabled' : ''}`}>
@@ -163,6 +164,14 @@ export function LocalBackupTools({
               <div>
                 <dt>Application</dt>
                 <dd>{preview.summary.applicationVersion}</dd>
+              </div>
+              <div>
+                <dt>Backup contents</dt>
+                <dd>Whole local practice state</dd>
+              </div>
+              <div>
+                <dt>Profile context</dt>
+                <dd>Current Grade 2 profile matched</dd>
               </div>
               <div>
                 <dt>Datasets</dt>

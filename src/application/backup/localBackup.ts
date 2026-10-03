@@ -3,6 +3,7 @@ import {
   createVerifiedApplicationBackup,
   previewVerifiedApplicationBackup,
   type ApplicationBackupPreview,
+  type VerifiedApplicationBackupPreviewContext,
   type VerifiedApplicationBackupScope,
 } from '../../persistence/applicationBackup.ts'
 import type { PendingJournalReadResult } from '../../persistence/acquisitionPendingJournal.ts'
@@ -47,6 +48,9 @@ export async function exportLocalApplicationBackup(input: {
   }
 }
 
-export function previewLocalApplicationBackup(raw: string): Promise<ApplicationBackupPreview> {
-  return previewVerifiedApplicationBackup(raw)
+export function previewLocalApplicationBackup(
+  raw: string,
+  expectedScope: VerifiedApplicationBackupPreviewContext,
+): Promise<ApplicationBackupPreview> {
+  return previewVerifiedApplicationBackup(raw, { expectedScope })
 }

@@ -11,8 +11,16 @@ import {
 const scope = {
   mode: 'local-browser' as const,
   grade: 'Grade 2' as const,
+  dataScope: 'whole-local-practice-state' as const,
   selectedChildId: 'grade-2-beta',
   origin: 'https://example.test',
+}
+
+const expectedScope = {
+  mode: scope.mode,
+  grade: scope.grade,
+  selectedChildId: scope.selectedChildId,
+  origin: scope.origin,
 }
 
 test('a verified browser backup round-trips through SHA-256 preview without applying state', async () => {
@@ -30,7 +38,7 @@ test('a verified browser backup round-trips through SHA-256 preview without appl
   assert.match(created.checksum, /^[a-f0-9]{64}$/)
   assert.doesNotMatch(created.serialized, /refreshToken|idToken|accessToken/)
 
-  const preview = await previewVerifiedApplicationBackup(created.serialized)
+  const preview = await previewVerifiedApplicationBackup(created.serialized, { expectedScope })
   assert.equal(preview.checksum, created.checksum)
   assert.equal(preview.payload.backup.createdAt, '2026-10-02T22:00:00.000Z')
   assert.deepEqual(preview.payload.backup.state, state)
@@ -76,7 +84,33 @@ test('restore preview rejects an unverified legacy backup', async () => {
     pendingAcquisition: [],
     pendingWarmup: [],
   })
-  await assert.rejects(() => previewLocalApplicationBackup(legacy), /not a supported checksum-verified/i)
+  await assert.rejects(() => previewLocalApplicationBackup(legacy, expectedScope), /not a supported checksum-verified/i)
+})
+
+test('restore preview rejects a verified backup from another origin or selected profile', async () => {
+  const created = await createVerifiedApplicationBackup({
+    state: createInitialState(),
+    pendingAcquisition: [],
+    pendingWarmup: [],
+    createdAt: '2026-10-02T22:00:00.000Z',
+    applicationVersion: '0.2.0-stage2',
+    scope,
+  })
+
+  await assert.rejects(
+    () =>
+      previewVerifiedApplicationBackup(created.serialized, {
+        expectedScope: { ...expectedScope, origin: 'https://other.example.test' },
+      }),
+    /different browser origin/i,
+  )
+  await assert.rejects(
+    () =>
+      previewVerifiedApplicationBackup(created.serialized, {
+        expectedScope: { ...expectedScope, selectedChildId: 'another-child' },
+      }),
+    /different Grade 2 profile/i,
+  )
 })
 
 test('the application export refuses to omit a malformed recovery journal', async () => {
@@ -118,5 +152,8 @@ test('the application export records its exact timestamp in a filesystem-safe na
     },
   })
   assert.equal(exported.fileName, 'weekly-dictation-grade2-backup-2026-10-02T22-00-00-123Z.json')
-  assert.equal((await previewLocalApplicationBackup(exported.serialized)).summary.createdAt, '2026-10-02T22:00:00.123Z')
+  assert.equal(
+    (await previewLocalApplicationBackup(exported.serialized, expectedScope)).summary.createdAt,
+    '2026-10-02T22:00:00.123Z',
+  )
 })

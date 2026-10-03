@@ -24,9 +24,15 @@ export type ApplicationBackup = {
 export type VerifiedApplicationBackupScope = {
   mode: 'local-browser'
   grade: 'Grade 2'
+  dataScope: 'whole-local-practice-state'
   selectedChildId: string
   origin: string
 }
+
+export type VerifiedApplicationBackupPreviewContext = Pick<
+  VerifiedApplicationBackupScope,
+  'mode' | 'grade' | 'selectedChildId' | 'origin'
+>
 
 export type VerifiedApplicationBackupPayload = {
   applicationVersion: string
@@ -161,7 +167,8 @@ export async function sha256Hex(value: string) {
 function validBackupScope(value: unknown): value is VerifiedApplicationBackupScope {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const scope = value as Record<string, unknown>
-  if (scope.mode !== 'local-browser' || scope.grade !== 'Grade 2') return false
+  if (scope.mode !== 'local-browser' || scope.grade !== 'Grade 2' || scope.dataScope !== 'whole-local-practice-state')
+    return false
   if (typeof scope.selectedChildId !== 'string' || !scope.selectedChildId.trim()) return false
   if (typeof scope.origin !== 'string') return false
   try {
@@ -234,7 +241,10 @@ export async function createVerifiedApplicationBackup(
 
 export async function previewVerifiedApplicationBackup(
   raw: string,
-  digest: BackupDigest = sha256Hex,
+  options: {
+    expectedScope?: VerifiedApplicationBackupPreviewContext
+    digest?: BackupDigest
+  } = {},
 ): Promise<ApplicationBackupPreview> {
   let parsed: unknown
   try {
@@ -243,12 +253,23 @@ export async function previewVerifiedApplicationBackup(
     throw new Error('The verified backup is not valid JSON.')
   }
   if (!verifiedBackupFile(parsed)) throw new Error('The file is not a supported checksum-verified Grade 2 backup.')
-  const expectedChecksum = await digest(canonicalJson(parsed.payload))
+  const expectedChecksum = await (options.digest || sha256Hex)(canonicalJson(parsed.payload))
   if (expectedChecksum !== parsed.checksum.value)
     throw new Error('The backup checksum does not match. The file may be incomplete or changed.')
 
   const backup = restoreApplicationBackup(JSON.stringify(parsed.payload.backup))
   const payload: VerifiedApplicationBackupPayload = { ...parsed.payload, backup }
+  if (options.expectedScope) {
+    if (payload.scope.origin !== options.expectedScope.origin) {
+      throw new Error('This backup belongs to a different browser origin and cannot be previewed here.')
+    }
+    if (payload.scope.selectedChildId !== options.expectedScope.selectedChildId) {
+      throw new Error('This backup was created with a different Grade 2 profile selected.')
+    }
+    if (payload.scope.mode !== options.expectedScope.mode || payload.scope.grade !== options.expectedScope.grade) {
+      throw new Error('This backup does not match the current Grade 2 browser mode.')
+    }
+  }
   return {
     checksum: parsed.checksum.value,
     payload,
