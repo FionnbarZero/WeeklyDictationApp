@@ -9,20 +9,40 @@ import {
 import type { CloudAttempt, CloudSession } from '../../persistence/cloudRecords.ts'
 
 export type PracticeCompletionPersistence = {
-  completeSession: (session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) => Promise<void>
+  completeSession: (
+    session: CloudSession,
+    attempts: CloudAttempt[],
+    scores: DatasetScore[],
+    state: AppState,
+    completedAt: string,
+  ) => Promise<void>
   finishSession: (
     session: CloudSession,
     status: 'partial' | 'completed' | 'skipped',
     attempts: CloudAttempt[],
     scores: DatasetScore[],
+    state: AppState,
+    completedAt: string,
   ) => Promise<void>
-  discardTestReview: (session: CloudSession, warmupAttempts: CloudAttempt[]) => Promise<void>
-  saveAdaptiveState: (state: AppState, updatedAt: string) => Promise<void>
+  discardTestReview: (
+    session: CloudSession,
+    warmupAttempts: CloudAttempt[],
+    state: AppState,
+    completedAt: string,
+  ) => Promise<void>
 }
 
 type CompletionCloudInput = {
   session?: CloudSession
   persistence?: PracticeCompletionPersistence
+}
+
+export function prepareCloudCompletionAttempt(session: CloudSession | undefined, requestedAt: Date) {
+  const completedAt = new Date(session?.completedAt || requestedAt.toISOString())
+  return {
+    completedAt,
+    session: session ? { ...session, completedAt: completedAt.toISOString() } : undefined,
+  }
 }
 
 function warmupAttempts(session: PracticeSession, completedAt: string): CloudAttempt[] {
@@ -62,10 +82,6 @@ function allCompletionAttempts(session: PracticeSession, completedAt: string): C
   })
 }
 
-function cloudCommit(tasks: Promise<void>[]): Promise<void> | undefined {
-  return tasks.length > 0 ? Promise.all(tasks).then(() => undefined) : undefined
-}
-
 export function completePractice(input: {
   state: AppState
   session: PracticeSession
@@ -75,6 +91,7 @@ export function completePractice(input: {
   const state = commitCompletedSession(input.state, input.session, input.completedAt)
   const persistence = input.cloud?.persistence
   const session = input.cloud?.session
+  const completedAt = input.completedAt.toISOString()
   return {
     state,
     summary: input.session.warmupOnly
@@ -82,14 +99,13 @@ export function completePractice(input: {
       : 'Practice complete. Your warmup and dataset results are saved.',
     cloudCommit:
       persistence && session
-        ? cloudCommit([
-            persistence.completeSession(
-              session,
-              allCompletionAttempts(input.session, input.completedAt.toISOString()),
-              state.scores.filter((score) => score.sessionId === input.session.id),
-            ),
-            persistence.saveAdaptiveState(state, input.completedAt.toISOString()),
-          ])
+        ? persistence.completeSession(
+            session,
+            allCompletionAttempts(input.session, completedAt),
+            state.scores.filter((score) => score.sessionId === input.session.id),
+            state,
+            completedAt,
+          )
         : undefined,
   }
 }
@@ -112,6 +128,7 @@ export function completeAcquisitionForToday(input: {
   const targetAttempts = input.session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore).length
   const persistence = input.cloud?.persistence
   const session = input.cloud?.session
+  const completedAt = input.completedAt.toISOString()
   return {
     state,
     summary:
@@ -120,15 +137,14 @@ export function completeAcquisitionForToday(input: {
         : 'Acquisition progress and DT practice were saved. No weekly-target score was created.',
     cloudCommit:
       persistence && session
-        ? cloudCommit([
-            persistence.finishSession(
-              { ...session, warmupStatus },
-              'completed',
-              attempts,
-              state.scores.filter((score) => score.sessionId === input.session.id),
-            ),
-            persistence.saveAdaptiveState(state, input.completedAt.toISOString()),
-          ])
+        ? persistence.finishSession(
+            { ...session, warmupStatus },
+            'completed',
+            attempts,
+            state.scores.filter((score) => score.sessionId === input.session.id),
+            state,
+            completedAt,
+          )
         : undefined,
   }
 }
@@ -151,15 +167,13 @@ export function discardTestReview(input: {
         : ('not_started' as const)
   const persistence = input.cloud?.persistence
   const session = input.cloud?.session
+  const completedAt = input.completedAt.toISOString()
   return {
     state,
     summary: 'Test Review was skipped. Any completed Warmup results were saved; no Test Review score was created.',
     cloudCommit:
       persistence && session
-        ? cloudCommit([
-            persistence.discardTestReview({ ...session, warmupStatus }, attempts),
-            persistence.saveAdaptiveState(state, input.completedAt.toISOString()),
-          ])
+        ? persistence.discardTestReview({ ...session, warmupStatus }, attempts, state, completedAt)
         : undefined,
   }
 }

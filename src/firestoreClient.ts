@@ -393,7 +393,6 @@ export async function cloudWarmupTransitionAlreadyCommitted(familyId: string, ch
   return true
 }
 export async function getCloudAdaptiveState(familyId: string, childId: string) { return getDoc<CloudAdaptiveState>(docPath(['families', familyId, 'children', childId, 'warmupState', 'current'])) }
-export async function saveCloudAdaptiveState(familyId: string, childId: string, state: CloudAdaptiveState) { await putDoc(docPath(['families', familyId, 'children', childId, 'warmupState', 'current']), state) }
 export function cloudAdaptiveStateForSave(state: Pick<AppState, 'childWordStates' | 'monthlyRotationScores' | 'rotationCycles'>, childId: string, updatedAt: string): CloudAdaptiveState {
   return {
     childId,
@@ -415,6 +414,7 @@ function cloudSessionCompletionWrites(
   session: CloudSession,
   attempts: CloudAttempt[],
   scores: DatasetScore[],
+  adaptiveState: CloudAdaptiveState,
 ) {
   return [
     updateWrite(['families', familyId, 'children', childId, 'sessions', session.id], session),
@@ -427,28 +427,53 @@ function cloudSessionCompletionWrites(
     ...scores.map((score) =>
       updateWrite(['families', familyId, 'children', childId, 'scores', score.id], score),
     ),
+    updateWrite(['families', familyId, 'children', childId, 'warmupState', 'current'], adaptiveState),
   ]
 }
 
-export async function completeCloudSession(familyId: string, childId: string, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) {
+export async function completeCloudSession(
+  familyId: string,
+  childId: string,
+  session: CloudSession,
+  attempts: CloudAttempt[],
+  scores: DatasetScore[],
+  adaptiveState: CloudAdaptiveState,
+  completedAt: string,
+) {
   const value: CloudSession = {
     ...session,
     status: 'completed',
     warmupStatus: session.warmupStatus === 'skipped' ? 'skipped' : session.warmupStatus === 'partial' ? 'partial' : 'completed',
-    completedAt: new Date().toISOString(),
+    completedAt,
   }
-  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores, adaptiveState))
 }
-export async function finishCloudSession(familyId: string, childId: string, session: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: CloudAttempt[], scores: DatasetScore[]) {
-  const value: CloudSession = { ...session, status, completedAt: new Date().toISOString() }
-  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores))
+export async function finishCloudSession(
+  familyId: string,
+  childId: string,
+  session: CloudSession,
+  status: 'partial' | 'completed' | 'skipped',
+  attempts: CloudAttempt[],
+  scores: DatasetScore[],
+  adaptiveState: CloudAdaptiveState,
+  completedAt: string,
+) {
+  const value: CloudSession = { ...session, status, completedAt }
+  await firestoreCommit(cloudSessionCompletionWrites(familyId, childId, value, attempts, scores, adaptiveState))
 }
-export async function skipCloudTestReview(familyId: string, childId: string, session: CloudSession, warmupAttempts: CloudAttempt[]) {
+export async function skipCloudTestReview(
+  familyId: string,
+  childId: string,
+  session: CloudSession,
+  warmupAttempts: CloudAttempt[],
+  adaptiveState: CloudAdaptiveState,
+  completedAt: string,
+) {
   const attempts = await listAttempts(familyId, childId, session.id)
   const temporaryReviewAttempts = attempts.filter(
     (attempt) => attempt.phase === 'test-review' && attempt.completionStatus === 'temporary',
   )
-  const value: CloudSession = { ...session, status: 'skipped', completedAt: new Date().toISOString() }
+  const value: CloudSession = { ...session, status: 'skipped', completedAt }
   await firestoreCommit([
     ...temporaryReviewAttempts.map((attempt) =>
       deleteWrite(['families', familyId, 'children', childId, 'sessions', session.id, 'attempts', attempt.id]),
@@ -460,6 +485,7 @@ export async function skipCloudTestReview(familyId: string, childId: string, ses
         { ...attempt, completionStatus: 'complete' },
       ),
     ),
+    updateWrite(['families', familyId, 'children', childId, 'warmupState', 'current'], adaptiveState),
   ])
 }
 

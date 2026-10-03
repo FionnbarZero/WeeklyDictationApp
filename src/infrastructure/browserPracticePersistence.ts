@@ -9,7 +9,6 @@ import {
   createChild,
   ensureCloudWarmupSeed,
   finishCloudSession,
-  saveCloudAdaptiveState,
   saveCloudAttempt,
   skipCloudTestReview,
   startCloudSession,
@@ -86,21 +85,54 @@ export function createBrowserPracticePersistence(storage: Storage) {
       abandon: (scope: CloudPracticeScope, session: CloudSession) => abandonSession(...scopeIds(scope), session),
       saveAttempt: (scope: CloudPracticeScope, sessionId: string, attempt: CloudAttempt) =>
         saveCloudAttempt(...scopeIds(scope), sessionId, attempt),
-      complete: (scope: CloudPracticeScope, session: CloudSession, attempts: CloudAttempt[], scores: DatasetScore[]) =>
-        completeCloudSession(...scopeIds(scope), session, attempts, scores),
+      complete: (
+        scope: CloudPracticeScope,
+        session: CloudSession,
+        attempts: CloudAttempt[],
+        scores: DatasetScore[],
+        state: AppState,
+        completedAt: string,
+      ) =>
+        completeCloudSession(
+          ...scopeIds(scope),
+          session,
+          attempts,
+          scores,
+          cloudAdaptiveStateForSave(state, scope.childId, completedAt),
+          completedAt,
+        ),
       finish: (
         scope: CloudPracticeScope,
         session: CloudSession,
         status: 'partial' | 'completed' | 'skipped',
         attempts: CloudAttempt[],
         scores: DatasetScore[],
-      ) => finishCloudSession(...scopeIds(scope), session, status, attempts, scores),
-      skipTestReview: (scope: CloudPracticeScope, session: CloudSession, warmupAttempts: CloudAttempt[]) =>
-        skipCloudTestReview(...scopeIds(scope), session, warmupAttempts),
-    },
-    adaptive: {
-      save: (scope: CloudPracticeScope, state: AppState, updatedAt: string) =>
-        saveCloudAdaptiveState(...scopeIds(scope), cloudAdaptiveStateForSave(state, scope.childId, updatedAt)),
+        state: AppState,
+        completedAt: string,
+      ) =>
+        finishCloudSession(
+          ...scopeIds(scope),
+          session,
+          status,
+          attempts,
+          scores,
+          cloudAdaptiveStateForSave(state, scope.childId, completedAt),
+          completedAt,
+        ),
+      skipTestReview: (
+        scope: CloudPracticeScope,
+        session: CloudSession,
+        warmupAttempts: CloudAttempt[],
+        state: AppState,
+        completedAt: string,
+      ) =>
+        skipCloudTestReview(
+          ...scopeIds(scope),
+          session,
+          warmupAttempts,
+          cloudAdaptiveStateForSave(state, scope.childId, completedAt),
+          completedAt,
+        ),
     },
   }
 }

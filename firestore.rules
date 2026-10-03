@@ -407,7 +407,9 @@ service cloud.firestore {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
             && validScore(familyId, childId);
-          allow update, delete: if false;
+          allow update: if ownsActiveChild(familyId, childId)
+            && request.resource.data == resource.data;
+          allow delete: if false;
         }
 
         match /warmupState/{stateId} {

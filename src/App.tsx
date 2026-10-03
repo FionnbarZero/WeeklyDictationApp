@@ -10,7 +10,7 @@ import {
   type PracticeSession, type PracticeTarget, type Word,
 } from './domain'
 import { writingSessionAnswers } from './application/testReview.ts'
-import { advancePracticeInterstitial, completeAcquisitionForToday as completeAcquisitionForTodayOperation, completePractice as completePracticeOperation, continueAfterPartialWarmup as continueAfterPartialWarmupOperation, discardTestReview as discardTestReviewOperation, leavePractice as leavePracticeOperation, primaryStartState, recordPracticeAnswer as recordPracticeAnswerOperation, skipWarmup as skipWarmupOperation, startPractice as startPracticeOperation, type PracticeAnswerBackgroundTask } from './application/practice/index.ts'
+import { advancePracticeInterstitial, completeAcquisitionForToday as completeAcquisitionForTodayOperation, completePractice as completePracticeOperation, continueAfterPartialWarmup as continueAfterPartialWarmupOperation, discardTestReview as discardTestReviewOperation, leavePractice as leavePracticeOperation, prepareCloudCompletionAttempt, primaryStartState, recordPracticeAnswer as recordPracticeAnswerOperation, skipWarmup as skipWarmupOperation, startPractice as startPracticeOperation, type PracticeAnswerBackgroundTask } from './application/practice/index.ts'
 import { prepareAdaptiveWarmupVisit } from './application/warmup/index.ts'
 import { isWorkspaceSynchronizationAborted, loadLocalWorkspace, readFamilyWorkspace, synchronizeChildWorkspace } from './application/workspace/index.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signOut, signUp, subscribeAuth, type AuthState } from './firebaseClient'
@@ -141,6 +141,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [selectedChildId, setSelectedChildId] = useState(() => localStorageGet('weekly-dictation-child') || demoChildren[0].id)
   const [state, setState] = useState<AppState>(() => firebaseConfigReady ? createInitialState() : loadLocalWorkspace(workspaceCapabilities.local))
   const [activeExperience, setActiveExperience] = useState<ActiveExperience>(null)
+  const [practiceStartInFlight, setPracticeStartInFlight] = useState(false)
   const session = activeExperience?.kind === 'practice' ? activeExperience.session : null
   const readingPathway = activeExperience?.kind === 'reading' ? activeExperience.pathway : null
   const view: View = activeExperience?.kind === 'practice'
@@ -148,6 +149,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     : activeExperience?.kind === 'reading'
       ? 'reading'
       : baseView
+  const activityControlsLocked = activeExperience !== null || practiceStartInFlight
   const setSession = useCallback(
     (
       next:
@@ -180,10 +182,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const selectedChild = familyChildren.find((child) => child.id === selectedChildId) || familyChildren.find((child) => child.active) || familyChildren[0]
   const cloudScope = family && selectedChild ? { familyId: family.id, childId: selectedChild.id } : null
   const practiceCompletionPersistence = cloudScope ? {
-    completeSession: (cloudSession: CloudSession, attempts: Parameters<typeof practicePersistence.sessions.complete>[2], scores: Parameters<typeof practicePersistence.sessions.complete>[3]) => practicePersistence.sessions.complete(cloudScope, cloudSession, attempts, scores),
-    finishSession: (cloudSession: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: Parameters<typeof practicePersistence.sessions.finish>[3], scores: Parameters<typeof practicePersistence.sessions.finish>[4]) => practicePersistence.sessions.finish(cloudScope, cloudSession, status, attempts, scores),
-    discardTestReview: (cloudSession: CloudSession, attempts: Parameters<typeof practicePersistence.sessions.skipTestReview>[2]) => practicePersistence.sessions.skipTestReview(cloudScope, cloudSession, attempts),
-    saveAdaptiveState: (nextState: AppState, updatedAt: string) => practicePersistence.adaptive.save(cloudScope, nextState, updatedAt),
+    completeSession: (cloudSession: CloudSession, attempts: Parameters<typeof practicePersistence.sessions.complete>[2], scores: Parameters<typeof practicePersistence.sessions.complete>[3], nextState: AppState, completedAt: string) => practicePersistence.sessions.complete(cloudScope, cloudSession, attempts, scores, nextState, completedAt),
+    finishSession: (cloudSession: CloudSession, status: 'partial' | 'completed' | 'skipped', attempts: Parameters<typeof practicePersistence.sessions.finish>[3], scores: Parameters<typeof practicePersistence.sessions.finish>[4], nextState: AppState, completedAt: string) => practicePersistence.sessions.finish(cloudScope, cloudSession, status, attempts, scores, nextState, completedAt),
+    discardTestReview: (cloudSession: CloudSession, attempts: Parameters<typeof practicePersistence.sessions.skipTestReview>[2], nextState: AppState, completedAt: string) => practicePersistence.sessions.skipTestReview(cloudScope, cloudSession, attempts, nextState, completedAt),
   } : undefined
   const cloudPracticeEnabled = Boolean(auth.user && cloudScope)
   const practiceTransitionPersistence = {
@@ -293,7 +294,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     return () => controller.abort()
   }, [auth.user?.uid, family?.id, selectedChild?.id, selectedChild?.grade, selectedChild?.schoolYear])
 
-  const chooseChild = (childId: string) => { setSelectedChildId(childId); setShowChildMenu(false); setShowProfiles(false); setSession(null); setReadingPathway(null); setView('home') }
+  const chooseChild = (childId: string) => {
+    if (activityControlsLocked) return
+    setSelectedChildId(childId); setShowChildMenu(false); setShowProfiles(false); setView('home')
+  }
   const confirmPromotion = async () => {
     if (!selectedChild) return
     const promoted = nextGrade(selectedChild.grade); if (!promoted) return
@@ -301,7 +305,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     else setFamilyChildren((items) => items.map((item) => item.id === selectedChild.id ? { ...item, grade: promoted, schoolYear: DEFAULT_SCHOOL_YEAR, gradeEffectiveDate: currentDateKey } : item))
   }
   const startPractice = useCallback(async (target: PracticeTarget | null) => {
-    if (!selectedChild || !lifecycleResolution) return
+    if (!selectedChild || !lifecycleResolution || practiceStartInFlight) return
+    setPracticeStartInFlight(true)
+    setShowChildMenu(false)
     const id = createSessionId()
     const cloud = Boolean(auth.user && cloudScope)
     const result = await startPracticeOperation({
@@ -325,7 +331,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         acknowledgeAcquisition: practicePersistence.acquisition.acknowledge,
         commitAcquisitionCheckpoint: cloud ? (envelope, checkpoint) => practicePersistence.acquisition.commit(cloudScope!, envelope, checkpoint) : undefined,
       },
-    })
+    }).finally(() => setPracticeStartInFlight(false))
     if (result.status === 'no-op') return
     if (result.status === 'blocked') {
       if (result.state) setState(result.state)
@@ -338,7 +344,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setCompletedSummary(null)
     if (result.warning) setCloudError(result.warning)
     setSession(result.session)
-  }, [auth.user, cloudScope, lifecycleResolution, now, practicePersistence, primaryDatasets, selectedChild, state])
+  }, [auth.user, cloudScope, lifecycleResolution, now, practicePersistence, practiceStartInFlight, primaryDatasets, selectedChild, state])
   const leavePractice = (nextView: BaseView) => {
     const current = session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
@@ -357,6 +363,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const exitPractice = () => leavePractice('home')
   const startReading = (pathway: Tier2ReadingPathway) => {
+    setShowChildMenu(false)
     setCompletedSummary(null)
     setReadingPathway(pathway)
   }
@@ -432,8 +439,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const completeSession = async (finished: PracticeSession, baseState: AppState = state) => {
     if (completionInFlightRef.current) return
     completionInFlightRef.current = finished.id
-    const completionDate = now()
-    const cloud = finished.cloudSessionId ? cloudSessionsRef.current.get(finished.cloudSessionId) : undefined
+    const storedCloud = finished.cloudSessionId ? cloudSessionsRef.current.get(finished.cloudSessionId) : undefined
+    const completionAttempt = prepareCloudCompletionAttempt(storedCloud, now())
+    const cloud = completionAttempt.session
+    const completionDate = completionAttempt.completedAt
+    if (cloud) cloudSessionsRef.current.set(cloud.id, cloud)
     const outcome = completePracticeOperation({
       state: baseState,
       session: finished,
@@ -445,6 +455,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       await outcome.cloudCommit
       setState(outcome.state)
       setCompletedSummary(outcome.summary); setSession(null); setView('home')
+      if (cloud) cloudSessionsRef.current.delete(cloud.id)
     } catch (error) {
       completedSessionRef.current = null
       setCloudError(`Your score or adaptive progress could not be confirmed in the cloud: ${authErrorMessage(error)}`)
@@ -457,8 +468,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (!current?.acquisition || current.primaryPhase !== 'acquisition') return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = current.id
-    const completionDate = now()
-    const cloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
+    const storedCloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
+    const completionAttempt = prepareCloudCompletionAttempt(storedCloud, now())
+    const cloud = completionAttempt.session
+    const completionDate = completionAttempt.completedAt
+    if (cloud) cloudSessionsRef.current.set(cloud.id, cloud)
     const outcome = completeAcquisitionForTodayOperation({
       state,
       session: current,
@@ -472,6 +486,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setCompletedSummary(outcome.summary)
       setSession(null)
       setView('home')
+      if (cloud) cloudSessionsRef.current.delete(cloud.id)
     } catch (error) {
       setCloudError(`Acquisition could not be finalized in the cloud: ${authErrorMessage(error)}`)
     } finally {
@@ -497,8 +512,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (!current || current.primaryPhase !== 'test-review') return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = current.id
-    const completionDate = now()
-    const cloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
+    const storedCloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
+    const completionAttempt = prepareCloudCompletionAttempt(storedCloud, now())
+    const cloud = completionAttempt.session
+    const completionDate = completionAttempt.completedAt
+    if (cloud) cloudSessionsRef.current.set(cloud.id, cloud)
     const outcome = discardTestReviewOperation({
       state,
       session: current,
@@ -512,6 +530,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setCompletedSummary(outcome.summary)
       setSession(null)
       setView('home')
+      if (cloud) cloudSessionsRef.current.delete(cloud.id)
     } catch (error) {
       setCloudError(`The skipped Test Review could not be confirmed in the cloud: ${authErrorMessage(error)}`)
     } finally {
@@ -612,7 +631,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const legacyCount = state.legacyRecords.filter((record) => record.childId === selectedChild.id).length
   const showLearningHome = primaryChoices.length > 0
     || (selectedChild.grade === 'Grade 2' && (warmupWordCount > 0 || primaryDatasets.length > 0))
-  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{!firebaseConfigReady && selectedChild.grade === 'Grade 2' && <button className="local-backup-control" type="button" aria-label="Back up Grade 2 browser data" disabled={view === 'practice' || view === 'reading'} onClick={() => setShowLocalBackup(true)}><ShieldCheck size={14} /> Protect progress</button>}{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice' || view === 'reading'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && showLearningHome && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} readingLifecycle={readingLifecycle} warmupWords={warmupWordCount} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onStartWarmup={() => void startPractice(null)} onStartReading={startReading} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && !showLearningHome && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupWordCount} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <Suspense fallback={<div className="page loading-surface" role="status">Loading writing practice…</div>}><PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} /></Suspense>}{view === 'reading' && readingPathway && readingProfile && <Suspense fallback={<div className="page loading-surface" role="status">Loading reading practice…</div>}><Tier2ReadingPractice key={`${readingPathway.kind}-${readingPathway.cycle || 0}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`} profile={readingProfile} pathway={readingPathway} label={readingPathwayLabel(readingPathway)} onExit={() => { setReadingPathway(null); setView('home') }} onComplete={finishReading} sessionNote="Prototype reading visit · recording and results are not saved yet" /></Suspense>}{view === 'history' && <Suspense fallback={<div className="page loading-surface" role="status">Loading progress…</div>}><HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} legacyMasteryScores={state.monthlyRotationScores.filter((score) => score.childId === selectedChild.id)} warmupGraphPoints={(state.warmupGraphPointsV1 || []).filter((point) => point.childId === selectedChild.id)} onBack={() => setView('home')} /></Suspense>}</main>{view !== 'practice' && view !== 'reading' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await practicePersistence.profiles.createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await practicePersistence.profiles.updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}{showLocalBackup && <Suspense fallback={<div className="modal-backdrop"><div className="backup-modal" role="status">Loading progress protection…</div></div>}><LocalBackupTools onClose={() => setShowLocalBackup(false)} createBackup={createLocalBackup} previewBackup={previewLocalBackup} /></Suspense>}</div>
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => navigate('home')} aria-label="Go to home"><span className="brand-mark"><Sparkles size={17} strokeWidth={2.5} /></span><span>weekly<span className="brand-accent">dictation</span></span></button><div className="topbar-actions">{activityControlsLocked && <span className="visually-hidden" id="profile-switcher-locked-description">Exit the current activity before switching profiles or signing out.</span>}{!firebaseConfigReady && selectedChild.grade === 'Grade 2' && <button className="local-backup-control" type="button" aria-label="Back up Grade 2 browser data" disabled={view === 'practice' || view === 'reading'} onClick={() => setShowLocalBackup(true)}><ShieldCheck size={14} /> Protect progress</button>}{!firebaseConfigReady && <LocalImportControl disabled={view === 'practice' || view === 'reading'} onChange={importLocalDeck} />}{!firebaseConfigReady && localImportMessage && <span className="local-import-status">{localImportMessage}</span>}<button className="profile-switcher" disabled={activityControlsLocked} aria-describedby={activityControlsLocked ? 'profile-switcher-locked-description' : undefined} onClick={() => setShowChildMenu((current) => !current)}><span className={`avatar avatar-${selectedChild.color}`}>{selectedChild.initials}</span><span className="profile-switcher-copy"><small>Practicing as</small>{selectedChild.name}</span><ChevronDown size={16} /></button>{showChildMenu && !activityControlsLocked && <div className="child-menu"><p>Switch child</p>{familyChildren.filter((child) => child.active).map((child) => <button key={child.id} className={child.id === selectedChild.id ? 'selected' : ''} onClick={() => chooseChild(child.id)}><span className={`avatar avatar-${child.color}`}>{child.initials}</span><span><strong>{child.name}</strong><small>{child.grade}</small></span>{child.id === selectedChild.id && <Check size={15} />}</button>)}<button className="manage-children" onClick={() => { setShowChildMenu(false); setShowProfiles(true) }}>Manage profiles <ArrowLeft size={14} /></button><button className="manage-children" onClick={() => signOut()}><LogOut size={14} /> Sign out</button></div>}</div></header><main className="main-content">{cloudError && auth.user && <div className="error-banner">{cloudError}</div>}{!firebaseConfigReady && localImportError && <div className="error-banner">{localImportError}</div>}{promotionSuggested && <div className="promotion-banner"><span>Your {selectedChild.grade} school year is ready to advance.</span><button onClick={() => void confirmPromotion()}>Move to {nextGrade(selectedChild.grade)}</button></div>}{view === 'home' && !practiceProfile && <UnsupportedPracticeView child={selectedChild} datasets={primaryDatasets} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && showLearningHome && lifecycleResolution && <HomeView child={selectedChild} profile={practiceProfile!} datasets={primaryDatasets} scores={state.scores} acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null} testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null} readingLifecycle={readingLifecycle} warmupWords={warmupWordCount} completedSummary={completedSummary} currentDate={currentDate} lifecycleResolution={lifecycleResolution} onStart={(target) => void startPractice(target)} onStartWarmup={() => void startPractice(null)} onStartReading={startReading} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'home' && Boolean(practiceProfile) && !showLearningHome && <NoDatasetView child={selectedChild} datasets={primaryDatasets} warmupWords={warmupWordCount} localMode={!firebaseConfigReady} onStartWarmup={() => void startPractice(null)} onHistory={() => setView('history')} onProfiles={() => setShowProfiles(true)} />}{view === 'practice' && session && <Suspense fallback={<div className="page loading-surface" role="status">Loading writing practice…</div>}><PracticeView session={session} datasets={state.datasets} onExit={exitPractice} onReplay={() => { const word = activePracticeWord(session); if (session.stage === 'complete') return speakReviewInstruction(); return word ? speakWord(word, session.segment === 'warmup') : undefined }} onBeginWarmup={beginWarmup} onInterstitialComplete={completeInterstitial} onDictationComplete={completeDictationWord} onStartReview={startPrimaryReview} onAnswer={answer} onSpeakWord={speakWord} onSpeakReviewInstruction={speakReviewInstruction} reviewInstruction={REVIEW_INSTRUCTION} /></Suspense>}{view === 'reading' && readingPathway && readingProfile && <Suspense fallback={<div className="page loading-surface" role="status">Loading reading practice…</div>}><Tier2ReadingPractice key={`${readingPathway.kind}-${readingPathway.cycle || 0}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`} profile={readingProfile} pathway={readingPathway} label={readingPathwayLabel(readingPathway)} onExit={() => { setReadingPathway(null); setView('home') }} onComplete={finishReading} sessionNote="Prototype reading visit · recording and results are not saved yet" /></Suspense>}{view === 'history' && <Suspense fallback={<div className="page loading-surface" role="status">Loading progress…</div>}><HistoryView child={selectedChild} datasets={primaryDatasets} scores={state.scores} legacyCount={legacyCount} legacyMasteryScores={state.monthlyRotationScores.filter((score) => score.childId === selectedChild.id)} warmupGraphPoints={(state.warmupGraphPointsV1 || []).filter((point) => point.childId === selectedChild.id)} onBack={() => setView('home')} /></Suspense>}</main>{view !== 'practice' && view !== 'reading' && <nav className="bottom-nav" aria-label="Primary navigation"><button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}><Home size={19} /><span>Practice</span></button><button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}><BarChart3 size={19} /><span>Progress</span></button><button onClick={() => setShowProfiles(true)}><Languages size={19} /><span>Profiles</span></button></nav>}{showProfiles && <ProfileModal children={familyChildren} selectedChildId={selectedChildId} onSelect={chooseChild} onClose={() => setShowProfiles(false)} onAdd={async (input) => { if (!family) return; const created = await practicePersistence.profiles.createChild(family.id, input); setFamilyChildren((items) => [...items, { ...created, name: created.nickname, color: 'coral', initials: created.nickname.slice(0, 1).toUpperCase() }]); setSelectedChildId(created.id) }} onUpdate={async (childId, patch) => { if (!family) return; const updated = await practicePersistence.profiles.updateChild(family.id, childId, patch); setFamilyChildren((items) => items.map((item) => item.id === childId ? { ...item, ...updated, name: updated.nickname, initials: updated.nickname.slice(0, 1).toUpperCase() } : item)) }} />}{showLocalBackup && <Suspense fallback={<div className="modal-backdrop"><div className="backup-modal" role="status">Loading progress protection…</div></div>}><LocalBackupTools onClose={() => setShowLocalBackup(false)} createBackup={createLocalBackup} previewBackup={previewLocalBackup} /></Suspense>}</div>
 }
 
 function LocalImportControl({ disabled, onChange }: { disabled: boolean; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {

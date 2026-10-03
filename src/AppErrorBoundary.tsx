@@ -26,10 +26,10 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
       <main className="app-error-shell" role="alert">
         <section className="app-error-card">
           <p className="eyebrow">Something went wrong</p>
-          <h1>Your saved practice is still safe.</h1>
+          <h1>Reload to continue.</h1>
           <p>
-            Reload the application to try again. Pending recovery records are kept so an interrupted session can resume
-            safely.
+            Reloading does not intentionally clear saved progress or pending recovery records. An interrupted or
+            session-only activity may need to be restarted.
           </p>
           <button className="primary-button" type="button" onClick={() => window.location.reload()}>
             Reload application

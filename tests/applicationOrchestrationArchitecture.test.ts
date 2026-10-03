@@ -63,6 +63,15 @@ test('the application shell waits for durable completion before leaving practice
   assert.match(app, /await outcome\.cloudCommit[\s\S]*?setSession\(null\)[\s\S]*?setView\('home'\)/)
 })
 
+test('session completion and adaptive state cross one atomic persistence boundary', () => {
+  const completion = source('src/application/practice/completion.ts')
+  const firestoreClient = source('src/firestoreClient.ts')
+  assert.doesNotMatch(completion, /Promise\.all|saveAdaptiveState/)
+  assert.match(completion, /persistence\.completeSession\([\s\S]*?state,[\s\S]*?completedAt/)
+  assert.match(firestoreClient, /cloudSessionCompletionWrites\([\s\S]*?adaptiveState: CloudAdaptiveState/)
+  assert.match(firestoreClient, /warmupState', 'current'\], adaptiveState/)
+})
+
 test('practice application operations depend on capabilities instead of React or Firestore', () => {
   const files = filesUnder('src/application/practice').filter((path) => /\.tsx?$/.test(path))
   assert.ok(files.length >= 5)
@@ -88,5 +97,16 @@ test('the application shell represents writing and reading as one mutually exclu
 test('the render failure boundary cannot clear recovery journals', () => {
   const boundary = source('src/AppErrorBoundary.tsx')
   assert.doesNotMatch(boundary, /localStorage|sessionStorage|PendingJournal|removePending/i)
-  assert.match(boundary, /Pending recovery records are kept/)
+  assert.doesNotMatch(boundary, /saved practice is still safe/i)
+  assert.match(boundary, /session-only activity may need to be restarted/)
+})
+
+test('profile switching and sign-out stay unavailable during an active experience', () => {
+  const app = source('src/App.tsx')
+  assert.match(app, /const activityControlsLocked = activeExperience !== null \|\| practiceStartInFlight/)
+  assert.match(app, /startPracticeOperation\([\s\S]*?finally\(\(\) => setPracticeStartInFlight\(false\)\)/)
+  assert.match(app, /if \(activityControlsLocked\) return/)
+  assert.match(app, /className="profile-switcher" disabled=\{activityControlsLocked\}/)
+  assert.match(app, /showChildMenu && !activityControlsLocked/)
+  assert.match(app, /Exit the current activity before switching profiles or signing out\./)
 })
