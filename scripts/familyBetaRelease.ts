@@ -3,6 +3,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
 export const FAMILY_BETA_ARTIFACT_SCHEMA = 'weekly-dictation-family-beta-artifact-v1' as const
+export const GRADE2_CURRICULUM_SNAPSHOT_SCHEMA = 'weekly-dictation-grade2-curriculum-snapshot-v1' as const
+export const GRADE2_CURRICULUM_SOURCE_PATH = 'curriculum/grade2-presentation.json'
+export const GRADE2_CURRICULUM_DOCUMENT_ID = '10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4'
 export const FAMILY_BETA_GRADES = ['kindergarten', 'grade2', 'grade5'] as const
 export type FamilyBetaGrade = (typeof FAMILY_BETA_GRADES)[number]
 export const FAMILY_BETA_FIREBASE_PROJECT_ID = 'weeklydictationapp'
@@ -53,6 +56,15 @@ export type FamilyBetaArtifactManifest = {
     node: string
     npm: string
     packageLockSha256: string
+  }
+  curriculumSource?: {
+    type: 'google-slides'
+    documentId: string
+    documentUrl: string
+    retrievedAt: string
+    contentSha256: string
+    artifactPath: string
+    datasetCount: number
   }
   fileTreeSha256: string
   files: FamilyBetaFileRecord[]
@@ -132,6 +144,43 @@ export function fileTreeSha256(files: readonly FamilyBetaFileRecord[]) {
   return sha256(files.map((file) => `${file.sha256}  ${file.bytes}  ${file.path}`).join('\n'))
 }
 
+export function grade2CurriculumSourceFromSnapshot(
+  path: string,
+): NonNullable<FamilyBetaArtifactManifest['curriculumSource']> {
+  let snapshot: Record<string, unknown>
+  try {
+    snapshot = JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    throw new Error('The Grade 2 curriculum snapshot is not valid JSON.')
+  }
+  const source = snapshot.source as Record<string, unknown> | undefined
+  const presentation = snapshot.presentation as Record<string, unknown> | undefined
+  const slides = presentation?.slides
+  if (
+    snapshot.schema !== GRADE2_CURRICULUM_SNAPSHOT_SCHEMA ||
+    source?.type !== 'google-slides' ||
+    source.documentId !== GRADE2_CURRICULUM_DOCUMENT_ID ||
+    source.documentUrl !== `https://docs.google.com/presentation/d/${GRADE2_CURRICULUM_DOCUMENT_ID}` ||
+    !Number.isFinite(Date.parse(String(source.retrievedAt))) ||
+    !sha256Pattern.test(String(source.contentSha256)) ||
+    presentation?.presentationId !== GRADE2_CURRICULUM_DOCUMENT_ID ||
+    !Array.isArray(slides) ||
+    slides.length === 0 ||
+    sha256(JSON.stringify(presentation)) !== source.contentSha256
+  ) {
+    throw new Error('The Grade 2 curriculum snapshot has invalid provenance or content.')
+  }
+  return {
+    type: 'google-slides',
+    documentId: GRADE2_CURRICULUM_DOCUMENT_ID,
+    documentUrl: String(source.documentUrl),
+    retrievedAt: String(source.retrievedAt),
+    contentSha256: String(source.contentSha256),
+    artifactPath: GRADE2_CURRICULUM_SOURCE_PATH,
+    datasetCount: slides.length,
+  }
+}
+
 function isManifest(value: unknown): value is FamilyBetaArtifactManifest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const manifest = value as Record<string, unknown>
@@ -149,6 +198,18 @@ function isManifest(value: unknown): value is FamilyBetaArtifactManifest {
     typeof manifest.dirty === 'boolean' &&
     manifest.entry === 'index.html' &&
     sha256Pattern.test(String(manifest.fileTreeSha256)) &&
+    (manifest.curriculumSource === undefined ||
+      (Boolean(manifest.curriculumSource) &&
+        typeof manifest.curriculumSource === 'object' &&
+        !Array.isArray(manifest.curriculumSource) &&
+        (manifest.curriculumSource as Record<string, unknown>).type === 'google-slides' &&
+        typeof (manifest.curriculumSource as Record<string, unknown>).documentId === 'string' &&
+        typeof (manifest.curriculumSource as Record<string, unknown>).documentUrl === 'string' &&
+        Number.isFinite(Date.parse(String((manifest.curriculumSource as Record<string, unknown>).retrievedAt))) &&
+        sha256Pattern.test(String((manifest.curriculumSource as Record<string, unknown>).contentSha256)) &&
+        typeof (manifest.curriculumSource as Record<string, unknown>).artifactPath === 'string' &&
+        Number.isSafeInteger((manifest.curriculumSource as Record<string, unknown>).datasetCount) &&
+        Number((manifest.curriculumSource as Record<string, unknown>).datasetCount) > 0)) &&
     Array.isArray(manifest.files) &&
     manifest.files.every((file) => {
       if (!file || typeof file !== 'object' || Array.isArray(file)) return false
@@ -206,6 +267,24 @@ export function verifyFamilyBetaArtifact(directory: string, expectedGrade?: Fami
   }
   if (parsed.grade === 'grade2' && !actualFiles.some((file) => file.path === '.nojekyll')) {
     throw new Error('A Grade 2 GitHub Pages artifact must include .nojekyll.')
+  }
+  if (parsed.grade === 'grade2') {
+    if (!parsed.curriculumSource)
+      throw new Error('A Grade 2 artifact must identify its Google Slides curriculum snapshot.')
+    if (
+      parsed.curriculumSource.documentId !== GRADE2_CURRICULUM_DOCUMENT_ID ||
+      parsed.curriculumSource.artifactPath !== GRADE2_CURRICULUM_SOURCE_PATH
+    ) {
+      throw new Error('The Grade 2 artifact identifies an unregistered curriculum source.')
+    }
+    const curriculumFile = actualFiles.find((file) => file.path === parsed.curriculumSource?.artifactPath)
+    if (!curriculumFile) throw new Error('The Grade 2 curriculum snapshot is missing from the artifact.')
+    const snapshotSource = grade2CurriculumSourceFromSnapshot(resolve(directory, parsed.curriculumSource.artifactPath))
+    if (JSON.stringify(snapshotSource) !== JSON.stringify(parsed.curriculumSource)) {
+      throw new Error('The Grade 2 curriculum snapshot does not match its artifact provenance.')
+    }
+  } else if (parsed.curriculumSource || actualFiles.some((file) => file.path.startsWith('curriculum/'))) {
+    throw new Error('A non-Grade 2 artifact must not contain the Grade 2 curriculum snapshot.')
   }
 
   const html = readFileSync(resolve(directory, 'index.html'), 'utf8')

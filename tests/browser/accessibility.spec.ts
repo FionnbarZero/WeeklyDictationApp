@@ -1,10 +1,12 @@
 import { expect, test } from './fixtures.ts'
-import path from 'node:path'
+import { installGrade2CurriculumFixture } from './grade2Curriculum.ts'
 import { openGrade2LearningActivity } from './learningHub.ts'
 
 test('profile manager traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  const trigger = page.getByRole('button', { name: 'R Grade 2' })
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 6 weekly datasets')
+  const trigger = page.getByRole('button', { name: 'Profiles', exact: true })
 
   await trigger.click()
 
@@ -23,8 +25,9 @@ test('profile manager traps focus, closes on Escape, and restores its trigger', 
 })
 
 test('profile switching and sign-out are locked while a child activity is active', async ({ page }) => {
+  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
-  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
 
   const profileSwitcher = page.locator('.profile-switcher')

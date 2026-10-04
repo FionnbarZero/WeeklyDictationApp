@@ -105,6 +105,14 @@ npm run hydrate:slides -- [--state=path/to/app-state.json] [--deck-id=PRESENTATI
 
 Export `GOOGLE_SLIDES_PRESENTATION_ID`, `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REFRESH_TOKEN` in the invoking shell. The command prints the import summary and hydrated state to stdout. It has no Firestore dependency, does not write a local state file, and is not imported by the browser application.
 
+The Grade 2 family-beta app loads its datasets automatically from a same-origin, read-only curriculum snapshot. Refresh the reviewed local snapshot from the registered deck with:
+
+```bash
+npm run snapshot:grade2-slides
+```
+
+The snapshot job runs only in trusted Node/CI, strips Math and ELA sections, validates every projected slide through the canonical importer, and records a content checksum. Google credentials never enter the browser. Grade 2 release packaging refreshes the snapshot automatically; the exact snapshot and its provenance are frozen into the immutable artifact rather than changing underneath a live lesson.
+
 The registered Kindergarten workbook can be inspected from a trusted Node-only environment through Google Sheets read requests:
 
 ```bash

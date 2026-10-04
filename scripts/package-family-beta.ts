@@ -4,9 +4,11 @@ import { basename, resolve } from 'node:path'
 import { APP_VERSION } from '../src/releaseMetadata.ts'
 import {
   FAMILY_BETA_ARTIFACT_SCHEMA,
+  GRADE2_CURRICULUM_SOURCE_PATH,
   artifactFileRecords,
   familyBetaGradeConfig,
   fileTreeSha256,
+  grade2CurriculumSourceFromSnapshot,
   requireFamilyBetaGrade,
   requireMatchingSourceRevision,
   sha256,
@@ -50,6 +52,32 @@ run('npx', ['vite', 'build', '--mode', 'family-beta', '--outDir', outputDirector
   VITE_PUBLIC_PREVIEW: 'true',
 })
 
+let curriculumSource: FamilyBetaArtifactManifest['curriculumSource']
+const copiedCurriculumDirectory = resolve(outputDirectory, 'curriculum')
+if (grade === 'grade2') {
+  const suppliedSnapshot = flag('--curriculum-snapshot')
+  if (
+    !suppliedSnapshot &&
+    (!process.env.GOOGLE_OAUTH_CLIENT_ID ||
+      !process.env.GOOGLE_OAUTH_CLIENT_SECRET ||
+      !process.env.GOOGLE_OAUTH_REFRESH_TOKEN)
+  ) {
+    throw new Error(
+      'Grade 2 packaging requires read-only Google OAuth credentials or --curriculum-snapshot for an already validated snapshot.',
+    )
+  }
+  const outputSnapshot = resolve(outputDirectory, GRADE2_CURRICULUM_SOURCE_PATH)
+  run('node', [
+    '--experimental-strip-types',
+    'scripts/snapshot-grade2-slides.ts',
+    `--output=${outputSnapshot}`,
+    ...(suppliedSnapshot ? [`--input=${resolve(root, suppliedSnapshot)}`] : []),
+  ])
+  curriculumSource = grade2CurriculumSourceFromSnapshot(outputSnapshot)
+} else {
+  rmSync(copiedCurriculumDirectory, { recursive: true, force: true })
+}
+
 const builtEntry = resolve(outputDirectory, gradeConfig.sourceHtml)
 if (!existsSync(builtEntry))
   throw new Error(`The ${gradeConfig.displayName} build did not create ${gradeConfig.sourceHtml}.`)
@@ -80,6 +108,7 @@ const manifest: FamilyBetaArtifactManifest = {
       }),
     ),
   },
+  ...(curriculumSource ? { curriculumSource } : {}),
   fileTreeSha256: fileTreeSha256(files),
   files,
 }

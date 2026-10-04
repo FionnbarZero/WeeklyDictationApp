@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures.ts'
-import path from 'node:path'
+import { installGrade2CurriculumFixture } from './grade2Curriculum.ts'
 import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
@@ -28,10 +28,9 @@ async function storedAcquisitionSnapshot(page: import('@playwright/test').Page):
 }
 
 test('a reviewed Acquisition response resumes at the exact next prompt after reload', async ({ page }) => {
+  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
-  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
-
-  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Skip Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()

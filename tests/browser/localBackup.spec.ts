@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import { expect, test } from './fixtures.ts'
+import { installGrade2CurriculumFixture } from './grade2Curriculum.ts'
 
 const storageKeys = [
   'weekly-dictation-state-v2',
@@ -16,9 +16,9 @@ async function storedValues(page: import('@playwright/test').Page) {
 }
 
 test('Grade 2 exports a verified backup and previews it without writing browser state', async ({ page }) => {
+  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
-  await page.getByLabel('Import deck JSON').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
-  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
 
   const before = await storedValues(page)
   await page.getByRole('button', { name: 'Back up Grade 2 browser data' }).click()

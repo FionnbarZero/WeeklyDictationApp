@@ -48,10 +48,19 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Package one isolated grade artifact
+      - name: Package one isolated non-Grade-2 artifact
+        if: matrix.grade != 'grade2'
         run: npm run package:family-beta -- --grade ${{ matrix.grade }}
         env:
           GITHUB_SHA: ${{ inputs.source_revision }}
+      - name: Package Grade 2 with its read-only Slides snapshot
+        if: matrix.grade == 'grade2'
+        run: npm run package:family-beta -- --grade grade2
+        env:
+          GITHUB_SHA: ${{ inputs.source_revision }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
       - name: Upload immutable artifact and checksum
         uses: actions/upload-artifact@v4
         with:

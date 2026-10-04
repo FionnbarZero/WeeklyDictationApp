@@ -31,7 +31,7 @@ const workshopMarkers = [/writing\s+project/i, /writing\s+workshop/i, /writers['
 
 export const grade2DeckProfile: ParserProfile = {
   id: 'grade-2-2026-27-weekly-focus', version: 1, sourceAdapterId: 'grade-2-google-slides', grade: DEFAULT_GRADE, schoolYear: DEFAULT_SCHOOL_YEAR, sourceDeckId: GRADE2_DECK_ID,
-  weeklyHeading, tier1Heading: /tier\s*1\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
+  weeklyHeading, tier1Heading: /(?:tier\s*1|writing\s+vocab(?:ulary|ualry)?)\s*[:：]/i, tierStops, termSeparators, workshopMarkers,
 }
 
 // Compatibility-only profile for historical cross-grade tests. Real Grade 5

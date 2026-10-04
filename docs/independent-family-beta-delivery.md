@@ -45,11 +45,14 @@ npm run package:family-beta -- --grade grade2
 npm run package:family-beta -- --grade grade5
 ```
 
+Grade 2 packaging automatically fetches the registered Slides deck with read-only `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REFRESH_TOKEN` credentials. For an offline rehearsal, pass `--curriculum-snapshot public/curriculum/grade2-presentation.json`; the same schema, checksum, source-ID, and canonical-import validation still apply. The snapshot contains only the projected Mandarin curriculum text and is public within the Grade 2 artifact.
+
 Each command creates one root application under `family-beta-dist/<grade>` and an archive plus SHA-256 file under `family-beta-artifacts`. The embedded `family-beta-manifest.json` records:
 
 - full source revision and commit time;
 - application version, grade, beta status, and persistence promise;
 - exact build command and dependency-lock checksum;
+- for Grade 2, the Slides document ID, retrieval time, curriculum checksum, dataset count, and snapshot path;
 - every included file, byte count, and SHA-256; and
 - one file-tree checksum.
 
