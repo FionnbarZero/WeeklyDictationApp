@@ -6,7 +6,7 @@ This boundary separates **when a canonical vocabulary cohort changes stage** fro
 
 `src/lifecycle/contracts.ts` defines source-neutral lifecycle inputs and outputs. A `LifecycleSet` contains only the stable dataset identity, grade, normalized school-year key, activation and instructional dates, and whether the source unit contains vocabulary or explicitly represents no instruction. A `LifecycleContext` carries those sets together with accepted source-neutral progression events.
 
-`src/lifecycle/registry.ts` requires an explicitly registered, versioned strategy for the requested grade and normalized school year. There is no cross-grade or cross-year fallback. Grade 2 and Grade 5 have separate active 2026–27 strategies and practice profiles. Kindergarten remains behind its inactive production source gate.
+`src/lifecycle/registry.ts` requires an explicitly registered, versioned strategy for the requested grade and normalized school year. There is no cross-grade or cross-year fallback. Grade 2 and the inactive Grade 5 development lab have separate registered 2026–27 strategies. A lifecycle registration alone never activates production practice.
 
 The Grade 2 strategy is replacement-driven:
 
@@ -47,6 +47,6 @@ The strategy is deterministic under input permutation. Identical duplicate sets 
 
 Week 4 remains the approved Grade 5 activation baseline. Earlier inconsistent startup slides may be retained as provenance or import issues, but the strategy must not invent missing review cohorts from them.
 
-## Activation boundary
+## Non-goals of this extraction
 
-Grade 5 activation is explicit in the source and practice-profile registries; it does not inherit Grade 2 behavior. Its reviewed public snapshot, required Warmup, two Test Review cycles, device persistence, and Tier 2 Firebase metadata contract retain separate verification. Kindergarten lifecycle behavior remains behind its own inactive production source gate.
+This boundary does not activate Grade 5 or Kindergarten production practice, add Firestore writes, or create new persistence records. Grade 5 source and lifecycle behavior remains development-only; Kindergarten lifecycle behavior is explicitly deferred. Acquisition routines, approved Adaptive Warmup activation, scoring, and production session persistence retain their separate gates.

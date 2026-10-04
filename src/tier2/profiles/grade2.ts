@@ -19,7 +19,7 @@ export const grade2Tier2ReadingProfile = {
   }),
   preActivityWarmupRequirement: 'optional',
   availability: 'main-app',
-  results: 'durable',
+  results: 'session-only',
   recording: 'prompt-local',
-  productionEligibility: 'eligible',
+  productionEligibility: 'blocked',
 } as const satisfies Tier2ReadingProfile

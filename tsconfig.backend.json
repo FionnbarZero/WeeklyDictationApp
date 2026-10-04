@@ -11,5 +11,5 @@
     "types": ["node"]
   },
   "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup"],
-  "files": ["src/config.ts", "src/releaseMetadata.ts", "src/domain.ts", "src/kindergartenSheetsImporter.ts", "src/localHydration.ts", "src/slidesImporter.ts", "src/practice/lifecycleProjection.ts", "src/readingPractice/contracts.ts", "src/testReview/contracts.ts", "src/tier2/contracts.ts"]
+  "files": ["src/config.ts", "src/releaseMetadata.ts", "src/domain.ts", "src/kindergartenSheetsImporter.ts", "src/localHydration.ts", "src/slidesImporter.ts", "src/practice/lifecycleProjection.ts", "src/testReview/contracts.ts"]
 }

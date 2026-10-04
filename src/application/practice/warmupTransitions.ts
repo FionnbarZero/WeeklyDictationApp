@@ -35,7 +35,7 @@ export function primaryStartState(current: PracticeSession): PracticeSession {
     return {
       ...current,
       segment: 'primary',
-      stage: 'interstitial',
+      stage: 'dictation',
       queue: [current.acquisition.prompt.word],
       index: 0,
     }

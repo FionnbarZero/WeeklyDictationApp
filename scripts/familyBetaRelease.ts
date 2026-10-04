@@ -6,9 +6,6 @@ export const FAMILY_BETA_ARTIFACT_SCHEMA = 'weekly-dictation-family-beta-artifac
 export const GRADE2_CURRICULUM_SNAPSHOT_SCHEMA = 'weekly-dictation-grade2-curriculum-snapshot-v1' as const
 export const GRADE2_CURRICULUM_SOURCE_PATH = 'curriculum/grade2-presentation.json'
 export const GRADE2_CURRICULUM_DOCUMENT_ID = '10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4'
-export const GRADE5_CURRICULUM_SNAPSHOT_SCHEMA = 'weekly-dictation-grade5-curriculum-snapshot-v1' as const
-export const GRADE5_CURRICULUM_SOURCE_PATH = 'curriculum/grade5-presentation.json'
-export const GRADE5_CURRICULUM_DOCUMENT_ID = '1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI'
 export const FAMILY_BETA_GRADES = ['kindergarten', 'grade2', 'grade5'] as const
 export type FamilyBetaGrade = (typeof FAMILY_BETA_GRADES)[number]
 export const FAMILY_BETA_FIREBASE_PROJECT_ID = 'weeklydictationapp'
@@ -25,14 +22,14 @@ export const familyBetaGradeConfig = {
     displayName: 'Grade 2',
     sourceHtml: 'index.html',
     status: 'Family beta',
-    persistence: 'Tier 1 writing and Tier 2 reading metadata are durable',
+    persistence: 'Tier 1 writing durable here · Tier 2 reading session only',
     siteId: 'weeklydictation-g2-preview',
   },
   grade5: {
     displayName: 'Grade 5',
     sourceHtml: 'grade5-learning-hub.html',
-    status: 'Public',
-    persistence: 'Device progress · microphone recordings are never saved',
+    status: 'Experimental',
+    persistence: 'Session only',
     siteId: 'weeklydictation-g5-beta',
   },
 } as const
@@ -184,43 +181,6 @@ export function grade2CurriculumSourceFromSnapshot(
   }
 }
 
-export function grade5CurriculumSourceFromSnapshot(
-  path: string,
-): NonNullable<FamilyBetaArtifactManifest['curriculumSource']> {
-  let snapshot: Record<string, unknown>
-  try {
-    snapshot = JSON.parse(readFileSync(path, 'utf8'))
-  } catch {
-    throw new Error('The Grade 5 curriculum snapshot is not valid JSON.')
-  }
-  const source = snapshot.source as Record<string, unknown> | undefined
-  const presentation = snapshot.presentation as Record<string, unknown> | undefined
-  const slides = presentation?.slides
-  if (
-    snapshot.schema !== GRADE5_CURRICULUM_SNAPSHOT_SCHEMA ||
-    source?.type !== 'google-slides' ||
-    source.documentId !== GRADE5_CURRICULUM_DOCUMENT_ID ||
-    source.documentUrl !== `https://docs.google.com/presentation/d/${GRADE5_CURRICULUM_DOCUMENT_ID}` ||
-    !Number.isFinite(Date.parse(String(source.retrievedAt))) ||
-    !sha256Pattern.test(String(source.contentSha256)) ||
-    presentation?.presentationId !== GRADE5_CURRICULUM_DOCUMENT_ID ||
-    !Array.isArray(slides) ||
-    slides.length === 0 ||
-    sha256(JSON.stringify(presentation)) !== source.contentSha256
-  ) {
-    throw new Error('The Grade 5 curriculum snapshot has invalid provenance or content.')
-  }
-  return {
-    type: 'google-slides',
-    documentId: GRADE5_CURRICULUM_DOCUMENT_ID,
-    documentUrl: String(source.documentUrl),
-    retrievedAt: String(source.retrievedAt),
-    contentSha256: String(source.contentSha256),
-    artifactPath: GRADE5_CURRICULUM_SOURCE_PATH,
-    datasetCount: slides.length,
-  }
-}
-
 function isManifest(value: unknown): value is FamilyBetaArtifactManifest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const manifest = value as Record<string, unknown>
@@ -323,23 +283,8 @@ export function verifyFamilyBetaArtifact(directory: string, expectedGrade?: Fami
     if (JSON.stringify(snapshotSource) !== JSON.stringify(parsed.curriculumSource)) {
       throw new Error('The Grade 2 curriculum snapshot does not match its artifact provenance.')
     }
-  } else if (parsed.grade === 'grade5') {
-    if (!parsed.curriculumSource)
-      throw new Error('A Grade 5 artifact must identify its reviewed public curriculum snapshot.')
-    if (
-      parsed.curriculumSource.documentId !== GRADE5_CURRICULUM_DOCUMENT_ID ||
-      parsed.curriculumSource.artifactPath !== GRADE5_CURRICULUM_SOURCE_PATH
-    ) {
-      throw new Error('The Grade 5 artifact identifies an unregistered curriculum source.')
-    }
-    const curriculumFile = actualFiles.find((file) => file.path === parsed.curriculumSource?.artifactPath)
-    if (!curriculumFile) throw new Error('The Grade 5 curriculum snapshot is missing from the artifact.')
-    const snapshotSource = grade5CurriculumSourceFromSnapshot(resolve(directory, parsed.curriculumSource.artifactPath))
-    if (JSON.stringify(snapshotSource) !== JSON.stringify(parsed.curriculumSource)) {
-      throw new Error('The Grade 5 curriculum snapshot does not match its artifact provenance.')
-    }
   } else if (parsed.curriculumSource || actualFiles.some((file) => file.path.startsWith('curriculum/'))) {
-    throw new Error('A Kindergarten artifact must not contain a curriculum snapshot.')
+    throw new Error('A non-Grade 2 artifact must not contain the Grade 2 curriculum snapshot.')
   }
 
   const html = readFileSync(resolve(directory, 'index.html'), 'utf8')

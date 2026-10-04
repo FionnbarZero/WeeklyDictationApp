@@ -28,20 +28,10 @@ test('transition-linked attempts and DT observations are immutable and require t
 
 test('Test Review cycle metadata is allowed only as a positive integer on Test Review records', () => {
   const cycleGuards = rules.match(/request\.resource\.data\.reviewCycle is int/g) || []
-  assert.equal(cycleGuards.length, 4, 'sessions, attempts, scores, and Tier 2 reading metadata require a cycle guard')
+  assert.equal(cycleGuards.length, 3, 'sessions, attempts, and scores each require a cycle guard')
   assert.match(rules, /request\.resource\.data\.phase == 'test-review'[\s\S]+request\.resource\.data\.reviewCycle > 0/)
   assert.match(rules, /request\.resource\.data\.primaryPhase == 'test-review'[\s\S]+request\.resource\.data\.reviewCycle > 0/)
   assert.match(rules, /associatedPrimaryActivity\.phase == 'test-review'[\s\S]+associatedPrimaryActivity\.reviewCycle > 0/)
-})
-
-test('Tier 2 reading cloud rules allow owned metadata while excluding recordings', () => {
-  assert.match(rules, /match \/tier2ReadingProgress\/\{progressId\}/)
-  assert.match(rules, /validTier2ReadingProgress\(childId, progressId\)/)
-  assert.match(rules, /request\.resource\.data\.grade in \['Grade 2', 'Grade 5'\]/)
-  assert.match(rules, /request\.resource\.data\.runJson/)
-  assert.match(rules, /!request\.resource\.data\.runJson\.matches\('\.\*"audio"\.\*'\)/)
-  assert.match(rules, /request\.resource\.data\.revision > resource\.data\.revision/)
-  assert.match(rules, /allow delete: if false/)
 })
 
 test('Adaptive Warmup rules require owned, revisioned, atomic, immutable records', () => {

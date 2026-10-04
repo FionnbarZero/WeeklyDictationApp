@@ -43,7 +43,6 @@ test('the Warmup boundary contains only its approved TypeScript-family files and
     'adaptive/profileValidation.ts': ['./contracts.ts'],
     'adaptive/profileUpgrade.ts': ['./contracts.ts', './profileValidation.ts'],
     'adaptive/profiles/grade2.ts': ['../contracts.ts'],
-    'adaptive/profiles/grade5.ts': ['../contracts.ts'],
     'adaptive/scheduler.ts': ['./contracts.ts', './eligibility.ts', './profileValidation.ts'],
     'adaptive/transitions.ts': ['./contracts.ts', './profileValidation.ts'],
     'adaptive/validation.ts': ['./contracts.ts', './identity.ts', './profileValidation.ts'],

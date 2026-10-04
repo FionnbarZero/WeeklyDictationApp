@@ -115,7 +115,7 @@ test('the next cloud save includes preserved adaptive states from other grades',
   assert.ok(saveState.childWordStates.some((item) => item.id === grade5State.id))
 })
 
-test('cloud hydration derives current Grade 5 word state through its registered practice profile', () => {
+test('cloud hydration preserves history data for a grade whose practice profile is not configured', () => {
   const state = cloudDataToAppState([grade5Dataset], [], [], [], 'older-child', 'Grade 5', {
     childId: 'older-child',
     childWordStates: [{ id: `older-child::${grade5Dataset.words[0].id}`, childId: 'older-child', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review', correctStreak: 1 }],
@@ -125,7 +125,5 @@ test('cloud hydration derives current Grade 5 word state through its registered 
   })
 
   assert.deepEqual(state.datasets.map((item) => item.id), [grade5Dataset.id])
-  assert.equal(state.childWordStates.length, grade5Dataset.words.length)
-  assert.ok(state.childWordStates.every((item) => item.datasetId === grade5Dataset.id))
-  assert.ok(state.childWordStates.every((item) => item.category === 'acquisition'))
+  assert.deepEqual(state.childWordStates, [{ id: `older-child::${grade5Dataset.words[0].id}`, childId: 'older-child', wordId: grade5Dataset.words[0].id, datasetId: grade5Dataset.id, category: 'recent-review', correctStreak: 1 }])
 })

@@ -61,7 +61,6 @@ function readPort(overrides: Partial<ChildWorkspaceReadPort> = {}): ChildWorkspa
     readAdaptiveState: async () => null,
     listAcquisitionProgressions: async () => [],
     listDistractorTargetObservations: async () => [],
-    listTier2ReadingProgress: async () => [],
     listWarmupVisits: async () => [],
     listWarmupQueueEntries: async () => [],
     listWarmupMastery: async () => [],
@@ -216,7 +215,7 @@ test('initial workspace hydration uses one vocabulary read and one attempt read 
 
   assert.equal(wordReads, 1)
   assert.equal(attemptReads, 1)
-  assert.equal(readOperations, 16)
+  assert.equal(readOperations, 15)
 })
 
 test('collection-group hydration queries request one overflow record beyond their hard budgets', () => {

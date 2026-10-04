@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AppErrorBoundary } from './AppErrorBoundary.tsx'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook } from './kindergartenSheetsImporter.ts'
-import { type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
 import {
   answerKindergartenAcquisitionLab,
   kindergartenCandidateIsUsableInLab,
@@ -20,11 +19,7 @@ import {
   NinjaRecord,
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
-import {
-  kindergartenLearningHubView,
-  type KindergartenHubActivityKind,
-  type KindergartenHubLaunch,
-} from './kindergartenLab/learningHub.ts'
+import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
 import {
@@ -43,30 +38,24 @@ import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.t
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
-import { browserSpeech, requireCompletedSpeech } from './audio/browserSpeech.ts'
-import './accessibility/typography.css'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
-const KINDERGARTEN_REVIEW_INSTRUCTION =
-  'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
+const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
-type WritingPractice = {
-  state: KindergartenAcquisitionLabState
-  dataset: Dataset
-  revealMethod: KindergartenLabRevealMethod
-}
-type StandaloneActivity = Exclude<
-  KindergartenHubActivityKind,
-  'dojo-writing' | 'dojo-reading' | 'final-boss' | 'final-boss-reading' | 'spirit-realm-reading'
->
+type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
+type StandaloneActivity = Exclude<KindergartenHubActivityKind,
+  | 'dojo-writing'
+  | 'dojo-reading'
+  | 'final-boss'
+  | 'final-boss-reading'
+  | 'spirit-realm-reading'>
 type ScoreInput = Omit<KindergartenScoreRecord, 'id' | 'completedAt'>
 
 function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceType'> {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('The Kindergarten fixture must contain one workbook object.')
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('The Kindergarten fixture must contain one workbook object.')
   const record = value as Record<string, unknown>
   if (!Array.isArray(record.sheets)) throw new Error('The Kindergarten fixture has no sheets array.')
   return {
@@ -75,12 +64,34 @@ function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceT
   }
 }
 
-function speakText(text: string, language = 'zh-CN', rate = 0.55, onComplete?: () => void) {
-  return browserSpeech.play([{ text, language, rate }], { onSegmentComplete: () => onComplete?.() })
+function speakText(text: string, language = 'zh-CN', rate = 0.55) {
+  if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = language
+  utterance.rate = rate
+  window.speechSynthesis.speak(utterance)
+  return () => window.speechSynthesis.cancel()
+}
+
+function speakWord(word: Word) {
+  return speakText(word.text)
 }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
-  return requireCompletedSpeech(browserSpeech.play([{ text: target.text, language: 'zh-CN', rate: 0.55 }]))
+  return new Promise((resolve, reject) => {
+    if (!target.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      reject(new Error('Mandarin speech playback is unavailable.'))
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(target.text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.55
+    utterance.onend = () => resolve()
+    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
+    window.speechSynthesis.speak(utterance)
+  })
 }
 
 function writingSessionFor(practice: WritingPractice): PracticeSession {
@@ -183,9 +194,7 @@ function KindergartenLearningLab() {
         if (!preferred) throw new Error('The fixture has no Kindergarten vocabulary tab usable by the lab.')
         setCandidates(inspected)
         setSelectedSourceUnitId(preferred.source.sourceUnitId)
-        setStatus(
-          'Kindergarten paths loaded. Choose an adventure and your session scores will appear in the Ninja Record.',
-        )
+        setStatus('Kindergarten paths loaded. Choose an adventure and your session scores will appear in the Ninja Record.')
       })
       .catch((loadError) => {
         setStatus(loadError instanceof Error ? loadError.message : 'The Kindergarten fixture could not be loaded.')
@@ -194,15 +203,10 @@ function KindergartenLearningLab() {
   }, [])
 
   const usableCandidates = useMemo(() => candidates.filter(kindergartenCandidateIsUsableInLab), [candidates])
-  const selectedCandidate =
-    usableCandidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId) || usableCandidates[0]
+  const selectedCandidate = usableCandidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId) || usableCandidates[0]
   const unitReview = useMemo<KindergartenUnitReviewLab | null>(() => {
     if (!candidates.length) return null
-    try {
-      return kindergartenUnitReviewForLab(candidates)
-    } catch {
-      return null
-    }
+    try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
   }, [candidates])
   const masteryDataset = useMemo(() => masteryDatasetFor(unitReview), [unitReview])
   const tier1Words = selectedCandidate?.tier1.map((word) => word.text) || []
@@ -210,18 +214,15 @@ function KindergartenLearningLab() {
   const choicePool = [...tier2Words, ...tier1Words]
 
   function recordScore(score: ScoreInput) {
-    setScores((current) => [
-      ...current,
-      {
-        ...score,
-        id: `kindergarten-score-${Date.now()}-${current.length + 1}`,
-        completedAt: new Date().toISOString(),
-      },
-    ])
+    setScores((current) => [...current, {
+      ...score,
+      id: `kindergarten-score-${Date.now()}-${current.length + 1}`,
+      completedAt: new Date().toISOString(),
+    }])
   }
 
   function returnToHub(message = 'Returned to the Kindergarten paths.') {
-    browserSpeech.cancel()
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setActiveActivity(null)
     setReadingPathway(null)
     setMasteryWords([])
@@ -231,13 +232,11 @@ function KindergartenLearningLab() {
 
   function completeStandalone(score: ScoreInput) {
     recordScore(score)
-    returnToHub(
-      `${score.label} complete: ${score.correct}/${score.total}. The score is shown in this visit’s Ninja Record.`,
-    )
+    returnToHub(`${score.label} complete: ${score.correct}/${score.total}. The score is shown in this visit’s Ninja Record.`)
   }
 
   function leavePractice(message: string) {
-    browserSpeech.cancel()
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setWritingPractice(null)
     setReadingPathway(null)
     setTestReviewSession(null)
@@ -249,15 +248,12 @@ function KindergartenLearningLab() {
   function startWriting() {
     if (!selectedCandidate) return
     try {
-      browserSpeech.unlock()
       setWritingPractice({
         state: startKindergartenAcquisitionLab(selectedCandidate),
         dataset: kindergartenWritingDatasetForLab(selectedCandidate),
         revealMethod: 'timer',
       })
-      setStatus(
-        'Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.',
-      )
+      setStatus('Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.')
     } catch (startError) {
       setStatus(startError instanceof Error ? startError.message : 'Writing practice could not start.')
       setError(true)
@@ -265,46 +261,35 @@ function KindergartenLearningLab() {
   }
 
   function revealWriting(method: KindergartenLabRevealMethod) {
-    setWritingPractice((current) =>
-      current ? { ...current, state: revealKindergartenAcquisitionLab(current.state), revealMethod: method } : current,
-    )
+    setWritingPractice((current) => current ? { ...current, state: revealKindergartenAcquisitionLab(current.state), revealMethod: method } : current)
   }
 
   function finishWriting() {
     if (writingPractice) {
       const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
-      if (scored.length)
-        recordScore({
-          label: 'Writing characters',
-          kind: 'Current week',
-          correct: scored.filter((item) => item.correct).length,
-          total: scored.length,
-        })
+      if (scored.length) recordScore({
+        label: 'Writing characters',
+        kind: 'Current week',
+        correct: scored.filter((item) => item.correct).length,
+        total: scored.length,
+      })
     }
     leavePractice('Returned to the paths. This visit’s writing score is shown in the Ninja Record.')
   }
 
   function answerWriting(answer: PracticeAnswer) {
     if (typeof answer === 'object') return
-    if (answer === 'done') {
-      finishWriting()
-      return
-    }
+    if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
-    setWritingPractice((current) =>
-      current
-        ? {
-            ...current,
-            state: answerKindergartenAcquisitionLab(current.state, answer, current.revealMethod),
-            revealMethod: 'timer',
-          }
-        : current,
-    )
+    setWritingPractice((current) => current ? {
+      ...current,
+      state: answerKindergartenAcquisitionLab(current.state, answer, current.revealMethod),
+      revealMethod: 'timer',
+    } : current)
   }
 
   function startUnitReview() {
     if (!unitReview) return
-    browserSpeech.unlock()
     setTestReviewDataset(unitReview.dataset)
     setTestReviewSession(testReviewSessionFor(unitReview.dataset))
     setStatus('Facing the Final Boss: the cumulative Unit 1 writing review is ready.')
@@ -313,8 +298,7 @@ function KindergartenLearningLab() {
   function completeTestReviewDictation(method: 'timer' | 'skip_timer' = 'timer') {
     setTestReviewSession((current) => {
       if (!current || current.stage !== 'dictation') return current
-      if (current.index < current.queue.length - 1)
-        return { ...current, stage: 'interstitial', index: current.index + 1, currentRevealMethod: method }
+      if (current.index < current.queue.length - 1) return { ...current, stage: 'interstitial', index: current.index + 1, currentRevealMethod: method }
       return { ...current, stage: 'complete', currentRevealMethod: method }
     })
   }
@@ -326,9 +310,7 @@ function KindergartenLearningLab() {
       if (answer.kind !== 'deferred-writing-test-review') return
       const correct = answer.completion.assessments.filter((item) => item.correct).length
       recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })
-      leavePractice(
-        `Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`,
-      )
+      leavePractice(`Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`)
       return
     }
     if (answer === 'skip-test-review') {
@@ -373,24 +355,17 @@ function KindergartenLearningLab() {
   }
 
   function recordMasteryAnswer(word: Word, correct: boolean) {
-    setMasteryResults((current) => [
-      ...current,
-      {
-        id: `kindergarten-mastery-result-${Date.now()}-${current.length + 1}`,
-        childId: 'kindergarten-lab-child',
-        wordId: word.id,
-        completedAt: new Date().toISOString(),
-        correct,
-      },
-    ])
+    setMasteryResults((current) => [...current, {
+      id: `kindergarten-mastery-result-${Date.now()}-${current.length + 1}`,
+      childId: 'kindergarten-lab-child',
+      wordId: word.id,
+      completedAt: new Date().toISOString(),
+      correct,
+    }])
   }
 
   function launchFromHub(launch: KindergartenHubLaunch) {
-    browserSpeech.unlock()
-    if (launch.kind === 'dojo-writing') {
-      startWriting()
-      return
-    }
+    if (launch.kind === 'dojo-writing') { startWriting(); return }
     if (launch.kind === 'dojo-reading') {
       if (selectedCandidate) {
         setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
@@ -401,10 +376,7 @@ function KindergartenLearningLab() {
       }
       return
     }
-    if (launch.kind === 'final-boss') {
-      startUnitReview()
-      return
-    }
+    if (launch.kind === 'final-boss') { startUnitReview(); return }
     if (launch.kind === 'final-boss-reading') {
       if (unitReview) {
         setReadingPathway(kindergartenReadingReviewPathway(unitReview))
@@ -415,10 +387,7 @@ function KindergartenLearningLab() {
       }
       return
     }
-    if (launch.kind === 'spirit-realm') {
-      startSpiritRealm()
-      return
-    }
+    if (launch.kind === 'spirit-realm') { startSpiritRealm(); return }
     if (launch.kind === 'spirit-realm-reading') {
       if (unitReview) {
         setReadingPathway(kindergartenReadingMasteryPathway(unitReview))
@@ -434,205 +403,130 @@ function KindergartenLearningLab() {
   }
 
   if (writingPractice) {
+    const promptWord = writingPractice.state.flow.prompt?.word
     const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
     const correct = scored.filter((item) => item.correct).length
-    return (
-      <main className="k-lab-shell practice">
-        <p className="k-practice-note">
-          <strong>
-            Current score: {correct}/{scored.length}
-          </strong>{' '}
-          · Current-week Dojo writing · Session-only development record
-        </p>
-        <PracticeView
-          session={writingSessionFor(writingPractice)}
-          datasets={[writingPractice.dataset]}
-          onExit={() => leavePractice('Writing practice exited. No score was added.')}
-          onBeginWarmup={() => undefined}
-          onInterstitialComplete={() => undefined}
-          onDictationComplete={(method = 'timer') => revealWriting(method)}
-          onStartReview={() => undefined}
-          onAnswer={answerWriting}
-          reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
-          timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
-          wordAudioMode="word-only"
-          wordAudioRate={0.55}
-        />
-      </main>
-    )
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · Session-only development record</p>
+      <PracticeView
+        session={writingSessionFor(writingPractice)}
+        datasets={[writingPractice.dataset]}
+        onExit={() => leavePractice('Writing practice exited. No score was added.')}
+        onReplay={() => promptWord ? speakWord(promptWord) : undefined}
+        onBeginWarmup={() => undefined}
+        onInterstitialComplete={() => undefined}
+        onDictationComplete={(method = 'timer') => revealWriting(method)}
+        onStartReview={() => undefined}
+        onAnswer={answerWriting}
+        onSpeakWord={speakWord}
+        onSpeakReviewInstruction={() => undefined}
+        reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
+        timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
+      />
+    </main>
   }
 
   if (testReviewSession && testReviewDataset) {
-    return (
-      <main className="k-lab-shell practice">
-        <p className="k-practice-note">
-          <strong>Responses stay unscored until final review.</strong> · Final Boss cumulative Unit 1 review ·
-          Session-only development record
-        </p>
-        <PracticeView
-          session={testReviewSession}
-          datasets={[testReviewDataset]}
-          onExit={() => leavePractice('Final Boss exited. No score was added.')}
-          onBeginWarmup={() => undefined}
-          onInterstitialComplete={() =>
-            setTestReviewSession((current) =>
-              current?.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current,
-            )
-          }
-          onDictationComplete={completeTestReviewDictation}
-          onStartReview={() =>
-            setTestReviewSession((current) =>
-              current?.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current,
-            )
-          }
-          onAnswer={answerTestReview}
-          reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
-          timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
-          wordAudioMode="word-only"
-          wordAudioRate={0.55}
-        />
-      </main>
-    )
+    const activeWord = activePracticeWord(testReviewSession)
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
+      <PracticeView
+        session={testReviewSession}
+        datasets={[testReviewDataset]}
+        onExit={() => leavePractice('Final Boss exited. No score was added.')}
+        onReplay={() => testReviewSession.stage === 'complete' ? speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9) : activeWord ? speakWord(activeWord) : undefined}
+        onBeginWarmup={() => undefined}
+        onInterstitialComplete={() => setTestReviewSession((current) => current?.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current)}
+        onDictationComplete={completeTestReviewDictation}
+        onStartReview={() => setTestReviewSession((current) => current?.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current)}
+        onAnswer={answerTestReview}
+        onSpeakWord={speakWord}
+        onSpeakReviewInstruction={() => speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9)}
+        reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
+        timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
+      />
+    </main>
   }
 
   if (readingPathway?.kind === 'test-review') {
     const targets = tier2ReadingPathwayTargets(readingPathway)
-    return (
-      <main className="k-lab-shell practice">
-        <p className="k-practice-note">
-          <strong>Record every response before the final review.</strong> · Final Boss cumulative Unit 1 reading review
-          · Session-only development record
-        </p>
-        <DeferredTestReview
-          key={`kindergarten-reading-review-${readingPathway.cycle || 1}`}
-          mode="reading"
-          targets={targets}
-          activityLabel="Final Boss Reading Test"
-          onPlayReference={speakReadingReference}
-          onDiscard={() =>
-            returnToHub('Final Boss reading exited. Temporary recordings and provisional answers were discarded.')
-          }
-          onComplete={(completion) =>
-            completeStandalone({
-              label: 'Final Boss Reading Test',
-              kind: 'Final Boss',
-              correct: completion.correct,
-              total: completion.total,
-            })
-          }
-          sessionNote="Temporary recordings stay only in this Final Boss visit and are released when it ends."
-        />
-      </main>
-    )
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss cumulative Unit 1 reading review · Session-only development record</p>
+      <DeferredTestReview
+        key={`kindergarten-reading-review-${readingPathway.cycle || 1}`}
+        mode="reading"
+        targets={targets}
+        activityLabel="Final Boss Reading Test"
+        onPlayReference={speakReadingReference}
+        onDiscard={() => returnToHub('Final Boss reading exited. Temporary recordings and provisional answers were discarded.')}
+        onComplete={(completion) => completeStandalone({
+          label: 'Final Boss Reading Test',
+          kind: 'Final Boss',
+          correct: completion.correct,
+          total: completion.total,
+        })}
+        sessionNote="Temporary recordings stay only in this Final Boss visit and are released when it ends."
+      />
+    </main>
   }
 
   if (readingPathway) {
-    const label = readingPathway.kind === 'acquisition' ? 'High-frequency words' : 'Reading Mastery'
-    const scoreKind = readingPathway.kind === 'acquisition' ? 'Current week' : 'Spirit Realm'
-    return (
-      <main className="k-lab-shell practice">
-        <p className="k-practice-note">Tier 2 recorded reading · Session-only development record</p>
-        <Tier2ReadingPractice
-          key={`${readingPathway.kind}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`}
-          profile={kindergartenTier2ReadingProfile}
-          pathway={readingPathway}
-          label={label}
-          onExit={() => returnToHub('Reading practice exited. No score was added.')}
-          onComplete={(summary) =>
-            completeStandalone({
-              label,
-              kind: scoreKind,
-              correct: summary.correct,
-              total: summary.attempted,
-            })
-          }
-          sessionNote="Kindergarten development reading · recording and results remain in this visit"
-        />
-      </main>
-    )
+    const label = readingPathway.kind === 'acquisition'
+      ? 'High-frequency words'
+      : 'Reading Mastery'
+    const scoreKind = readingPathway.kind === 'acquisition'
+      ? 'Current week'
+      : 'Spirit Realm'
+    return <main className="k-lab-shell practice">
+      <p className="k-practice-note">Tier 2 recorded reading · Session-only development record</p>
+      <Tier2ReadingPractice
+        key={`${readingPathway.kind}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`}
+        profile={kindergartenTier2ReadingProfile}
+        pathway={readingPathway}
+        label={label}
+        onExit={() => returnToHub('Reading practice exited. No score was added.')}
+        onComplete={(summary) => completeStandalone({
+          label,
+          kind: scoreKind,
+          correct: summary.correct,
+          total: summary.attempted,
+        })}
+        sessionNote="Kindergarten development reading · recording and results remain in this visit"
+      />
+    </main>
   }
 
-  const speak = (text: string) => {
-    speakText(text)
-  }
-  if (activeActivity === 'ninja-listening')
-    return (
-      <ListeningLilyPads
-        targets={tier2Words}
-        choicePool={choicePool}
-        onExit={returnToHub}
-        onComplete={completeStandalone}
-        speak={speak}
-      />
-    )
-  if (activeActivity === 'ninja-memory')
-    return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
-  if (activeActivity === 'ninja-sky-writing')
-    return (
-      <SkyWriting
-        words={tier1Words}
-        onExit={() => returnToHub()}
-        onComplete={({ correct, total }) =>
-          completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })
-        }
-        speak={speak}
-      />
-    )
-  if (activeActivity === 'spirit-realm')
-    return (
-      <MasteryWarmup
-        words={masteryWords}
-        onExit={returnToHub}
-        onAnswer={recordMasteryAnswer}
-        onComplete={completeStandalone}
-        speak={speak}
-      />
-    )
+  const speak = (text: string) => { speakText(text) }
+  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-sky-writing') return <SkyWriting
+    words={tier1Words}
+    onExit={() => returnToHub()}
+    onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
+    speak={speak}
+  />
+  if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
 
-  if (!selectedCandidate)
-    return (
-      <main className="k-lab-shell">
-        <div className="k-loading">{status}</div>
-      </main>
-    )
+  if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>
   const hubModel = kindergartenLearningHubView(selectedCandidate, unitReview)
 
-  return (
-    <main className="k-lab-shell k-hub-shell">
-      <p className="k-lab-safety">
-        Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write,
-        saved progress, or production activation
-      </p>
-      <details className="k-lab-settings">
-        <summary>Development fixture controls</summary>
-        <label className="k-week-picker">
-          Current fixture week
-          <select
-            value={selectedCandidate.source.sourceUnitId}
-            onChange={(event) => setSelectedSourceUnitId(event.target.value)}
-          >
-            {usableCandidates.map((candidate) => (
-              <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>
-                {candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}
-              </option>
-            ))}
-          </select>
-          <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
-        </label>
-      </details>
-      <LearningHub model={hubModel} onLaunch={launchFromHub} />
-      <NinjaRecord scores={scores} />
-      <p className={`k-status${error ? ' error' : ''}`} role="status" aria-live="polite">
-        {status}
-      </p>
-    </main>
-  )
+  return <main className="k-lab-shell k-hub-shell">
+    <p className="k-lab-safety">Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write, saved progress, or production activation</p>
+    <details className="k-lab-settings">
+      <summary>Development fixture controls</summary>
+      <label className="k-week-picker">Current fixture week
+        <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => setSelectedSourceUnitId(event.target.value)}>
+          {usableCandidates.map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
+        </select>
+        <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
+      </label>
+    </details>
+    <LearningHub model={hubModel} onLaunch={launchFromHub} />
+    <NinjaRecord scores={scores} />
+    <p className={`k-status${error ? ' error' : ''}`} role="status" aria-live="polite">{status}</p>
+  </main>
 }
 
 const rootElement = document.getElementById('kindergarten-lab-root')
 if (!rootElement) throw new Error('Missing Kindergarten learning lab root.')
-createRoot(rootElement).render(
-  <AppErrorBoundary>
-    <KindergartenLearningLab />
-  </AppErrorBoundary>,
-)
+createRoot(rootElement).render(<KindergartenLearningLab />)

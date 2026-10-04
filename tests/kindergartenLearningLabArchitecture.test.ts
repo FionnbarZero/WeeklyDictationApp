@@ -16,8 +16,6 @@ test('the Kindergarten learning lab uses an explicit public-preview gate and sta
   assert.match(harnessHtml, /src\/kindergartenLearningLabHarness\.tsx/)
   assert.match(harnessSource, /import\.meta\.env\.DEV/)
   assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
-  assert.match(harnessSource, /import \{ AppErrorBoundary \} from '\.\/AppErrorBoundary\.tsx'/)
-  assert.match(harnessSource, /<AppErrorBoundary>[\s\S]*<KindergartenLearningLab \/>[\s\S]*<\/AppErrorBoundary>/)
   assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/kindergarten-workbook\.json', import\.meta\.url\)\.href/)
   assert.match(harnessSource, /tests\/fixtures\/kindergarten-workbook\.json/)
   assert.match(harnessSource, /Manual selection only—this lab does not infer the active week/)
@@ -98,9 +96,6 @@ test('the shared PracticeView timer override is optional and leaves production c
   const appSource = source('src/App.tsx')
 
   assert.match(practiceView, /timerSecondsOverride\?: number/)
-  assert.match(
-    practiceView,
-    /acquisitionPrompt\?\.timerSeconds \|\|\s*timerSecondsOverride \|\|\s*timerSecondsFor/,
-  )
+  assert.match(practiceView, /acquisitionPrompt\?\.timerSeconds \|\| timerSecondsOverride \|\| timerSecondsFor/)
   assert.doesNotMatch(appSource, /timerSecondsOverride/)
 })

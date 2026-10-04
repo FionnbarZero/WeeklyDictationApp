@@ -12,12 +12,6 @@ import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
 import { isTestReviewCycle, storedTestReviewCycle, type TestReviewCycle } from './testReview/contracts.ts'
 import type { ChildProfile, CloudAdaptiveState, CloudAttempt, CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
-import type { Tier2ReadingProgressRecord } from './readingPractice/contracts.ts'
-import {
-  decodeTier2ReadingCloudProgress,
-  encodeTier2ReadingCloudProgress,
-  type Tier2ReadingCloudMetadataRecord,
-} from './persistence/tier2ReadingCloud.ts'
 
 export type ParentRecord = { id: string; familyId: string; email: string; role: 'parent'; createdAt: string; updatedAt: string }
 export type { ChildProfile, CloudAdaptiveState, CloudAttempt, CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
@@ -224,39 +218,6 @@ export async function listWarmupTransitions(familyId: string, childId: string) {
 export async function listWarmupAttempts(familyId: string, childId: string) { return listDocs<WarmupAttempt>(docPath(['families', familyId, 'children', childId, 'warmupAttempts'])) }
 export async function listWarmupGraphPoints(familyId: string, childId: string) { return listDocs<WarmupGraphPoint>(docPath(['families', familyId, 'children', childId, 'warmupGraphPoints'])) }
 export async function listWarmupRotations(familyId: string, childId: string) { return listDocs<CloudWarmupRotation>(docPath(['families', familyId, 'children', childId, 'warmupRotations'])) }
-export async function listTier2ReadingProgress(familyId: string, childId: string, signal?: AbortSignal) {
-  const records = await listDocs<Tier2ReadingCloudMetadataRecord>(
-    docPath(['families', familyId, 'children', childId, 'tier2ReadingProgress']),
-    signal,
-  )
-  return records.flatMap((record) => {
-    const decoded = decodeTier2ReadingCloudProgress(record)
-    return decoded && decoded.childId === childId ? [decoded] : []
-  })
-}
-export async function saveCloudTier2ReadingProgress(
-  familyId: string,
-  childId: string,
-  progress: Tier2ReadingProgressRecord,
-) {
-  const encoded = encodeTier2ReadingCloudProgress(progress)
-  if (encoded.childId !== childId) throw new Error('Tier 2 reading cloud progress belongs to another child.')
-  const path = docPath(['families', familyId, 'children', childId, 'tier2ReadingProgress', encoded.id])
-  const current = await getDoc<Tier2ReadingCloudMetadataRecord>(path)
-  if (current) {
-    const decoded = decodeTier2ReadingCloudProgress(current)
-    if (!decoded || decoded.childId !== childId) throw new Error('Existing Tier 2 reading cloud progress is invalid.')
-    if (decoded.revision > encoded.revision) return decoded
-    if (decoded.revision === encoded.revision) {
-      if (JSON.stringify(encodeTier2ReadingCloudProgress(decoded)) !== JSON.stringify(encoded)) {
-        throw new Error('Tier 2 reading cloud progress has conflicting content for the same revision.')
-      }
-      return decoded
-    }
-  }
-  await putDoc(path, encoded as unknown as Record<string, unknown>)
-  return progress
-}
 export async function saveCloudAcquisitionProgress(familyId: string, childId: string, progression: AcquisitionProgressRecord) { await putDoc(docPath(['families', familyId, 'children', childId, 'acquisitionProgressions', progression.id]), progression) }
 export async function saveCloudDistractorTargetObservation(familyId: string, childId: string, observation: DistractorTargetObservation) { await putDoc(docPath(['families', familyId, 'children', childId, 'dtObservations', observation.id]), observation) }
 
@@ -542,7 +503,7 @@ function isValidCloudChildWordState(value: unknown, childId: string, datasetsByI
   return Boolean(dataset?.words.some((word) => word.id === value.wordId && word.datasetId === dataset.id))
 }
 
-export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>> = [], rawDtObservations: DistractorTargetObservation[] = [], schoolYear?: string, rawReadingProgress: Tier2ReadingProgressRecord[] = []) {
+export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetScore[], rawSessions: CloudSession[], rawAttempts: CloudAttempt[], childId: string, grade: string, adaptiveState?: CloudAdaptiveState | null, rawProgressions: Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>> = [], rawDtObservations: DistractorTargetObservation[] = [], schoolYear?: string) {
   const practiceProfile = practiceProfileForGrade(grade)
   const seenDatasetIds = new Set<string>()
   const datasets = rawDatasets.filter((dataset) => isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true))
@@ -616,13 +577,7 @@ export function cloudDataToAppState(rawDatasets: Dataset[], rawScores: DatasetSc
   const distractorTargetObservations = rawDtObservations
     .filter((observation) => observation.childId === childId && datasetsById.has(observation.datasetId) && (String(observation.poolType) === 'familiar' || String(observation.poolType) === 'established' || observation.poolType === 'earned'))
     .map(normalizeDistractorTargetObservation)
-  const tier2ReadingProgressV1 = rawReadingProgress.flatMap((progress) => {
-    const decoded = decodeTier2ReadingCloudProgress(progress)
-    return decoded && decoded.childId === childId && decoded.grade === grade && (!schoolYear || decoded.schoolYear === schoolYear)
-      ? [decoded]
-      : []
-  })
-  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, reviewCycle: session.primaryPhase === 'test-review' ? storedTestReviewCycle(session.reviewCycle) : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions: legacyProgressions, acquisitionProgressEnvelopes, acquisitionTransitionReceipts: acquisitionProgressEnvelopes.flatMap((envelope) => envelope.lastAppliedTransition ? [envelope.lastAppliedTransition] : []), acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine, distractorTargetObservations, tier2ReadingProgressV1 }
+  return { version: 2 as const, datasets, results, scores, warmupSessions, completedSessions: sessions.filter((session) => (session.status === 'completed' || session.status === 'skipped') && !session.warmupOnly && datasetsById.has(session.datasetId)).map((session) => ({ id: session.id, childId, sessionDate: session.localDate, primaryDatasetId: session.datasetId, primaryDatasetIds: Array.isArray(session.datasetIds) ? session.datasetIds.filter((datasetId) => typeof datasetId === 'string' && datasetsById.has(datasetId)) : undefined, reviewGroupId: typeof session.reviewGroupId === 'string' ? session.reviewGroupId : undefined, reviewCycle: session.primaryPhase === 'test-review' ? storedTestReviewCycle(session.reviewCycle) : undefined, primaryPhase: session.primaryPhase, complete: true as const, outcome: session.status === 'skipped' ? 'skipped' as const : 'completed' as const })), legacyRecords: [], childWordStates, monthlyRotationScores, rotationCycles, acquisitionProgressions: legacyProgressions, acquisitionProgressEnvelopes, acquisitionTransitionReceipts: acquisitionProgressEnvelopes.flatMap((envelope) => envelope.lastAppliedTransition ? [envelope.lastAppliedTransition] : []), acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine, distractorTargetObservations }
 }
 
 export function cloudSessionFor(familyId: string, childId: string, id: string, datasetId: string, primaryPhase: 'acquisition' | 'test-review', warmupStatus: CloudSession['warmupStatus'] = 'in_progress', reviewCycle?: TestReviewCycle): Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'> {

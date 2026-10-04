@@ -7,7 +7,6 @@ import {
   type MonthlyRotationScore,
 } from '../domain.ts'
 import type { WarmupGraphPoint } from '../warmup/visits/contracts.ts'
-import type { Tier2ReadingProgressRecord } from '../readingPractice/contracts.ts'
 import { LegacyMasteryHistory } from './LegacyMasteryHistory.tsx'
 import { WarmupProgressGraph } from './WarmupProgressGraph.tsx'
 
@@ -25,7 +24,6 @@ export type HistoryViewProps = {
   legacyCount: number
   legacyMasteryScores: MonthlyRotationScore[]
   warmupGraphPoints: WarmupGraphPoint[]
-  readingProgress: Tier2ReadingProgressRecord[]
   onBack: () => void
 }
 
@@ -40,7 +38,6 @@ export function HistoryView({
   legacyCount,
   legacyMasteryScores,
   warmupGraphPoints,
-  readingProgress,
   onBack,
 }: HistoryViewProps) {
   const ordered = sortDatasetsNewestFirst(datasets)
@@ -70,7 +67,6 @@ export function HistoryView({
       )}
       <LegacyMasteryHistory scores={legacyMasteryScores} />
       <WarmupProgressGraph points={warmupGraphPoints} />
-      <ReadingProgressHistory progress={readingProgress} />
       {ordered.map((dataset) => (
         <DatasetGraph
           key={dataset.id}
@@ -79,58 +75,6 @@ export function HistoryView({
         />
       ))}
     </div>
-  )
-}
-
-function readingPathwayLabel(progress: Tier2ReadingProgressRecord) {
-  if (progress.pathwayKind === 'test-review') return `Test Review ${progress.reviewCycle || ''}`.trim()
-  return progress.pathwayKind === 'acquisition' ? 'Acquisition' : 'Mastery'
-}
-
-function ReadingProgressHistory({ progress }: { progress: Tier2ReadingProgressRecord[] }) {
-  const completed = progress
-    .filter((record) => record.status === 'completed' && record.summary)
-    .sort((left, right) => (right.completedAt || '').localeCompare(left.completedAt || ''))
-  if (completed.length === 0) return null
-  return (
-    <section className="dataset-graph progress-card" aria-labelledby="reading-progress-title">
-      <div className="progress-card-heading">
-        <div>
-          <span className="eyebrow">Tier 2 reading · progress saved</span>
-          <h2 id="reading-progress-title">Reading practice</h2>
-        </div>
-        <BarChart3 size={22} aria-hidden="true" />
-      </div>
-      <div className="score-list">
-        {completed.map((record) => {
-          const summary = record.summary!
-          const percent = summary.attempted === 0 ? 0 : Math.round((summary.correct / summary.attempted) * 100)
-          const date = new Date(record.completedAt || record.updatedAt).toLocaleDateString()
-          return (
-            <div className="score-row" key={record.id}>
-              <div className="score-dot dot-acquisition" aria-hidden="true" />
-              <div className="score-row-copy">
-                <strong>{date}</strong>
-                <span>
-                  {readingPathwayLabel(record)} · {summary.correct}/{summary.attempted} correct
-                </span>
-              </div>
-              <div
-                className="score-bar"
-                role="progressbar"
-                aria-label={`${readingPathwayLabel(record)} score`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percent}
-              >
-                <span style={{ width: `${percent}%` }} />
-              </div>
-              <strong className="score-number">{percent}%</strong>
-            </div>
-          )
-        })}
-      </div>
-    </section>
   )
 }
 
@@ -160,14 +104,7 @@ function DatasetGraph({ dataset, scores }: { dataset: Dataset; scores: DatasetSc
                   {phaseLabel(score.phase)} · {score.correct}/{score.wordCount} correct
                 </span>
               </div>
-              <div
-                className="score-bar"
-                role="progressbar"
-                aria-label={`${dataset.dateRange} ${phaseLabel(score.phase)} score`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={score.percent}
-              >
+              <div className="score-bar">
                 <span style={{ width: `${score.percent}%` }} />
               </div>
               <strong className="score-number">{score.percent}%</strong>

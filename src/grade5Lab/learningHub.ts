@@ -1,4 +1,7 @@
-import type { Grade5BookResource, Grade5SourceExtraction } from '../curriculum/adapters/grade5GoogleSlides.ts'
+import type {
+  Grade5BookResource,
+  Grade5SourceExtraction,
+} from '../curriculum/adapters/grade5GoogleSlides.ts'
 import { schoolYearToken } from '../curriculum/identity.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import { lifecycleProgressionEventsFrom } from '../lifecycle/curriculumProgression.ts'
@@ -17,7 +20,7 @@ export type Grade5ActivityLaunchRequest = {
   learningChannel: Grade5LearningChannel
   activityKind: Grade5ActivityKind
   warmupMaximum: number | null
-  preActivityWarmupRequirement: 'required' | 'not-applicable'
+  preActivityWarmupRequirement: 'undecided' | 'not-applicable'
 }
 
 export type Grade5CohortSummary = {
@@ -83,7 +86,7 @@ function launchRequest(
     learningChannel,
     activityKind,
     warmupMaximum: 6,
-    preActivityWarmupRequirement: 'required',
+    preActivityWarmupRequirement: 'undecided',
   }
 }
 
@@ -108,9 +111,8 @@ function exactBookResource(
   datasetId: string,
   relationship: Grade5BookResource['relationship'],
 ) {
-  return extraction.resources.find(
-    (resource) => resource.datasetId === datasetId && resource.relationship === relationship,
-  )
+  return extraction.resources.find((resource) =>
+    resource.datasetId === datasetId && resource.relationship === relationship)
 }
 
 function cohortActivities(
@@ -138,9 +140,7 @@ function cohortActivities(
         : 'The book link for this cohort and stage is not available.',
       availability: book ? 'ready' : 'unavailable',
       ...(book ? { book: { title: book.title, url: book.url, sourceRole: book.relationship } } : {}),
-      ...(!book
-        ? { unavailableReason: candidate ? 'The teacher source has no book link for this stage.' : unavailableReason }
-        : {}),
+      ...(!book ? { unavailableReason: candidate ? 'The teacher source has no book link for this stage.' : unavailableReason } : {}),
       launchRequests: [],
     },
     {
@@ -151,7 +151,9 @@ function cohortActivities(
         : 'Warm up, then practice the complete writing test.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
-      launchRequests: candidate ? [launchRequest(candidate, stage, 'tier-1-writing', activityKind)] : [],
+      launchRequests: candidate
+        ? [launchRequest(candidate, stage, 'tier-1-writing', activityKind)]
+        : [],
     },
     {
       id: `${stage}-reading`,
@@ -161,7 +163,9 @@ function cohortActivities(
         : 'Warm up, then practice the complete reading test.',
       availability: candidate ? 'not-connected' : 'unavailable',
       ...(candidate ? {} : { unavailableReason }),
-      launchRequests: candidate ? [launchRequest(candidate, stage, 'tier-2-reading', activityKind)] : [],
+      launchRequests: candidate
+        ? [launchRequest(candidate, stage, 'tier-2-reading', activityKind)]
+        : [],
     },
   ]
   if (!isAcquisition) {
@@ -207,8 +211,7 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
     {
       id: 'mastery-reteach',
       label: 'Reenter the Training Dojo',
-      description:
-        'Choose an older week, then use guided practice or a collect-first Test Review for writing or reading without changing its Mastery status.',
+      description: 'Choose an older week, then use guided practice or a collect-first Test Review for writing or reading without changing its Mastery status.',
       availability: available ? 'not-connected' : 'unavailable',
       ...(!available ? { unavailableReason } : {}),
       launchRequests: available
@@ -224,23 +227,19 @@ function masteryActivities(candidates: WeeklyDatasetCandidate[]) {
 }
 
 function latestProgressionDate(extraction: Grade5SourceExtraction) {
-  return extraction.progressionEvidence.reduce(
-    (latest, evidence) => (evidence.effectiveDate > latest ? evidence.effectiveDate : latest),
-    '0000-00-00',
-  )
+  return extraction.progressionEvidence.reduce((latest, evidence) =>
+    evidence.effectiveDate > latest ? evidence.effectiveDate : latest, '0000-00-00')
 }
 
 export function resolveGrade5SourceLifecycle(
   extraction: Grade5SourceExtraction,
   currentDateKey = latestProgressionDate(extraction),
 ) {
-  const candidates = extraction.classification.selectedCandidates.filter(
-    (candidate) =>
-      candidate.datasetId &&
-      candidate.normalizedStartDate &&
-      candidate.normalizedEndDate &&
-      (candidate.status === 'valid' || candidate.status === 'no-instruction'),
-  )
+  const candidates = extraction.classification.selectedCandidates.filter((candidate) =>
+    candidate.datasetId
+      && candidate.normalizedStartDate
+      && candidate.normalizedEndDate
+      && (candidate.status === 'valid' || candidate.status === 'no-instruction'))
   return resolveLifecycle({
     scope: {
       grade: 'Grade 5',
@@ -270,12 +269,8 @@ export function buildGrade5LearningHub(
   )
   const lifecycle = resolveGrade5SourceLifecycle(extraction, currentDateKey)
   const acquisition = candidateByDatasetId.get(lifecycle.acquisitionDatasetId || '')
-  const testReview1 = candidateByDatasetId.get(
-    lifecycle.testReviews.find((review) => review.cycle === 1)?.datasetId || '',
-  )
-  const testReview2 = candidateByDatasetId.get(
-    lifecycle.testReviews.find((review) => review.cycle === 2)?.datasetId || '',
-  )
+  const testReview1 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 1)?.datasetId || '')
+  const testReview2 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 2)?.datasetId || '')
   const mastery = lifecycle.masteryDatasetIds
     .map((datasetId) => candidateByDatasetId.get(datasetId))
     .filter((candidate): candidate is WeeklyDatasetCandidate => Boolean(candidate))
@@ -308,9 +303,7 @@ export function buildGrade5LearningHub(
       stage: 'test-review-2',
       cohorts: testReview2 ? [summary(testReview2)] : [],
       available: Boolean(testReview2),
-      ...(!testReview2
-        ? { unavailableReason: 'The Final Boss will unlock when a word set reaches Test Review 2.' }
-        : {}),
+      ...(!testReview2 ? { unavailableReason: 'The Final Boss will unlock when a word set reaches Test Review 2.' } : {}),
       activities: cohortActivities(extraction, testReview2, 'test-review-2'),
     },
     {

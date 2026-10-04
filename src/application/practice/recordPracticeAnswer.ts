@@ -112,7 +112,7 @@ export function recordPracticeAnswer(input: {
       acquisition: checkpoint.nextFlow,
       primaryAnswers,
       currentRevealMethod: undefined,
-      stage: checkpoint.nextFlow.complete ? 'complete' : 'interstitial',
+      stage: checkpoint.nextFlow.complete ? 'complete' : 'dictation',
       queue: checkpoint.nextFlow.prompt ? [checkpoint.nextFlow.prompt.word] : [],
       index: 0,
     }

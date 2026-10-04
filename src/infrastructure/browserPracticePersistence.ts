@@ -14,7 +14,6 @@ import {
   startCloudSession,
   updateChild,
   updateCloudSession,
-  saveCloudTier2ReadingProgress,
 } from '../firestoreClient.ts'
 import {
   appendPendingAcquisitionCheckpoint,
@@ -24,7 +23,6 @@ import type { ChildProfile, CloudAttempt, CloudSession } from '../persistence/cl
 import { appendPendingWarmupTransition, removePendingWarmupTransition } from '../persistence/warmup/pendingJournal.ts'
 import type { CloudWarmupRotation } from '../persistence/warmup/cloudContracts.ts'
 import type { VersionedChildMasteryState, WarmupTransition, WarmupVisit } from '../warmup/visits/contracts.ts'
-import type { Tier2ReadingProgressRecord } from '../readingPractice/contracts.ts'
 
 export type CloudPracticeScope = {
   familyId: string
@@ -78,10 +76,6 @@ export function createBrowserPracticePersistence(storage: Storage) {
       ) => ensureCloudWarmupSeed(...scopeIds(scope), visit, mastery, rotations),
       commit: (scope: CloudPracticeScope, transition: WarmupTransition) =>
         commitCloudWarmupTransition(...scopeIds(scope), transition),
-    },
-    reading: {
-      save: (scope: CloudPracticeScope, progress: Tier2ReadingProgressRecord) =>
-        saveCloudTier2ReadingProgress(...scopeIds(scope), progress),
     },
     sessions: {
       start: (scope: CloudPracticeScope, input: Omit<CloudSession, 'familyId' | 'status' | 'applicationVersion'>) =>

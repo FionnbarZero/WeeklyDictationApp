@@ -1,12 +1,4 @@
-import {
-  grade2DeckProfile,
-  isCanonicalDataset,
-  validateAndClassifyPresentation,
-  type ExistingDatasetReference,
-  type ImportBatchOutcome,
-  type ParserProfile,
-  type PresentationLike,
-} from './slidesImporter.ts'
+import { grade2DeckProfile, isCanonicalDataset, validateAndClassifyPresentation, type ExistingDatasetReference, type ImportBatchOutcome, type ParserProfile, type PresentationLike } from './slidesImporter.ts'
 import type { SupportedGrade } from './config.ts'
 import { schoolYearToken } from './curriculum/identity.ts'
 import { resumeAcquisition, revealAcquisition, startAcquisition } from './acquisition/engine.ts'
@@ -23,35 +15,18 @@ import type {
   EngineAcquisitionFlow,
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
-import type {
-  AcquisitionCheckpoint,
-  AcquisitionProgressEnvelope,
-  AcquisitionTransitionReceipt,
-} from './acquisition/persistence/contracts.ts'
+import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
 import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { LifecycleSet } from './lifecycle/contracts.ts'
 import { resolveLifecycle } from './lifecycle/registry.ts'
 import type { Dataset, Word } from './domain/contracts.ts'
 import { applyWarmupResponse, deriveWarmupWordStates, selectWarmupWords } from './warmup/engine.ts'
-import type {
-  ChildWordState,
-  WarmupCategory,
-  WarmupLifecycleSnapshot,
-  WarmupPolicy,
-  WarmupSelection,
-} from './warmup/contracts.ts'
+import type { ChildWordState, WarmupCategory, WarmupLifecycleSnapshot, WarmupPolicy, WarmupSelection } from './warmup/contracts.ts'
 import type { AdaptiveWarmupV3Projection } from './warmup/adaptive/migration.ts'
-import type {
-  WarmupAttempt,
-  WarmupGraphPoint,
-  WarmupTransition,
-  WarmupTransitionReceipt,
-  WarmupVisit,
-} from './warmup/visits/contracts.ts'
+import type { WarmupAttempt, WarmupGraphPoint, WarmupTransition, WarmupTransitionReceipt, WarmupVisit } from './warmup/visits/contracts.ts'
 import type { TestReviewCycle } from './testReview/contracts.ts'
 import { isTestReviewCycle, storedTestReviewCycle } from './testReview/contracts.ts'
-import type { Tier2ReadingProgressRecord } from './readingPractice/contracts.ts'
 import {
   datasetLifecycleResolutionFrom,
   emptyDatasetLifecycleResolution,
@@ -141,9 +116,7 @@ export type DistractorTargetObservation = {
   reviewedAt: string
 }
 
-export function normalizeDistractorTargetObservation(
-  observation: DistractorTargetObservation,
-): DistractorTargetObservation {
+export function normalizeDistractorTargetObservation(observation: DistractorTargetObservation): DistractorTargetObservation {
   return {
     ...observation,
     wordId: observation.wordId.replace(/^established-dt-(\d+)$/, 'familiar-dt-$1'),
@@ -201,8 +174,6 @@ export type AppState = {
   warmupPendingTransitionsV1?: WarmupTransition[]
   warmupMasteryRevisionsV1?: Record<string, number>
   warmupCloudQuarantineV1?: WarmupCloudQuarantineRecord[]
-  /** Durable Tier 2 reading metadata. Prompt-local microphone audio is never included. */
-  tier2ReadingProgressV1?: Tier2ReadingProgressRecord[]
   distractorTargetObservations: DistractorTargetObservation[]
   datasetImportReferences?: Array<Exclude<ExistingDatasetReference, string>>
 }
@@ -297,9 +268,7 @@ export type PracticeTarget = {
 }
 
 export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'acquisition' | 'queue' | 'index'>) {
-  return session.segment === 'primary' && session.acquisition?.prompt
-    ? session.acquisition.prompt.word
-    : session.queue[session.index]
+  return session.segment === 'primary' && session.acquisition?.prompt ? session.acquisition.prompt.word : session.queue[session.index]
 }
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
@@ -324,28 +293,15 @@ export function audioPartsForWord(word: Word, warmup = false): AudioPart[] {
   const multiplier = warmup ? 1.5 : 1
   const wordRate = Math.min(1, NORMAL_WORD_RATE * multiplier)
   const sentenceRate = Math.min(1, NORMAL_SENTENCE_RATE * multiplier)
-  return [
-    { text: word.text, rate: wordRate },
-    ...(word.sentence.trim() ? [{ text: word.sentence, rate: sentenceRate }] : []),
-    { text: word.text, rate: wordRate },
-    { text: word.text, rate: wordRate },
-  ]
+  return [{ text: word.text, rate: wordRate }, ...(word.sentence.trim() ? [{ text: word.sentence, rate: sentenceRate }] : []), { text: word.text, rate: wordRate }, { text: word.text, rate: wordRate }]
 }
 
-export function timerSecondsFor(
-  grade: string | null | undefined,
-  segment: string | null | undefined,
-  primaryPhase: string | null | undefined,
-) {
+export function timerSecondsFor(grade: string | null | undefined, segment: string | null | undefined, primaryPhase: string | null | undefined) {
   const profile = requirePracticeProfileForGrade(grade)
   const selectedSegment = segment === 'warmup' ? 'warmup' : 'primary'
   const selectedPhase = primaryPhase === 'test-review' ? 'test-review' : 'acquisition'
   const timer = profile.timers
-  return selectedSegment === 'warmup'
-    ? timer.warmup
-    : selectedPhase === 'test-review'
-      ? timer.testReview
-      : profile.acquisition.timers.introductionHiddenTargetSeconds
+  return selectedSegment === 'warmup' ? timer.warmup : selectedPhase === 'test-review' ? timer.testReview : profile.acquisition.timers.introductionHiddenTargetSeconds
 }
 
 export function createSessionId() {
@@ -353,12 +309,7 @@ export function createSessionId() {
 }
 
 export function localDateKey(date = new Date(), timeZone = 'America/Los_Angeles') {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
 }
@@ -384,12 +335,7 @@ function uniqueCanonicalDatasets(datasets: Dataset[]) {
   for (const dataset of datasets) {
     if (isCanonicalDataset(dataset) && !byId.has(dataset.id)) byId.set(dataset.id, dataset)
   }
-  return [...byId.values()].sort(
-    (left, right) =>
-      left.startDate.localeCompare(right.startDate) ||
-      left.endDate.localeCompare(right.endDate) ||
-      left.id.localeCompare(right.id),
-  )
+  return [...byId.values()].sort((left, right) => left.startDate.localeCompare(right.startDate) || left.endDate.localeCompare(right.endDate) || left.id.localeCompare(right.id))
 }
 
 function lifecycleSetForDataset(dataset: Dataset): LifecycleSet {
@@ -413,14 +359,11 @@ export function resolveDatasetLifecycles(datasets: Dataset[], date = new Date())
   if (canonical.some((dataset) => dataset.grade !== grade || schoolYearToken(dataset.schoolYear) !== schoolYearKey)) {
     throw new Error('Lifecycle resolution requires one grade and school-year collection.')
   }
-  return datasetLifecycleResolutionFrom(
-    canonical,
-    resolveLifecycle({
-      scope: { grade, schoolYearKey, currentDateKey: localDateKey(date) },
-      sets: canonical.map(lifecycleSetForDataset),
-      progressionEvents: [],
-    }),
-  )
+  return datasetLifecycleResolutionFrom(canonical, resolveLifecycle({
+    scope: { grade, schoolYearKey, currentDateKey: localDateKey(date) },
+    sets: canonical.map(lifecycleSetForDataset),
+    progressionEvents: [],
+  }))
 }
 
 export function datasetLifecycle(dataset: Dataset, datasets: Dataset[], date = new Date()): DatasetLifecycle {
@@ -438,33 +381,19 @@ export function sortDatasetsNewestFirst(datasets: Dataset[]) {
 
 export function filterDatasetsForChild(datasets: Dataset[], grade: string, schoolYear: string) {
   let requestedYear: string
-  try {
-    requestedYear = schoolYearToken(schoolYear)
-  } catch {
-    return []
-  }
-  return sortDatasetsNewestFirst(
-    datasets.filter((dataset) => {
-      if (!isCanonicalDataset(dataset) || dataset.grade !== grade) return false
-      try {
-        return schoolYearToken(dataset.schoolYear) === requestedYear
-      } catch {
-        return false
-      }
-    }),
-  )
+  try { requestedYear = schoolYearToken(schoolYear) } catch { return [] }
+  return sortDatasetsNewestFirst(datasets.filter((dataset) => {
+    if (!isCanonicalDataset(dataset) || dataset.grade !== grade) return false
+    try { return schoolYearToken(dataset.schoolYear) === requestedYear } catch { return false }
+  }))
 }
 
 export function nextGrade(grade: string) {
-  const index = GRADE_ORDER.indexOf(grade as (typeof GRADE_ORDER)[number])
+  const index = GRADE_ORDER.indexOf(grade as typeof GRADE_ORDER[number])
   return index >= 0 && index < GRADE_ORDER.length - 1 ? GRADE_ORDER[index + 1] : null
 }
 
-export function shouldSuggestGradePromotion(
-  child: { grade: string; gradeEffectiveDate?: string },
-  date = new Date(),
-  timeZone = 'America/Los_Angeles',
-) {
+export function shouldSuggestGradePromotion(child: { grade: string; gradeEffectiveDate?: string }, date = new Date(), timeZone = 'America/Los_Angeles') {
   const today = localDateKey(date, timeZone)
   const augustFirst = `${today.slice(0, 4)}-08-01`
   return today >= augustFirst && Boolean(nextGrade(child.grade)) && (child.gradeEffectiveDate || '') < augustFirst
@@ -487,26 +416,12 @@ function warmupLifecycleSnapshot(resolution: DatasetLifecycleResolution): Warmup
   }
 }
 
-export function deriveChildWordStates(options: {
-  grade: string
-  schoolYear?: string
-  datasets: Dataset[]
-  results: WordResult[]
-  childId: string
-  today?: Date
-  existingStates?: ChildWordState[]
-  rotationCycleId?: number
-  lifecycleResolution?: DatasetLifecycleResolution
-}): ChildWordState[] {
+export function deriveChildWordStates(options: { grade: string; schoolYear?: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; existingStates?: ChildWordState[]; rotationCycleId?: number; lifecycleResolution?: DatasetLifecycleResolution }): ChildWordState[] {
   const policy = warmupPolicyForGrade(options.grade)
   const today = options.today || new Date()
   const cycle = options.rotationCycleId || 1
   const requestedSchoolYear = options.schoolYear ? schoolYearToken(options.schoolYear) : null
-  const gradeDatasets = options.datasets.filter(
-    (dataset) =>
-      dataset.grade === options.grade &&
-      (!requestedSchoolYear || schoolYearToken(dataset.schoolYear) === requestedSchoolYear),
-  )
+  const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade && (!requestedSchoolYear || schoolYearToken(dataset.schoolYear) === requestedSchoolYear))
   const lifecycleResolution = options.lifecycleResolution || resolveDatasetLifecycles(gradeDatasets, today)
   return deriveWarmupWordStates({
     datasets: gradeDatasets,
@@ -529,18 +444,7 @@ function shuffleSessionWords<T>(words: T[], random = Math.random) {
   return output
 }
 
-export function buildWarmupSelection(options: {
-  grade: string
-  datasets: Dataset[]
-  results: WordResult[]
-  childId: string
-  today?: Date
-  childWordStates?: ChildWordState[]
-  rotationCycleId?: number
-  targetSize?: number
-  random?: () => number
-  lifecycleResolution?: DatasetLifecycleResolution
-}): WarmupSelection {
+export function buildWarmupSelection(options: { grade: string; datasets: Dataset[]; results: WordResult[]; childId: string; today?: Date; childWordStates?: ChildWordState[]; rotationCycleId?: number; targetSize?: number; random?: () => number; lifecycleResolution?: DatasetLifecycleResolution }): WarmupSelection {
   const policy = warmupPolicyForGrade(options.grade)
   const today = options.today || new Date()
   const gradeDatasets = options.datasets.filter((dataset) => dataset.grade === options.grade)
@@ -574,44 +478,29 @@ export function createPracticeSessionForTarget(options: {
 }): PracticeSession {
   requirePracticeProfileForGrade(options.grade)
   const random = options.random || Math.random
-  const target =
-    options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop
-      ? options.target
-      : null
+  const target = options.target && options.target.dataset.words.length > 0 && !options.target.dataset.isWritingWorkshop ? options.target : null
   if (target?.reviewCycle !== undefined && (target.phase !== 'test-review' || !isTestReviewCycle(target.reviewCycle))) {
     throw new Error('A practice target contains an invalid Test Review cycle identity.')
   }
-  const reviewCycle = target?.phase === 'test-review' ? (target.reviewCycle ?? 1) : undefined
-  const reviewDatasets =
-    target?.phase === 'test-review' && target.reviewDatasets?.length
-      ? target.reviewDatasets
-      : target
-        ? [target.dataset]
-        : []
+  const reviewCycle = target?.phase === 'test-review' ? target.reviewCycle ?? 1 : undefined
+  const reviewDatasets = target?.phase === 'test-review' && target.reviewDatasets?.length
+    ? target.reviewDatasets
+    : target ? [target.dataset] : []
   const primaryDatasetIds = [...new Set(reviewDatasets.map((dataset) => dataset.id))]
-  const primaryQueue =
-    target?.phase === 'test-review' ? reviewDatasets.flatMap((dataset) => dataset.words) : target?.dataset.words || []
+  const primaryQueue = target?.phase === 'test-review'
+    ? reviewDatasets.flatMap((dataset) => dataset.words)
+    : target?.dataset.words || []
   const primaryDatasetId = target?.dataset.id || options.warmup.words[0]?.datasetId || 'warmup-only'
-  const warmupCategoryByWordId = Object.fromEntries(
-    options.warmup.words.map((word) => [
-      word.id,
-      options.warmup.randomRotationWordIds.includes(word.id)
-        ? 'random-rotation'
-        : options.warmup.erroredWordIds.includes(word.id)
-          ? 'errored-word'
-          : 'recent-review',
-    ]),
-  ) as PracticeSession['warmupCategoryByWordId']
+  const warmupCategoryByWordId = Object.fromEntries(options.warmup.words.map((word) => [
+    word.id,
+    options.warmup.randomRotationWordIds.includes(word.id) ? 'random-rotation' : options.warmup.erroredWordIds.includes(word.id) ? 'errored-word' : 'recent-review',
+  ])) as PracticeSession['warmupCategoryByWordId']
   return {
     id: options.id,
     childId: options.childId,
     grade: options.grade,
     primaryDatasetId,
-    primaryDatasetIds: primaryDatasetIds.length
-      ? primaryDatasetIds
-      : primaryDatasetId === 'warmup-only'
-        ? []
-        : [primaryDatasetId],
+    primaryDatasetIds: primaryDatasetIds.length ? primaryDatasetIds : primaryDatasetId === 'warmup-only' ? [] : [primaryDatasetId],
     reviewGroupId: target?.reviewGroupId,
     reviewCycle,
     primaryPhase: target?.phase || 'acquisition',
@@ -627,11 +516,9 @@ export function createPracticeSessionForTarget(options: {
     warmupCategoryByWordId,
     warmupRandomRotationWordIds: options.warmup.randomRotationWordIds,
     warmupRotationCycleId: options.warmup.rotationCycleId,
-    acquisition:
-      target?.phase === 'acquisition'
-        ? options.preparedAcquisitionProgress ||
-          resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random)
-        : undefined,
+    acquisition: target?.phase === 'acquisition'
+      ? options.preparedAcquisitionProgress || resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random)
+      : undefined,
     warmupOnly: !target,
     cloudSessionId: options.cloudSessionId,
   }
@@ -650,12 +537,7 @@ export function startAcquisitionFlow(dataset: Dataset, grade = dataset.grade, ra
   return startAcquisition<Word>(acquisitionTargetSetFor(dataset), strategy, random)
 }
 
-export function resumeAcquisitionFlow(
-  saved: AcquisitionFlow | undefined,
-  dataset: Dataset,
-  grade = dataset.grade,
-  random = Math.random,
-) {
+export function resumeAcquisitionFlow(saved: AcquisitionFlow | undefined, dataset: Dataset, grade = dataset.grade, random = Math.random) {
   if (!saved || saved.datasetId !== dataset.id) return startAcquisitionFlow(dataset, grade, random)
   return resumeAcquisition<Word>(saved, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), random)
 }
@@ -664,57 +546,20 @@ export function revealAcquisitionPrompt(flow: AcquisitionFlow) {
   return revealAcquisition(flow)
 }
 
-export function answerAcquisitionPrompt(
-  flow: AcquisitionFlow,
-  dataset: Dataset,
-  grade: string,
-  correct: boolean,
-  random = Math.random,
-): AcquisitionFlow {
+export function answerAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, random = Math.random): AcquisitionFlow {
   if (!flow.prompt || !flow.prompt.revealed) return flow
   return transitionAcquisitionPrompt(flow, dataset, grade, correct, 'timer', random).nextFlow
 }
 
-export function transitionAcquisitionPrompt(
-  flow: AcquisitionFlow,
-  dataset: Dataset,
-  grade: string,
-  correct: boolean,
-  revealMethod: RevealMethod,
-  random = Math.random,
-): AcquisitionTransition {
+export function transitionAcquisitionPrompt(flow: AcquisitionFlow, dataset: Dataset, grade: string, correct: boolean, revealMethod: RevealMethod, random = Math.random): AcquisitionTransition {
   if (!flow.prompt || !flow.prompt.revealed) return { nextFlow: flow }
-  return transitionAcquisition<Word, RevealMethod>(
-    flow,
-    acquisitionTargetSetFor(dataset),
-    acquisitionStrategyFor(grade),
-    { correct, revealMethod },
-    random,
-  )
+  return transitionAcquisition<Word, RevealMethod>(flow, acquisitionTargetSetFor(dataset), acquisitionStrategyFor(grade), { correct, revealMethod }, random)
 }
 
 function normalizeLegacyAttempt(value: unknown): LegacyRecord | null {
   if (!isRecord(value)) return null
-  if (
-    typeof value.childId !== 'string' ||
-    (value.weeklySetId !== 'current' && value.weeklySetId !== 'previous') ||
-    typeof value.termId !== 'string' ||
-    typeof value.sessionId !== 'string' ||
-    typeof value.completedAt !== 'string' ||
-    typeof value.correct !== 'boolean'
-  )
-    return null
-  return {
-    id: `legacy-${value.sessionId}-${value.termId}`,
-    childId: value.childId,
-    legacySet: value.weeklySetId,
-    termId: value.termId,
-    sessionId: value.sessionId,
-    completedAt: value.completedAt,
-    correct: value.correct,
-    revealMethod: value.revealMethod === 'timer' ? 'timer' : 'show_answer',
-    note: 'legacy-date-range-unknown',
-  }
+  if (typeof value.childId !== 'string' || (value.weeklySetId !== 'current' && value.weeklySetId !== 'previous') || typeof value.termId !== 'string' || typeof value.sessionId !== 'string' || typeof value.completedAt !== 'string' || typeof value.correct !== 'boolean') return null
+  return { id: `legacy-${value.sessionId}-${value.termId}`, childId: value.childId, legacySet: value.weeklySetId, termId: value.termId, sessionId: value.sessionId, completedAt: value.completedAt, correct: value.correct, revealMethod: value.revealMethod === 'timer' ? 'timer' : 'show_answer', note: 'legacy-date-range-unknown' }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -737,10 +582,7 @@ function discardIncompleteWarmupData(state: AppState) {
   const warmupIds = new Set(incomplete.map((session) => session.id))
   return {
     ...state,
-    results: state.results.filter(
-      (result) =>
-        !sessionIds.has(result.sessionId) && (!result.warmupSessionId || !warmupIds.has(result.warmupSessionId)),
-    ),
+    results: state.results.filter((result) => !sessionIds.has(result.sessionId) && (!result.warmupSessionId || !warmupIds.has(result.warmupSessionId))),
     warmupSessions: state.warmupSessions.filter((session) => session.complete),
   }
 }
@@ -755,18 +597,8 @@ function localDatasetReferences(state: AppState): ExistingDatasetReference[] {
 function updatedLocalDatasetReferences(state: AppState, batch: ImportBatchOutcome, datasets: Dataset[]) {
   const references = new Map((state.datasetImportReferences || []).map((reference) => [reference.datasetId, reference]))
   for (const outcome of batch.outcomes) {
-    const shouldStore =
-      outcome.status === 'imported' ||
-      outcome.status === 'writing-workshop' ||
-      (outcome.status === 'confirmation' && outcome.refreshExistingMetadata)
-    if (
-      !shouldStore ||
-      !outcome.datasetId ||
-      !outcome.contentFingerprint ||
-      !outcome.candidateStatus ||
-      !outcome.instructionalRole
-    )
-      continue
+    const shouldStore = outcome.status === 'imported' || outcome.status === 'writing-workshop' || (outcome.status === 'confirmation' && outcome.refreshExistingMetadata)
+    if (!shouldStore || !outcome.datasetId || !outcome.contentFingerprint || !outcome.candidateStatus || !outcome.instructionalRole) continue
     references.set(outcome.datasetId, {
       datasetId: outcome.datasetId,
       contentFingerprint: outcome.contentFingerprint,
@@ -778,358 +610,68 @@ function updatedLocalDatasetReferences(state: AppState, batch: ImportBatchOutcom
   return [...references.values()].filter((reference) => retainedIds.has(reference.datasetId))
 }
 
-export function hydrateLocalState(
-  state: AppState,
-  presentation: PresentationLike,
-  profile: ParserProfile = grade2DeckProfile,
-): LocalHydrationResult {
+export function hydrateLocalState(state: AppState, presentation: PresentationLike, profile: ParserProfile = grade2DeckProfile): LocalHydrationResult {
   const batch = validateAndClassifyPresentation(presentation, localDatasetReferences(state), profile)
   const datasets = canonicalDatasets([...batch.datasets, ...state.datasets])
-  return {
-    state: { ...state, datasets, datasetImportReferences: updatedLocalDatasetReferences(state, batch, datasets) },
-    batch,
-  }
+  return { state: { ...state, datasets, datasetImportReferences: updatedLocalDatasetReferences(state, batch, datasets) }, batch }
 }
 
-export function createInitialState(
-  importedDatasetsOrLegacy: Dataset[] | string | null = [],
-  legacyRaw?: string | null,
-): AppState {
+export function createInitialState(importedDatasetsOrLegacy: Dataset[] | string | null = [], legacyRaw?: string | null): AppState {
   const importedDatasets = Array.isArray(importedDatasetsOrLegacy) ? importedDatasetsOrLegacy : []
   const legacyInput = Array.isArray(importedDatasetsOrLegacy) ? legacyRaw : importedDatasetsOrLegacy || legacyRaw
   let legacyRecords: LegacyRecord[] = []
   try {
     const parsed: unknown = legacyInput ? JSON.parse(legacyInput) : []
-    legacyRecords = Array.isArray(parsed)
-      ? parsed.map(normalizeLegacyAttempt).filter((item): item is LegacyRecord => Boolean(item))
-      : []
+    legacyRecords = Array.isArray(parsed) ? parsed.map(normalizeLegacyAttempt).filter((item): item is LegacyRecord => Boolean(item)) : []
   } catch {
     legacyRecords = []
   }
-  return {
-    version: 2,
-    datasets: canonicalDatasets(importedDatasets),
-    results: [],
-    scores: [],
-    warmupSessions: [],
-    completedSessions: [],
-    legacyRecords,
-    childWordStates: [],
-    monthlyRotationScores: [],
-    rotationCycles: {},
-    acquisitionProgressions: [],
-    acquisitionProgressEnvelopes: [],
-    acquisitionTransitionReceipts: [],
-    acquisitionPendingCheckpoints: [],
-    acquisitionProgressQuarantine: [],
-    warmupVisitsV1: [],
-    warmupAttemptsV1: [],
-    warmupTransitionReceiptsV1: [],
-    warmupGraphPointsV1: [],
-    warmupPendingTransitionsV1: [],
-    warmupMasteryRevisionsV1: {},
-    warmupCloudQuarantineV1: [],
-    tier2ReadingProgressV1: [],
-    distractorTargetObservations: [],
-  }
+  return { version: 2, datasets: canonicalDatasets(importedDatasets), results: [], scores: [], warmupSessions: [], completedSessions: [], legacyRecords, childWordStates: [], monthlyRotationScores: [], rotationCycles: {}, acquisitionProgressions: [], acquisitionProgressEnvelopes: [], acquisitionTransitionReceipts: [], acquisitionPendingCheckpoints: [], acquisitionProgressQuarantine: [], warmupVisitsV1: [], warmupAttemptsV1: [], warmupTransitionReceiptsV1: [], warmupGraphPointsV1: [], warmupPendingTransitionsV1: [], warmupMasteryRevisionsV1: {}, warmupCloudQuarantineV1: [], distractorTargetObservations: [] }
 }
 
 export function isAppState(value: unknown): value is AppState {
-  if (
-    !isRecord(value) ||
-    value.version !== 2 ||
-    !Array.isArray(value.datasets) ||
-    !Array.isArray(value.results) ||
-    !Array.isArray(value.scores) ||
-    !Array.isArray(value.warmupSessions) ||
-    !Array.isArray(value.completedSessions) ||
-    !Array.isArray(value.legacyRecords)
-  )
-    return false
-  const datasetsValid = value.datasets.every(
-    (dataset) =>
-      isRecord(dataset) &&
-      typeof dataset.id === 'string' &&
-      typeof dataset.dateRange === 'string' &&
-      typeof dataset.startDate === 'string' &&
-      typeof dataset.endDate === 'string' &&
-      typeof dataset.grade === 'string' &&
-      Array.isArray(dataset.words) &&
-      dataset.words.every(
-        (word) =>
-          isRecord(word) &&
-          typeof word.id === 'string' &&
-          typeof word.text === 'string' &&
-          typeof word.sentence === 'string' &&
-          word.datasetId === dataset.id,
-      ),
-  )
-  const resultsValid = value.results.every(
-    (result) =>
-      isRecord(result) &&
-      typeof result.id === 'string' &&
-      typeof result.childId === 'string' &&
-      typeof result.datasetId === 'string' &&
-      typeof result.wordId === 'string' &&
-      typeof result.sessionId === 'string' &&
-      typeof result.sessionDate === 'string' &&
-      (result.phase === 'warmup' || result.phase === 'acquisition' || result.phase === 'test-review') &&
-      typeof result.correct === 'boolean' &&
-      typeof result.completeSourceDatasetReviewed === 'boolean' &&
-      (!('reviewCycle' in result) || (result.phase === 'test-review' && isTestReviewCycle(result.reviewCycle))),
-  )
-  const scoresValid = value.scores.every(
-    (score) =>
-      isRecord(score) &&
-      typeof score.id === 'string' &&
-      typeof score.childId === 'string' &&
-      typeof score.datasetId === 'string' &&
-      typeof score.sessionId === 'string' &&
-      typeof score.sessionDate === 'string' &&
-      typeof score.percent === 'number' &&
-      (!('reviewCycle' in score) || (score.phase === 'test-review' && isTestReviewCycle(score.reviewCycle))),
-  )
-  const warmupsValid = value.warmupSessions.every(
-    (session) =>
-      isRecord(session) &&
-      typeof session.id === 'string' &&
-      typeof session.childId === 'string' &&
-      typeof session.sessionDate === 'string' &&
-      Array.isArray(session.wordIds) &&
-      Array.isArray(session.datasetIds) &&
-      Array.isArray(session.completeDatasetIds) &&
-      typeof session.complete === 'boolean',
-  )
-  const sessionsValid = value.completedSessions.every(
-    (session) =>
-      isRecord(session) &&
-      typeof session.id === 'string' &&
-      typeof session.childId === 'string' &&
-      typeof session.sessionDate === 'string' &&
-      typeof session.primaryDatasetId === 'string' &&
-      session.complete === true &&
-      (!('reviewCycle' in session) ||
-        (session.primaryPhase === 'test-review' && isTestReviewCycle(session.reviewCycle))),
-  )
-  const legacyValid = value.legacyRecords.every(
-    (record) =>
-      isRecord(record) &&
-      typeof record.id === 'string' &&
-      typeof record.childId === 'string' &&
-      typeof record.legacySet === 'string' &&
-      record.note === 'legacy-date-range-unknown',
-  )
-  const statesValid =
-    !('childWordStates' in value) ||
-    (Array.isArray(value.childWordStates) &&
-      value.childWordStates.every(
-        (state) =>
-          isRecord(state) &&
-          typeof state.id === 'string' &&
-          typeof state.childId === 'string' &&
-          typeof state.wordId === 'string' &&
-          typeof state.datasetId === 'string' &&
-          ['acquisition', 'recent-review', 'errored-word', 'random-rotation'].includes(String(state.category)) &&
-          typeof state.correctStreak === 'number',
-      ))
-  const monthlyValid =
-    !('monthlyRotationScores' in value) ||
-    (Array.isArray(value.monthlyRotationScores) &&
-      value.monthlyRotationScores.every(
-        (score) =>
-          isRecord(score) &&
-          typeof score.id === 'string' &&
-          typeof score.childId === 'string' &&
-          typeof score.month === 'string' &&
-          typeof score.correct === 'number' &&
-          typeof score.total === 'number' &&
-          typeof score.percent === 'number' &&
-          (score.status === 'open' || score.status === 'finalized') &&
-          typeof score.updatedAt === 'string',
-      ))
-  const cyclesValid =
-    !('rotationCycles' in value) ||
-    (isRecord(value.rotationCycles) &&
-      Object.values(value.rotationCycles).every(
-        (cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0,
-      ))
-  const datasetReferencesValid =
-    !('datasetImportReferences' in value) ||
-    (Array.isArray(value.datasetImportReferences) &&
-      value.datasetImportReferences.every(
-        (reference) =>
-          isRecord(reference) &&
-          typeof reference.datasetId === 'string' &&
-          (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') &&
-          (!('candidateStatus' in reference) ||
-            ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) &&
-          (!('instructionalRole' in reference) ||
-            ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(
-              String(reference.instructionalRole),
-            )),
-      ))
-  const progressionsValid =
-    !('acquisitionProgressions' in value) ||
-    (Array.isArray(value.acquisitionProgressions) &&
-      value.acquisitionProgressions.every(
-        (progression) =>
-          isRecord(progression) &&
-          typeof progression.id === 'string' &&
-          typeof progression.childId === 'string' &&
-          typeof progression.datasetId === 'string' &&
-          typeof progression.grade === 'string' &&
-          isRecord(progression.flow) &&
-          typeof progression.updatedAt === 'string',
-      ))
-  const progressEnvelopesValid =
-    !('acquisitionProgressEnvelopes' in value) || Array.isArray(value.acquisitionProgressEnvelopes)
-  const transitionReceiptsValid =
-    !('acquisitionTransitionReceipts' in value) || Array.isArray(value.acquisitionTransitionReceipts)
-  const pendingCheckpointsValid =
-    !('acquisitionPendingCheckpoints' in value) || Array.isArray(value.acquisitionPendingCheckpoints)
-  const quarantineValid =
-    !('acquisitionProgressQuarantine' in value) ||
-    (Array.isArray(value.acquisitionProgressQuarantine) &&
-      value.acquisitionProgressQuarantine.every(
-        (record) =>
-          isRecord(record) &&
-          typeof record.id === 'string' &&
-          typeof record.childId === 'string' &&
-          typeof record.datasetId === 'string' &&
-          typeof record.reason === 'string' &&
-          typeof record.quarantinedAt === 'string' &&
-          'raw' in record,
-      ))
+  if (!isRecord(value) || value.version !== 2 || !Array.isArray(value.datasets) || !Array.isArray(value.results) || !Array.isArray(value.scores) || !Array.isArray(value.warmupSessions) || !Array.isArray(value.completedSessions) || !Array.isArray(value.legacyRecords)) return false
+  const datasetsValid = value.datasets.every((dataset) => isRecord(dataset) && typeof dataset.id === 'string' && typeof dataset.dateRange === 'string' && typeof dataset.startDate === 'string' && typeof dataset.endDate === 'string' && typeof dataset.grade === 'string' && Array.isArray(dataset.words) && dataset.words.every((word) => isRecord(word) && typeof word.id === 'string' && typeof word.text === 'string' && typeof word.sentence === 'string' && word.datasetId === dataset.id))
+  const resultsValid = value.results.every((result) => isRecord(result) && typeof result.id === 'string' && typeof result.childId === 'string' && typeof result.datasetId === 'string' && typeof result.wordId === 'string' && typeof result.sessionId === 'string' && typeof result.sessionDate === 'string' && (result.phase === 'warmup' || result.phase === 'acquisition' || result.phase === 'test-review') && typeof result.correct === 'boolean' && typeof result.completeSourceDatasetReviewed === 'boolean' && (!('reviewCycle' in result) || (result.phase === 'test-review' && isTestReviewCycle(result.reviewCycle))))
+  const scoresValid = value.scores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.datasetId === 'string' && typeof score.sessionId === 'string' && typeof score.sessionDate === 'string' && typeof score.percent === 'number' && (!('reviewCycle' in score) || (score.phase === 'test-review' && isTestReviewCycle(score.reviewCycle))))
+  const warmupsValid = value.warmupSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && Array.isArray(session.wordIds) && Array.isArray(session.datasetIds) && Array.isArray(session.completeDatasetIds) && typeof session.complete === 'boolean')
+  const sessionsValid = value.completedSessions.every((session) => isRecord(session) && typeof session.id === 'string' && typeof session.childId === 'string' && typeof session.sessionDate === 'string' && typeof session.primaryDatasetId === 'string' && session.complete === true && (!('reviewCycle' in session) || (session.primaryPhase === 'test-review' && isTestReviewCycle(session.reviewCycle))))
+  const legacyValid = value.legacyRecords.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.legacySet === 'string' && record.note === 'legacy-date-range-unknown')
+  const statesValid = !('childWordStates' in value) || (Array.isArray(value.childWordStates) && value.childWordStates.every((state) => isRecord(state) && typeof state.id === 'string' && typeof state.childId === 'string' && typeof state.wordId === 'string' && typeof state.datasetId === 'string' && ['acquisition', 'recent-review', 'errored-word', 'random-rotation'].includes(String(state.category)) && typeof state.correctStreak === 'number'))
+  const monthlyValid = !('monthlyRotationScores' in value) || (Array.isArray(value.monthlyRotationScores) && value.monthlyRotationScores.every((score) => isRecord(score) && typeof score.id === 'string' && typeof score.childId === 'string' && typeof score.month === 'string' && typeof score.correct === 'number' && typeof score.total === 'number' && typeof score.percent === 'number' && (score.status === 'open' || score.status === 'finalized') && typeof score.updatedAt === 'string'))
+  const cyclesValid = !('rotationCycles' in value) || (isRecord(value.rotationCycles) && Object.values(value.rotationCycles).every((cycle) => typeof cycle === 'number' && Number.isInteger(cycle) && cycle > 0))
+  const datasetReferencesValid = !('datasetImportReferences' in value) || (Array.isArray(value.datasetImportReferences) && value.datasetImportReferences.every((reference) => isRecord(reference) && typeof reference.datasetId === 'string' && (!('contentFingerprint' in reference) || typeof reference.contentFingerprint === 'string') && (!('candidateStatus' in reference) || ['valid', 'no-instruction', 'malformed'].includes(String(reference.candidateStatus))) && (!('instructionalRole' in reference) || ['weekly-acquisition', 'current-confirmation', 'next-week-preview', 'unassigned'].includes(String(reference.instructionalRole)))))
+  const progressionsValid = !('acquisitionProgressions' in value) || (Array.isArray(value.acquisitionProgressions) && value.acquisitionProgressions.every((progression) => isRecord(progression) && typeof progression.id === 'string' && typeof progression.childId === 'string' && typeof progression.datasetId === 'string' && typeof progression.grade === 'string' && isRecord(progression.flow) && typeof progression.updatedAt === 'string'))
+  const progressEnvelopesValid = !('acquisitionProgressEnvelopes' in value) || Array.isArray(value.acquisitionProgressEnvelopes)
+  const transitionReceiptsValid = !('acquisitionTransitionReceipts' in value) || Array.isArray(value.acquisitionTransitionReceipts)
+  const pendingCheckpointsValid = !('acquisitionPendingCheckpoints' in value) || Array.isArray(value.acquisitionPendingCheckpoints)
+  const quarantineValid = !('acquisitionProgressQuarantine' in value) || (Array.isArray(value.acquisitionProgressQuarantine) && value.acquisitionProgressQuarantine.every((record) => isRecord(record) && typeof record.id === 'string' && typeof record.childId === 'string' && typeof record.datasetId === 'string' && typeof record.reason === 'string' && typeof record.quarantinedAt === 'string' && 'raw' in record))
   const adaptiveWarmupValid = !('adaptiveWarmup' in value) || isRecord(value.adaptiveWarmup)
-  const warmupVisitCollectionsValid =
-    (!('warmupVisitsV1' in value) || Array.isArray(value.warmupVisitsV1)) &&
-    (!('warmupAttemptsV1' in value) || Array.isArray(value.warmupAttemptsV1)) &&
-    (!('warmupTransitionReceiptsV1' in value) || Array.isArray(value.warmupTransitionReceiptsV1)) &&
-    (!('warmupGraphPointsV1' in value) || Array.isArray(value.warmupGraphPointsV1)) &&
-    (!('warmupPendingTransitionsV1' in value) || Array.isArray(value.warmupPendingTransitionsV1)) &&
-    (!('warmupMasteryRevisionsV1' in value) ||
-      (isRecord(value.warmupMasteryRevisionsV1) &&
-        Object.values(value.warmupMasteryRevisionsV1).every(
-          (revision) => typeof revision === 'number' && Number.isInteger(revision) && revision >= 0,
-        ))) &&
-    (!('warmupCloudQuarantineV1' in value) || Array.isArray(value.warmupCloudQuarantineV1))
-  const tier2ReadingProgressValid = !('tier2ReadingProgressV1' in value) || Array.isArray(value.tier2ReadingProgressV1)
-  const dtObservationsValid =
-    !('distractorTargetObservations' in value) ||
-    (Array.isArray(value.distractorTargetObservations) &&
-      value.distractorTargetObservations.every(
-        (observation) =>
-          isRecord(observation) &&
-          typeof observation.id === 'string' &&
-          typeof observation.childId === 'string' &&
-          typeof observation.sessionId === 'string' &&
-          typeof observation.datasetId === 'string' &&
-          typeof observation.wordId === 'string' &&
-          typeof observation.text === 'string' &&
-          (observation.poolType === 'familiar' ||
-            observation.poolType === 'established' ||
-            observation.poolType === 'earned') &&
-          typeof observation.correct === 'boolean' &&
-          typeof observation.reviewedAt === 'string',
-      ))
-  const completedSessionsById = sessionsValid
-    ? new Map(value.completedSessions.map((session) => [session.id, session]))
-    : new Map<string, never>()
-  const reviewCyclesConsistent =
-    resultsValid &&
-    scoresValid &&
-    [...value.results, ...value.scores].every((record) => {
-      if (record.phase !== 'test-review') return true
-      const session = completedSessionsById.get(record.sessionId)
-      return (
-        !session ||
-        (session.primaryPhase === 'test-review' &&
-          storedTestReviewCycle(record.reviewCycle) === storedTestReviewCycle(session.reviewCycle))
-      )
-    })
-  return (
-    datasetsValid &&
-    resultsValid &&
-    scoresValid &&
-    warmupsValid &&
-    sessionsValid &&
-    legacyValid &&
-    statesValid &&
-    monthlyValid &&
-    cyclesValid &&
-    datasetReferencesValid &&
-    progressionsValid &&
-    progressEnvelopesValid &&
-    transitionReceiptsValid &&
-    pendingCheckpointsValid &&
-    quarantineValid &&
-    adaptiveWarmupValid &&
-    warmupVisitCollectionsValid &&
-    tier2ReadingProgressValid &&
-    dtObservationsValid &&
-    reviewCyclesConsistent
-  )
+  const warmupVisitCollectionsValid = (!('warmupVisitsV1' in value) || Array.isArray(value.warmupVisitsV1))
+    && (!('warmupAttemptsV1' in value) || Array.isArray(value.warmupAttemptsV1))
+    && (!('warmupTransitionReceiptsV1' in value) || Array.isArray(value.warmupTransitionReceiptsV1))
+    && (!('warmupGraphPointsV1' in value) || Array.isArray(value.warmupGraphPointsV1))
+    && (!('warmupPendingTransitionsV1' in value) || Array.isArray(value.warmupPendingTransitionsV1))
+    && (!('warmupMasteryRevisionsV1' in value) || (isRecord(value.warmupMasteryRevisionsV1) && Object.values(value.warmupMasteryRevisionsV1).every((revision) => typeof revision === 'number' && Number.isInteger(revision) && revision >= 0)))
+    && (!('warmupCloudQuarantineV1' in value) || Array.isArray(value.warmupCloudQuarantineV1))
+  const dtObservationsValid = !('distractorTargetObservations' in value) || (Array.isArray(value.distractorTargetObservations) && value.distractorTargetObservations.every((observation) => isRecord(observation) && typeof observation.id === 'string' && typeof observation.childId === 'string' && typeof observation.sessionId === 'string' && typeof observation.datasetId === 'string' && typeof observation.wordId === 'string' && typeof observation.text === 'string' && (observation.poolType === 'familiar' || observation.poolType === 'established' || observation.poolType === 'earned') && typeof observation.correct === 'boolean' && typeof observation.reviewedAt === 'string'))
+  const completedSessionsById = sessionsValid ? new Map(value.completedSessions.map((session) => [session.id, session])) : new Map<string, never>()
+  const reviewCyclesConsistent = resultsValid && scoresValid && [...value.results, ...value.scores].every((record) => {
+    if (record.phase !== 'test-review') return true
+    const session = completedSessionsById.get(record.sessionId)
+    return !session || (session.primaryPhase === 'test-review' && storedTestReviewCycle(record.reviewCycle) === storedTestReviewCycle(session.reviewCycle))
+  })
+  return datasetsValid && resultsValid && scoresValid && warmupsValid && sessionsValid && legacyValid && statesValid && monthlyValid && cyclesValid && datasetReferencesValid && progressionsValid && progressEnvelopesValid && transitionReceiptsValid && pendingCheckpointsValid && quarantineValid && adaptiveWarmupValid && warmupVisitCollectionsValid && dtObservationsValid && reviewCyclesConsistent
 }
 
-export function loadState(
-  rawState: string | null,
-  legacyRaw?: string | null,
-  importedDatasets: Dataset[] = [],
-): AppState {
+export function loadState(rawState: string | null, legacyRaw?: string | null, importedDatasets: Dataset[] = []): AppState {
   try {
     const parsed: unknown = rawState ? JSON.parse(rawState) : null
     if (isAppState(parsed)) {
       const distractorTargetObservations = Array.isArray(parsed.distractorTargetObservations)
         ? parsed.distractorTargetObservations.map(normalizeDistractorTargetObservation)
         : []
-      const normalized = {
-        ...parsed,
-        datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]),
-        results: parsed.results.map((result) =>
-          result.phase === 'test-review'
-            ? { ...result, reviewCycle: storedTestReviewCycle(result.reviewCycle) }
-            : result,
-        ),
-        scores: parsed.scores.map((score) =>
-          score.phase === 'test-review' ? { ...score, reviewCycle: storedTestReviewCycle(score.reviewCycle) } : score,
-        ),
-        completedSessions: parsed.completedSessions.map((session) =>
-          session.primaryPhase === 'test-review'
-            ? { ...session, reviewCycle: storedTestReviewCycle(session.reviewCycle) }
-            : session,
-        ),
-        childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [],
-        monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [],
-        rotationCycles: isRecord(parsed.rotationCycles) ? (parsed.rotationCycles as Record<string, number>) : {},
-        acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [],
-        acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes)
-          ? parsed.acquisitionProgressEnvelopes
-          : [],
-        acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts)
-          ? parsed.acquisitionTransitionReceipts
-          : [],
-        acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints)
-          ? parsed.acquisitionPendingCheckpoints
-          : [],
-        acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine)
-          ? parsed.acquisitionProgressQuarantine
-          : [],
-        warmupVisitsV1: Array.isArray(parsed.warmupVisitsV1) ? parsed.warmupVisitsV1 : [],
-        warmupAttemptsV1: Array.isArray(parsed.warmupAttemptsV1) ? parsed.warmupAttemptsV1 : [],
-        warmupTransitionReceiptsV1: Array.isArray(parsed.warmupTransitionReceiptsV1)
-          ? parsed.warmupTransitionReceiptsV1
-          : [],
-        warmupGraphPointsV1: Array.isArray(parsed.warmupGraphPointsV1) ? parsed.warmupGraphPointsV1 : [],
-        warmupPendingTransitionsV1: Array.isArray(parsed.warmupPendingTransitionsV1)
-          ? parsed.warmupPendingTransitionsV1
-          : [],
-        warmupMasteryRevisionsV1: isRecord(parsed.warmupMasteryRevisionsV1)
-          ? (parsed.warmupMasteryRevisionsV1 as Record<string, number>)
-          : {},
-        warmupCloudQuarantineV1: Array.isArray(parsed.warmupCloudQuarantineV1) ? parsed.warmupCloudQuarantineV1 : [],
-        tier2ReadingProgressV1: Array.isArray(parsed.tier2ReadingProgressV1) ? parsed.tier2ReadingProgressV1 : [],
-        distractorTargetObservations,
-      }
+      const normalized = { ...parsed, datasets: canonicalDatasets([...importedDatasets, ...parsed.datasets]), results: parsed.results.map((result) => result.phase === 'test-review' ? { ...result, reviewCycle: storedTestReviewCycle(result.reviewCycle) } : result), scores: parsed.scores.map((score) => score.phase === 'test-review' ? { ...score, reviewCycle: storedTestReviewCycle(score.reviewCycle) } : score), completedSessions: parsed.completedSessions.map((session) => session.primaryPhase === 'test-review' ? { ...session, reviewCycle: storedTestReviewCycle(session.reviewCycle) } : session), childWordStates: Array.isArray(parsed.childWordStates) ? parsed.childWordStates : [], monthlyRotationScores: Array.isArray(parsed.monthlyRotationScores) ? parsed.monthlyRotationScores : [], rotationCycles: isRecord(parsed.rotationCycles) ? parsed.rotationCycles as Record<string, number> : {}, acquisitionProgressions: Array.isArray(parsed.acquisitionProgressions) ? parsed.acquisitionProgressions : [], acquisitionProgressEnvelopes: Array.isArray(parsed.acquisitionProgressEnvelopes) ? parsed.acquisitionProgressEnvelopes : [], acquisitionTransitionReceipts: Array.isArray(parsed.acquisitionTransitionReceipts) ? parsed.acquisitionTransitionReceipts : [], acquisitionPendingCheckpoints: Array.isArray(parsed.acquisitionPendingCheckpoints) ? parsed.acquisitionPendingCheckpoints : [], acquisitionProgressQuarantine: Array.isArray(parsed.acquisitionProgressQuarantine) ? parsed.acquisitionProgressQuarantine : [], warmupVisitsV1: Array.isArray(parsed.warmupVisitsV1) ? parsed.warmupVisitsV1 : [], warmupAttemptsV1: Array.isArray(parsed.warmupAttemptsV1) ? parsed.warmupAttemptsV1 : [], warmupTransitionReceiptsV1: Array.isArray(parsed.warmupTransitionReceiptsV1) ? parsed.warmupTransitionReceiptsV1 : [], warmupGraphPointsV1: Array.isArray(parsed.warmupGraphPointsV1) ? parsed.warmupGraphPointsV1 : [], warmupPendingTransitionsV1: Array.isArray(parsed.warmupPendingTransitionsV1) ? parsed.warmupPendingTransitionsV1 : [], warmupMasteryRevisionsV1: isRecord(parsed.warmupMasteryRevisionsV1) ? parsed.warmupMasteryRevisionsV1 as Record<string, number> : {}, warmupCloudQuarantineV1: Array.isArray(parsed.warmupCloudQuarantineV1) ? parsed.warmupCloudQuarantineV1 : [], distractorTargetObservations }
       return discardIncompleteWarmupData(normalized)
     }
   } catch {
@@ -1139,12 +681,10 @@ export function loadState(
 }
 
 export function latestScore(scores: DatasetScore[], childId: string, datasetId: string) {
-  return (
-    scores
-      .map((score, index) => ({ score, index }))
-      .filter(({ score }) => score.childId === childId && score.datasetId === datasetId)
-      .sort((a, b) => b.score.sessionDate.localeCompare(a.score.sessionDate) || b.index - a.index)[0]?.score || null
-  )
+  return scores
+    .map((score, index) => ({ score, index }))
+    .filter(({ score }) => score.childId === childId && score.datasetId === datasetId)
+    .sort((a, b) => b.score.sessionDate.localeCompare(a.score.sessionDate) || b.index - a.index)[0]?.score || null
 }
 
 export function rotationMonth(date: Date, timeZone = 'America/Los_Angeles') {
@@ -1153,83 +693,32 @@ export function rotationMonth(date: Date, timeZone = 'America/Los_Angeles') {
 
 export function finalizeMonthlyRotationScores(scores: MonthlyRotationScore[], now = new Date()) {
   const currentMonth = rotationMonth(now)
-  return scores.map((score) =>
-    score.month < currentMonth && score.status !== 'finalized'
-      ? {
-          ...score,
-          status: 'finalized' as const,
-          finalizedAt: score.finalizedAt || now.toISOString(),
-          updatedAt: now.toISOString(),
-        }
-      : score,
-  )
+  return scores.map((score) => score.month < currentMonth && score.status !== 'finalized' ? { ...score, status: 'finalized' as const, finalizedAt: score.finalizedAt || now.toISOString(), updatedAt: now.toISOString() } : score)
 }
 
-function updateMonthlyRotationScores(
-  scores: MonthlyRotationScore[],
-  childId: string,
-  month: string,
-  answers: SessionAnswer[],
-  updatedAt: string,
-) {
+function updateMonthlyRotationScores(scores: MonthlyRotationScore[], childId: string, month: string, answers: SessionAnswer[], updatedAt: string) {
   if (answers.length === 0) return scores
   const existing = scores.find((score) => score.childId === childId && score.month === month)
   const correct = answers.filter((answer) => answer.correct).length
-  const next = existing
-    ? {
-        ...existing,
-        correct: existing.correct + correct,
-        total: existing.total + answers.length,
-        percent: Math.round(((existing.correct + correct) / (existing.total + answers.length)) * 100),
-        status: existing.status === 'finalized' ? ('finalized' as const) : ('open' as const),
-        updatedAt,
-      }
-    : {
-        id: `${childId}-random-rotation-${month}`,
-        childId,
-        month,
-        correct,
-        total: answers.length,
-        percent: Math.round((correct / answers.length) * 100),
-        status: 'open' as const,
-        updatedAt,
-      }
-  return existing ? scores.map((score) => (score.id === existing.id ? next : score)) : [...scores, next]
+  const next = existing ? { ...existing, correct: existing.correct + correct, total: existing.total + answers.length, percent: Math.round(((existing.correct + correct) / (existing.total + answers.length)) * 100), status: existing.status === 'finalized' ? 'finalized' as const : 'open' as const, updatedAt } : { id: `${childId}-random-rotation-${month}`, childId, month, correct, total: answers.length, percent: Math.round((correct / answers.length) * 100), status: 'open' as const, updatedAt }
+  return existing ? scores.map((score) => score.id === existing.id ? next : score) : [...scores, next]
 }
 
 function datasetForSession(state: AppState, session: PracticeSession) {
-  const datasetIds = [
-    session.primaryDatasetId,
-    ...session.primaryQueue.map((word) => word.datasetId),
-    ...session.warmupQueue.map((word) => word.datasetId),
-  ]
-  return datasetIds
-    .map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId))
-    .find((dataset): dataset is Dataset => Boolean(dataset))
+  const datasetIds = [session.primaryDatasetId, ...session.primaryQueue.map((word) => word.datasetId), ...session.warmupQueue.map((word) => word.datasetId)]
+  return datasetIds.map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId)).find((dataset): dataset is Dataset => Boolean(dataset))
 }
 
 function materializeStateForCommit(state: AppState, session: PracticeSession, now: Date) {
   const policy = warmupPolicyForGrade(session.grade)
   const rotationCycleId = session.warmupRotationCycleId || state.rotationCycles[session.childId] || 1
   const schoolYear = datasetForSession(state, session)?.schoolYear
-  let states = deriveChildWordStates({
-    grade: session.grade,
-    schoolYear,
-    datasets: state.datasets,
-    results: state.results,
-    childId: session.childId,
-    existingStates: state.childWordStates,
-    today: now,
-    rotationCycleId,
-  })
-  for (const answer of [
-    ...session.warmupAnswers,
-    ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false),
-  ]) {
+  let states = deriveChildWordStates({ grade: session.grade, schoolYear, datasets: state.datasets, results: state.results, childId: session.childId, existingStates: state.childWordStates, today: now, rotationCycleId })
+  for (const answer of [...session.warmupAnswers, ...session.primaryAnswers.filter((item) => item.countsTowardWeeklyScore !== false)]) {
     const current = states.find((item) => item.wordId === answer.word.id)
     if (!current) continue
     const next = applyWarmupResponse(current, answer.correct, now.toISOString(), rotationCycleId, policy)
-    states = states.map((item) => (item.id === next.id ? next : item))
+    states = states.map((item) => item.id === next.id ? next : item)
   }
   return { states, rotationCycleId }
 }
@@ -1239,150 +728,75 @@ function acquisitionProgressId(childId: string, datasetId: string) {
 }
 
 export function acquisitionProgressFor(state: AppState, childId: string, datasetId: string) {
-  return (
-    state.acquisitionProgressions.find(
-      (progression) => progression.childId === childId && progression.datasetId === datasetId,
-    ) || null
-  )
+  return state.acquisitionProgressions.find((progression) => progression.childId === childId && progression.datasetId === datasetId) || null
 }
 
-export function checkpointAcquisitionSession(
-  state: AppState,
-  session: PracticeSession,
-  answer?: SessionAnswer,
-  now = new Date(),
-): AppState {
+export function checkpointAcquisitionSession(state: AppState, session: PracticeSession, answer?: SessionAnswer, now = new Date()): AppState {
   if (!session.acquisition || session.primaryPhase !== 'acquisition') return state
   const progression: AcquisitionProgressRecord = {
     id: acquisitionProgressId(session.childId, session.primaryDatasetId),
     childId: session.childId,
     datasetId: session.primaryDatasetId,
     grade: session.grade,
-    flow: session.acquisition.prompt
-      ? { ...session.acquisition, prompt: { ...session.acquisition.prompt, revealed: false } }
-      : session.acquisition,
+    flow: session.acquisition.prompt ? { ...session.acquisition, prompt: { ...session.acquisition.prompt, revealed: false } } : session.acquisition,
     updatedAt: now.toISOString(),
   }
   const acquisitionProgressions = state.acquisitionProgressions.some((item) => item.id === progression.id)
-    ? state.acquisitionProgressions.map((item) => (item.id === progression.id ? progression : item))
+    ? state.acquisitionProgressions.map((item) => item.id === progression.id ? progression : item)
     : [...state.acquisitionProgressions, progression]
   let results = state.results
-  if (
-    answer?.promptId &&
-    answer.countsTowardWeeklyScore &&
-    !results.some((result) => result.id === `${session.id}-acquisition-${answer.promptId}`)
-  ) {
+  if (answer?.promptId && answer.countsTowardWeeklyScore && !results.some((result) => result.id === `${session.id}-acquisition-${answer.promptId}`)) {
     const dataset = state.datasets.find((item) => item.id === session.primaryDatasetId)
-    results = [
-      ...results,
-      {
-        id: `${session.id}-acquisition-${answer.promptId}`,
-        childId: session.childId,
-        datasetId: session.primaryDatasetId,
-        datasetDateRange: dataset?.dateRange || 'Unknown date range',
-        wordId: answer.word.id,
-        grade: session.grade,
-        phase: 'acquisition',
-        sessionId: session.id,
-        sessionDate: localDateKey(now),
-        completedAt: now.toISOString(),
-        correct: answer.correct,
-        revealMethod: answer.revealMethod,
-        scored: true,
-        completeSourceDatasetReviewed: Boolean(session.acquisition.complete),
-      },
-    ]
+    results = [...results, {
+      id: `${session.id}-acquisition-${answer.promptId}`,
+      childId: session.childId,
+      datasetId: session.primaryDatasetId,
+      datasetDateRange: dataset?.dateRange || 'Unknown date range',
+      wordId: answer.word.id,
+      grade: session.grade,
+      phase: 'acquisition',
+      sessionId: session.id,
+      sessionDate: localDateKey(now),
+      completedAt: now.toISOString(),
+      correct: answer.correct,
+      revealMethod: answer.revealMethod,
+      scored: true,
+      completeSourceDatasetReviewed: Boolean(session.acquisition.complete),
+    }]
   }
   let distractorTargetObservations = state.distractorTargetObservations
-  const collectDtObservations =
-    requirePracticeProfileForGrade(session.grade).acquisition.dtObservationMode === 'collect'
-  if (
-    collectDtObservations &&
-    answer?.promptId &&
-    answer.dtPoolType &&
-    !distractorTargetObservations.some((observation) => observation.id === `${session.id}-dt-${answer.promptId}`)
-  ) {
-    distractorTargetObservations = [
-      ...distractorTargetObservations,
-      {
-        id: `${session.id}-dt-${answer.promptId}`,
-        childId: session.childId,
-        sessionId: session.id,
-        datasetId: session.primaryDatasetId,
-        wordId: answer.word.id,
-        text: answer.word.text,
-        poolType: answer.dtPoolType,
-        correct: answer.correct,
-        revealMethod: answer.revealMethod,
-        reviewedAt: now.toISOString(),
-      },
-    ]
+  const collectDtObservations = requirePracticeProfileForGrade(session.grade).acquisition.dtObservationMode === 'collect'
+  if (collectDtObservations && answer?.promptId && answer.dtPoolType && !distractorTargetObservations.some((observation) => observation.id === `${session.id}-dt-${answer.promptId}`)) {
+    distractorTargetObservations = [...distractorTargetObservations, {
+      id: `${session.id}-dt-${answer.promptId}`,
+      childId: session.childId,
+      sessionId: session.id,
+      datasetId: session.primaryDatasetId,
+      wordId: answer.word.id,
+      text: answer.word.text,
+      poolType: answer.dtPoolType,
+      correct: answer.correct,
+      revealMethod: answer.revealMethod,
+      reviewedAt: now.toISOString(),
+    }]
   }
   return { ...state, acquisitionProgressions, results, distractorTargetObservations }
 }
 
 function commitSessionAttempts(state: AppState, session: PracticeSession, now: Date, complete: boolean): AppState {
   const warmupSessionId = `${session.id}-warmup`
-  if (
-    state.completedSessions.some((item) => item.id === session.id) ||
-    state.warmupSessions.some((item) => item.id === warmupSessionId)
-  )
-    return state
+  if (state.completedSessions.some((item) => item.id === session.id) || state.warmupSessions.some((item) => item.id === warmupSessionId)) return state
   const sessionDate = localDateKey(now)
-  const warmupResults: WordResult[] = session.adaptiveWarmupVisitId
-    ? []
-    : session.warmupAnswers.map((answer, index) => {
-        const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
-        return {
-          id: `${session.id}-warmup-${answer.word.id}-${index}`,
-          childId: session.childId,
-          datasetId: answer.word.datasetId,
-          datasetDateRange: dataset?.dateRange || 'Unknown date range',
-          wordId: answer.word.id,
-          grade: session.grade,
-          phase: 'warmup',
-          sessionId: session.id,
-          sessionDate,
-          completedAt: now.toISOString(),
-          correct: answer.correct,
-          revealMethod: answer.revealMethod,
-          scored: true,
-          completeSourceDatasetReviewed: false,
-          warmupSessionId,
-        }
-      })
-  const scoredPrimaryAnswers =
-    session.primaryPhase === 'acquisition'
-      ? session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore !== false)
-      : session.primaryAnswers
-  const hasVersionedAcquisition =
-    session.primaryPhase === 'acquisition' &&
-    (state.acquisitionProgressEnvelopes || []).some(
-      (item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId,
-    )
-  const primaryResults: WordResult[] =
-    complete && !hasVersionedAcquisition
-      ? scoredPrimaryAnswers.map((answer, index) => {
-          const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
-          return {
-            id: `${session.id}-primary-${answer.word.id}-${index}`,
-            childId: session.childId,
-            datasetId: answer.word.datasetId,
-            datasetDateRange: dataset?.dateRange || 'Unknown date range',
-            wordId: answer.word.id,
-            grade: session.grade,
-            phase: session.primaryPhase,
-            sessionId: session.id,
-            sessionDate,
-            completedAt: now.toISOString(),
-            correct: answer.correct,
-            revealMethod: answer.revealMethod,
-            scored: true,
-            completeSourceDatasetReviewed: true,
-            ...(session.primaryPhase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}),
-          }
-        })
-      : []
+  const warmupResults: WordResult[] = session.adaptiveWarmupVisitId ? [] : session.warmupAnswers.map((answer, index) => {
+    const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
+    return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
+  })
+  const scoredPrimaryAnswers = session.primaryPhase === 'acquisition' ? session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore !== false) : session.primaryAnswers
+  const hasVersionedAcquisition = session.primaryPhase === 'acquisition' && (state.acquisitionProgressEnvelopes || []).some((item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId)
+  const primaryResults: WordResult[] = complete && !hasVersionedAcquisition ? scoredPrimaryAnswers.map((answer, index) => {
+    const dataset = state.datasets.find((item) => item.id === answer.word.datasetId)
+    return { id: `${session.id}-primary-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: session.primaryPhase, sessionId: session.id, sessionDate, completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: true, ...(session.primaryPhase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}) }
+  }) : []
   const scores: DatasetScore[] = []
   const primaryDatasets = (session.primaryDatasetIds?.length ? session.primaryDatasetIds : [session.primaryDatasetId])
     .map((datasetId) => state.datasets.find((dataset) => dataset.id === datasetId))
@@ -1395,10 +809,7 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
       const latestPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
       for (const dataset of primaryDatasets) {
         const datasetAnswers = latestPrimaryAnswers.filter((answer) => answer.word.datasetId === dataset.id)
-        if (
-          datasetAnswers.length === dataset.words.length &&
-          dataset.words.every((word) => datasetAnswers.some((answer) => answer.word.id === word.id))
-        ) {
+        if (datasetAnswers.length === dataset.words.length && dataset.words.every((word) => datasetAnswers.some((answer) => answer.word.id === word.id))) {
           scores.push(makeScore(session, dataset, datasetAnswers, session.primaryPhase, sessionDate))
         }
       }
@@ -1406,80 +817,19 @@ function commitSessionAttempts(state: AppState, session: PracticeSession, now: D
   }
   const safeScores = scores.filter((score) => !state.scores.some((existing) => existing.id === score.id))
   const warmupDatasetIds = [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))]
-  const warmupRecord: WarmupSessionRecord = {
-    id: warmupSessionId,
-    childId: session.childId,
-    sessionId: session.id,
-    sessionDate,
-    completedAt: now.toISOString(),
-    wordIds: session.warmupAnswers.map((answer) => answer.word.id),
-    datasetIds: warmupDatasetIds,
-    completeDatasetIds: [],
-    complete,
-  }
-  const rotationAnswers = session.warmupAnswers.filter((answer) =>
-    (session.warmupRandomRotationWordIds || []).includes(answer.word.id),
-  )
+  const warmupRecord: WarmupSessionRecord = { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate, completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: warmupDatasetIds, completeDatasetIds: [], complete }
+  const rotationAnswers = session.warmupAnswers.filter((answer) => (session.warmupRandomRotationWordIds || []).includes(answer.word.id))
   const finalizedScores = finalizeMonthlyRotationScores(state.monthlyRotationScores, now)
-  const monthlyRotationScores = session.adaptiveWarmupVisitId
-    ? state.monthlyRotationScores
-    : updateMonthlyRotationScores(
-        finalizedScores,
-        session.childId,
-        rotationMonth(now),
-        rotationAnswers,
-        now.toISOString(),
-      )
+  const monthlyRotationScores = session.adaptiveWarmupVisitId ? state.monthlyRotationScores : updateMonthlyRotationScores(finalizedScores, session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
   const materialized = session.adaptiveWarmupVisitId ? null : materializeStateForCommit(state, session, now)
   const sessionSchoolYear = datasetForSession(state, session)?.schoolYear
-  const datasetScopeById = new Map(
-    state.datasets.map((dataset) => [dataset.id, { grade: dataset.grade, schoolYear: dataset.schoolYear }]),
-  )
+  const datasetScopeById = new Map(state.datasets.map((dataset) => [dataset.id, { grade: dataset.grade, schoolYear: dataset.schoolYear }]))
   const priorStates = state.childWordStates.filter((item) => {
     if (item.childId !== session.childId) return true
     const datasetScope = datasetScopeById.get(item.datasetId)
-    return (
-      !datasetScope ||
-      datasetScope.grade !== session.grade ||
-      Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
-    )
+    return !datasetScope || datasetScope.grade !== session.grade || Boolean(sessionSchoolYear && datasetScope.schoolYear !== sessionSchoolYear)
   })
-  return {
-    ...state,
-    results: [
-      ...state.results,
-      ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)),
-      ...warmupResults,
-    ],
-    scores: [...state.scores, ...safeScores],
-    warmupSessions:
-      session.adaptiveWarmupVisitId || session.warmupSkipped || session.warmupAnswers.length === 0
-        ? state.warmupSessions
-        : [...state.warmupSessions, warmupRecord],
-    completedSessions:
-      complete && !session.warmupOnly
-        ? [
-            ...state.completedSessions,
-            {
-              id: session.id,
-              childId: session.childId,
-              sessionDate,
-              primaryDatasetId: session.primaryDatasetId,
-              primaryDatasetIds: session.primaryDatasetIds,
-              reviewGroupId: session.reviewGroupId,
-              reviewCycle: session.primaryPhase === 'test-review' ? (session.reviewCycle ?? 1) : undefined,
-              primaryPhase: session.primaryPhase,
-              complete: true,
-              outcome: session.testReviewSkipped ? 'skipped' : 'completed',
-            },
-          ]
-        : state.completedSessions,
-    childWordStates: materialized ? [...priorStates, ...materialized.states] : state.childWordStates,
-    monthlyRotationScores,
-    rotationCycles: materialized
-      ? { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId }
-      : state.rotationCycles,
-  }
+  return { ...state, results: [...state.results, ...primaryResults.filter((result) => !state.results.some((existing) => existing.id === result.id)), ...warmupResults], scores: [...state.scores, ...safeScores], warmupSessions: session.adaptiveWarmupVisitId || session.warmupSkipped || session.warmupAnswers.length === 0 ? state.warmupSessions : [...state.warmupSessions, warmupRecord], completedSessions: complete && !session.warmupOnly ? [...state.completedSessions, { id: session.id, childId: session.childId, sessionDate, primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, reviewGroupId: session.reviewGroupId, reviewCycle: session.primaryPhase === 'test-review' ? session.reviewCycle ?? 1 : undefined, primaryPhase: session.primaryPhase, complete: true, outcome: session.testReviewSkipped ? 'skipped' : 'completed' }] : state.completedSessions, childWordStates: materialized ? [...priorStates, ...materialized.states] : state.childWordStates, monthlyRotationScores, rotationCycles: materialized ? { ...state.rotationCycles, [session.childId]: materialized.rotationCycleId } : state.rotationCycles }
 }
 
 function latestAnswerPerWord(answers: SessionAnswer[]) {
@@ -1491,86 +841,32 @@ function latestAnswerPerWord(answers: SessionAnswer[]) {
 export function commitCompletedSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
   const scoredPrimaryAnswers = latestAnswerPerWord(session.primaryAnswers)
   const primaryWordIds = new Set(session.primaryQueue.map((word) => word.id))
-  const primaryComplete =
-    session.primaryPhase === 'acquisition' && session.acquisition
-      ? session.acquisition.complete
-      : scoredPrimaryAnswers.length === primaryWordIds.size &&
-        [...primaryWordIds].every((wordId) => scoredPrimaryAnswers.some((answer) => answer.word.id === wordId))
-  if (
-    (!session.adaptiveWarmupVisitId &&
-      !session.warmupSkipped &&
-      session.warmupAnswers.length !== session.warmupQueue.length) ||
-    !primaryComplete
-  )
-    return state
+  const primaryComplete = session.primaryPhase === 'acquisition' && session.acquisition
+    ? session.acquisition.complete
+    : scoredPrimaryAnswers.length === primaryWordIds.size && [...primaryWordIds].every((wordId) => scoredPrimaryAnswers.some((answer) => answer.word.id === wordId))
+  if ((!session.adaptiveWarmupVisitId && !session.warmupSkipped && session.warmupAnswers.length !== session.warmupQueue.length) || !primaryComplete) return state
   return commitSessionAttempts(state, session, now, true)
 }
 
 export function commitPartialSession(state: AppState, session: PracticeSession, now = new Date()): AppState {
   if (session.primaryPhase !== 'acquisition' || !session.acquisition) return state
-  const hasVersionedAcquisition = (state.acquisitionProgressEnvelopes || []).some(
-    (item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId,
-  )
+  const hasVersionedAcquisition = (state.acquisitionProgressEnvelopes || []).some((item) => item.childId === session.childId && item.datasetId === session.primaryDatasetId)
   let next = hasVersionedAcquisition ? state : checkpointAcquisitionSession(state, session, undefined, now)
   const targetAnswers = session.primaryAnswers.filter((answer) => answer.countsTowardWeeklyScore)
   if (targetAnswers.length > 0) {
     const dataset = next.datasets.find((item) => item.id === session.primaryDatasetId)
     if (dataset && !next.scores.some((score) => score.id === `${session.id}-acquisition-${dataset.id}`)) {
-      next = {
-        ...next,
-        scores: [...next.scores, makeScore(session, dataset, targetAnswers, 'acquisition', localDateKey(now))],
-      }
+      next = { ...next, scores: [...next.scores, makeScore(session, dataset, targetAnswers, 'acquisition', localDateKey(now))] }
     }
   }
-  if (
-    !session.adaptiveWarmupVisitId &&
-    !session.warmupSkipped &&
-    session.warmupAnswers.length > 0 &&
-    !next.warmupSessions.some((record) => record.sessionId === session.id)
-  ) {
+  if (!session.adaptiveWarmupVisitId && !session.warmupSkipped && session.warmupAnswers.length > 0 && !next.warmupSessions.some((record) => record.sessionId === session.id)) {
     const complete = session.warmupAnswers.length === session.warmupQueue.length
     const warmupSessionId = `${session.id}-warmup`
     const warmupResults: WordResult[] = session.warmupAnswers.map((answer, index) => {
       const dataset = next.datasets.find((item) => item.id === answer.word.datasetId)
-      return {
-        id: `${session.id}-warmup-${answer.word.id}-${index}`,
-        childId: session.childId,
-        datasetId: answer.word.datasetId,
-        datasetDateRange: dataset?.dateRange || 'Unknown date range',
-        wordId: answer.word.id,
-        grade: session.grade,
-        phase: 'warmup',
-        sessionId: session.id,
-        sessionDate: localDateKey(now),
-        completedAt: now.toISOString(),
-        correct: answer.correct,
-        revealMethod: answer.revealMethod,
-        scored: true,
-        completeSourceDatasetReviewed: false,
-        warmupSessionId,
-      }
+      return { id: `${session.id}-warmup-${answer.word.id}-${index}`, childId: session.childId, datasetId: answer.word.datasetId, datasetDateRange: dataset?.dateRange || 'Unknown date range', wordId: answer.word.id, grade: session.grade, phase: 'warmup', sessionId: session.id, sessionDate: localDateKey(now), completedAt: now.toISOString(), correct: answer.correct, revealMethod: answer.revealMethod, scored: true, completeSourceDatasetReviewed: false, warmupSessionId }
     })
-    next = {
-      ...next,
-      results: [
-        ...next.results,
-        ...warmupResults.filter((result) => !next.results.some((existing) => existing.id === result.id)),
-      ],
-      warmupSessions: [
-        ...next.warmupSessions,
-        {
-          id: warmupSessionId,
-          childId: session.childId,
-          sessionId: session.id,
-          sessionDate: localDateKey(now),
-          completedAt: now.toISOString(),
-          wordIds: session.warmupAnswers.map((answer) => answer.word.id),
-          datasetIds: [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))],
-          completeDatasetIds: [],
-          complete,
-        },
-      ],
-    }
+    next = { ...next, results: [...next.results, ...warmupResults.filter((result) => !next.results.some((existing) => existing.id === result.id))], warmupSessions: [...next.warmupSessions, { id: warmupSessionId, childId: session.childId, sessionId: session.id, sessionDate: localDateKey(now), completedAt: now.toISOString(), wordIds: session.warmupAnswers.map((answer) => answer.word.id), datasetIds: [...new Set(session.warmupAnswers.map((answer) => answer.word.datasetId))], completeDatasetIds: [], complete }] }
     const materialized = materializeStateForCommit(next, session, now)
     const datasetGradeById = new Map(next.datasets.map((dataset) => [dataset.id, dataset.grade]))
     const priorStates = next.childWordStates.filter((item) => {
@@ -1578,40 +874,12 @@ export function commitPartialSession(state: AppState, session: PracticeSession, 
       const datasetGrade = datasetGradeById.get(item.datasetId)
       return !datasetGrade || datasetGrade !== session.grade
     })
-    const rotationAnswers = session.warmupAnswers.filter((answer) =>
-      session.warmupRandomRotationWordIds.includes(answer.word.id),
-    )
-    const monthlyRotationScores = updateMonthlyRotationScores(
-      finalizeMonthlyRotationScores(next.monthlyRotationScores, now),
-      session.childId,
-      rotationMonth(now),
-      rotationAnswers,
-      now.toISOString(),
-    )
-    next = {
-      ...next,
-      childWordStates: [...priorStates, ...materialized.states],
-      monthlyRotationScores,
-      rotationCycles: { ...next.rotationCycles, [session.childId]: materialized.rotationCycleId },
-    }
+    const rotationAnswers = session.warmupAnswers.filter((answer) => session.warmupRandomRotationWordIds.includes(answer.word.id))
+    const monthlyRotationScores = updateMonthlyRotationScores(finalizeMonthlyRotationScores(next.monthlyRotationScores, now), session.childId, rotationMonth(now), rotationAnswers, now.toISOString())
+    next = { ...next, childWordStates: [...priorStates, ...materialized.states], monthlyRotationScores, rotationCycles: { ...next.rotationCycles, [session.childId]: materialized.rotationCycleId } }
   }
   if (!next.completedSessions.some((record) => record.id === session.id)) {
-    next = {
-      ...next,
-      completedSessions: [
-        ...next.completedSessions,
-        {
-          id: session.id,
-          childId: session.childId,
-          sessionDate: localDateKey(now),
-          primaryDatasetId: session.primaryDatasetId,
-          primaryDatasetIds: session.primaryDatasetIds,
-          primaryPhase: 'acquisition',
-          complete: true,
-          outcome: 'completed',
-        },
-      ],
-    }
+    next = { ...next, completedSessions: [...next.completedSessions, { id: session.id, childId: session.childId, sessionDate: localDateKey(now), primaryDatasetId: session.primaryDatasetId, primaryDatasetIds: session.primaryDatasetIds, primaryPhase: 'acquisition', complete: true, outcome: 'completed' }] }
   }
   return next
 }
@@ -1621,27 +889,7 @@ export function commitSkippedTestReview(state: AppState, session: PracticeSessio
   return commitSessionAttempts(state, { ...session, primaryAnswers: [], testReviewSkipped: true }, now, true)
 }
 
-function makeScore(
-  session: PracticeSession,
-  dataset: Dataset,
-  answers: SessionAnswer[],
-  phase: LifecyclePhase,
-  sessionDate: string,
-  warmupSessionId?: string,
-): DatasetScore {
+function makeScore(session: PracticeSession, dataset: Dataset, answers: SessionAnswer[], phase: LifecyclePhase, sessionDate: string, warmupSessionId?: string): DatasetScore {
   const correct = answers.filter((answer) => answer.correct).length
-  return {
-    id: `${session.id}-${phase}-${dataset.id}${warmupSessionId ? `-${warmupSessionId}` : ''}`,
-    childId: session.childId,
-    datasetId: dataset.id,
-    datasetDateRange: dataset.dateRange,
-    phase,
-    sessionId: session.id,
-    sessionDate,
-    percent: Math.round((correct / answers.length) * 100),
-    correct,
-    wordCount: answers.length,
-    warmupSessionId,
-    ...(phase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}),
-  }
+  return { id: `${session.id}-${phase}-${dataset.id}${warmupSessionId ? `-${warmupSessionId}` : ''}`, childId: session.childId, datasetId: dataset.id, datasetDateRange: dataset.dateRange, phase, sessionId: session.id, sessionDate, percent: Math.round((correct / answers.length) * 100), correct, wordCount: answers.length, warmupSessionId, ...(phase === 'test-review' ? { reviewCycle: session.reviewCycle ?? 1 } : {}) }
 }

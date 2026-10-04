@@ -314,8 +314,8 @@ test('phase timers remain configurable by lifecycle', () => {
   assert.equal(timerSecondsFor('Grade 2', 'primary', 'test-review'), 10)
   assert.equal(timerSecondsFor('Kindergarten', 'primary', 'acquisition'), 10)
   assert.equal(timerSecondsFor('Kindergarten', 'primary', 'test-review'), 10)
-  assert.throws(() => startAcquisitionFlow({ ...currentDataset, grade: 'Grade 1' }, 'Grade 1'), /not configured/i)
-  assert.throws(() => buildWarmupSelection({ grade: 'Grade 1', datasets: [], results: [], childId: 'maya' }), /not configured/i)
+  assert.throws(() => startAcquisitionFlow({ ...currentDataset, grade: 'Grade 5' }, 'Grade 5'), /not configured/i)
+  assert.throws(() => buildWarmupSelection({ grade: 'Grade 5', datasets: [], results: [], childId: 'maya' }), /not configured/i)
 })
 
 test('adaptive warmup uses only Mastered datasets and excludes active Acquisition and Test Review', () => {

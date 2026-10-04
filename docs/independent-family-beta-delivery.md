@@ -9,7 +9,7 @@ This delivery path isolates all three releases while preserving the existing Gra
 | Grade | Firebase project | Dedicated Hosting site | Stable destination | Persistence |
 | --- | --- | --- | --- | --- |
 | Kindergarten | `weeklydictationapp` | `weeklydictation-k-beta` | `https://weeklydictation-k-beta.web.app` | Session only |
-| Grade 5 | `weeklydictationapp` | `weeklydictation-g5-beta` | `https://weeklydictation-g5-beta.web.app` | Device progress; signed-in Tier 2 metadata sync; recordings never saved |
+| Grade 5 | `weeklydictationapp` | `weeklydictation-g5-beta` | `https://weeklydictation-g5-beta.web.app` | Session only |
 | Grade 2 preview | `weeklydictationapp` | `weeklydictation-g2-preview` | Temporary candidate channel only | Disposable synthetic or isolated state only |
 | Grade 2 stable | GitHub Pages | `gh-pages` branch | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Browser-local Tier 1 writing |
 

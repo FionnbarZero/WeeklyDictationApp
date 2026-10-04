@@ -24,7 +24,6 @@ import {
   listDistractorTargetObservations,
   listScores,
   listSessions,
-  listTier2ReadingProgress,
   listWarmupAttempts,
   listWarmupGraphPoints,
   listWarmupMastery,
@@ -87,7 +86,6 @@ export function createFirestoreWorkspaceCapabilities(storage: Storage): {
         readAdaptiveState: (scope) => getCloudAdaptiveState(...childIds(scope)),
         listAcquisitionProgressions: (scope) => listAcquisitionProgressions(...childIds(scope)),
         listDistractorTargetObservations: (scope) => listDistractorTargetObservations(...childIds(scope)),
-        listTier2ReadingProgress: (scope, signal) => listTier2ReadingProgress(...childIds(scope), signal),
         listWarmupVisits: (scope) => listWarmupVisits(...childIds(scope)),
         listWarmupQueueEntries: (scope) => listWarmupQueueEntries(...childIds(scope)),
         listWarmupMastery: (scope) => listWarmupMastery(...childIds(scope)),
@@ -109,7 +107,6 @@ export function createFirestoreWorkspaceCapabilities(storage: Storage): {
             records.acquisitionProgressions,
             records.distractorTargetObservations,
             scope.schoolYear,
-            records.readingProgress,
           ),
       },
       reconciliation: {

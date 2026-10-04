@@ -6,7 +6,7 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('the Grade 5 learning hub loads its reviewed public curriculum snapshot in production', () => {
+test('the Grade 5 learning hub uses an explicit public-preview gate and remains outside production entry points', () => {
   const productionEntries = [source('index.html'), source('src/main.tsx'), source('src/App.tsx')].join('\n')
   const harnessHtml = source('grade5-learning-hub.html')
   const harnessSource = source('src/grade5LearningHubHarness.tsx')
@@ -16,14 +16,11 @@ test('the Grade 5 learning hub loads its reviewed public curriculum snapshot in 
   assert.match(harnessHtml, /id="grade5-learning-hub-root"/)
   assert.match(harnessHtml, /id="lab-details" class="lab-details"/)
   assert.match(harnessHtml, /src\/grade5LearningHubHarness\.tsx/)
-  assert.match(harnessSource, /fetchAutomaticGrade5Curriculum/)
-  assert.match(harnessSource, /import \{ AppErrorBoundary \} from '\.\/AppErrorBoundary\.tsx'/)
-  assert.match(harnessSource, /hubRoot\.render\(<AppErrorBoundary>\{content\}<\/AppErrorBoundary>\)/)
-  assert.match(harnessSource, /practiceRoot\.render\(<AppErrorBoundary>\{content\}<\/AppErrorBoundary>\)/)
-  assert.doesNotMatch(harnessSource, /tests\/fixtures\/grade5-presentation\.json/)
-  assert.doesNotMatch(harnessSource, /VITE_PUBLIC_PREVIEW|import\.meta\.env\.DEV/)
-  assert.doesNotMatch(`${harnessSource}\n${hubModel}`, /firebase|firestore|googleapis/i)
-  assert.match(harnessSource, /readGrade5LabProgress\(window\.localStorage\)/)
+  assert.match(harnessSource, /import\.meta\.env\.DEV/)
+  assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
+  assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/grade5-presentation\.json', import\.meta\.url\)\.href/)
+  assert.match(harnessSource, /tests\/fixtures\/grade5-presentation\.json/)
+  assert.doesNotMatch(`${harnessSource}\n${hubModel}`, /firebase|firestore|localStorage|googleapis/i)
   assert.doesNotMatch(hubModel, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
 })
 
@@ -46,7 +43,7 @@ test('the Grade 5 landing experience uses the shared child-facing visual languag
   assert.doesNotMatch(harnessSource, /renderHubHome|renderSectionDetail|sectionVisuals/)
 })
 
-test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 reading paths with device persistence', () => {
+test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 reading paths without persistence', () => {
   const harnessSource = source('src/grade5LearningHubHarness.tsx')
   const hubModel = source('src/grade5Lab/learningHub.ts')
   const labAdapter = source('src/grade5Lab/acquisitionLab.ts')
@@ -60,7 +57,6 @@ test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 readi
   assert.match(harnessSource, /<DeferredTestReview/)
   assert.match(harnessSource, /mode="reading"/)
   assert.match(harnessSource, /grade5LabReadingPathway/)
-  assert.match(harnessSource, /grade5LabReadingWarmupPathway/)
   assert.match(harnessSource, /grade5LabWarmupSelection/)
   assert.match(harnessSource, /skip-warmup/)
   assert.match(labAdapter, /startAcquisition/)
@@ -72,11 +68,8 @@ test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 readi
   assert.match(writingPractice, /activityKind === 'reacquisition'/)
   assert.match(readingPractice, /learningChannel === 'tier-2-reading'/)
   assert.match(readingPractice, /activityKind === 'reacquisition'/)
-  assert.match(profile, /grade5PracticeProfile/)
-  assert.match(source('src/practice/profiles/grade5.ts'), /grade5AcquisitionStrategy/)
-  assert.match(harnessSource, /checkpointWriting/)
-  assert.match(harnessSource, /saveReadingCheckpoint/)
-  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${readingPractice}\n${profile}`, /firebase|firestore|createScore|saveSession/i)
+  assert.match(profile, /grade5AcquisitionStrategy/)
+  assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${labAdapter}\n${writingPractice}\n${readingPractice}\n${profile}`, /firebase|firestore|localStorage|createScore|saveSession/i)
   assert.doesNotMatch(`${hubModel}\n${labAdapter}`, /from ['"]\.\.\/App|from ['"]\.\.\/domain/)
 })
 
@@ -92,7 +85,7 @@ test('Grade 2 and the Grade 5 lab render the same shared PracticeView component'
   assert.match(appSource, /import type \{ PracticeAnswer \} from '\.\/practice\/PracticeView'/)
   assert.match(appSource, /import\('\.\/practice\/PracticeView\.tsx'\)[\s\S]*module\.PracticeView/)
   assert.match(harnessSource, /import \{ PracticeView, type PracticeAnswer \} from '\.\/practice\/PracticeView\.tsx'/)
-  assert.match(appSource, /<PracticeView\s+session=\{session\}/)
+  assert.match(appSource, /<PracticeView session=\{session\}/)
   assert.match(harnessSource, /<PracticeView/)
   assert.match(practiceView, /className=\{`practice-page\$\{showingWritingResponse/)
   assert.match(practiceView, /<PromptCountdown/)
@@ -102,10 +95,7 @@ test('Grade 2 and the Grade 5 lab render the same shared PracticeView component'
   assert.doesNotMatch(harnessHtml, /class="prompt-card"|class="speaker-orb"|class="answer-actions"/)
   assert.match(harnessSource, /hubRootElement\.hidden = true/)
   assert.match(harnessSource, /session=\{activeSession\}/)
-  assert.match(
-    harnessSource,
-    /warmupRequired=\{grade5WritingLabProfile\.preActivityWarmupRequirement === 'required'\}/,
-  )
+  assert.doesNotMatch(harnessSource, /warmupRequired/)
   assert.match(source('src/grade5Lab/learningHub.css'), /body\.practice-active \.grade5-practice-stage/)
   assert.match(source('src/grade5Lab/learningHub.css'), /position: fixed/)
 })

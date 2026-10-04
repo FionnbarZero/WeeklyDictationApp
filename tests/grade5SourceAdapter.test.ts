@@ -8,7 +8,6 @@ import {
   grade5SlidesSourceProfile,
 } from '../src/curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload } from '../src/curriculum/model.ts'
-import { grade5PracticeProfile } from '../src/practice/profiles/grade5.ts'
 
 function loadFixture(): SlidesPresentationPayload {
   return JSON.parse(readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
@@ -247,10 +246,10 @@ test('pre-baseline Grade 5 slides remain provenance issues and do not become can
   assert.ok(extraction.issues.some((issue) => issue.code === 'pre_baseline_source_unit' && issue.sourceUnitId === 'observed-week-3'))
 })
 
-test('the approved Grade 5 source profile is active with its grade-specific practice contract', () => {
+test('the Grade 5 source profile remains inactive while production practice registration is deferred', () => {
   const registryEntry = SOURCE_REGISTRY.find((entry) => entry.grade === 'Grade 5')
 
   assert.equal(registryEntry?.sourceAdapterId, grade5SlidesSourceProfile.sourceAdapterId)
-  assert.equal(registryEntry?.active, true)
-  assert.equal(registryEntry?.practiceProfileId, grade5PracticeProfile.id)
+  assert.equal(registryEntry?.active, false)
+  assert.equal(registryEntry?.practiceProfileId, 'grade-5-unimplemented')
 })

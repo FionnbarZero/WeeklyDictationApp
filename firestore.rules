@@ -39,70 +39,6 @@ service cloud.firestore {
         && request.resource.data.reviewedAt is string
         && request.resource.data.completionStatus in ['temporary', 'complete'];
     }
-    function validTier2ReadingProgress(childId, progressId) {
-      return request.resource.data.keys().hasAll([
-          'schemaVersion', 'contractId', 'id', 'childId', 'grade', 'schoolYear',
-          'activityModule', 'profileId', 'profileVersion', 'pathwayKind',
-          'cohortIds', 'targetOccurrenceIds', 'revision', 'status', 'runJson',
-          'startedAt', 'updatedAt'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'schemaVersion', 'contractId', 'id', 'childId', 'grade', 'schoolYear',
-          'activityModule', 'profileId', 'profileVersion', 'pathwayKind',
-          'reviewCycle', 'reviewGroupId', 'cohortIds', 'targetOccurrenceIds',
-          'revision', 'status', 'runJson', 'summary', 'startedAt', 'updatedAt',
-          'completedAt'
-        ])
-        && request.resource.data.schemaVersion == 1
-        && request.resource.data.contractId == 'tier2-reading-progress-v1'
-        && request.resource.data.id == progressId
-        && request.resource.data.childId == childId
-        && request.resource.data.grade in ['Grade 2', 'Grade 5']
-        && request.resource.data.schoolYear is string
-        && request.resource.data.activityModule == 'mandarin-tier2-reading'
-        && request.resource.data.profileId is string
-        && request.resource.data.profileVersion is int
-        && request.resource.data.profileVersion > 0
-        && request.resource.data.pathwayKind in ['acquisition', 'test-review', 'mastery']
-        && (!('reviewCycle' in request.resource.data)
-          || (request.resource.data.pathwayKind == 'test-review'
-            && request.resource.data.reviewCycle is int
-            && request.resource.data.reviewCycle > 0))
-        && (!('reviewGroupId' in request.resource.data)
-          || request.resource.data.reviewGroupId is string)
-        && request.resource.data.cohortIds is list
-        && request.resource.data.cohortIds.size() > 0
-        && request.resource.data.cohortIds.size() <= 8
-        && request.resource.data.targetOccurrenceIds is list
-        && request.resource.data.targetOccurrenceIds.size() > 0
-        && request.resource.data.targetOccurrenceIds.size() <= 64
-        && request.resource.data.revision is int
-        && request.resource.data.revision > 0
-        && request.resource.data.status in ['in-progress', 'completed']
-        && request.resource.data.runJson is string
-        && request.resource.data.runJson.size() > 0
-        && request.resource.data.runJson.size() <= 100000
-        && !request.resource.data.runJson.matches('.*"audio".*')
-        && !request.resource.data.runJson.matches('.*"blob".*')
-        && !request.resource.data.runJson.matches('.*blob:.*')
-        && !request.resource.data.runJson.matches('.*data:audio.*')
-        && !request.resource.data.runJson.matches('.*"mimeType".*')
-        && !request.resource.data.runJson.matches('.*"recordingUrl".*')
-        && request.resource.data.startedAt is string
-        && request.resource.data.updatedAt is string
-        && (request.resource.data.status == 'in-progress'
-          ? !('summary' in request.resource.data) && !('completedAt' in request.resource.data)
-          : request.resource.data.summary is map
-            && request.resource.data.summary.kind == request.resource.data.pathwayKind
-            && request.resource.data.summary.attempted is int
-            && request.resource.data.summary.attempted >= 0
-            && request.resource.data.summary.correct is int
-            && request.resource.data.summary.correct >= 0
-            && request.resource.data.summary.correct <= request.resource.data.summary.attempted
-            && request.resource.data.summary.diagnostics is int
-            && request.resource.data.summary.diagnostics >= 0
-            && request.resource.data.completedAt is string);
-    }
     function validAcquisitionReceiptShape(progressionId, transitionId) {
       return request.resource.data.progressionId == progressionId
         && request.resource.data.transitionId == transitionId
@@ -679,27 +615,6 @@ service cloud.firestore {
                 && !('contractId' in resource.data)
                 && request.resource.data.childId == resource.data.childId
                 && request.resource.data.datasetId == resource.data.datasetId));
-          allow delete: if false;
-        }
-
-        match /tier2ReadingProgress/{progressId} {
-          allow read: if childExists(familyId, childId);
-          allow create: if ownsActiveChild(familyId, childId)
-            && validTier2ReadingProgress(childId, progressId);
-          allow update: if ownsActiveChild(familyId, childId)
-            && validTier2ReadingProgress(childId, progressId)
-            && request.resource.data.revision > resource.data.revision
-            && request.resource.data.id == resource.data.id
-            && request.resource.data.childId == resource.data.childId
-            && request.resource.data.grade == resource.data.grade
-            && request.resource.data.schoolYear == resource.data.schoolYear
-            && request.resource.data.activityModule == resource.data.activityModule
-            && request.resource.data.profileId == resource.data.profileId
-            && request.resource.data.profileVersion == resource.data.profileVersion
-            && request.resource.data.pathwayKind == resource.data.pathwayKind
-            && request.resource.data.cohortIds == resource.data.cohortIds
-            && request.resource.data.targetOccurrenceIds == resource.data.targetOccurrenceIds
-            && request.resource.data.startedAt == resource.data.startedAt;
           allow delete: if false;
         }
 

@@ -1,19 +1,14 @@
 import { expect, test } from './fixtures.ts'
 
 const entries = [
-  {
-    path: '/',
-    grade: 'Grade 2',
-    status: 'Family beta',
-    persistence: 'Tier 1 writing and Tier 2 reading metadata are durable',
-  },
+  { path: '/', grade: 'Grade 2', status: 'Family beta', persistence: 'Tier 1 writing durable here' },
   {
     path: '/kindergarten-learning-lab.html',
     grade: 'Kindergarten',
     status: 'Experimental',
     persistence: 'Session only',
   },
-  { path: '/grade5-learning-hub.html', grade: 'Grade 5', status: 'Public', persistence: 'Device progress' },
+  { path: '/grade5-learning-hub.html', grade: 'Grade 5', status: 'Experimental', persistence: 'Session only' },
 ] as const
 
 for (const entry of entries) {
