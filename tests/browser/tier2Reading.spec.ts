@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures.ts'
-import path from 'node:path'
+import { installGrade2CurriculumFixture } from './grade2Curriculum.ts'
 import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
@@ -36,7 +36,9 @@ test.beforeEach(async ({ page }) => {
     Object.defineProperty(window, 'MediaRecorder', {
       configurable: true,
       value: class FakeMediaRecorder {
-        static isTypeSupported() { return true }
+        static isTypeSupported() {
+          return true
+        }
       },
     })
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -49,19 +51,22 @@ test.beforeEach(async ({ page }) => {
     })
   })
 
+  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
-  await page.locator('input[type="file"]').setInputFiles(path.resolve('tests/fixtures/grade2-presentation.json'))
-  await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
 })
 
-test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial without persisting reading results', async ({ page }) => {
-  const storedCounts = () => page.evaluate((stateKey) => {
-    const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
-    return {
-      results: state.results?.length || 0,
-      scores: state.scores?.length || 0,
-    }
-  }, APP_STATE_KEY)
+test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial without persisting reading results', async ({
+  page,
+}) => {
+  const storedCounts = () =>
+    page.evaluate((stateKey) => {
+      const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
+      return {
+        results: state.results?.length || 0,
+        scores: state.scores?.length || 0,
+      }
+    }, APP_STATE_KEY)
   const before = await storedCounts()
 
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Read the Words')

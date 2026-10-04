@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import {
   channelHasRelease,
@@ -16,6 +16,9 @@ import {
   artifactFileRecords,
   candidateChannelId,
   FAMILY_BETA_ARTIFACT_SCHEMA,
+  GRADE2_CURRICULUM_DOCUMENT_ID,
+  GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
+  GRADE2_CURRICULUM_SOURCE_PATH,
   type FamilyBetaArtifactManifest,
   type FamilyBetaGrade,
   familyBetaGradeConfig,
@@ -23,6 +26,7 @@ import {
   requireMatchingSourceRevision,
   rollbackChannelId,
   verifyFamilyBetaArtifact,
+  sha256,
 } from '../scripts/familyBetaRelease.ts'
 import {
   GRADE2_PAGES_ORIGIN,
@@ -49,7 +53,30 @@ function verifiedArtifact(artifactGrade: FamilyBetaGrade = 'kindergarten') {
     `<html><body>${grade.displayName}<code>status=${grade.status} | version=0.2.0-stage2 | revision=${revision} | persistence=${grade.persistence}</code></body></html>`,
   )
   writeFileSync(resolve(directory, 'app.js'), 'console.log("family beta")\n')
-  if (artifactGrade === 'grade2') writeFileSync(resolve(directory, '.nojekyll'), '\n')
+  let curriculumSource: FamilyBetaArtifactManifest['curriculumSource']
+  if (artifactGrade === 'grade2') {
+    writeFileSync(resolve(directory, '.nojekyll'), '\n')
+    const presentation = {
+      presentationId: GRADE2_CURRICULUM_DOCUMENT_ID,
+      slides: [{ objectId: 'slide-1', text: 'Week 10/5-10/9\nMandarin\nTier 1: 英雄' }],
+    }
+    const contentSha256 = sha256(JSON.stringify(presentation))
+    const snapshot = {
+      schema: GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
+      source: {
+        type: 'google-slides',
+        documentId: GRADE2_CURRICULUM_DOCUMENT_ID,
+        documentUrl: `https://docs.google.com/presentation/d/${GRADE2_CURRICULUM_DOCUMENT_ID}`,
+        retrievedAt: '2026-10-03T00:00:00.000Z',
+        contentSha256,
+      },
+      presentation,
+    }
+    const curriculumPath = resolve(directory, GRADE2_CURRICULUM_SOURCE_PATH)
+    mkdirSync(dirname(curriculumPath), { recursive: true })
+    writeFileSync(curriculumPath, `${JSON.stringify(snapshot, null, 2)}\n`)
+    curriculumSource = { ...snapshot.source, artifactPath: GRADE2_CURRICULUM_SOURCE_PATH, datasetCount: 1 }
+  }
   const files = artifactFileRecords(directory)
   const manifest: FamilyBetaArtifactManifest = {
     schema: FAMILY_BETA_ARTIFACT_SCHEMA,
@@ -68,6 +95,7 @@ function verifiedArtifact(artifactGrade: FamilyBetaGrade = 'kindergarten') {
       npm: '11.0.0',
       packageLockSha256: 'a'.repeat(64),
     },
+    ...(curriculumSource ? { curriculumSource } : {}),
     fileTreeSha256: fileTreeSha256(files),
     files,
   }
@@ -93,6 +121,7 @@ test('a Grade 2 artifact carries its durable identity and GitHub Pages marker', 
     assert.equal(manifest.status, 'Family beta')
     assert.match(manifest.persistence, /Tier 1 writing durable here/)
     assert.ok(manifest.files.some((file) => file.path === '.nojekyll'))
+    assert.equal(manifest.curriculumSource?.documentId, GRADE2_CURRICULUM_DOCUMENT_ID)
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

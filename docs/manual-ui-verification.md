@@ -7,10 +7,10 @@ This is the acceptance contract for the read-only local canonical deck-driven fl
 1. Start the local app with `npm run dev`.
 2. Open the displayed local URL with `?testDate=2026-09-23`, for example `http://localhost:5173/?testDate=2026-09-23`. The parameter works only in Vite development mode and is ignored by production builds.
 3. Confirm a persistent banner says `Testing as September 23, 2026` and `Development only`.
-4. Use a fresh browser profile. Confirm the app shows `Import deck JSON`; if it asks for a Firebase sign-in, stop because this is not the read-only local verification path.
-5. Choose `Import deck JSON` and load `tests/fixtures/grade2-presentation.json`. The separate `grade2-writing-workshop.json` and `grade2-malformed-synthetic.json` files are synthetic parser-contract inputs and are not part of the canonical observed deck fixture.
+4. Use a fresh browser profile. Confirm the app reports `Loaded 6 weekly datasets automatically from Google Slides.` If it asks for a Firebase sign-in, stop because this is not the read-only local verification path.
+5. Confirm there is no deck-file upload control. The app must load `public/curriculum/grade2-presentation.json` automatically through the canonical importer.
 
-The canonical fixture is test-only input. It is not production seed data and must not be copied into runtime fallback data. The test-date override changes only the app clock; it does not alter fixture dates, datasets, lifecycle calculations, persistence rules, or production configuration.
+The four-slide canonical fixture remains test-only input. Manual verification uses the reviewed six-slide curriculum snapshot. The test-date override changes only the app clock; it does not alter source dates, datasets, lifecycle calculations, persistence rules, or production configuration.
 
 ## Dashboard
 
@@ -19,9 +19,9 @@ The canonical fixture is test-only input. It is not production seed data and mus
    - Test Review: `9/14–9/18`.
    - Warmup sources include eligible words from the Mastered `9/8–9/11` and `8/31–9/4` datasets, while those datasets retain their permanent identity and history.
 2. Confirm Acquisition and Test Review have separate start controls.
-3. Confirm there are no placeholder or date-only datasets and that each canonical fixture dataset shows Grade 2 and five words.
+3. Confirm there are no placeholder or date-only datasets. The four earlier datasets contain five Tier 1 words; the 9/29–10/2 and 10/5–10/9 writing-vocabulary datasets contain nine.
 4. Reload with `?testDate=2026-09-27`. Confirm the weekend does not expire either assignment: Acquisition remains `9/21–9/25`, Test Review remains `9/14–9/18`, and neither set enters Mastered Warmup.
-5. Reload with `?testDate=2026-09-28`. Because this fixture contains no valid `9/28` replacement, confirm the same Acquisition and Test Review assignments remain active.
+5. Reload with `?testDate=2026-09-28`. Because the next source dataset begins on 9/29, confirm the same Acquisition and Test Review assignments remain active.
 6. Return to `?testDate=2026-09-23` before continuing the activity checks below.
 
 ## Acquisition
