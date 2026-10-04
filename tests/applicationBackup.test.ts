@@ -2,7 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { exportLocalApplicationBackup, previewLocalApplicationBackup } from '../src/application/backup/index.ts'
 import { planSelectedChildRestore } from '../src/application/backup/selectedChildRestore.ts'
-import { APP_STATE_KEY, createInitialState, type AppState, type Dataset, type WordResult } from '../src/domain.ts'
+import {
+  APP_STATE_KEY,
+  createInitialState,
+  FAMILIAR_DT_WORDS,
+  type AppState,
+  type Dataset,
+  type WordResult,
+} from '../src/domain.ts'
 import {
   createVerifiedApplicationBackup,
   previewVerifiedApplicationBackup,
@@ -245,6 +252,81 @@ test('selected-child restore replaces only that profile and preserves current sh
   assert.equal(plan.report.addedHistoricalDatasets, 1)
   assert.deepEqual(plan.report.before.practiceRecords, 1)
   assert.deepEqual(plan.report.after.practiceRecords, 1)
+})
+
+test('selected-child restore accepts profile-owned Familiar DT observations', () => {
+  const familiarTarget = FAMILIAR_DT_WORDS[0]
+  const backup = stateWithResults()
+  backup.distractorTargetObservations = [
+    {
+      id: 'familiar-observation',
+      childId: 'rhys',
+      sessionId: 'familiar-session',
+      datasetId: dataset.id,
+      wordId: familiarTarget.id,
+      text: familiarTarget.text,
+      poolType: 'familiar',
+      correct: true,
+      revealMethod: 'timer',
+      reviewedAt: '2026-09-29T16:00:00.000Z',
+    },
+  ]
+  const plan = planSelectedChildRestore({
+    current: { state: stateWithResults(), pendingAcquisition: [], pendingWarmup: [] },
+    backup: {
+      schema: 'weekly-dictation-backup-v1',
+      createdAt: '2026-10-02T22:00:00.000Z',
+      state: backup,
+      pendingAcquisition: [],
+      pendingWarmup: [],
+    },
+    childId: 'rhys',
+  })
+
+  assert.deepEqual(plan.snapshot.state.distractorTargetObservations, backup.distractorTargetObservations)
+})
+
+test('selected-child restore rejects invented Familiar and mismatched Earned DT observations', () => {
+  const invalidFamiliar = stateWithResults()
+  invalidFamiliar.distractorTargetObservations = [
+    {
+      id: 'invalid-familiar-observation',
+      childId: 'rhys',
+      sessionId: 'familiar-session',
+      datasetId: dataset.id,
+      wordId: 'familiar-dt-invented',
+      text: '虚构',
+      poolType: 'familiar',
+      correct: false,
+      revealMethod: 'timer',
+      reviewedAt: '2026-09-29T16:00:00.000Z',
+    },
+  ]
+  const invalidEarned = stateWithResults()
+  invalidEarned.distractorTargetObservations = [
+    {
+      ...invalidFamiliar.distractorTargetObservations[0],
+      id: 'invalid-earned-observation',
+      poolType: 'earned',
+      wordId: dataset.words[0].id,
+      text: 'mismatched text',
+    },
+  ]
+  const plan = (state: AppState) =>
+    planSelectedChildRestore({
+      current: { state: stateWithResults(), pendingAcquisition: [], pendingWarmup: [] },
+      backup: {
+        schema: 'weekly-dictation-backup-v1',
+        createdAt: '2026-10-02T22:00:00.000Z',
+        state,
+        pendingAcquisition: [],
+        pendingWarmup: [],
+      },
+      childId: 'rhys',
+    })
+
+  assert.throws(() => plan(invalidFamiliar), /invalid Familiar DT/i)
+  assert.throws(() => plan(invalidEarned), /missing or mismatched Earned DT/i)
 })
 
 test('selected-child restore rejects an orphaned versioned receipt before writing', () => {
