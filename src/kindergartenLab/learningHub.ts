@@ -99,6 +99,7 @@ export function kindergartenLearningHubView(
 ): LearningHubViewModel<KindergartenHubLaunch> {
   const week = currentWeekCohort(candidate)
   const ninjaUnits = ninjaPools.map(ninjaSkillsCohort)
+  const currentNinjaUnit = ninjaPools.find((pool) => pool.unitId === candidate.curriculumUnit?.id)
   const finalBossUnit = finalBossPool ? unitCohort(finalBossPool) : null
   const masteryUnit = masteryPool ? unitCohort(masteryPool) : null
   const isReviewWeek = candidate.status === 'no-instruction' && candidate.noInstructionReason === 'unit-review'
@@ -136,6 +137,7 @@ export function kindergartenLearningHubView(
       actionLabel: 'Choose a game',
       theme: 'blue',
       cohortPickerLabel: 'Choose a unit',
+      defaultCohortId: currentNinjaUnit?.dataset.id,
       cohortSummaryLabel: `${ninjaUnits.length} ${ninjaUnits.length === 1 ? 'unit' : 'units'} available`,
       cohorts: ninjaUnits,
       activities: [

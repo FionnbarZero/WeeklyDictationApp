@@ -20,7 +20,7 @@ export type SkyWritingProps = {
   maxRounds?: number
   onExit: () => void
   onComplete: (result: SkyWritingResult) => void
-  speak: (text: string) => void
+  speak: (text: string) => void | Promise<void>
 }
 
 function distinctWords(words: string[]) {
@@ -53,9 +53,20 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
   const [correct, setCorrect] = useState(0)
   const [assessments, setAssessments] = useState<SkyWritingAssessment[]>([])
   const [complete, setComplete] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
   const word = rounds[index]
 
+  async function playWord() {
+    setAudioError(null)
+    try {
+      await speak(word)
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : 'Audio could not play.')
+    }
+  }
+
   function answer(value: boolean) {
+    setAudioError(null)
     const nextCorrect = correct + (value ? 1 : 0)
     setCorrect(nextCorrect)
     setAssessments((current) => [...current, { word, index, correct: value }])
@@ -95,7 +106,7 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
             </div>
           </div>
           <div className="skywriting-prompt-actions">
-            <button className="skywriting-listen" type="button" onClick={() => speak(word)}><Volume2 size={21} /> Hear the word</button>
+            <button className="skywriting-listen" type="button" onClick={() => void playWord()}><Volume2 size={21} /> Hear the word</button>
             <button className="skywriting-primary" type="button" onClick={() => setRevealed(true)}>Show the word <Sparkles size={17} /></button>
           </div>
         </> : <>
@@ -104,7 +115,7 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
             <h2>Does it match?</h2>
           </div>
           <div className="skywriting-prompt-actions">
-            <button className="skywriting-listen" type="button" onClick={() => speak(word)}><Volume2 size={21} /> Hear it again</button>
+            <button className="skywriting-listen" type="button" onClick={() => void playWord()}><Volume2 size={21} /> Hear it again</button>
             <div className="skywriting-self-check">
               <button className="skywriting-wrong" type="button" onClick={() => answer(false)}><X size={17} /> Not yet</button>
               <button className="skywriting-right" type="button" onClick={() => answer(true)}><Check size={17} /> It matches!</button>
@@ -112,6 +123,12 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
           </div>
         </>}
       </div>
+
+      {audioError && <div className="recording-fallback" role="alert">
+        <strong>The word did not play.</strong>
+        <p>{audioError} Ask a teacher for help if it still does not play.</p>
+        <button className="skywriting-listen" type="button" onClick={() => void playWord()}><Volume2 size={18} /> Try audio again</button>
+      </div>}
 
       <SkyWritingAcquisition key={`${index}-${word}`} word={word} phase={revealed ? 'review' : 'writing'} traceTarget={false} />
     </section>

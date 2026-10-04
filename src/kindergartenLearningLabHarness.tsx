@@ -37,6 +37,7 @@ import { LearningHub } from './learningHub/LearningHub.tsx'
 import type { LearningHubLaunchContext } from './learningHub/contracts.ts'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
+import type { ReadingTeachingIntroductionContext } from './readingPractice/Tier2ReadingPractice.tsx'
 import { SkyWriting } from './skywriting/index.ts'
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
 import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
@@ -45,8 +46,14 @@ import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.t
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
-import { playCachedWordAudio, playCachedWordAudioOnce } from './audio/promptAudio.ts'
-import { withKindergartenAudio } from './audio/kindergartenAudio.ts'
+import {
+  playAudioPlan,
+  playCachedWordAudio,
+  playCachedWordAudioOnce,
+  playReadingTeachingSequence,
+  stopActiveAudio,
+} from './audio/promptAudio.ts'
+import { kindergartenInstructionAudio, withKindergartenAudio } from './audio/kindergartenAudio.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
@@ -73,21 +80,44 @@ function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceT
 }
 
 function speakText(text: string, language = 'zh-CN', rate = 0.55) {
-  if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = language
-  utterance.rate = rate
-  window.speechSynthesis.speak(utterance)
-  return () => window.speechSynthesis.cancel()
+  if (!text) return
+  return playAudioPlan([{
+    text,
+    language: language === 'zh-CN' || language === 'en-GB' || language === 'en-IE' ? language : 'en-US',
+    rate,
+  }])
 }
 
-function speakWord(word: Word, warmup = false) { return playCachedWordAudio(withKindergartenAudio(word), warmup) }
+function speakWord(word: Word, warmup = false) {
+  return playCachedWordAudio(withKindergartenAudio(word), warmup, warmup ? {} : { playbackRate: 1.5, sentenceRate: 1.5 })
+}
 
 function playMasteryWord(word: Word) { return speakWord(word, true) }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
-  return playCachedWordAudioOnce(withKindergartenAudio(target))
+  return playCachedWordAudioOnce(withKindergartenAudio(target), { playbackRate: 1.5 })
+}
+
+function speakReadingIntroduction(
+  target: Tier2ReadingTarget,
+  context: ReadingTeachingIntroductionContext,
+): Promise<void> {
+  const newTargetInstruction = kindergartenInstructionAudio('newTarget')
+  return playReadingTeachingSequence(withKindergartenAudio(target), {
+    playbackRate: 1.5,
+    sentenceRate: 1.5,
+    ...(context.firstPresentationOfNewTarget
+      ? {
+          newTargetAnnouncement: newTargetInstruction.text,
+          newTargetAnnouncementStoragePath: newTargetInstruction.storagePath,
+        }
+      : {}),
+  })
+}
+
+function speakKindergartenTextOnce(text: string) {
+  const word: Word = { id: `audio-${text}`, text, sentence: '', datasetId: '__audio-cue__' }
+  return playCachedWordAudioOnce(withKindergartenAudio(word))
 }
 
 function writingSessionFor(practice: WritingPractice): PracticeSession {
@@ -232,7 +262,7 @@ function KindergartenLearningLab() {
   }
 
   function returnToHub(message = 'Returned to the Kindergarten paths.') {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    stopActiveAudio()
     setActiveActivity(null)
     setReadingPathway(null)
     setMasteryWords([])
@@ -246,7 +276,7 @@ function KindergartenLearningLab() {
   }
 
   function leavePractice(message: string) {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    stopActiveAudio()
     setWritingPractice(null)
     setReadingPathway(null)
     setTestReviewSession(null)
@@ -507,6 +537,7 @@ function KindergartenLearningLab() {
         pathway={readingPathway}
         label={label}
         onPlayReference={speakReadingReference}
+        onPlayTeachingIntroduction={speakReadingIntroduction}
         onExit={() => returnToHub('Reading practice exited. No score was added.')}
         onComplete={(summary) => completeStandalone({
           label,
@@ -519,7 +550,7 @@ function KindergartenLearningLab() {
     </main>
   }
 
-  const speak = (text: string) => { speakText(text) }
+  const speak = (text: string) => speakKindergartenTextOnce(text)
   if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={ninjaTier2Words} choicePool={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting

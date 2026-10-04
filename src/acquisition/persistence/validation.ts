@@ -96,6 +96,12 @@ function validateContext<TTarget extends AcquisitionTarget>(context: Acquisition
       && (context.lifecycleStage.kind !== 'test-review' || !isPositiveInteger(context.lifecycleStage.cycle)))) errors.push('Persistence context lifecycle stage is invalid.')
   if (!isNonEmptyString(context.applicationVersion)) errors.push('Persistence context applicationVersion is invalid.')
   if (!isNonEmptyString(context.strategy.id) || !isPositiveInteger(context.strategy.version)) errors.push('Persistence context strategy identity is invalid.')
+  if (context.strategy.correctionPolicy
+    && (context.strategy.correctionPolicy.assessmentMode !== 'scored'
+      && context.strategy.correctionPolicy.assessmentMode !== 'feedback-only')) errors.push('Persistence context Correction assessment mode is invalid.')
+  if (context.strategy.correctionPolicy
+    && (context.strategy.correctionPolicy.finalExpandedFailure !== 'complete-after-correction'
+      && context.strategy.correctionPolicy.finalExpandedFailure !== 'retry-target-after-correction')) errors.push('Persistence context final Expanded failure behavior is invalid.')
   const targetIds = new Set<string>()
   for (const target of context.targetSet.targets) {
     if (!isNonEmptyString(target.id) || targetIds.has(target.id)) errors.push(`Persistence context target identity is invalid or repeated: ${target.id || '(missing)'}.`)
@@ -221,7 +227,10 @@ function validateFlow<TTarget extends AcquisitionTarget>(value: unknown, context
       const promptTarget = targetFrom(prompt.word, promptAllowed, 'flow.prompt.word', errors)
       if ((prompt.kind === 'show-copy' || prompt.kind === 'target') && (!currentTarget || !promptTarget || promptTarget.id !== currentTarget.id)) errors.push('flow.prompt.word does not match flow.currentTarget.')
       if (prompt.kind === 'earned-dt' && (!promptTarget || !earnedIds.has(promptTarget.id))) errors.push('flow.prompt.word is not in the Earned DT pool.')
-      const expectedScored = prompt.kind === 'target' || prompt.kind === 'earned-dt'
+      const feedbackOnlyCorrection = flow.phase === 'correction'
+        && context.strategy.correctionPolicy?.assessmentMode === 'feedback-only'
+      const expectedScored = (prompt.kind === 'target' || prompt.kind === 'earned-dt')
+        && !feedbackOnlyCorrection
       if (prompt.scored !== expectedScored || prompt.countsTowardWeeklyScore !== expectedScored) errors.push('flow.prompt scoring flags are invalid.')
       const expectedPool = prompt.kind === 'familiar-dt' ? 'familiar' : prompt.kind === 'earned-dt' || (prompt.kind === 'target' && flow.correctionRole === 'earned-dt') ? 'earned' : undefined
       if (prompt.dtPoolType !== expectedPool) errors.push('flow.prompt.dtPoolType is invalid.')

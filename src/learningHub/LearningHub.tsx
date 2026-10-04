@@ -66,7 +66,10 @@ function SectionDetail<Launch>({
   onBack: () => void
   onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
 }) {
-  const [selectedCohortId, setSelectedCohortId] = useState(section.cohorts[0]?.id || '')
+  const defaultCohortId = section.cohorts.some((cohort) => cohort.id === section.defaultCohortId)
+    ? section.defaultCohortId!
+    : section.cohorts[0]?.id || ''
+  const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
   const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId)
     || section.cohorts[0]
   const visibleCohorts = section.cohortPickerLabel && selectedCohort
@@ -79,9 +82,13 @@ function SectionDetail<Launch>({
 
   useEffect(() => {
     if (selectedCohortId && !section.cohorts.some((cohort) => cohort.id === selectedCohortId)) {
-      setSelectedCohortId(section.cohorts[0]?.id || '')
+      setSelectedCohortId(defaultCohortId)
     }
-  }, [section.cohorts, selectedCohortId])
+  }, [defaultCohortId, section.cohorts, selectedCohortId])
+
+  useEffect(() => {
+    setSelectedCohortId(defaultCohortId)
+  }, [defaultCohortId])
 
   return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`}>
     <button className="learning-hub-back" type="button" onClick={onBack}>← Back to all challenges</button>

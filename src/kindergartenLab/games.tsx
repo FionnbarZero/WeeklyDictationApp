@@ -19,6 +19,16 @@ export type KindergartenScoreRecord = {
 }
 
 type CompleteScore = Pick<KindergartenScoreRecord, 'label' | 'kind' | 'correct' | 'total'>
+type GameSpeak = (text: string) => void | Promise<void>
+
+function AudioFailureNotice({ message, onRetry }: { message: string | null; onRetry: () => void }) {
+  if (!message) return null
+  return <div className="recording-fallback" role="alert">
+    <strong>The word did not play.</strong>
+    <p>{message} Ask a teacher for help if it still does not play.</p>
+    <button className="replay-button" type="button" onClick={onRetry}><Volume2 size={16} /> Try audio again</button>
+  </div>
+}
 
 function GameShell({ title, eyebrow, score, onExit, children }: {
   title: string
@@ -73,15 +83,30 @@ export function ListeningLilyPads({ targets, choicePool, onExit, onComplete, spe
   choicePool: string[]
   onExit: () => void
   onComplete: (score: CompleteScore) => void
-  speak: (text: string) => void
+  speak: GameSpeak
 }) {
   const rounds = distinctWords(targets).slice(0, 5)
   const [index, setIndex] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [complete, setComplete] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
   const target = rounds[index]
   const choices = choicesFor(target, distinctWords(choicePool), index)
+
+  const playTarget = useCallback(async () => {
+    if (!target) return
+    setAudioError(null)
+    try {
+      await speak(target)
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : 'Audio could not play.')
+    }
+  }, [speak, target])
+
+  useEffect(() => {
+    if (!complete) void playTarget()
+  }, [complete, playTarget])
 
   function choose(word: string) {
     if (selected) return
@@ -104,7 +129,8 @@ export function ListeningLilyPads({ targets, choicePool, onExit, onComplete, spe
       <p className="k-round-label">Word {index + 1} of {rounds.length}</p>
       <div className="k-game-mascot" aria-hidden="true">🐸</div>
       <h2>Which word did you hear?</h2>
-      <button className="k-listen-button" type="button" onClick={() => speak(target)}><Volume2 size={24} /> Hear the word</button>
+      <button className="k-listen-button" type="button" onClick={() => void playTarget()}><Volume2 size={24} /> Hear the word</button>
+      <AudioFailureNotice message={audioError} onRetry={() => void playTarget()} />
       <div className="k-choice-grid">
         {choices.map((word) => <button
           className={`k-word-choice${selected === word ? word === target ? ' correct' : ' wrong' : ''}${selected && word === target ? ' answer' : ''}`}
@@ -135,7 +161,7 @@ export function MemoryLanterns({ words, onExit, onComplete, speak }: {
   words: string[]
   onExit: () => void
   onComplete: (score: CompleteScore) => void
-  speak: (text: string) => void
+  speak: GameSpeak
 }) {
   const deck = useMemo(() => memoryDeck(words), [words])
   const pairTotal = deck.length / 2
@@ -143,20 +169,33 @@ export function MemoryLanterns({ words, onExit, onComplete, speak }: {
   const [matched, setMatched] = useState<string[]>([])
   const [turns, setTurns] = useState(0)
   const [complete, setComplete] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
+  const [retryWord, setRetryWord] = useState('')
   const selectedCards = flipped.map((id) => deck.find((card) => card.id === id)).filter((card): card is MemoryCard => Boolean(card))
   const pairReady = selectedCards.length === 2
   const isMatch = pairReady && selectedCards[0].word === selectedCards[1].word
+
+  async function playWord(word: string) {
+    setRetryWord(word)
+    setAudioError(null)
+    try {
+      await speak(word)
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : 'Audio could not play.')
+    }
+  }
 
   function flip(card: MemoryCard) {
     if (pairReady || flipped.includes(card.id) || matched.includes(card.word)) return
     const next = [...flipped, card.id]
     setFlipped(next)
-    speak(card.word)
+    void playWord(card.word)
     if (next.length === 2) setTurns((value) => value + 1)
   }
 
   function continueGame() {
     if (isMatch) {
+      void playWord(selectedCards[0].word)
       const nextMatched = [...matched, selectedCards[0].word]
       setMatched(nextMatched)
       if (nextMatched.length === pairTotal) setComplete(true)
@@ -171,6 +210,7 @@ export function MemoryLanterns({ words, onExit, onComplete, speak }: {
   return <GameShell title="Memory Lanterns" eyebrow="Ninja Skills · Reading" score={`${matched.length}/${pairTotal} pairs`} onExit={onExit}>
     <section className="k-game-card">
       <p className="k-round-label">Match two lanterns with the same word</p>
+      <AudioFailureNotice message={audioError} onRetry={() => void playWord(retryWord)} />
       <div className="k-memory-grid">
         {deck.map((card) => {
           const visible = flipped.includes(card.id) || matched.includes(card.word)
@@ -191,15 +231,26 @@ export function CurrentWeekReading({ words, onExit, onComplete, speak }: {
   words: string[]
   onExit: () => void
   onComplete: (score: CompleteScore) => void
-  speak: (text: string) => void
+  speak: GameSpeak
 }) {
   const rounds = distinctWords(words)
   const [index, setIndex] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [complete, setComplete] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
   const word = rounds[index]
 
+  async function playWord() {
+    setAudioError(null)
+    try {
+      await speak(word)
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : 'Audio could not play.')
+    }
+  }
+
   function answer(value: boolean) {
+    setAudioError(null)
     const nextCorrect = correct + (value ? 1 : 0)
     setCorrect(nextCorrect)
     if (index + 1 >= rounds.length) setComplete(true)
@@ -216,7 +267,8 @@ export function CurrentWeekReading({ words, onExit, onComplete, speak }: {
       <h2>Look, listen, and say it</h2>
       <div className="k-reveal-word">{word}</div>
       <p>Point to the word, listen, then say it aloud.</p>
-      <button className="k-listen-button" type="button" onClick={() => speak(word)}><Volume2 size={24} /> Hear the word</button>
+      <button className="k-listen-button" type="button" onClick={() => void playWord()}><Volume2 size={24} /> Hear the word</button>
+      <AudioFailureNotice message={audioError} onRetry={() => void playWord()} />
       <p className="k-self-check-prompt">Did you say it correctly?</p>
       <div className="k-self-check-actions">
         <button className="k-game-wrong" type="button" onClick={() => answer(false)}><X size={17} /> Practice again</button>

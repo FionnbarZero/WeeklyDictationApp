@@ -1,4 +1,5 @@
 import type { EphemeralAudioClip } from '../readingPractice/contracts.ts'
+import { playManagedMediaElement } from '../audio/promptAudio.ts'
 
 export type RetainedReadingCapture = {
   readonly targetId: string
@@ -10,10 +11,5 @@ export function releaseRetainedReadingCaptures(captures: readonly RetainedReadin
 }
 
 export function playRetainedReadingClip(clip: EphemeralAudioClip): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const audio = new Audio(clip.url)
-    audio.onended = () => resolve()
-    audio.onerror = () => reject(new Error('The child recording could not be played.'))
-    void audio.play().catch(reject)
-  })
+  return playManagedMediaElement(new Audio(clip.url))
 }

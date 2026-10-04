@@ -2,6 +2,9 @@ import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import type { Dataset, Word } from '../domain/contracts.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { kindergartenCandidateIsUsableInLab } from './acquisitionLab.ts'
+import { datasetFromCanonicalCandidate } from '../curriculum/datasetProjection.ts'
+import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'
+import type { DictationContextCatalog } from '../curriculum/contextCatalog.ts'
 
 export type KindergartenCumulativePoolLab = {
   kind: 'active-unit' | 'unit-practice' | 'completed-unit'
@@ -27,6 +30,7 @@ type PoolInput = {
   unitId: string | null
   endDate: string
   description: string
+  contextCatalog: DictationContextCatalog
 }
 
 function cumulativePool(input: PoolInput): KindergartenCumulativePoolLab {
@@ -36,11 +40,12 @@ function cumulativePool(input: PoolInput): KindergartenCumulativePoolLab {
   const tier1: Word[] = []
   const tier2: Word[] = []
   for (const candidate of included) {
-    for (const occurrence of candidate.tier1) {
+    const projected = datasetFromCanonicalCandidate(candidate, input.contextCatalog)
+    for (const occurrence of projected.vocabulary!.tier1) {
       tier1.push({
         id: `${input.datasetId}:tier-1:${tier1.length + 1}`,
         text: occurrence.text,
-        sentence: '',
+        sentence: occurrence.sentence,
         datasetId: input.datasetId,
         grade: 'Kindergarten',
         sourceSlideId: candidate.source.sourceUnitId,
@@ -50,11 +55,11 @@ function cumulativePool(input: PoolInput): KindergartenCumulativePoolLab {
         audio: kindergartenAudioForText(occurrence.text),
       })
     }
-    for (const occurrence of candidate.tier2) {
+    for (const occurrence of projected.vocabulary!.tier2) {
       tier2.push({
         id: `${input.datasetId}:tier-2:${tier2.length + 1}`,
         text: occurrence.text,
-        sentence: '',
+        sentence: occurrence.sentence,
         datasetId: input.datasetId,
         grade: 'Kindergarten',
         sourceSlideId: candidate.source.sourceUnitId,
@@ -100,6 +105,7 @@ function usableBeforeOrOn(candidates: WeeklyDatasetCandidate[], date: string) {
 export function kindergartenUnitPoolForLab(
   candidates: WeeklyDatasetCandidate[],
   current: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
 ): KindergartenCumulativePoolLab {
   if (!current.curriculumUnit || !current.normalizedStartDate || !current.normalizedEndDate) {
     throw new Error('The current Kindergarten spreadsheet tab does not identify its curriculum unit.')
@@ -115,12 +121,14 @@ export function kindergartenUnitPoolForLab(
     unitId: unit.id,
     endDate: current.normalizedEndDate,
     description: `Development-only cumulative ${unit.label} pool derived from the Kindergarten workbook`,
+    contextCatalog,
   })
 }
 
 export function kindergartenNinjaUnitPoolsForLab(
   candidates: WeeklyDatasetCandidate[],
   current: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
 ): KindergartenCumulativePoolLab[] {
   if (!current.normalizedStartDate) return []
   const arrived = usableBeforeOrOn(candidates, current.normalizedStartDate)
@@ -146,6 +154,7 @@ export function kindergartenNinjaUnitPoolsForLab(
         unitId: unit.id,
         endDate: latest.normalizedEndDate!,
         description: `Development-only ${unit.label} Ninja Skills pool derived from the Kindergarten workbook`,
+        contextCatalog,
       })
     })
 }
@@ -161,18 +170,22 @@ function reviewTabs(candidates: WeeklyDatasetCandidate[]) {
 export function kindergartenCompletedUnitPoolForLab(
   candidates: WeeklyDatasetCandidate[],
   current: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
 ): KindergartenCumulativePoolLab | null {
   if (!current.normalizedStartDate) return null
   const completedReview = reviewTabs(candidates)
     .filter((candidate) => candidate.normalizedEndDate! < current.normalizedStartDate!)
     .sort((left, right) => right.normalizedEndDate!.localeCompare(left.normalizedEndDate!))[0]
   if (!completedReview) return null
-  return { ...kindergartenUnitPoolForLab(candidates, completedReview), kind: 'completed-unit' }
+  return { ...kindergartenUnitPoolForLab(candidates, completedReview, contextCatalog), kind: 'completed-unit' }
 }
 
-export function kindergartenUnitReviewForLab(candidates: WeeklyDatasetCandidate[]): KindergartenUnitReviewLab {
+export function kindergartenUnitReviewForLab(
+  candidates: WeeklyDatasetCandidate[],
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
+): KindergartenUnitReviewLab {
   const review = reviewTabs(candidates)
     .sort((left, right) => right.normalizedStartDate!.localeCompare(left.normalizedStartDate!))[0]
   if (!review) throw new Error('The Kindergarten workbook contains no explicit unit-review tab.')
-  return kindergartenUnitPoolForLab(candidates, review)
+  return kindergartenUnitPoolForLab(candidates, review, contextCatalog)
 }

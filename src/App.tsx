@@ -30,13 +30,19 @@ import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from './tier2/contrac
 import { resolveTier2ReadingLifecycle } from './tier2/lifecycle'
 import { tier2ReadingPathwayTargets } from './tier2/pathway'
 import { tier2ReadingProfileForScope } from './tier2/registry'
-import { LearningHub } from './learningHub/LearningHub.tsx'
 import { grade2LearningHubView, type Grade2LearningHubLaunch } from './grade2/learningHub.ts'
+import type { LearningHubProps } from './learningHub/LearningHub.tsx'
 import { useDialogFocus } from './accessibility/useDialogFocus.ts'
+import { playAudioPlan, stopActiveAudio } from './audio/lazyPromptAudio.ts'
 
 const Tier2ReadingPractice = lazy(() =>
   import('./readingPractice/Tier2ReadingPractice.tsx').then((module) => ({
     default: module.Tier2ReadingPractice,
+  })),
+)
+const LearningHub = lazy(() =>
+  import('./learningHub/LearningHub.tsx').then((module) => ({
+    default: (props: LearningHubProps<Grade2LearningHubLaunch>) => module.LearningHub(props),
   })),
 )
 const PracticeView = lazy(() =>
@@ -68,46 +74,14 @@ const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer
 
 function localStorageGet(key: string) { try { return window.localStorage.getItem(key) } catch { return null } }
 function localStorageSet(key: string, value: string) { try { window.localStorage.setItem(key, value); return true } catch { return false } }
-type SpeechPart = { text: string; rate: number; lang?: string }
-let stopActiveSpeech: (() => void) | null = null
+type SpeechPart = { text: string; rate: number; lang?: 'zh-CN' | 'en-GB' | 'en-IE' | 'en-US' }
 
 function playSpeechSequence(parts: SpeechPart[], pauseMs = AUDIO_PAUSE_MS) {
-  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  stopActiveSpeech?.(); window.speechSynthesis.cancel(); window.speechSynthesis.resume()
-  let partIndex = 0; let pauseTimer: number | undefined; let voiceTimer: number | undefined; let cancelled = false
-  let waitingForVoices = false
-  const speech = window.speechSynthesis
-  const removeVoiceListener = () => {
-    if (waitingForVoices) speech.removeEventListener('voiceschanged', startWhenReady)
-    waitingForVoices = false
-    if (voiceTimer) window.clearTimeout(voiceTimer)
-  }
-  const playNext = () => {
-    if (cancelled || partIndex >= parts.length) return
-    const part = parts[partIndex]; partIndex += 1
-    const utterance = new SpeechSynthesisUtterance(part.text); const language = part.lang || 'zh-CN'
-    utterance.lang = language; utterance.rate = part.rate; utterance.pitch = 1
-    const voice = speech.getVoices().find((item) => item.lang.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()))
-    if (voice) utterance.voice = voice
-    utterance.onend = () => { if (!cancelled && partIndex < parts.length) pauseTimer = window.setTimeout(playNext, pauseMs) }
-    utterance.onerror = () => { if (!cancelled) playNext() }
-    speech.resume(); speech.speak(utterance)
-  }
-  function startWhenReady() {
-    if (cancelled) return
-    removeVoiceListener()
-    playNext()
-  }
-  if (speech.getVoices().length === 0) {
-    waitingForVoices = true
-    speech.addEventListener('voiceschanged', startWhenReady)
-    voiceTimer = window.setTimeout(startWhenReady, 300)
-  } else {
-    playNext()
-  }
-  const stop = () => { cancelled = true; removeVoiceListener(); if (pauseTimer) window.clearTimeout(pauseTimer); speech.cancel(); if (stopActiveSpeech === stop) stopActiveSpeech = null }
-  stopActiveSpeech = stop
-  return stop
+  return playAudioPlan(parts.map((part) => ({
+    text: part.text,
+    language: part.lang || 'zh-CN',
+    rate: part.rate,
+  })), { pauseMs })
 }
 
 function speakWord(word: Word, warmup: boolean) { return playSpeechSequence(audioPartsForWord(word, warmup)) }
@@ -589,7 +563,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
     if (result.session) setSession(result.session)
   }
-  const navigate = (nextView: BaseView) => { if (view === 'practice') { leavePractice(nextView); return }; if (view === 'reading') setReadingPathway(null); setView(nextView) }
+  const navigate = (nextView: BaseView) => { stopActiveAudio(); if (view === 'practice') { leavePractice(nextView); return }; if (view === 'reading') setReadingPathway(null); setView(nextView) }
   const importLocalDeck = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -659,7 +633,9 @@ function HomeView({ child, profile, datasets, scores, acquisitionTarget, testRev
     }
     return <div className="page grade2-learning-hub">
       {completedSummary && <div className="success-banner"><span className="success-icon"><Check size={17} /></span><span><strong>Practice complete.</strong> {completedSummary}</span><button onClick={onHistory}>See progress <ArrowLeft size={14} /></button></div>}
-      <LearningHub model={model} onLaunch={launch} showTopbar={false} />
+      <Suspense fallback={<div className="loading-surface" role="status">Loading learning activities…</div>}>
+        <LearningHub model={model} onLaunch={launch} showTopbar={false} />
+      </Suspense>
       <section className="section-heading grade2-record-heading"><div><p className="eyebrow">Ninja Record</p><h2>Every week stays on record</h2></div><button className="text-button" onClick={onHistory}>View progress <ArrowLeft size={15} /></button></section>
       <div className="set-grid">{orderedDatasets.map((dataset, index) => <SetCard key={dataset.id} dataset={dataset} lifecycle={requireDatasetLifecycle(lifecycleResolution, dataset.id)} score={latestScore(scores, child.id, dataset.id)} tone={index % 2 === 0 ? 'yellow' : 'lavender'} />)}</div>
       <section className="today-strip"><div className="strip-icon"><Clock3 size={18} /></div><div><strong>{today ? `${today} dataset score${today === 1 ? '' : 's'} recorded today` : 'No dataset scores recorded today'}</strong><span>Acquisition scores appear when “Done for today” is selected; Final Boss scores require the complete Test Review.</span></div><div className="strip-arrow">→</div></section>

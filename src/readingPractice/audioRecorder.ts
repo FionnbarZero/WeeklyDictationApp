@@ -1,4 +1,5 @@
 import { ReadingRecorderError, type EphemeralAudioClip } from './contracts.ts'
+import { stopActiveAudio } from '../audio/promptAudio.ts'
 
 export const READING_RECORDING_LIMIT_MS = 8_000
 export const READING_AUDIO_MIME_CANDIDATES = [
@@ -92,6 +93,8 @@ export async function startEphemeralAudioRecording(
   dependencies: AudioRecorderDependencies = browserAudioRecorderDependencies(),
   maximumDurationMs = READING_RECORDING_LIMIT_MS,
 ): Promise<ActiveAudioRecording> {
+  // A microphone must never compete with an instruction, model, or game cue.
+  stopActiveAudio()
   let stream: AudioMediaStream
   try {
     stream = await dependencies.getUserMedia()

@@ -1,13 +1,28 @@
 {
   "schemaVersion": 1,
   "sourceSpreadsheetId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
-  "generatedAt": "2026-10-04T04:10:58Z",
+  "generatedAt": "2026-10-04T12:59:17Z",
   "voice": {
     "provider": "apple-local-beta",
     "name": "Tingting",
     "languageCode": "zh-CN",
-    "productionReplacement": "cmn-CN-Wavenet-C"
+    "productionCandidates": [
+      "cmn-CN-Wavenet-A",
+      "cmn-CN-Wavenet-D"
+    ]
   },
+  "instructions": {
+    "newTarget": {
+      "text": "Let's learn a new word.",
+      "storagePath": "audio/kindergarten/instructions/lets-learn-a-new-word.wav",
+      "provider": "apple-local-beta",
+      "voice": "Moira",
+      "languageCode": "en-IE",
+      "rateWordsPerMinute": 145,
+      "productionReplacement": "Amazon Polly Niamh"
+    }
+  },
+  "contexts": {},
   "assets": {
     "一": {
       "storagePath": "audio/kindergarten/u4e00.wav",

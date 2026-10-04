@@ -24,6 +24,7 @@ import {
 } from '../src/kindergartenLab/unitReview.ts'
 import { kindergartenWritingPracticeProfile } from '../src/practice/profiles/kindergarten.ts'
 import { practiceProfileForGrade } from '../src/practice/profiles/registry.ts'
+import { kindergartenDictationContextCatalog } from '../src/curriculum/kindergartenDictationContextCatalog.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/kindergarten-workbook.json', import.meta.url), 'utf8')) as Omit<SheetsWorkbookPayload, 'sourceType'>
 const candidates = inspectKindergartenWorkbook(fixture)
@@ -59,8 +60,8 @@ test('Kindergarten owns a distinct strategy with behavior equivalent to Grade 2 
   assert.notStrictEqual(kindergartenAcquisitionStrategy, grade2AcquisitionStrategy)
   assert.notStrictEqual(kindergartenAcquisitionStrategy.familiarDtTargets, grade2AcquisitionStrategy.familiarDtTargets)
   assert.notStrictEqual(kindergartenAcquisitionStrategy.familiarDtTargets[0], grade2AcquisitionStrategy.familiarDtTargets[0])
-  assert.equal(kindergartenAcquisitionStrategy.id, 'kindergarten-acquisition-v1')
-  assert.equal(kindergartenAcquisitionStrategy.version, 1)
+  assert.equal(kindergartenAcquisitionStrategy.id, 'kindergarten-acquisition-v2')
+  assert.equal(kindergartenAcquisitionStrategy.version, 2)
   assert.deepEqual(kindergartenAcquisitionStrategy.timers, grade2AcquisitionStrategy.timers)
   assert.deepEqual(kindergartenAcquisitionStrategy.introductionSequence, grade2AcquisitionStrategy.introductionSequence)
   assert.deepEqual(kindergartenAcquisitionStrategy.expandedSequence, grade2AcquisitionStrategy.expandedSequence)
@@ -104,9 +105,23 @@ test('only a canonical source-inspected vocabulary tab can enter the lab', () =>
   }), false)
 })
 
+test('an approved companion-Sheet context reaches the Kindergarten Dojo target', () => {
+  const candidate = week6()
+  const approvedCatalog = {
+    ...kindergartenDictationContextCatalog,
+    candidates: kindergartenDictationContextCatalog.candidates.map((context) =>
+      context.targetText === '九' ? { ...context, status: 'Approved' as const } : context),
+  }
+  const target = kindergartenAcquisitionTargetSet(candidate, approvedCatalog).targets.find((word) => word.text === '九')
+  assert.equal(target?.sentence, '我有九本书')
+
+  const draftTarget = kindergartenAcquisitionTargetSet(candidate).targets.find((word) => word.text === '九')
+  assert.equal(draftTarget?.sentence, '', 'Draft review rows remain unavailable to the child')
+})
+
 test('the Kindergarten lab runs the shared engine and keeps Familiar-DT diagnostics separate', () => {
   let state = startKindergartenAcquisitionLab(week6(), () => 0)
-  assert.equal(state.flow.strategyId, 'kindergarten-acquisition-v1')
+  assert.equal(state.flow.strategyId, 'kindergarten-acquisition-v2')
   assert.equal(state.flow.prompt?.kind, 'familiar-dt')
   assert.match(state.flow.prompt?.word.id || '', /^kindergarten-familiar-dt-\d+$/)
   assert.doesNotMatch(state.flow.prompt?.word.id || '', /^familiar-dt-/)
@@ -153,4 +168,16 @@ test('the current Unit 2 Final Boss grows only from arrived tabs in that spreads
   ])
   assert.deepEqual(ninjaUnits[1].tier1Words, ['牛', '羊'])
   assert.deepEqual(ninjaUnits[1].tier2Words, ['猫', '狗', '鸟'])
+})
+
+test('approved contexts follow a Kindergarten target into the cumulative Final Boss pool', () => {
+  const current = candidates.find((candidate) => candidate.rawDate === 'Week 8 10/05')
+  assert.ok(current)
+  const approvedCatalog = {
+    ...kindergartenDictationContextCatalog,
+    candidates: kindergartenDictationContextCatalog.candidates.map((context) =>
+      context.targetText === '牛' ? { ...context, status: 'Approved' as const } : context),
+  }
+  const finalBoss = kindergartenUnitPoolForLab(candidates, current, approvedCatalog)
+  assert.equal(finalBoss.dataset.words.find((word) => word.text === '牛')?.sentence, '一头牛吃草')
 })

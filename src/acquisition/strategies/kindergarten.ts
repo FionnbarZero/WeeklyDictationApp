@@ -13,11 +13,11 @@ const kindergartenFamiliarDtTargets: AcquisitionTarget[] = [
 }))
 
 // Kindergarten deliberately owns this definition. Its current values match the
-// approved Acquisition v3 teaching behavior, but no Grade 2 object is imported
+// approved Acquisition teaching behavior, but no Grade 2 object is imported
 // or shared, so a later Grade 2 calibration cannot silently change Kindergarten.
 export const kindergartenAcquisitionStrategy = {
-  id: 'kindergarten-acquisition-v1',
-  version: 1,
+  id: 'kindergarten-acquisition-v2',
+  version: 2,
   timers: {
     familiarDtSeconds: 5,
     earnedDtSeconds: 5,
@@ -32,6 +32,6 @@ export const kindergartenAcquisitionStrategy = {
   dtObservationMode: 'collect',
   familiarDtTargets: kindergartenFamiliarDtTargets,
   introductionSequence: ['familiar-dt', 'familiar-dt', 'show-copy', 'target'],
-  expandedSequence: ['target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'],
+  expandedSequence: ['target', 'target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'],
   correctionSequence: ['show-copy', 'show-copy', 'show-copy', 'target', 'familiar-dt', 'target'],
 } as const satisfies AcquisitionStrategy

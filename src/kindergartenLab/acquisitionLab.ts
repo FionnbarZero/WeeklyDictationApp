@@ -10,6 +10,9 @@ import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import type { Dataset } from '../domain/contracts.ts'
 import { kindergartenWritingLabProfile } from './practiceProfile.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
+import { datasetFromCanonicalCandidate } from '../curriculum/datasetProjection.ts'
+import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'
+import type { DictationContextCatalog } from '../curriculum/contextCatalog.ts'
 
 export type KindergartenLabRevealMethod = 'timer' | 'skip_timer'
 
@@ -45,21 +48,25 @@ function ephemeralDatasetId(candidate: WeeklyDatasetCandidate) {
   return `__kindergarten-lab__${candidate.datasetId}`
 }
 
-export function kindergartenAcquisitionTargetSet(candidate: WeeklyDatasetCandidate): AcquisitionTargetSet<AcquisitionTarget> {
+export function kindergartenAcquisitionTargetSet(
+  candidate: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
+): AcquisitionTargetSet<AcquisitionTarget> {
   if (!kindergartenCandidateIsUsableInLab(candidate)) {
     throw new Error('Kindergarten Acquisition lab requires one canonical inspected vocabulary tab from the registered Sheets profile.')
   }
   const datasetId = ephemeralDatasetId(candidate)
+  const projected = datasetFromCanonicalCandidate(candidate, contextCatalog)
   return {
     id: datasetId,
-    targets: candidate.tier1.map((word) => ({
-      id: `__kindergarten-lab__${word.targetOccurrenceId}`,
+    targets: projected.vocabulary!.tier1.map((word, index) => ({
+      id: `__kindergarten-lab__${word.id}`,
       text: word.text,
-      sentence: '',
+      sentence: word.sentence,
       datasetId,
       grade: 'Kindergarten',
       sourceUnitId: candidate.source.sourceUnitId,
-      sourcePosition: word.sourcePosition,
+      sourcePosition: candidate.tier1[index].sourcePosition,
       language: 'mandarin',
       tier: 'tier-1',
       activityType: 'dictation',
@@ -68,8 +75,11 @@ export function kindergartenAcquisitionTargetSet(candidate: WeeklyDatasetCandida
   }
 }
 
-export function kindergartenWritingDatasetForLab(candidate: WeeklyDatasetCandidate): Dataset {
-  const targetSet = kindergartenAcquisitionTargetSet(candidate)
+export function kindergartenWritingDatasetForLab(
+  candidate: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
+): Dataset {
+  const targetSet = kindergartenAcquisitionTargetSet(candidate, contextCatalog)
   return {
     id: targetSet.id,
     dateRange: candidate.dateRangeLabel || 'Fixture week',
@@ -83,8 +93,12 @@ export function kindergartenWritingDatasetForLab(candidate: WeeklyDatasetCandida
   }
 }
 
-export function startKindergartenAcquisitionLab(candidate: WeeklyDatasetCandidate, random = Math.random): KindergartenAcquisitionLabState {
-  const targetSet = kindergartenAcquisitionTargetSet(candidate)
+export function startKindergartenAcquisitionLab(
+  candidate: WeeklyDatasetCandidate,
+  random = Math.random,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
+): KindergartenAcquisitionLabState {
+  const targetSet = kindergartenAcquisitionTargetSet(candidate, contextCatalog)
   return {
     cohortId: targetSet.id,
     targetSet,

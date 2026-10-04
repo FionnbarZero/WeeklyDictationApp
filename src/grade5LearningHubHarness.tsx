@@ -2,7 +2,8 @@ import { createRoot } from 'react-dom/client'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
-import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { activePracticeWord, audioPartsForWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { playAudioPlan, playCachedWordAudioOnce, playReadingTeachingSequence, stopActiveAudio } from './audio/promptAudio.ts'
 import {
   answerGrade5AcquisitionLab,
   revealGrade5AcquisitionLab,
@@ -102,29 +103,20 @@ function candidateFor(request: Grade5ActivityLaunchRequest): WeeklyDatasetCandid
 }
 
 function speakWord(word: Word) {
-  if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(word.text)
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.55
-  window.speechSynthesis.speak(utterance)
-  return () => window.speechSynthesis.cancel()
+  return playAudioPlan(audioPartsForWord(word).map((part) => ({
+    text: part.text,
+    language: 'zh-CN',
+    rate: part.rate,
+    storagePath: part.text === word.text ? word.audio?.storagePath : word.audio?.contextStoragePath,
+  })))
 }
 
 function speakReadingReference(word: Word): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(word.text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.55
-    utterance.onend = () => resolve()
-    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
-  })
+  return playCachedWordAudioOnce(word, { playbackRate: 0.25 })
+}
+
+function speakReadingIntroduction(word: Word): Promise<void> {
+  return playReadingTeachingSequence(word, { playbackRate: 0.25, sentenceRate: 0.25 })
 }
 
 function speakCurrentWord() {
@@ -232,7 +224,7 @@ function startPrimaryReview() {
 }
 
 function leavePractice(message = 'Returned to the Grade 5 hub. This development-only run was discarded.') {
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+  stopActiveAudio()
   activePractice = null
   activeDataset = null
   activeDatasets = []
@@ -407,6 +399,8 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       profile={grade5Tier2ReadingProfile}
       pathway={pathway}
       label={label}
+      onPlayReference={speakReadingReference}
+      onPlayTeachingIntroduction={speakReadingIntroduction}
       onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
       onComplete={(summary) => leavePractice(`Reading complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This lab result was not saved.`)}
       sessionNote="Grade 5 development reading · recording and results are not saved"

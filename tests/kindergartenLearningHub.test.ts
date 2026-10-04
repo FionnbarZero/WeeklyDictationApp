@@ -52,6 +52,7 @@ test('Ninja Skills offers three games and keeps every arrived unit in a separate
     'Sky Writing',
   ])
   assert.equal(hub.sections[1].cohortPickerLabel, 'Choose a unit')
+  assert.equal(hub.sections[1].defaultCohortId, '__kindergarten-unit-2-ninja-lab__')
   assert.equal(hub.sections[1].cohortSummaryLabel, '2 units available')
   assert.deepEqual(hub.sections[1].cohorts.map((cohort) => cohort.label), [
     'Unit 1 · Building Communities',

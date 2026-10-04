@@ -16,6 +16,12 @@ import { releaseRetainedReadingCaptures, type RetainedReadingCapture } from './r
 import { assessTestReviewTarget, completeTestReview, createTestReviewState } from './state.ts'
 import { WritingResponseCollector } from './WritingResponseCollector.tsx'
 import './testReview.css'
+import {
+  promptAudioCompleted,
+  promptAudioStarted,
+  stopActiveAudio,
+  type PromptAudioAttempt,
+} from '../audio/promptAudio.ts'
 
 export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
@@ -23,6 +29,7 @@ export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly activityLabel: string
   readonly writingTimerSeconds?: number
   readonly onPlayReference: (target: TTarget) => Promise<void>
+  readonly onPlayWritingPrompt?: (target: TTarget) => PromptAudioAttempt
   readonly onDiscard: () => void
   readonly onComplete: (completion: TestReviewCompletion<TTarget>) => void
   readonly exitLabel?: string
@@ -35,6 +42,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   activityLabel,
   writingTimerSeconds = 10,
   onPlayReference,
+  onPlayWritingPrompt,
   onDiscard,
   onComplete,
   exitLabel = 'Exit without saving',
@@ -45,10 +53,12 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   const [review, setReview] = useState<TestReviewState>(() => createTestReviewState(targets))
   const [captures, setCaptures] = useState<RetainedReadingCapture[]>([])
   const [writingByTargetId, setWritingByTargetId] = useState<Record<string, WritingPadState>>({})
+  const [writingAudio, setWritingAudio] = useState<{ status: 'loading' | 'ready' | 'error'; error: string | null }>({ status: 'loading', error: null })
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const capturesRef = useRef<RetainedReadingCapture[]>([])
   const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
   const submittedRef = useRef(false)
+  const writingPlaybackRef = useRef(0)
   const discardDialogRef = useDialogFocus<HTMLElement>(confirmingDiscard, () => setConfirmingDiscard(false))
   const activeTarget = targets[index]
 
@@ -64,7 +74,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   }
 
   function finishCollection() {
-    window.speechSynthesis?.cancel()
+    stopActiveAudio()
     setPhase('review')
   }
 
@@ -77,6 +87,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   function advanceWriting(method: 'timer' | 'skip_timer') {
     if (!activeTarget) return
+    stopActiveAudio()
     collectionMethodsRef.current[activeTarget.id] = method
     if (index + 1 >= targets.length) finishCollection()
     else setIndex((current) => current + 1)
@@ -90,7 +101,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   }
 
   function discard() {
-    window.speechSynthesis?.cancel()
+    stopActiveAudio()
     releaseCaptures()
     setWritingByTargetId({})
     setConfirmingDiscard(false)
@@ -108,7 +119,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   useEffect(
     () => () => {
-      window.speechSynthesis?.cancel()
+      stopActiveAudio()
       releaseRetainedReadingCaptures(capturesRef.current)
     },
     [],
@@ -116,9 +127,60 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   useEffect(() => {
     if (phase === 'collect' && mode === 'writing' && activeTarget) {
-      void onPlayReference(activeTarget).catch(() => undefined)
+      const playback = writingPlaybackRef.current + 1
+      writingPlaybackRef.current = playback
+      setWritingAudio({ status: 'loading', error: null })
+      const attempt = onPlayWritingPrompt?.(activeTarget)
+      const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
+      void started.then(() => {
+        if (writingPlaybackRef.current !== playback) return
+        setWritingAudio({ status: 'ready', error: null })
+        if (attempt) void promptAudioCompleted(attempt).catch((audioError) => {
+          if (writingPlaybackRef.current !== playback) return
+          setWritingAudio({
+            status: 'error',
+            error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+          })
+        })
+      }).catch((audioError) => {
+        if (writingPlaybackRef.current !== playback) return
+        setWritingAudio({
+          status: 'error',
+          error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+        })
+      })
+      return () => {
+        writingPlaybackRef.current += 1
+        stopActiveAudio()
+      }
     }
-  }, [phase, mode, activeTarget, onPlayReference])
+  }, [phase, mode, activeTarget, onPlayReference, onPlayWritingPrompt])
+
+  function retryWritingAudio() {
+    if (mode !== 'writing' || !activeTarget) return
+    const playback = writingPlaybackRef.current + 1
+    writingPlaybackRef.current = playback
+    setWritingAudio({ status: 'loading', error: null })
+    const attempt = onPlayWritingPrompt?.(activeTarget)
+    const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
+    void started.then(() => {
+      if (writingPlaybackRef.current !== playback) return
+      setWritingAudio({ status: 'ready', error: null })
+      if (attempt) void promptAudioCompleted(attempt).catch((audioError) => {
+        if (writingPlaybackRef.current !== playback) return
+        setWritingAudio({
+          status: 'error',
+          error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+        })
+      })
+    }).catch((audioError) => {
+      if (writingPlaybackRef.current !== playback) return
+      setWritingAudio({
+        status: 'error',
+        error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+      })
+    })
+  }
 
   useEffect(() => {
     if (phase === 'review') window.scrollTo({ top: 0, behavior: 'auto' })
@@ -211,9 +273,11 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
             target={activeTarget}
             position={index + 1}
             timerSeconds={writingTimerSeconds}
+            audioStatus={writingAudio.status}
+            audioError={writingAudio.error}
             padState={writingByTargetId[activeTarget.id] || emptyWritingPadState}
             onPadStateChange={(update) => updateWriting(activeTarget.id, update)}
-            onReplay={() => void onPlayReference(activeTarget).catch(() => undefined)}
+            onRetryAudio={retryWritingAudio}
             onCollected={advanceWriting}
           />
         ) : (

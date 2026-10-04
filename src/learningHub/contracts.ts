@@ -41,6 +41,7 @@ export type LearningHubSection<Launch> = {
   available: boolean
   unavailableReason?: string
   cohortPickerLabel?: string
+  defaultCohortId?: string
   cohortSummaryLabel?: string
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]

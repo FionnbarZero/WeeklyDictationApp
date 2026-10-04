@@ -8,7 +8,13 @@ export type Word = {
   language?: 'mandarin' | 'english'
   tier?: 'tier-1' | 'tier-2' | 'tier-3'
   activityType?: 'dictation' | 'reading' | 'spelling'
-  audio?: { storagePath?: string; voice?: string; generatedAt?: string }
+  audio?: {
+    storagePath?: string
+    contextStoragePath?: string
+    voice?: string
+    contextVoice?: string
+    generatedAt?: string
+  }
 }
 
 export type DatasetSourceMetadata = {

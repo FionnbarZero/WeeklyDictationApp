@@ -295,7 +295,8 @@ test('audio sequence and warmup rate are stable', () => {
   const normal = audioPartsForWord(audioWord)
   const warmup = audioPartsForWord(audioWord, true)
   assert.deepEqual(normal.map((part) => part.text), [audioWord.text, audioWord.sentence, audioWord.text, audioWord.text])
-  assert.equal(AUDIO_PAUSE_MS, 1000)
+  assert.equal(AUDIO_PAUSE_MS, 750)
+  assert.ok(normal.every((part) => part.rate === normal[0].rate))
   assert.equal(warmup[0].rate, normal[0].rate * 1.5)
   assert.equal(warmup[1].rate, normal[1].rate * 1.5)
 })
@@ -433,17 +434,17 @@ test('Acquisition uses the approved Familiar DT pool and Introduction sequence',
   assert.equal(flow.step, 0)
 })
 
-test('Expanded Trials use the approved 10-position sequence and four target timers', () => {
+test('Expanded Trials use the approved 11-position sequence and five target timers', () => {
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = enterExpandedTrials(dataset)
-  const expectedKinds = ['target', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'familiar-dt', 'target']
+  const expectedKinds = ['target', 'target', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'target', 'familiar-dt', 'familiar-dt', 'familiar-dt', 'target']
   const targetTimers: number[] = []
   for (const expectedKind of expectedKinds) {
     assert.equal(flow.prompt?.kind, expectedKind)
     if (flow.prompt?.kind === 'target') targetTimers.push(flow.prompt.timerSeconds)
     flow = answerPrompt(flow, dataset)
   }
-  assert.deepEqual(targetTimers, [10, 9, 8, 7])
+  assert.deepEqual(targetTimers, [10, 9, 8, 7, 6])
   assert.equal(flow.targetIndex, 1)
   assert.equal(flow.phase, 'introduction')
   assert.deepEqual(flow.earnedDtPool.map((word) => word.id), [dataset.words[0].id])
@@ -454,12 +455,16 @@ test('DT positions use Familiar DTs until an Earned DT exists, then honor the 50
   let flow = enterExpandedTrials(dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   assert.equal(flow.step, 1)
+  assert.equal(flow.prompt?.kind, 'target')
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  assert.equal(flow.step, 2)
   assert.equal(flow.prompt?.kind, 'familiar-dt')
 
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
-  assert.equal(flow.step, 1)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
+  assert.equal(flow.step, 2)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   assert.equal(flow.prompt?.word.id, dataset.words[0].id)
   assert.equal(flow.prompt?.timerSeconds, 5)
@@ -506,14 +511,15 @@ test('successful weekly-target Correction resumes the next unfinished Expanded T
   let flow = enterExpandedTrials(dataset)
   flow = answerPrompt(flow, dataset, true)
   flow = answerPrompt(flow, dataset, true)
+  flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 2)
+  assert.equal(flow.step, 3)
   assert.equal(flow.prompt?.kind, 'target')
 
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.phase, 'correction')
-  assert.equal(flow.resumePosition?.step, 3)
-  assert.equal(flow.resumePosition?.expandedTargetAttempts, 2)
+  assert.equal(flow.resumePosition?.step, 4)
+  assert.equal(flow.resumePosition?.expandedTargetAttempts, 3)
 
   for (let index = 0; index < 3; index += 1) flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true)
@@ -521,8 +527,8 @@ test('successful weekly-target Correction resumes the next unfinished Expanded T
   flow = answerPrompt(flow, dataset, true)
 
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 3)
-  assert.equal(flow.expandedTargetAttempts, 2)
+  assert.equal(flow.step, 4)
+  assert.equal(flow.expandedTargetAttempts, 3)
   assert.equal(flow.prompt?.kind, 'familiar-dt')
   assert.equal(flow.prompt?.timerSeconds, 5)
 })
@@ -547,13 +553,14 @@ test('Earned DT checks are recorded separately and resume the interrupted target
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   assert.equal(shouldRecordAcquisitionAnswer(flow.prompt!), true)
   assert.equal(flow.prompt?.countsTowardWeeklyScore, true)
   flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.currentTarget?.id, dataset.words[1].id)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 2)
+  assert.equal(flow.step, 3)
   assert.equal(flow.prompt?.kind, 'target')
 })
 
@@ -562,6 +569,7 @@ test('incorrect Earned DT checks complete Correction, return to the pool, and re
   let flow = enterExpandedTrials(dataset)
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   const earnedWordId = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset, false)
@@ -574,7 +582,7 @@ test('incorrect Earned DT checks complete Correction, return to the pool, and re
   assert.ok(flow.earnedDtPool.some((word) => word.id === earnedWordId))
   assert.equal(flow.currentTarget?.id, dataset.words[1].id)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 2)
+  assert.equal(flow.step, 3)
 })
 
 test('three Earned DT errors remove earned status and restart that word from Introduction', () => {
@@ -582,6 +590,7 @@ test('three Earned DT errors remove earned status and restart that word from Int
   let flow = enterExpandedTrials(dataset)
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
   const earnedWordId = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset, false)
@@ -627,6 +636,7 @@ test('Earned-DT reacquisition preserves and returns to the exact interrupted wee
   while (flow.targetIndex === 0) flow = answerPrompt(flow, dataset)
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset)
   flow = answerPrompt(flow, dataset, true, () => 0.75)
+  flow = answerPrompt(flow, dataset, true, () => 0.75)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   const reacquiredWordId = flow.prompt.word.id
   const interruptedTargetId = dataset.words[1].id
@@ -640,14 +650,14 @@ test('Earned-DT reacquisition preserves and returns to the exact interrupted wee
   assert.equal(flow.correctionRole, 'earned-dt')
   assert.equal(flow.currentTarget?.id, reacquiredWordId)
   assert.equal(flow.resumePosition?.currentTarget.id, interruptedTargetId)
-  assert.equal(flow.resumePosition?.step, 2)
+  assert.equal(flow.resumePosition?.step, 3)
 
   while (flow.phase === 'introduction') flow = answerPrompt(flow, dataset, true, () => 0.75)
   while (flow.correctionRole === 'earned-dt') {
     if (flow.prompt?.kind === 'familiar-dt' || flow.prompt?.kind === 'earned-dt') {
       assert.equal(flow.prompt.kind, 'familiar-dt')
       assert.equal(flow.resumePosition?.currentTarget.id, interruptedTargetId)
-      assert.equal(flow.resumePosition?.step, 2)
+      assert.equal(flow.resumePosition?.step, 3)
     }
     flow = answerPrompt(flow, dataset, true, () => 0.75)
   }
@@ -655,7 +665,7 @@ test('Earned-DT reacquisition preserves and returns to the exact interrupted wee
   assert.equal(flow.currentTarget?.id, interruptedTargetId)
   assert.equal(flow.targetIndex, 1)
   assert.equal(flow.phase, 'expanded-trials')
-  assert.equal(flow.step, 2)
+  assert.equal(flow.step, 3)
   assert.equal(flow.resumePosition, undefined)
   assert.ok(flow.earnedDtPool.some((word) => word.id === reacquiredWordId))
 
@@ -740,8 +750,8 @@ test('legacy Established-DT local state hydrates and resumes with Familiar-DT fi
   const resumed = resumeAcquisitionFlow(acquisitionProgressFor(reloaded, 'maya', currentDataset.id)?.flow, currentDataset, 'Grade 2', () => 0)
   assert.equal(reloaded.distractorTargetObservations[0].poolType, 'familiar')
   assert.equal(reloaded.distractorTargetObservations[0].wordId, 'familiar-dt-1')
-  assert.equal(resumed.strategyId, 'grade2-acquisition-v3')
-  assert.equal(resumed.strategyVersion, 3)
+  assert.equal(resumed.strategyId, 'grade2-acquisition-v4')
+  assert.equal(resumed.strategyVersion, 4)
   assert.equal(resumed.targetIndex, started.targetIndex)
   assert.equal(resumed.phase, started.phase)
   assert.equal(resumed.step, started.step)

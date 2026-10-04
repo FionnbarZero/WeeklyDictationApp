@@ -18,6 +18,11 @@ export type AcquisitionPhase = 'introduction' | 'expanded-trials' | 'correction'
 export type AcquisitionPromptKind = 'familiar-dt' | 'earned-dt' | 'show-copy' | 'target'
 export type DistractorTrialPoolType = 'familiar' | 'earned'
 
+export type AcquisitionCorrectionPolicy = {
+  readonly assessmentMode: 'scored' | 'feedback-only'
+  readonly finalExpandedFailure: 'complete-after-correction' | 'retry-target-after-correction'
+}
+
 export type AcquisitionTimerConfig = {
   familiarDtSeconds: number
   earnedDtSeconds: number
@@ -73,6 +78,7 @@ export type AcquisitionStrategy<TTarget extends AcquisitionTarget = AcquisitionT
   readonly version: number
   readonly timers: AcquisitionTimerConfig
   readonly dtObservationMode: 'collect' | 'discard'
+  readonly correctionPolicy?: AcquisitionCorrectionPolicy
   readonly familiarDtTargets: readonly TTarget[]
   readonly introductionSequence: readonly AcquisitionSequenceToken[]
   readonly expandedSequence: readonly AcquisitionSequenceToken[]

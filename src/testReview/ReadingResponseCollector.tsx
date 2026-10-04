@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Headphones, Mic, RotateCcw, Square } from 'lucide-react'
+import { ArrowLeft, Check, Mic, Square } from 'lucide-react'
 import {
   browserSupportsAudioRecording,
   startEphemeralAudioRecording,
@@ -7,7 +7,7 @@ import {
 } from '../readingPractice/audioRecorder.ts'
 import { ReadingRecorderError, type EphemeralAudioClip } from '../readingPractice/contracts.ts'
 import type { TestReviewTarget } from './contracts.ts'
-import { playRetainedReadingClip, type RetainedReadingCapture } from './retainedReadingClips.ts'
+import type { RetainedReadingCapture } from './retainedReadingClips.ts'
 
 type RecordingStatus = 'idle' | 'requesting' | 'recording' | 'recorded' | 'error'
 
@@ -108,10 +108,6 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
     </>}
     {status === 'recorded' && clip && <>
       <p className="deferred-captured"><Check size={17} /> Recording captured. It will be compared on the final page.</p>
-      <div className="deferred-inline-actions">
-        <button className="replay-button" type="button" onClick={() => void playRetainedReadingClip(clip)}><Headphones size={16} /> Check recording</button>
-        <button className="replay-button" type="button" onClick={() => void startRecording()}><RotateCcw size={16} /> Record again</button>
-      </div>
       <button className="primary-button deferred-next-button" type="button" onClick={keepAndContinue}>Save response and continue <ArrowLeft size={17} /></button>
     </>}
     {(!supported || status === 'error') && <div className="recording-fallback" role="alert">

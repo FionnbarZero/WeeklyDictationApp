@@ -80,12 +80,13 @@ test('Kindergarten separates Ninja Skills by selectable unit', async ({ page }) 
 
   await ninja.click()
   const unitPicker = page.getByLabel('Choose a unit')
-  await expect(unitPicker).toHaveValue('__kindergarten-unit-1-ninja-lab__')
-  await expect(page.getByText('14 writing · 9 reading')).toBeVisible()
-  await unitPicker.selectOption('__kindergarten-unit-2-ninja-lab__')
+  await expect(unitPicker).toHaveValue('__kindergarten-unit-2-ninja-lab__')
   await expect(page.getByText('2 writing · 3 reading')).toBeVisible()
   await expect(page.getByText('牛', { exact: true })).toBeVisible()
   await expect(page.getByText('猫', { exact: true })).toBeVisible()
+  await unitPicker.selectOption('__kindergarten-unit-1-ninja-lab__')
+  await expect(page.getByText('14 writing · 9 reading')).toBeVisible()
+  await unitPicker.selectOption('__kindergarten-unit-2-ninja-lab__')
   await page.getByRole('button', { name: 'Listening Lily Pads', exact: true }).click()
   await expect(page.getByText('Word 1 of 3')).toBeVisible()
   await page.getByRole('button', { name: 'Exit game' }).click()
@@ -112,7 +113,124 @@ for (const exitCase of exitCases) {
   })
 }
 
-test('Kindergarten writing automatically plays and replays a cached Mandarin recording', async ({ page }) => {
+test('Kindergarten announces the first teaching presentation of a new reading target', async ({ page }) => {
+  await page.addInitScript(() => {
+    const spokenInstructions: string[] = []
+    const playedInstructionAudio: string[] = []
+    Object.defineProperty(window, '__spokenReadingInstructions', { value: spokenInstructions })
+    Object.defineProperty(window, '__playedReadingInstructionAudio', { value: playedInstructionAudio })
+
+    class FakeMediaRecorder {
+      static isTypeSupported() { return true }
+      state = 'inactive'
+      mimeType = 'audio/webm'
+      ondataavailable: null | ((event: { data: Blob }) => void) = null
+      onerror: null | ((event: Event) => void) = null
+      onstop: null | (() => void) = null
+      start() { this.state = 'recording' }
+      stop() {
+        this.state = 'inactive'
+        this.ondataavailable?.({ data: new Blob(['child-reading'], { type: this.mimeType }) })
+        this.onstop?.()
+      }
+    }
+
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      voice: SpeechSynthesisVoice | null = null
+      onstart: null | ((event: SpeechSynthesisEvent) => void) = null
+      onend: null | ((event: SpeechSynthesisEvent) => void) = null
+      onerror: null | ((event: SpeechSynthesisErrorEvent) => void) = null
+      constructor(readonly text: string) {}
+    }
+
+    class FakeAudio {
+      src = ''
+      playbackRate = 1
+      preload = ''
+      readonly listeners = new Map<string, Set<() => void>>()
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        const listeners = this.listeners.get(type) || new Set<() => void>()
+        listeners.add(listener as () => void)
+        this.listeners.set(type, listeners)
+      }
+      removeEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        this.listeners.get(type)?.delete(listener as () => void)
+      }
+      load() {}
+      pause() {}
+      removeAttribute() { this.src = '' }
+      play() {
+        playedInstructionAudio.push(this.src)
+        window.setTimeout(() => {
+          for (const listener of this.listeners.get('ended') || []) listener()
+        }, 0)
+        return Promise.resolve()
+      }
+    }
+
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance })
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() { return [] },
+        resume() {},
+        speak(utterance: SpeechSynthesisUtterance) {
+          spokenInstructions.push(utterance.text)
+          window.setTimeout(() => utterance.onerror?.({} as SpeechSynthesisErrorEvent), 0)
+        },
+      },
+    })
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeMediaRecorder })
+    Object.defineProperty(window, 'Audio', { configurable: true, value: FakeAudio })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { async getUserMedia() { return { getTracks: () => [{ stop() {} }] } } },
+    })
+    URL.createObjectURL = () => '/audio/kindergarten/u7238-u7238.wav?child-reading'
+    URL.revokeObjectURL = () => undefined
+    HTMLMediaElement.prototype.play = function () {
+      window.setTimeout(() => this.dispatchEvent(new Event('ended')), 0)
+      return Promise.resolve()
+    }
+  })
+
+  await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
+  await page.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await page.getByRole('button', { name: 'High-frequency words', exact: true }).click()
+
+  await expect.poll(() => page.evaluate(() => (
+    window as Window & { __spokenReadingInstructions: string[] }
+  ).__spokenReadingInstructions)).not.toContain("Let's learn a new word.")
+
+  for (let familiarTrial = 0; familiarTrial < 2; familiarTrial += 1) {
+    await page.getByRole('button', { name: 'Record my reading' }).click()
+    await page.getByRole('button', { name: 'Stop recording' }).click()
+    await page.getByRole('button', { name: 'Yes' }).click()
+  }
+
+  await expect.poll(() => page.evaluate(() => (
+    window as Window & { __playedReadingInstructionAudio: string[] }
+  ).__playedReadingInstructionAudio.filter((source) => source.includes('/instructions/lets-learn-a-new-word.wav')).length)).toBe(1)
+  await expect(page.getByRole('button', { name: 'Record my reading' })).toBeVisible()
+  const finalTeachingSources = await page.evaluate(() => (
+    window as Window & { __playedReadingInstructionAudio: string[] }
+  ).__playedReadingInstructionAudio.slice(-4))
+  expect(finalTeachingSources[0]).toMatch(/\/audio\/kindergarten\/instructions\/lets-learn-a-new-word\.wav$/)
+  expect(finalTeachingSources.slice(1)).toEqual([
+    expect.stringMatching(/\/audio\/kindergarten\/u732b\.wav$/),
+    expect.stringMatching(/\/audio\/kindergarten\/u732b\.wav$/),
+    expect.stringMatching(/\/audio\/kindergarten\/u732b\.wav$/),
+  ])
+  expect(await page.evaluate(() => (
+    window as Window & { __spokenReadingInstructions: string[] }
+  ).__spokenReadingInstructions)).toEqual([])
+})
+
+test('Kindergarten writing automatically plays without requiring a replay control', async ({ page }) => {
   const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
   await page.addInitScript(() => {
     const promptAudioPlays: string[] = []
@@ -131,10 +249,9 @@ test('Kindergarten writing automatically plays and replays a cached Mandarin rec
   await expect.poll(() => page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays.length)).toBe(1)
   const firstSource = await page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays[0])
   expect(firstSource).toMatch(/\/audio\/kindergarten\/u[0-9a-f]+\.wav$/)
-  await expect(page.getByText('Prompt audio plays automatically · You can replay it anytime')).toBeVisible()
-
-  await page.getByRole('button', { name: 'Replay sequence' }).click()
-  await expect.poll(() => page.evaluate(() => (window as Window & { __promptAudioPlays: string[] }).__promptAudioPlays.length)).toBe(2)
+  await expect(page.getByText('Prompt audio plays automatically')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Replay sequence' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   expectNoBrowserErrors()
 })
 
@@ -238,9 +355,9 @@ test('Kindergarten Spirit Realm reading plays the child before the cached word a
   await page.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
   await page.getByRole('button', { name: 'Reading mastery', exact: true }).click()
 
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
   await page.getByRole('button', { name: 'Record my reading' }).click()
   await page.getByRole('button', { name: 'Stop recording' }).click()
-  await page.getByRole('button', { name: 'Compare my reading' }).click()
 
   await expect(page.getByText('Did your reading match the example?')).toBeVisible()
   await expect.poll(() => page.evaluate(() => (
@@ -249,12 +366,82 @@ test('Kindergarten Spirit Realm reading plays the child before the cached word a
   const playbackOrder = await page.evaluate(() => (
     window as Window & { __masteryReadingPlaybackOrder: string[] }
   ).__masteryReadingPlaybackOrder)
-  expect(playbackOrder[0]).toBe('child:http://127.0.0.1:5185/audio/kindergarten/u7238-u7238.wav?child-recording')
-  expect(playbackOrder[1]).toMatch(/^model:http:\/\/127\.0\.0\.1:5185\/audio\/kindergarten\/u[0-9a-f]+(?:-u[0-9a-f]+)*\.wav$/)
+  expect(playbackOrder[0]).toMatch(/^child:http:\/\/127\.0\.0\.1:\d+\/audio\/kindergarten\/u7238-u7238\.wav\?child-recording$/)
+  expect(playbackOrder[1]).toMatch(/^model:http:\/\/127\.0\.0\.1:\d+\/audio\/kindergarten\/u[0-9a-f]+(?:-u[0-9a-f]+)*\.wav$/)
 
   await page.getByRole('button', { name: 'Yes' }).click()
   await expect(page.getByText(/Reading Mastery · 2 of 9/)).toBeVisible()
   expectNoBrowserErrors()
+})
+
+test('Kindergarten Spirit Realm stops an active reading comparison when Skip Timer scoring advances', async ({ page }) => {
+  await page.addInitScript(() => {
+    class FakeMediaRecorder {
+      static isTypeSupported() { return true }
+      state = 'inactive'
+      mimeType = 'audio/webm'
+      ondataavailable: null | ((event: { data: Blob }) => void) = null
+      onerror: null | ((event: Event) => void) = null
+      onstop: null | (() => void) = null
+      start() { this.state = 'recording' }
+      stop() {
+        this.state = 'inactive'
+        this.ondataavailable?.({ data: new Blob(['child-reading'], { type: this.mimeType }) })
+        this.onstop?.()
+      }
+    }
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: FakeMediaRecorder })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { async getUserMedia() { return { getTracks: () => [{ stop() {} }] } } },
+    })
+    URL.createObjectURL = () => '/audio/kindergarten/u7238-u7238.wav?unfinished-child-recording'
+    URL.revokeObjectURL = () => undefined
+    let pauseCount = 0
+    Object.defineProperty(window, '__readingPauseCount', { get: () => pauseCount })
+    HTMLMediaElement.prototype.play = function () { return Promise.resolve() }
+    HTMLMediaElement.prototype.pause = function () { pauseCount += 1 }
+  })
+
+  await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
+  await page.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
+  await page.getByRole('button', { name: 'Reading mastery', exact: true }).click()
+  await page.getByRole('button', { name: 'Record my reading' }).click()
+  await page.getByRole('button', { name: 'Stop recording' }).click()
+  await expect(page.getByText(/your voice plays first/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Yes' }).click()
+  await expect(page.getByText(/Reading Mastery · 2 of 9/)).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as Window & { __readingPauseCount: number }).__readingPauseCount)).toBeGreaterThan(0)
+})
+
+test('Kindergarten Ninja Skills exposes retry and teacher help when audio fails', async ({ page }) => {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function () {
+      return Promise.reject(new DOMException('Playback was blocked.', 'NotAllowedError'))
+    }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() { return [] },
+        resume() {},
+        speak(utterance: SpeechSynthesisUtterance) {
+          window.setTimeout(() => utterance.onerror?.({} as SpeechSynthesisErrorEvent), 0)
+        },
+      },
+    })
+  })
+
+  await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
+  await page.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+  await page.getByRole('button', { name: 'Listening Lily Pads', exact: true }).click()
+
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Ask a teacher for help')
+  await expect(alert.getByRole('button', { name: 'Try audio again' })).toBeVisible()
 })
 
 test('Kindergarten cached Mandarin audio is served and accepted by the browser media engine', async ({ page }) => {
@@ -268,7 +455,7 @@ test('Kindergarten cached Mandarin audio is served and accepted by the browser m
   const response = await audioResponse
   expect([200, 206]).toContain(response.status())
   expect(response.headers()['content-type']).toContain('audio/wav')
-  await expect(page.getByText('Prompt audio plays automatically · You can replay it anytime')).toBeVisible()
+  await expect(page.getByText('Prompt audio plays automatically')).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
   expectNoBrowserErrors()
 })
@@ -279,6 +466,17 @@ test('Kindergarten writing exposes an actionable error when browser playback fai
     HTMLMediaElement.prototype.play = function () {
       return Promise.reject(new DOMException('Playback was blocked.', 'NotAllowedError'))
     }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() { return [] },
+        resume() {},
+        speak(utterance: SpeechSynthesisUtterance) {
+          window.setTimeout(() => utterance.onerror?.({} as SpeechSynthesisErrorEvent), 0)
+        },
+      },
+    })
   })
 
   await page.goto('/kindergarten-learning-lab.html')
@@ -287,7 +485,7 @@ test('Kindergarten writing exposes an actionable error when browser playback fai
   await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
 
   const alert = page.getByRole('alert')
-  await expect(alert).toContainText('The Mandarin recording could not play.')
+  await expect(alert).toContainText('Audio could not play. Try again or ask a teacher for help.')
   await expect(alert.getByRole('button', { name: 'Try audio again' })).toBeVisible()
   const timer = page.locator('.timer')
   const blockedTimerValue = await timer.innerText()

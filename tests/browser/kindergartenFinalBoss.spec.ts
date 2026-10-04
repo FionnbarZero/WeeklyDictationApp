@@ -65,6 +65,35 @@ test('Kindergarten writing Final Boss submits one mixed final score', async ({ p
   await expect(page.getByText('7 of 14 correct')).toBeVisible()
 })
 
+test('Kindergarten writing Final Boss blocks the timer and exposes recovery when prompt audio fails', async ({ page }) => {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function () {
+      return Promise.reject(new DOMException('Playback was blocked.', 'NotAllowedError'))
+    }
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices() { return [] },
+        resume() {},
+        speak(utterance: SpeechSynthesisUtterance) {
+          window.setTimeout(() => utterance.onerror?.({} as SpeechSynthesisErrorEvent), 0)
+        },
+      },
+    })
+  })
+
+  await openFinalBoss(page, 'Writing Test')
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Ask a teacher for help')
+  await expect(alert.getByRole('button', { name: 'Try audio again' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeDisabled()
+  const timer = page.locator('.deferred-writing-timer')
+  const blockedValue = await timer.innerText()
+  await page.waitForTimeout(1_100)
+  await expect(timer).toHaveText(blockedValue)
+})
+
 test('Kindergarten Final Boss confirms before discarding an unfinished response', async ({ page }) => {
   await openFinalBoss(page, 'Writing Test')
   await page.getByRole('button', { name: 'Skip Timer' }).click()
@@ -214,12 +243,12 @@ test('Kindergarten reading Final Boss plays the child recording before the corre
 
   await expect(firstRow.getByText('Comparison complete. Choose Yes or Not yet.')).toBeVisible()
   await expect(assessment).toBeEnabled()
-  await expect
-    .poll(() =>
-      page.evaluate(() => (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.slice(0, 2)),
-    )
-    .toEqual([
-      'child:blob:child-1',
-      'model:http://127.0.0.1:5185/audio/kindergarten/u732b.wav',
-    ])
+  await expect.poll(() =>
+    page.evaluate(() => (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.length),
+  ).toBeGreaterThanOrEqual(2)
+  const playbackOrder = await page.evaluate(() =>
+    (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.slice(0, 2),
+  )
+  expect(playbackOrder[0]).toBe('child:blob:child-1')
+  expect(playbackOrder[1]).toMatch(/^model:http:\/\/127\.0\.0\.1:\d+\/audio\/kindergarten\/u732b\.wav$/)
 })
