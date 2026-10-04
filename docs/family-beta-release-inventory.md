@@ -61,7 +61,7 @@ Do not promote a Grade 2 persistence-affecting change until the exact family-bro
 1. Confirm the exact child bookmarks use the two dedicated Firebase sites and the unchanged Grade 2 origin.
 2. Finish the adult activity-acceptance and observation fields in both session-only release manifests.
 3. Correct Kindergarten's rewritten-root cache behavior through an approved exact-artifact promotion, not an unreviewed rebuild.
-4. Export and checksum the real Grade 2 browser state, rehearse preview/apply/interruption/replay/rollback on a disposable copy, and record the evidence.
+4. Use the [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md) to capture the real browser state locally, rehearse preview/apply/interruption/replay/rollback on a disposable copy, and record only the non-identifying evidence.
 5. Promote the exact Grade 2 safety artifact on its existing origin only after its backup and rollback gates pass.
 6. Rehearse critical and high-severity containment decisions and retain the non-identifying record.
 

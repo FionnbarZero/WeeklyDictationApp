@@ -91,13 +91,15 @@ Merged Grade 2 source includes a parent-facing **Protect progress** control. **D
 
 **Apply selected-profile restore** requires explicit confirmation and first downloads an automatic pre-restore backup. It writes application state and both recovery journals through one restore journal, verifies every write, rolls back a failed transaction, replays a known partial transaction at startup, and fails closed without overwriting unexpected newer storage. Exact replay is idempotent. These controls are code-complete but do not close C0 until they pass an operator rehearsal with a disposable copy of real family-browser state.
 
+The current live Grade 2 artifact does not expose these controls yet. For the first safety release only, use the origin-bound, download-only capture and isolated candidate procedure in [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md). It does not write the live browser profile or send the captured state over the network.
+
 For each pre-release backup:
 
 1. Open the exact Grade 2 child-facing origin and select **Protect progress** outside an active activity.
 2. Download the verified JSON file and keep it in private family-controlled storage.
 3. Select that same file under **Preview restore** and require a verified result.
 4. Record the filename, complete SHA-256 value, creation time, application version, and preview result in the release manifest. Do not attach the backup itself to a bug report.
-5. Import the backup into an isolated rehearsal copy of the same-origin browser state and verify the before/after report, automatic pre-restore backup, exact replay, and startup recovery. Never use the only live child profile as the first apply target.
+5. Run the [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md) against an isolated same-origin copy and verify the before/after report, automatic pre-restore backup, exact replay, startup recovery, failure rollback, and unexpected-newer-storage guard. Never use the only live child profile as the first apply target.
 6. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup and rehearsal evidence have been independently retained.
 
 Before any Grade 2 change that can affect persistence, create a verified whole-local-practice-state backup. It deliberately contains records for every profile stored in that browser so recovery evidence is not discarded, while preview and apply are bound to the recorded origin and selected profile. Treat the file as private family data. It contains:
