@@ -3,10 +3,10 @@
   "grade": "grade2",
   "displayName": "Grade 2",
   "status": "Family beta",
-  "persistence": "Tier 1 writing durable here · Tier 2 reading session only",
+  "persistence": "Tier 1 writing and Tier 2 reading metadata are durable",
   "applicationVersion": "0.2.0-stage2",
-  "sourceRevision": "c9613b61fd9bb7258b03d02cd0d3fc69779ca44b",
-  "sourceCommittedAt": "2026-10-03T21:43:35-07:00",
+  "sourceRevision": "ff52db8d6a995f6c6707f7944cfcdd031d0543b4",
+  "sourceCommittedAt": "2026-10-04T05:47:03-07:00",
   "dirty": false,
   "entry": "index.html",
   "build": {
@@ -24,7 +24,7 @@
     "artifactPath": "curriculum/grade2-presentation.json",
     "datasetCount": 6
   },
-  "fileTreeSha256": "df274d48cdcd7e16ee8fe057a2782d450d9d49417c5c2c5b19b6f5d77d04d775",
+  "fileTreeSha256": "abc130c77cf7c40c386cb61b6fbb3cf7a40996edae873bb6ddd4ab7662fe448a",
   "files": [
     {
       "path": ".nojekyll",
@@ -32,29 +32,39 @@
       "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
     },
     {
-      "path": "assets/app-BwVblV7V.js",
-      "bytes": 461147,
-      "sha256": "da10abcfc97f937985a02c4a77d4be14fe89ee567e4ab1de9be03b5446b6723f"
+      "path": "assets/app-DUvxdQJb.css",
+      "bytes": 45992,
+      "sha256": "a5490632df925b2f6f2e294abf7f617ad07c74dc2d92bef604238cabd3f93c80"
     },
     {
-      "path": "assets/app-CX8Svtwt.css",
-      "bytes": 41344,
-      "sha256": "f142a6b9a86357262a3bd197544f726705bbb3351c47e894b5d54f47de213c30"
+      "path": "assets/app-DWoNMjDd.js",
+      "bytes": 517553,
+      "sha256": "e827d90229b49fe72b97f56421dfec2b9c401e603b24d2363fddbaaabf3a3d07"
     },
     {
-      "path": "assets/audioRecorder-CfC2LhKZ.js",
-      "bytes": 4308,
-      "sha256": "764bdb3d0c707cfe29f99b4ac03cac88cae14185752904152c7e108de356b716"
+      "path": "assets/AuthScreen-XIobtnHW.js",
+      "bytes": 2335,
+      "sha256": "716cac4a8d1cb3f2c716b01d0f6644f6688db88ba0a22ade416202c8f4169148"
     },
     {
-      "path": "assets/automaticGrade2Curriculum-BiG6vPfB.js",
-      "bytes": 3544,
-      "sha256": "c63e865931114924633ce01f999a1c47d740cb4054df47c77154db79dbaf18ee"
+      "path": "assets/automaticGrade2Curriculum-B4VpxcPD.js",
+      "bytes": 3570,
+      "sha256": "fc1bceb90adbc5147204e1166b15a062b049917cbcc7cd24c91181407847b191"
     },
     {
-      "path": "assets/domain-C7Sw35IG.js",
-      "bytes": 64765,
-      "sha256": "98d2e785032343e81d4d45d1d5910ff13885eeb4173ca7acd88e03b2d8b947b3"
+      "path": "assets/browserSpeech-DJ_bY9Rq.js",
+      "bytes": 6508,
+      "sha256": "ea5914ea30fbaab6a346d4bff91bcbeb86f34667e31dff5696d285460723e2aa"
+    },
+    {
+      "path": "assets/config-CGcQAF4I.js",
+      "bytes": 6947,
+      "sha256": "177efe977eed7694a7c548a28cdf8941ca9f09db1efed6713f7948d6db8d2a49"
+    },
+    {
+      "path": "assets/EmptyPracticeViews-C7zamE2q.js",
+      "bytes": 4409,
+      "sha256": "07cf93bf3cab2a5a4adc5eced5c1ffa089364ff29ce7ead8fff58465767520b0"
     },
     {
       "path": "assets/engine-DHkT6is5.js",
@@ -62,9 +72,9 @@
       "sha256": "4fc1dcf9c96e4f24d27e8dfdcf1ad497b88688a38fdc6754b0f8c763a03cabbc"
     },
     {
-      "path": "assets/HistoryView-DqgzPuRh.js",
-      "bytes": 6119,
-      "sha256": "1319f20b87ef4e3760077769bab9f08f4d46906095a9ca86371697ef2a0c5475"
+      "path": "assets/HistoryView-DRR2CtRz.js",
+      "bytes": 7887,
+      "sha256": "5ce04cf0ec2397309d26f835d26be65d043515d3ef8af48919c6e2b898d28c6d"
     },
     {
       "path": "assets/index.esm-C0PLPHFW.js",
@@ -92,34 +102,44 @@
       "sha256": "9f49ef046fdeb53c76fc39ed3588f408e00d4c76e3a3182ffc6547615dc0198a"
     },
     {
-      "path": "assets/LocalBackupTools-Bj4NzLVD.js",
-      "bytes": 37210,
-      "sha256": "b474a47919a547adac51494d90c5c8ea0495cb163547e7b50f92082cd54d2546"
+      "path": "assets/LocalBackupTools-C82dtXAY.js",
+      "bytes": 37247,
+      "sha256": "8075dd8b4bfd12935a57c6b01013ae949e6da08ed9bd11217d1e8fded6f15b23"
     },
     {
-      "path": "assets/LocalRestoreGate-BEDHk7td.js",
+      "path": "assets/LocalRestoreGate-w1wrCjgH.js",
       "bytes": 920,
-      "sha256": "7429ca405fc6915ebc3e0158bc0f683196e1d958d0a92da0db0d9adec4a39572"
+      "sha256": "69f7e90badf3fea57eaf5569b4101c3d4fe3744394ba1f172006a0a8efdd5691"
     },
     {
-      "path": "assets/localRestoreJournal-B_XIRQf8.js",
-      "bytes": 2333,
-      "sha256": "a0b24a23914b5ab4812bcbb25ef2396d03f8cdcd45014cbab1a534d4d89e96d1"
+      "path": "assets/localRestoreJournal-ChzeOBoW.js",
+      "bytes": 2294,
+      "sha256": "df55bf7c6a737eddb4b9e255b588c2bed499eaef9e07bfb55c98b98764fccf2f"
     },
     {
-      "path": "assets/PracticeView-CzCiAfaS.js",
-      "bytes": 28182,
-      "sha256": "bcee89cea5e882baff413ec5edc5decfb6bfeb66f13b5909c426b79b6684e65b"
+      "path": "assets/PracticeView-D5vfJNGN.js",
+      "bytes": 32307,
+      "sha256": "9c37961e76c8ddf64c1d60346ca6762833373f4e4f94fc02327af887ea720728"
     },
     {
-      "path": "assets/PracticeView-TKGILwlB.css",
-      "bytes": 17763,
-      "sha256": "45896ce1cffe201e4a219420ad95335b7fed3600eca63aca6423a51f29463f85"
+      "path": "assets/PracticeView-DRqOKs4R.css",
+      "bytes": 19512,
+      "sha256": "dcbb9502fbd11964d40017920db130a677c55cf498ada180958f2cd2b04f4563"
     },
     {
-      "path": "assets/Tier2ReadingPractice--eauV9sI.js",
-      "bytes": 12112,
-      "sha256": "b80f0ef9e61d0f64dfc956a0027f8f98a63b1daad928eb9378dd9101df7e654c"
+      "path": "assets/ProfileModal-m9LGbzBI.js",
+      "bytes": 3226,
+      "sha256": "a12edb04b087ac78a679d34b1019eeea5468717b61cc6ec7673fbdf2c4146de6"
+    },
+    {
+      "path": "assets/Tier2ReadingPractice-BVdPeSvA.js",
+      "bytes": 12979,
+      "sha256": "80c79690e6deec1d57e1632d3603cc66753cd18a62942ef42ff923449f65bc90"
+    },
+    {
+      "path": "assets/useDialogFocus-Cey4LnlC.js",
+      "bytes": 1056,
+      "sha256": "7498346c6ce68a5e02d9ca37db070df38338f19816f7d69a477684eeedfde505"
     },
     {
       "path": "curriculum/grade2-presentation.json",
@@ -128,8 +148,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 1601,
-      "sha256": "e2810f1c9ecee122d550dc13a64f7eb5b6bdb7c634a00370c6a8195608675e37"
+      "bytes": 1589,
+      "sha256": "aef9f63b900dd00923281e1c60e8361da0576620494fb7325259fbc86959acb5"
     }
   ]
 }
