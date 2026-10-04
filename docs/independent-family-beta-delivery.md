@@ -1,6 +1,6 @@
 # Independent family beta delivery
 
-Status: Kindergarten and Grade 5 are independently hosted; Grade 2 repository controls are implemented but no Grade 2 preview or promotion is authorized yet.
+Status: Kindergarten and Grade 5 are independently hosted. Grade 2 is independently deployed at its existing GitHub Pages origin with automatic reviewed curriculum loading and a retained pre-change rollback deployment.
 
 This delivery path isolates all three releases while preserving the existing Grade 2 browser-storage origin. Grade 2 verified backups are deliberately origin-bound, so the Firebase Grade 2 site is preview-only and must never become the stable child destination.
 
@@ -25,6 +25,14 @@ Verified through the authenticated Firebase Hosting channel inventory on 2026-10
 | Grade 5 | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | `d9bf9c316262a8a8` | `37d0c7fd366ea59a530f5ad29682b8bc6d8cf592273d2f00e33b5d7a04dbacdb` | `candidate-a55d972ccb6f` | `2026-10-03T22:53:37.183Z` |
 
 Both live roots display the recorded revision and session-only status. Grade 5 uses the corrected `Cache-Control: no-store` rule for rewritten roots. Kindergarten still uses the earlier HTML-only rule, so `/` can receive Firebase's one-hour default cache; fix this only through an approved exact-artifact promotion.
+
+Verified through the safeguarded GitHub Pages promotion and a clean live-browser smoke test on 2026-10-03:
+
+| Grade | Source revision | Pages deployment | Artifact file-tree SHA-256 | Curriculum SHA-256 | Retained rollback deployment |
+| --- | --- | --- | --- | --- | --- |
+| Grade 2 | `c9613b61fd9bb7258b03d02cd0d3fc69779ca44b` | `45ebf71559c514912795afbb2c11ea0c237a953e` | `df274d48cdcd7e16ee8fe057a2782d450d9d49417c5c2c5b19b6f5d77d04d775` | `147c2eac63011c79fa83655102939931fc3a1611a6f6e091923800c8be34690c` | `8fffebee35a91fc31ba37a8d4dd1141517aaf023` |
+
+The live smoke test confirmed the displayed source revision, automatic loading of six weekly datasets, absence of the former upload input, expected browser-local storage keys, and no console, request, or HTTP failures. The published manifest records the exact offline snapshot packaging command used for this release.
 
 Verified through the authenticated Firebase Hosting channel inventory on 2026-10-04:
 
@@ -154,7 +162,7 @@ Site creation alone does not authorize a stable release. Before a Kindergarten o
 6. Run launch, exit, completion, session-only, console, and failed-request checks on the stable URL.
 7. Record the release in a grade-specific manifest.
 
-Before the first Grade 2 promotion, additionally require:
+For every Grade 2 promotion, additionally require:
 
 1. Confirm Kindergarten and Grade 5 bookmarks use their independent stable destinations.
 2. Package the exact clean Grade 2 revision and deploy that artifact to the disposable preview site.
