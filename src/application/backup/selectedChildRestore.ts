@@ -213,6 +213,25 @@ function validateDatasetReferences(state: AppState, childId: string) {
     if (!word || word.datasetId !== datasetId)
       throw new Error(`${label} references missing or mismatched word ${wordId}.`)
   }
+  const requireDistractorTarget = (value: AppState['distractorTargetObservations'][number]) => {
+    const dataset = datasets.get(value.datasetId)
+    if (!dataset) throw new Error(`Distractor observation ${value.id} references a missing dataset.`)
+    if (value.poolType === 'familiar') {
+      const familiarTarget = acquisitionPersistenceContext(
+        value.childId,
+        dataset,
+        dataset.grade,
+      ).strategy.familiarDtTargets.find((target) => target.id === value.wordId)
+      if (!familiarTarget || familiarTarget.text !== value.text) {
+        throw new Error(`Distractor observation ${value.id} references an invalid Familiar DT.`)
+      }
+      return
+    }
+    const earnedTarget = words.get(value.wordId)
+    if (!earnedTarget || earnedTarget.datasetId !== value.datasetId || earnedTarget.text !== value.text) {
+      throw new Error(`Distractor observation ${value.id} references a missing or mismatched Earned DT.`)
+    }
+  }
   for (const value of selected(state.results, childId)) {
     requireDataset(value.datasetId, `Result ${value.id}`)
     requireWord(value.datasetId, value.wordId, `Result ${value.id}`)
@@ -234,8 +253,7 @@ function validateDatasetReferences(state: AppState, childId: string) {
     requireDataset(value.datasetId, `Acquisition progression ${value.id}`)
   for (const value of selected(state.acquisitionProgressQuarantine, childId))
     requireDataset(value.datasetId, `Acquisition quarantine ${value.id}`)
-  for (const value of selected(state.distractorTargetObservations, childId))
-    requireWord(value.datasetId, value.wordId, `Distractor observation ${value.id}`)
+  for (const value of selected(state.distractorTargetObservations, childId)) requireDistractorTarget(value)
 }
 
 function validateAcquisition(state: AppState, childId: string, pending: readonly PendingAcquisitionCommit[]) {
