@@ -22,6 +22,7 @@ const archivedPrototypeInputs = {
 
 const familyBetaInputByGrade = {
   kindergarten: page('./kindergarten-learning-lab.html'),
+  grade2: page('./index.html'),
   grade5: page('./grade5-learning-hub.html'),
 } as const
 
@@ -63,8 +64,13 @@ function releaseIdentityHtml(fileName: string, gitRevision: string) {
 
 export default defineConfig(({ command, mode }) => {
   const familyBetaGrade = process.env.VITE_FAMILY_BETA_GRADE
-  if (mode === 'family-beta' && familyBetaGrade !== 'kindergarten' && familyBetaGrade !== 'grade5') {
-    throw new Error('A family-beta build requires VITE_FAMILY_BETA_GRADE=kindergarten or grade5.')
+  if (
+    mode === 'family-beta' &&
+    familyBetaGrade !== 'kindergarten' &&
+    familyBetaGrade !== 'grade2' &&
+    familyBetaGrade !== 'grade5'
+  ) {
+    throw new Error('A family-beta build requires VITE_FAMILY_BETA_GRADE=kindergarten, grade2, or grade5.')
   }
   const gitRevision = resolveBuildGitRevision({
     environmentRevision: process.env.VITE_GIT_REVISION,
@@ -73,7 +79,7 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
-    base: mode === 'public-preview' ? '/WeeklyDictationApp/' : '/',
+    base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [
       react(),
       {

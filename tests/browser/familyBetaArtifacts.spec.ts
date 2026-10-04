@@ -41,3 +41,28 @@ for (const app of apps) {
     expect(failedRequests).toEqual([])
   })
 }
+
+test('Grade 2 isolated artifact opens at its root with durable progress protection', async ({ page }) => {
+  const failedRequests: string[] = []
+  page.on('requestfailed', (request) => failedRequests.push(`${request.method()} ${request.url()}`))
+  page.on('response', (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`)
+  })
+
+  await page.goto('http://127.0.0.1:5199/')
+  const identity = page.locator('.release-identity')
+  await expect(identity).toContainText('Grade 2')
+  await expect(identity).toContainText('Family beta')
+  await expect(identity).toContainText('v0.2.0-stage2')
+  await expect(identity).toContainText('Tier 1 writing durable here')
+  await expect(identity).toContainText('Tier 2 reading session only')
+  await expect(identity).toContainText(/r[a-f0-9]{7}/)
+  await expect(page.getByRole('button', { name: 'Back up Grade 2 browser data' })).toBeVisible()
+
+  await expect
+    .poll(() => page.evaluate(() => Object.keys(window.localStorage)))
+    .toEqual(expect.arrayContaining(['weekly-dictation-child', 'weekly-dictation-state-v2']))
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Back up Grade 2 browser data' })).toBeVisible()
+  expect(failedRequests).toEqual([])
+})

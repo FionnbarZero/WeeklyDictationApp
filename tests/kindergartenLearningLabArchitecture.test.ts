@@ -28,7 +28,7 @@ test('the public preview build publishes only the explicit testing entry points 
   const packageJson = source('package.json')
   const testingPage = source('testing.html')
 
-  assert.match(viteConfig, /mode === 'public-preview' \? '\/WeeklyDictationApp\/' : '\/'/)
+  assert.match(viteConfig, /mode === 'public-preview' \? '\/WeeklyDictationApp\/' : mode === 'family-beta' \? '\.\/' : '\/'/)
   assert.match(viteConfig, /grade5LearningHub: page\('\.\/grade5-learning-hub\.html'\)/)
   assert.match(viteConfig, /kindergartenLearningLab: page\('\.\/kindergarten-learning-lab\.html'\)/)
   assert.match(viteConfig, /testing: page\('\.\/testing\.html'\)/)

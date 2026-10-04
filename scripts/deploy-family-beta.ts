@@ -53,9 +53,9 @@ function run(command: readonly string[]) {
 }
 
 function environmentSite(grade: FamilyBetaGrade) {
-  return grade === 'kindergarten'
-    ? environment.FAMILY_BETA_KINDERGARTEN_SITE_ID
-    : environment.FAMILY_BETA_GRADE5_SITE_ID
+  if (grade === 'kindergarten') return environment.FAMILY_BETA_KINDERGARTEN_SITE_ID
+  if (grade === 'grade2') return environment.FAMILY_BETA_GRADE2_PREVIEW_SITE_ID
+  return environment.FAMILY_BETA_GRADE5_SITE_ID
 }
 
 function deliveryIdentity() {
@@ -206,6 +206,11 @@ if (!['preview', 'promote', 'rollback'].includes(operation)) {
 }
 
 const identity = deliveryIdentity()
+if (identity.grade === 'grade2' && operation !== 'preview') {
+  throw new Error(
+    'Grade 2 uses Firebase Hosting for disposable preview only. Use the guarded Grade 2 Pages command for stable promotion or rollback.',
+  )
+}
 if (operation === 'preview') await preview(identity)
 if (operation === 'promote') await promote(identity)
 if (operation === 'rollback') await rollback(identity)

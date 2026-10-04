@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        grade: [kindergarten, grade5]
+        grade: [kindergarten, grade2, grade5]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

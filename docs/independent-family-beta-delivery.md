@@ -1,8 +1,8 @@
 # Independent family beta delivery
 
-Status: repository controls implemented; both Hosting sites, initial stable releases, and retained rollback channels are active; complete acceptance records remain open.
+Status: Kindergarten and Grade 5 are independently hosted; Grade 2 repository controls are implemented but no Grade 2 preview or promotion is authorized yet.
 
-This delivery path isolates the two session-only applications without moving Grade 2. The existing GitHub Pages origin remains the Grade 2 data origin until verified lossless restore makes an origin change safe.
+This delivery path isolates all three releases while preserving the existing Grade 2 browser-storage origin. Grade 2 verified backups are deliberately origin-bound, so the Firebase Grade 2 site is preview-only and must never become the stable child destination.
 
 ## Destinations
 
@@ -10,9 +10,10 @@ This delivery path isolates the two session-only applications without moving Gra
 | --- | --- | --- | --- | --- |
 | Kindergarten | `weeklydictationapp` | `weeklydictation-k-beta` | `https://weeklydictation-k-beta.web.app` | Session only |
 | Grade 5 | `weeklydictationapp` | `weeklydictation-g5-beta` | `https://weeklydictation-g5-beta.web.app` | Session only |
-| Grade 2 | unchanged | unchanged | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Browser-local Tier 1 writing |
+| Grade 2 preview | `weeklydictationapp` | `weeklydictation-g2-preview` | Temporary candidate channel only | Disposable synthetic or isolated state only |
+| Grade 2 stable | GitHub Pages | `gh-pages` branch | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Browser-local Tier 1 writing |
 
-The two additional Hosting sites are independent release channels. Deploying or rolling back either site does not replace the other site or the GitHub Pages artifact.
+The Firebase sites are independent release channels. Deploying a preview does not change a stable destination. Kindergarten and Grade 5 promote by cloning an approved Hosting version. Grade 2 promotes the same verified artifact to `gh-pages` with a new fast-forward deployment commit, preserving its origin and browser data.
 
 ## Current live records
 
@@ -40,6 +41,7 @@ Package one grade from a clean committed revision:
 
 ```sh
 npm run package:family-beta -- --grade kindergarten
+npm run package:family-beta -- --grade grade2
 npm run package:family-beta -- --grade grade5
 ```
 
@@ -51,7 +53,7 @@ Each command creates one root application under `family-beta-dist/<grade>` and a
 - every included file, byte count, and SHA-256; and
 - one file-tree checksum.
 
-The verifier rejects changed files, another grade's artifact, extra HTML entry points, a missing release identity, and dirty-worktree artifacts. GitHub's manual **Package independent family beta artifacts** workflow packages both grades from one explicitly supplied full revision and retains the downloadable artifacts for 30 days.
+The verifier rejects changed files, another grade's artifact, extra HTML entry points, a missing release identity, and dirty-worktree artifacts. A Grade 2 artifact must also contain `.nojekyll`. GitHub's manual **Package independent family beta artifacts** workflow packages all three grades from one explicitly supplied full revision and retains the downloadable artifacts for 30 days.
 
 ## Preview and promotion
 
@@ -69,6 +71,8 @@ npm run family-beta:preview -- \
 ```
 
 The executed preview deploys only to `candidate-<12-character-revision>` for seven days and then verifies that the hosted root displays the artifact's full revision.
+
+For Grade 2, substitute `--grade grade2` and `--confirm-site weeklydictation-g2-preview`. The Grade 2 preview must use only synthetic data or an isolated disposable state. Its different origin intentionally cannot accept the private origin-bound family backup.
 
 After adult approval, the initial stable promotion is a server-side clone of that exact preview version:
 
@@ -97,16 +101,47 @@ npm run family-beta:rollback -- \
 
 Append `--execute` only after the dry-run plan, manifest, preview, and adult acceptance record have been reviewed.
 
+## Grade 2 stable promotion
+
+Grade 2 remains on GitHub Pages because moving it would strand origin-bound browser state. The stable tool verifies a clean immutable Grade 2 artifact, requires the exact current `gh-pages` deployment, creates a new deployment commit containing only that artifact, and performs a normal fast-forward push. It never force-pushes or rebuilds.
+
+Dry-run the initial safety promotion:
+
+```sh
+npm run grade2-beta:promote -- \
+  --revision <full-reviewed-revision> \
+  --confirm-revision <full-reviewed-revision> \
+  --previous-deployment 8fffebee35a91fc31ba37a8d4dd1141517aaf023 \
+  --confirm-previous-deployment 8fffebee35a91fc31ba37a8d4dd1141517aaf023 \
+  --confirm-origin https://fionnbarzero.github.io/WeeklyDictationApp/
+```
+
+After approval, repeat with `--execute`. Record the resulting deployment commit in the manifest. The promoted artifact retires the obsolete Kindergarten and Grade 5 files from GitHub Pages; confirm those children use their dedicated Firebase destinations before execution.
+
+Rollback also creates a new fast-forward commit, using the retained target's exact tree:
+
+```sh
+npm run grade2-beta:rollback -- \
+  --target-deployment 8fffebee35a91fc31ba37a8d4dd1141517aaf023 \
+  --confirm-target-deployment 8fffebee35a91fc31ba37a8d4dd1141517aaf023 \
+  --current-deployment <current-gh-pages-deployment> \
+  --confirm-current-deployment <current-gh-pages-deployment> \
+  --confirm-origin https://fionnbarzero.github.io/WeeklyDictationApp/
+```
+
+The rollback target must remain in the current deployment history. Before rollback, download another verified Grade 2 backup when the affected build can do so safely. The prior GitHub Pages state remains at the same origin, but compatibility and any progress created after promotion still require review.
+
 ## Provisioning and release gates
 
-The one-time site creation was completed on 2026-10-03 with the Firebase-owning account. The provisioning commands remain here for recovery documentation only:
+Kindergarten and Grade 5 site creation was completed on 2026-10-03 with the Firebase-owning account. The Grade 2 preview-only site remains unprovisioned. Commands are retained here for recovery and the pending preview setup:
 
 ```sh
 npx firebase hosting:sites:create weeklydictation-k-beta --project weeklydictationapp
+npx firebase hosting:sites:create weeklydictation-g2-preview --project weeklydictationapp
 npx firebase hosting:sites:create weeklydictation-g5-beta --project weeklydictationapp
 ```
 
-Site creation alone does not authorize a stable release. Before the first promotion for each grade:
+Site creation alone does not authorize a stable release. Before a Kindergarten or Grade 5 promotion:
 
 1. Package and checksum a clean committed revision.
 2. Deploy its candidate channel and record its Hosting version and preview URL.
@@ -116,4 +151,12 @@ Site creation alone does not authorize a stable release. Before the first promot
 6. Run launch, exit, completion, session-only, console, and failed-request checks on the stable URL.
 7. Record the release in a grade-specific manifest.
 
-Grade 2 is deliberately unsupported by these scripts. The scripts also contain no GitHub Pages deployment path, so this work cannot move or overwrite its browser-local storage origin.
+Before the first Grade 2 promotion, additionally require:
+
+1. Confirm Kindergarten and Grade 5 bookmarks use their independent stable destinations.
+2. Package the exact clean Grade 2 revision and deploy that artifact to the disposable preview site.
+3. Complete adult activity acceptance on the preview without importing real family data.
+4. Re-run the private restore rehearsal against the exact promotion revision and retain its verified backup.
+5. Review the release manifest and dry-run both promotion and rollback commands.
+6. Promote with `--execute`, then verify launch, resume, completion, persistence, backup, and clean browser diagnostics on the unchanged stable origin.
+7. Observe the canary and either accept or run the prepared rollback.

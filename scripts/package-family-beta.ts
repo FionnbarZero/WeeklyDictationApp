@@ -53,8 +53,9 @@ run('npx', ['vite', 'build', '--mode', 'family-beta', '--outDir', outputDirector
 const builtEntry = resolve(outputDirectory, gradeConfig.sourceHtml)
 if (!existsSync(builtEntry))
   throw new Error(`The ${gradeConfig.displayName} build did not create ${gradeConfig.sourceHtml}.`)
-renameSync(builtEntry, resolve(outputDirectory, 'index.html'))
+if (gradeConfig.sourceHtml !== 'index.html') renameSync(builtEntry, resolve(outputDirectory, 'index.html'))
 rmSync(resolve(outputDirectory, '.vite'), { recursive: true, force: true })
+if (grade === 'grade2') writeFileSync(resolve(outputDirectory, '.nojekyll'), '\n')
 
 const files = artifactFileRecords(outputDirectory)
 const manifest: FamilyBetaArtifactManifest = {

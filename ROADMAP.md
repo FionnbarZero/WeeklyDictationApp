@@ -8,7 +8,7 @@ This roadmap separates three programs with independent finish lines:
 
 Program A must not stay open because a curriculum or release decision in Program C is unresolved. The frozen references protect approved behavior while the integrated application is assembled one vertical slice at a time.
 
-As of 2026-10-03, Program A and Program B1 are complete. C0 has independent Kindergarten and Grade 5 sites, visible release identity, exact-artifact delivery tooling, non-expiring rollback targets for both session-only sites, and a merged Grade 2 selected-child restore. C0 remains open for real Grade 2 backup/restore rehearsal, adult activity acceptance, observation records, and promotion of the Grade 2 safety release. Program B2 and broader product activation continue to wait for those controls.
+As of 2026-10-03, Program A and Program B1 are complete. C0 has independent Kindergarten and Grade 5 sites, visible release identity, exact-artifact delivery tooling, non-expiring rollback targets for both session-only sites, and a merged Grade 2 selected-child restore whose real-state disposable rehearsal passed. C0 remains open for the exact final Grade 2 artifact preview and promotion, adult activity acceptance, observation records, and containment rehearsal. Program B2 and broader product activation continue to wait for those controls.
 
 ## Operating model
 
@@ -100,9 +100,9 @@ Program C begins by protecting the three grade-level applications already used b
 
 The detailed operating procedure is maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md), with a reusable manifest in [`docs/family-beta-release-manifest-template.md`](./docs/family-beta-release-manifest-template.md).
 
-The current deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). Kindergarten and Grade 5 now have independently promotable stable destinations and non-expiring rollback channels; Grade 2 deliberately remains on its browser-storage origin. The inventory exit gate remains open until the exact child bookmarks receive adult confirmation and Grade 2 state is backed up and restore-rehearsed.
+The current deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). Kindergarten and Grade 5 now have independently promotable stable destinations and non-expiring rollback channels; Grade 2 deliberately remains on its browser-storage origin. The inventory exit gate remains open until the exact child bookmarks receive adult confirmation and the final Grade 2 artifact completes preview, rehearsal, approval, promotion, and observation.
 
-The Grade 2 safeguard is merged in source: a truthfully labelled whole-local-state SHA-256 backup, selected-child deep zero-write preview and merge, before/after reporting, automatic pre-restore backup, transactional writes across all three local storage keys, startup recovery, and idempotent replay. It is not complete operational protection until a disposable copy of the real family-browser state passes backup, preview, restore, interruption, repeat, and rollback rehearsal and the exact candidate is promoted without changing origin.
+The Grade 2 safeguard is merged in source: a truthfully labelled whole-local-state SHA-256 backup, selected-child deep zero-write preview and merge, before/after reporting, automatic pre-restore backup, transactional writes across all three local storage keys, startup recovery, and idempotent replay. A disposable copy of real family-browser state passed backup, preview, restore, interruption, repeat, and rollback rehearsal on merged revision `8355522`. Because delivery controls land afterward, the exact final candidate must repeat that rehearsal before promotion on the unchanged origin.
 
 ### C1 product behavior contracts
 
@@ -148,7 +148,7 @@ Recommended integration order remains Grade 2 Tier 1 writing, Kindergarten, dura
 
 ## Immediate execution order
 
-1. Rehearse the merged Grade 2 backup and restore against a disposable copy of the real browser state; do not use the only live profile as the first restore target.
+1. Package and preview the exact final Grade 2 safety artifact, then repeat the passed private restore rehearsal against that exact revision.
 2. Promote the exact Grade 2 safety artifact on the existing origin only after backup, preview, rollback, bookmark, and adult-approval evidence is recorded.
 3. Complete the Kindergarten defect inventory and grade-specific activity acceptance matrix; keep unapproved behavior experimental or contained.
 4. Complete Grade 5 activity acceptance and observation without changing its session-only promise.
