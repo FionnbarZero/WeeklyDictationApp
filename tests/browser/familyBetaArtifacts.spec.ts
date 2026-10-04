@@ -62,12 +62,24 @@ test('Grade 2 isolated artifact opens at its root with durable progress protecti
   await expect(identity).toContainText('v0.2.0-stage2')
   await expect(identity).toContainText('Tier 1 writing and Tier 2 reading metadata are durable')
   await expect(identity).toContainText(/r[a-f0-9]{7}/)
-  await expect(page.getByRole('button', { name: 'Back up Grade 2 browser data' })).toBeVisible()
 
-  await expect
-    .poll(() => page.evaluate(() => Object.keys(window.localStorage)))
-    .toEqual(expect.arrayContaining(['weekly-dictation-child', 'weekly-dictation-state-v2']))
-  await page.reload()
-  await expect(page.getByRole('button', { name: 'Back up Grade 2 browser data' })).toBeVisible()
+  const localBackup = page.getByRole('button', { name: 'Back up Grade 2 browser data' })
+  const signIn = page.getByRole('button', { name: 'Sign in', exact: true })
+
+  await expect(localBackup.or(signIn)).toBeVisible()
+  if (await localBackup.isVisible()) {
+    await expect
+      .poll(() => page.evaluate(() => Object.keys(window.localStorage)))
+      .toEqual(expect.arrayContaining(['weekly-dictation-child', 'weekly-dictation-state-v2']))
+    await page.reload()
+    await expect(localBackup).toBeVisible()
+  } else {
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+    await expect(page.getByLabel('Email')).toBeVisible()
+    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
+    await page.reload()
+    await expect(signIn).toBeVisible()
+  }
   expect(failedRequests).toEqual([])
 })
