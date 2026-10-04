@@ -54,10 +54,10 @@ run('npx', ['vite', 'build', '--mode', 'family-beta', '--outDir', outputDirector
 
 let curriculumSource: FamilyBetaArtifactManifest['curriculumSource']
 const copiedCurriculumDirectory = resolve(outputDirectory, 'curriculum')
+const suppliedCurriculumSnapshot = grade === 'grade2' ? flag('--curriculum-snapshot') : undefined
 if (grade === 'grade2') {
-  const suppliedSnapshot = flag('--curriculum-snapshot')
   if (
-    !suppliedSnapshot &&
+    !suppliedCurriculumSnapshot &&
     (!process.env.GOOGLE_OAUTH_CLIENT_ID ||
       !process.env.GOOGLE_OAUTH_CLIENT_SECRET ||
       !process.env.GOOGLE_OAUTH_REFRESH_TOKEN)
@@ -71,7 +71,7 @@ if (grade === 'grade2') {
     '--experimental-strip-types',
     'scripts/snapshot-grade2-slides.ts',
     `--output=${outputSnapshot}`,
-    ...(suppliedSnapshot ? [`--input=${resolve(root, suppliedSnapshot)}`] : []),
+    ...(suppliedCurriculumSnapshot ? [`--input=${resolve(root, suppliedCurriculumSnapshot)}`] : []),
   ])
   curriculumSource = grade2CurriculumSourceFromSnapshot(outputSnapshot)
 } else {
@@ -98,7 +98,7 @@ const manifest: FamilyBetaArtifactManifest = {
   dirty,
   entry: 'index.html',
   build: {
-    command: `npm run package:family-beta -- --grade ${grade}`,
+    command: `npm run package:family-beta -- --grade ${grade}${suppliedCurriculumSnapshot ? ` --curriculum-snapshot ${suppliedCurriculumSnapshot}` : ''}`,
     node: process.version,
     npm: capture('npm', ['--version']),
     packageLockSha256: sha256(
