@@ -38,18 +38,32 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('button', { name: /Enter the Dojo/i })).toBeVisible()
 })
 
-test('the public Grade 5 preview opens current writing and reading Acquisition', async ({ page }) => {
+test('the public Grade 5 preview opens its required writing Warmup and current reading Acquisition', async ({
+  page,
+}) => {
   await openSection(page, 'Enter the Dojo')
 
   await page.getByRole('button', { name: 'Learn to Write' }).click()
   await expect(page.getByRole('heading', { name: 'Warm up' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip Warmup' }).click()
+  await expect(page.getByText('Required before this activity')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Skip Warmup' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Begin Warmup' }).click()
+  await page.getByRole('button', { name: 'Type Chinese' }).click()
+  const typedResponse = page.getByRole('textbox', { name: 'Type Chinese with a Pinyin keyboard' })
+  await typedResponse.fill('bang zhu')
+  await expect(page.getByRole('alert')).toHaveText(
+    'Choose Chinese characters from your Pinyin keyboard before continuing.',
+  )
+  await typedResponse.fill('帮助')
+  await expect(typedResponse).toHaveValue('帮助')
+  await expect(typedResponse).toHaveAttribute('aria-invalid', 'false')
+  await expect(page.getByRole('alert')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Exit practice' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit practice' }).click()
 
   await page.getByRole('button', { name: 'Read the Words' }).click()
   await expect(page.getByRole('button', { name: 'Exit reading' })).toBeVisible()
-  await expect(page.getByText(/Grade 5 development reading · recording and results are not saved/)).toBeVisible()
+  await expect(page.getByText(/Grade 5 required reading Warmup · progress is saved on this device/)).toBeVisible()
   await page.getByRole('button', { name: 'Exit reading' }).click()
 })
 
@@ -67,14 +81,14 @@ test('the Spirit Realm reentry offers guided writing and reading plus both Test 
 
   await writing.click()
   await expect(page.getByRole('heading', { name: 'Warm up' })).toBeVisible()
-  await page.getByRole('button', { name: 'Skip Warmup' }).click()
+  await page.getByRole('button', { name: 'Begin Warmup' }).click()
   await expect(page.getByRole('button', { name: 'Exit practice' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit practice' }).click()
 
   await page.getByRole('button', { name: 'Reenter the Training Dojo' }).click()
   await page.getByRole('button', { name: 'Relearn Reading · 8/31–9/4' }).click()
   await expect(page.getByRole('button', { name: 'Exit reading' })).toBeVisible()
-  await expect(page.getByText(/Grade 5 development reading · recording and results are not saved/)).toBeVisible()
+  await expect(page.getByText(/Grade 5 required reading Warmup · progress is saved on this device/)).toBeVisible()
 })
 
 test('Reenter the Training Dojo offers collect-first writing and reading Test Review formats', async ({ page }) => {
@@ -89,7 +103,7 @@ test('Reenter the Training Dojo offers collect-first writing and reading Test Re
   await expect(readingTest).toBeVisible()
 
   await readingTest.click()
-  await expect(page.getByText('Reading responses')).toBeVisible()
-  await expect(page.getByText('Reading Test Review 1')).toBeVisible()
-  await expect(page.getByText(/collect every response first/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Exit reading' })).toBeVisible()
+  await expect(page.getByText(/required Warmup/).first()).toBeVisible()
+  await expect(page.getByText(/Grade 5 required reading Warmup · progress is saved on this device/)).toBeVisible()
 })

@@ -106,8 +106,8 @@ test('writing and reading launch requests remain distinct and offer their own up
   assert.equal(reading.stage, 'acquisition')
   assert.equal(writing.warmupMaximum, 6)
   assert.equal(reading.warmupMaximum, 6)
-  assert.equal(writing.preActivityWarmupRequirement, 'undecided')
-  assert.equal(reading.preActivityWarmupRequirement, 'undecided')
+  assert.equal(writing.preActivityWarmupRequirement, 'required')
+  assert.equal(reading.preActivityWarmupRequirement, 'required')
 })
 
 test('Test Review 1 and Test Review 2 requests reference different cohorts', () => {
@@ -119,8 +119,8 @@ test('Test Review 1 and Test Review 2 requests reference different cohorts', () 
   assert.equal(test2.activityKind, 'test-review')
   assert.equal(test1.warmupMaximum, 6)
   assert.equal(test2.warmupMaximum, 6)
-  assert.equal(test1.preActivityWarmupRequirement, 'undecided')
-  assert.equal(test2.preActivityWarmupRequirement, 'undecided')
+  assert.equal(test1.preActivityWarmupRequirement, 'required')
+  assert.equal(test2.preActivityWarmupRequirement, 'required')
 })
 
 test('both Test Review stages offer guided Acquisition and collect-first Test Review options without changing curriculum stage', () => {
@@ -141,7 +141,7 @@ test('both Test Review stages offer guided Acquisition and collect-first Test Re
       'test-review',
     ])
     assert.ok(requests.every((request) => request.warmupMaximum === 6))
-    assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'undecided'))
+    assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'required'))
     assert.equal(new Set(requests.map((request) => request.cohortId)).size, 1)
   }
 })

@@ -6,6 +6,7 @@ import { resolveManualTestClock } from './manualTestClock'
 import { initializeStagingObservability } from './stagingObservability'
 import './styles.css'
 import './learningHub/learningHub.css'
+import './accessibility/typography.css'
 
 const manualTestClock = resolveManualTestClock(window.location.search, import.meta.env.DEV)
 

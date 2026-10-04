@@ -30,6 +30,7 @@ import type {
   WarmupTransitionReceipt,
   WarmupVisit,
 } from '../../warmup/visits/contracts.ts'
+import type { Tier2ReadingProgressRecord } from '../../readingPractice/contracts.ts'
 
 export type ChildWorkspaceScope = {
   familyId: string
@@ -46,6 +47,7 @@ export type ChildWorkspaceRecords = {
   adaptiveState: CloudAdaptiveState | null
   acquisitionProgressions: Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>
   distractorTargetObservations: DistractorTargetObservation[]
+  readingProgress: Tier2ReadingProgressRecord[]
   warmup: {
     visits: CloudWarmupVisit[]
     queueEntries: CloudWarmupQueueEntry[]
@@ -72,6 +74,7 @@ export type ChildWorkspaceReadPort = {
     scope: ChildWorkspaceScope,
     signal: AbortSignal,
   ) => Promise<DistractorTargetObservation[]>
+  listTier2ReadingProgress: (scope: ChildWorkspaceScope, signal: AbortSignal) => Promise<Tier2ReadingProgressRecord[]>
   listWarmupVisits: (scope: ChildWorkspaceScope, signal: AbortSignal) => Promise<CloudWarmupVisit[]>
   listWarmupQueueEntries: (scope: ChildWorkspaceScope, signal: AbortSignal) => Promise<CloudWarmupQueueEntry[]>
   listWarmupMastery: (scope: ChildWorkspaceScope, signal: AbortSignal) => Promise<VersionedChildMasteryState[]>

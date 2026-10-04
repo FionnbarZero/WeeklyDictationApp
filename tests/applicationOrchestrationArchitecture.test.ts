@@ -104,9 +104,19 @@ test('the render failure boundary cannot clear recovery journals', () => {
 test('profile switching and sign-out stay unavailable during an active experience', () => {
   const app = source('src/App.tsx')
   assert.match(app, /const activityControlsLocked = activeExperience !== null \|\| practiceStartInFlight/)
-  assert.match(app, /startPracticeOperation\([\s\S]*?finally\(\(\) => setPracticeStartInFlight\(false\)\)/)
+  assert.match(app, /startPracticeOperation\([\s\S]*?finally \{[\s\S]*?setPracticeStartInFlight\(false\)/)
   assert.match(app, /if \(activityControlsLocked\) return/)
-  assert.match(app, /className="profile-switcher" disabled=\{activityControlsLocked\}/)
+  assert.match(app, /className="profile-switcher"\s+disabled=\{activityControlsLocked\}/)
   assert.match(app, /showChildMenu && !activityControlsLocked/)
   assert.match(app, /Exit the current activity before switching profiles or signing out\./)
+})
+
+test('promotion, profile edits, and practice startup expose inline and toast failures', () => {
+  const app = source('src/App.tsx')
+  const profileModal = source('src/profiles/ProfileModal.tsx')
+  assert.match(app, /setPromotionError\(message\)[\s\S]*notifyActionError\(message\)/)
+  assert.match(app, /setPracticeStartError\(result\.message\)[\s\S]*notifyActionError\(result\.message\)/)
+  assert.match(profileModal, /Profile changes could not be saved[\s\S]*setError\(message\)[\s\S]*onError\(message\)/)
+  assert.match(app, /className="toast-region"/)
+  assert.match(app, /className="action-inline-error action-inline-error-surface"/)
 })

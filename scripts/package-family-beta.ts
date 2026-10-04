@@ -5,10 +5,12 @@ import { APP_VERSION } from '../src/releaseMetadata.ts'
 import {
   FAMILY_BETA_ARTIFACT_SCHEMA,
   GRADE2_CURRICULUM_SOURCE_PATH,
+  GRADE5_CURRICULUM_SOURCE_PATH,
   artifactFileRecords,
   familyBetaGradeConfig,
   fileTreeSha256,
   grade2CurriculumSourceFromSnapshot,
+  grade5CurriculumSourceFromSnapshot,
   requireFamilyBetaGrade,
   requireMatchingSourceRevision,
   sha256,
@@ -74,6 +76,11 @@ if (grade === 'grade2') {
     ...(suppliedCurriculumSnapshot ? [`--input=${resolve(root, suppliedCurriculumSnapshot)}`] : []),
   ])
   curriculumSource = grade2CurriculumSourceFromSnapshot(outputSnapshot)
+  rmSync(resolve(outputDirectory, GRADE5_CURRICULUM_SOURCE_PATH), { force: true })
+} else if (grade === 'grade5') {
+  const outputSnapshot = resolve(outputDirectory, GRADE5_CURRICULUM_SOURCE_PATH)
+  curriculumSource = grade5CurriculumSourceFromSnapshot(outputSnapshot)
+  rmSync(resolve(outputDirectory, GRADE2_CURRICULUM_SOURCE_PATH), { force: true })
 } else {
   rmSync(copiedCurriculumDirectory, { recursive: true, force: true })
 }

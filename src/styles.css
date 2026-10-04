@@ -150,6 +150,7 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .add-child-form{display:grid;gap:10px;margin-top:22px;padding-top:20px;border-top:1px solid #eee5dc;text-align:left}
 .add-child-form h3{margin:0 0 2px}
 .promotion-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;padding:12px 15px;border-radius:12px;background:#fff4cf;color:#6d5722;font-size:12px}.promotion-banner button{padding:7px 10px;border-radius:8px;background:#f4d071;color:#57451e;font-size:11px;font-weight:700}
+.action-inline-error{margin:6px 0 0;color:#8f2f27;font-size:.875rem;font-weight:650}.action-inline-error-surface{margin:0 0 18px;padding:11px 14px;border:1px solid #efb5ad;border-radius:12px;background:#fff5f3}.toast-region{position:fixed;z-index:1000;top:18px;right:18px;width:min(420px,calc(100vw - 36px));pointer-events:none}.error-toast{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 14px 14px 16px;border:1px solid #e49d94;border-radius:14px;background:#fff;color:#7a2922;box-shadow:0 14px 40px rgba(63,32,27,.2);font-size:.9375rem;line-height:1.45;pointer-events:auto}.error-toast button{display:grid;flex:0 0 auto;place-items:center;width:30px;height:30px;margin:-5px -5px -5px 0;border-radius:8px;background:#fff0ed;color:#7a2922}
 
 /* Local Grade 2 backup and selected-profile restore */
 .backup-modal{width:min(680px,100%);max-height:min(760px,calc(100dvh - 40px));overflow:auto;padding:27px;border-radius:21px;background:#fffdf9;box-shadow:0 20px 60px rgba(35,49,57,.25)}

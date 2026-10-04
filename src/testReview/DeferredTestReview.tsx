@@ -16,6 +16,7 @@ import { releaseRetainedReadingCaptures, type RetainedReadingCapture } from './r
 import { assessTestReviewTarget, completeTestReview, createTestReviewState } from './state.ts'
 import { WritingResponseCollector } from './WritingResponseCollector.tsx'
 import './testReview.css'
+import { browserSpeech } from '../audio/browserSpeech.ts'
 
 export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
@@ -64,7 +65,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   }
 
   function finishCollection() {
-    window.speechSynthesis?.cancel()
+    browserSpeech.cancel()
     setPhase('review')
   }
 
@@ -90,7 +91,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   }
 
   function discard() {
-    window.speechSynthesis?.cancel()
+    browserSpeech.cancel()
     releaseCaptures()
     setWritingByTargetId({})
     setConfirmingDiscard(false)
@@ -108,7 +109,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   useEffect(
     () => () => {
-      window.speechSynthesis?.cancel()
+      browserSpeech.cancel()
       releaseRetainedReadingCaptures(capturesRef.current)
     },
     [],
@@ -197,7 +198,14 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
           </span>
         </span>
       </div>
-      <div className="practice-progress">
+      <div
+        className="practice-progress"
+        role="progressbar"
+        aria-label="Test review response collection progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
         <span style={{ width: `${progress}%` }} />
       </div>
       <section className="prompt-card deferred-collection-card">

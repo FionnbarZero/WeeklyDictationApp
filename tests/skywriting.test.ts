@@ -13,10 +13,15 @@ import {
   extendWritingStroke,
   normalizedWritingPoint,
   pauseTapWritingStroke,
+  setWritingPadText,
+  typedChineseInputIssue,
   undoWritingStroke,
   writingPadHasInk,
 } from '../src/skywriting/model.ts'
-import { grade5SkyWritingAcquisitionAudioSequence, grade5SkyWritingAcquisitionSample } from '../src/skywriting/grade5AcquisitionSample.ts'
+import {
+  grade5SkyWritingAcquisitionAudioSequence,
+  grade5SkyWritingAcquisitionSample,
+} from '../src/skywriting/grade5AcquisitionSample.ts'
 import { skyWritingCrossGradeSample } from '../src/skywriting/harnessSample.ts'
 import { grade2DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
 
@@ -70,6 +75,23 @@ test('interruption, undo, and clear leave no active pencil state behind', () => 
   assert.deepEqual(clearWritingPad(), emptyWritingPadState)
 })
 
+test('Chinese characters selected from a Pinyin keyboard are a first-class in-memory writing response', () => {
+  const state = setWritingPadText(emptyWritingPadState, '帮助')
+  assert.equal(writingPadHasInk(state), true)
+  assert.equal(state.typedText, '帮助')
+  assert.equal(undoWritingStroke(state).typedText, '帮助')
+  assert.deepEqual(clearWritingPad(), emptyWritingPadState)
+})
+
+test('typed-response validation requires the Chinese characters selected from the Pinyin candidates', () => {
+  assert.equal(typedChineseInputIssue('帮助'), null)
+  assert.equal(
+    typedChineseInputIssue('bang zhu'),
+    'Choose Chinese characters from your Pinyin keyboard before continuing.',
+  )
+  assert.equal(typedChineseInputIssue('帮助 bang'), 'Submit Chinese characters only.')
+})
+
 test('Sky Writing is a standalone source module with no Kindergarten or persistence dependency', () => {
   const entry = readFileSync(new URL('../src/skywriting/index.ts', import.meta.url), 'utf8')
   const activity = readFileSync(new URL('../src/skywriting/SkyWriting.tsx', import.meta.url), 'utf8')
@@ -84,6 +106,9 @@ test('Sky Writing is a standalone source module with no Kindergarten or persiste
   assert.match(entry, /export \{ SkyWritingAcquisition \}/)
   assert.match(component, /onPointerDown/)
   assert.match(component, /onPointerCancel/)
+  assert.match(component, /aria-pressed=\{inputMode === 'type'\}/)
+  assert.match(component, /setWritingPadText/)
+  assert.match(component, /choose the Chinese[\s\S]*characters from its candidate list/)
   assert.match(component, /writingLanes/)
   assert.match(component, /traceText\?: string/)
   assert.match(component, /traceFont\?: WritingPadTraceFont/)
@@ -103,8 +128,8 @@ test('Sky Writing is a standalone source module with no Kindergarten or persiste
   assert.match(acquisition, /traceFont="songti"/)
   assert.match(acquisition, /padState=\{padState\}/)
   assert.match(acquisition, /onPadStateChange=\{onPadStateChange\}/)
-  assert.match(acquisition, /Your writing/)
-  assert.match(acquisition, /Correct word/)
+  assert.match(acquisition, /Your typed Chinese response/)
+  assert.match(acquisition, /Correct Chinese word/)
   assert.doesNotMatch(acquisition, /setTimeout|speechSynthesis|\bspeak\b|PromptCountdown/)
   assert.doesNotMatch(activity, /Air or paper|Write on screen/)
   assert.doesNotMatch(component, /Trackpad lift mode/)
@@ -115,54 +140,103 @@ test('Sky Writing is a standalone source module with no Kindergarten or persiste
   assert.match(styles, /height: 100dvh/)
   assert.match(styles, /overflow: hidden/)
   assert.match(styles, /\.skywriting-pad-frame \{[^}]*height: 100%/)
-  assert.doesNotMatch(moduleSource, /kindergartenLab|localStorage|sessionStorage|indexedDB|fetch\(|firebase|firestore|XMLHttpRequest/i)
+  assert.doesNotMatch(
+    moduleSource,
+    /kindergartenLab|localStorage|sessionStorage|indexedDB|fetch\(|firebase|firestore|XMLHttpRequest/i,
+  )
 })
 
 test('every shared Tier 1 writing activity uses the Songti Sky Writing response', () => {
   const practiceView = readFileSync(new URL('../src/practice/PracticeView.tsx', import.meta.url), 'utf8')
-  const testReviewCollector = readFileSync(new URL('../src/testReview/WritingResponseCollector.tsx', import.meta.url), 'utf8')
+  const testReviewCollector = readFileSync(
+    new URL('../src/testReview/WritingResponseCollector.tsx', import.meta.url),
+    'utf8',
+  )
   const finalReview = readFileSync(new URL('../src/testReview/FinalReviewPage.tsx', import.meta.url), 'utf8')
   const productionApp = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const kindergarten = readFileSync(new URL('../src/kindergartenLearningLabHarness.tsx', import.meta.url), 'utf8')
   const grade5 = readFileSync(new URL('../src/grade5LearningHubHarness.tsx', import.meta.url), 'utf8')
 
-  assert.match(practiceView, /import \{ SkyWritingAcquisition, emptyWritingPadState/)
-  assert.match(practiceView, /phase="writing" traceTarget=\{showCopy\}/)
-  assert.match(practiceView, /phase="review" traceTarget=\{showCopy\}/)
+  assert.match(practiceView, /import \{[\s\S]*?SkyWritingAcquisition,[\s\S]*?emptyWritingPadState/)
+  assert.match(practiceView, /phase="writing"\s+traceTarget=\{showCopy\}/)
+  assert.match(practiceView, /phase="review"\s+traceTarget=\{showCopy\}/)
   assert.match(practiceView, /session\.segment.*session\.primaryPhase/)
   assert.match(practiceView, /setWritingByResponse/)
   assert.match(practiceView, /writingByResponse\[writingResponseId\]/)
-  assert.match(practiceView, /Your writing stays on this device only\./)
+  assert.match(practiceView, /Your response stays on this device only\./)
   assert.doesNotMatch(practiceView, /write the word on paper|check your paper/i)
   assert.match(testReviewCollector, /<SkyWritingAcquisition/)
   assert.match(testReviewCollector, /phase="writing"/)
   assert.match(finalReview, /<SkyWritingAcquisition/)
   assert.match(finalReview, /phase="review"/)
   assert.doesNotMatch(`${testReviewCollector}\n${finalReview}`, /write the response on paper|check your paper/i)
-  assert.match(productionApp, /<PracticeView session=\{session\}/)
+  assert.match(productionApp, /<PracticeView\s+session=\{session\}/)
   assert.match(kindergarten, /<PracticeView/)
   assert.match(grade5, /<PracticeView/)
 })
 
 test('the cross-grade harness uses exactly ten distinct source-derived Tier 1 targets', () => {
-  const kindergartenPayload = JSON.parse(readFileSync(new URL('./fixtures/kindergarten-workbook.json', import.meta.url), 'utf8')) as SheetsWorkbookPayload
-  const grade2Payload = JSON.parse(readFileSync(new URL('./fixtures/grade2-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
-  const grade5Payload = JSON.parse(readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
+  const kindergartenPayload = JSON.parse(
+    readFileSync(new URL('./fixtures/kindergarten-workbook.json', import.meta.url), 'utf8'),
+  ) as SheetsWorkbookPayload
+  const grade2Payload = JSON.parse(
+    readFileSync(new URL('./fixtures/grade2-presentation.json', import.meta.url), 'utf8'),
+  ) as SlidesPresentationPayload
+  const grade5Payload = JSON.parse(
+    readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8'),
+  ) as SlidesPresentationPayload
   const sourcePools = new Map([
-    ['Kindergarten', new Set(inspectKindergartenWorkbook(kindergartenPayload).flatMap((candidate) => candidate.tier1.map((target) => target.text)))],
-    ['Grade 2', new Set(importWeeklyDatasets(grade2Payload, [], grade2DeckProfile).datasets.flatMap((dataset) => dataset.words.map((word) => word.text)))],
-    ['Grade 5', new Set(extractGrade5Presentation(grade5Payload).candidates.flatMap((candidate) => candidate.tier1.map((target) => target.text)))],
+    [
+      'Kindergarten',
+      new Set(
+        inspectKindergartenWorkbook(kindergartenPayload).flatMap((candidate) =>
+          candidate.tier1.map((target) => target.text),
+        ),
+      ),
+    ],
+    [
+      'Grade 2',
+      new Set(
+        importWeeklyDatasets(grade2Payload, [], grade2DeckProfile).datasets.flatMap((dataset) =>
+          dataset.words.map((word) => word.text),
+        ),
+      ),
+    ],
+    [
+      'Grade 5',
+      new Set(
+        extractGrade5Presentation(grade5Payload).candidates.flatMap((candidate) =>
+          candidate.tier1.map((target) => target.text),
+        ),
+      ),
+    ],
   ])
 
   assert.equal(skyWritingCrossGradeSample.length, 10)
   assert.equal(new Set(skyWritingCrossGradeSample.map((target) => target.text)).size, 10)
-  assert.ok(skyWritingCrossGradeSample.some((target) => [...target.text].length >= 4), 'The sample must exercise a complex multi-character word.')
-  assert.deepEqual(Object.fromEntries(['Kindergarten', 'Grade 2', 'Grade 5'].map((grade) => [grade, skyWritingCrossGradeSample.filter((target) => target.grade === grade).length])), {
-    Kindergarten: 3,
-    'Grade 2': 4,
-    'Grade 5': 3,
-  })
-  for (const target of skyWritingCrossGradeSample) assert.equal(sourcePools.get(target.grade)?.has(target.text), true, `${target.text} must come from the ${target.grade} Tier 1 fixture`)
+  assert.ok(
+    skyWritingCrossGradeSample.some((target) => [...target.text].length >= 4),
+    'The sample must exercise a complex multi-character word.',
+  )
+  assert.deepEqual(
+    Object.fromEntries(
+      ['Kindergarten', 'Grade 2', 'Grade 5'].map((grade) => [
+        grade,
+        skyWritingCrossGradeSample.filter((target) => target.grade === grade).length,
+      ]),
+    ),
+    {
+      Kindergarten: 3,
+      'Grade 2': 4,
+      'Grade 5': 3,
+    },
+  )
+  for (const target of skyWritingCrossGradeSample)
+    assert.equal(
+      sourcePools.get(target.grade)?.has(target.text),
+      true,
+      `${target.text} must come from the ${target.grade} Tier 1 fixture`,
+    )
 })
 
 test('the cross-grade harness is development-only, session-only, and runs all ten targets', () => {
@@ -185,8 +259,12 @@ test('the cross-grade harness is development-only, session-only, and runs all te
 })
 
 test('the Sky Writing Acquisition prototype uses exactly three source-derived Grade 5 Tier 1 targets', () => {
-  const payload = JSON.parse(readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
-  const sourceWords = new Set(extractGrade5Presentation(payload).candidates.flatMap((candidate) => candidate.tier1.map((target) => target.text)))
+  const payload = JSON.parse(
+    readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8'),
+  ) as SlidesPresentationPayload
+  const sourceWords = new Set(
+    extractGrade5Presentation(payload).candidates.flatMap((candidate) => candidate.tier1.map((target) => target.text)),
+  )
 
   assert.equal(grade5SkyWritingAcquisitionSample.length, 3)
   assert.equal(new Set(grade5SkyWritingAcquisitionSample.map((target) => target.text)).size, 3)
@@ -194,7 +272,12 @@ test('the Sky Writing Acquisition prototype uses exactly three source-derived Gr
   for (const target of grade5SkyWritingAcquisitionSample) {
     assert.equal(target.sourceFixture, 'grade5-presentation.json')
     assert.equal(sourceWords.has(target.text), true, `${target.text} must be a Grade 5 Tier 1 fixture target`)
-    assert.deepEqual(grade5SkyWritingAcquisitionAudioSequence(target), [target.text, target.prototypeSentence, target.text, target.text])
+    assert.deepEqual(grade5SkyWritingAcquisitionAudioSequence(target), [
+      target.text,
+      target.prototypeSentence,
+      target.text,
+      target.text,
+    ])
   }
 })
 

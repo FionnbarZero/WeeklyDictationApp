@@ -33,7 +33,7 @@ test('the Grade 5 lab owns a separate profile while sharing the approved Acquisi
 
   assert.equal(grade5WritingLabProfile.grade, 'Grade 5')
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityMaximum, 6)
-  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'undecided')
+  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'required')
   assert.equal(grade5WritingLabProfile.timers.testReview, 10)
   assert.equal(strategy.id, 'grade5-acquisition-v1')
   assert.equal(strategy.version, 1)

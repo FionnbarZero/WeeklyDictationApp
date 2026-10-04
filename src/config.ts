@@ -2,6 +2,7 @@ import { schoolYearToken } from './curriculum/identity.ts'
 import type { CurriculumSourceType } from './curriculum/model.ts'
 import { grade2PracticeProfile } from './practice/profiles/grade2.ts'
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
+import { grade5PracticeProfile } from './practice/profiles/grade5.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 
 export { APP_VERSION } from './releaseMetadata.ts'
@@ -35,7 +36,7 @@ export type DeckRegistryEntry = CurriculumSourceRegistryEntry
 
 export const SOURCE_REGISTRY: CurriculumSourceRegistryEntry[] = [
   { grade: 'Grade 2', displayName: 'Grade 2', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE2_DECK_ID, parserProfileId: 'grade-2-2026-27-weekly-focus', sourceAdapterId: 'grade-2-google-slides', practiceProfileId: grade2PracticeProfile.id, active: true },
-  { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: 'grade-5-unimplemented', active: false },
+  { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: grade5PracticeProfile.id, active: true },
   { grade: 'Kindergarten', displayName: 'Kindergarten', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-sheets', sourceDocumentId: KINDERGARTEN_SHEETS_ID, parserProfileId: 'kindergarten-2026-27-weekly-focus', sourceAdapterId: 'kindergarten-google-sheets-v1', practiceProfileId: kindergartenWritingPracticeProfile.id, active: false },
 ]
 export const DECK_REGISTRY = SOURCE_REGISTRY

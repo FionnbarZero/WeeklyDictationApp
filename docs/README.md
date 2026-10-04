@@ -22,6 +22,7 @@
 - [Tier 2 reading boundary](./tier2-reading-boundary.md)
 - [Test Review cycle identity](./test-review-cycle-identity.md)
 - [Shared Learning Hub UI](./shared-learning-hub-ui.md)
+- [Activity typography inventory](./ui-typography-inventory.md)
 
 ## Curriculum sources and prototypes
 

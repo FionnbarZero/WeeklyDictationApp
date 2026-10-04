@@ -17,9 +17,9 @@ export const grade5Tier2ReadingProfile = {
     familiarTargetIdPrefix: 'grade-5-tier-2-familiar-dt',
     pattern: grade5AcquisitionStrategy,
   }),
-  preActivityWarmupRequirement: 'undecided',
-  availability: 'development',
-  results: 'session-only',
+  preActivityWarmupRequirement: 'required',
+  availability: 'main-app',
+  results: 'durable',
   recording: 'prompt-local',
-  productionEligibility: 'blocked',
+  productionEligibility: 'eligible',
 } as const satisfies Tier2ReadingProfile

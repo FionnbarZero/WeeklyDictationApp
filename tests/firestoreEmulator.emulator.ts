@@ -8,6 +8,8 @@ import { childMasteryStateId, createMasteryOccurrence, masteryRotationStateId } 
 import { buildWarmupAnswerTransition, createWarmupVisit } from '../src/warmup/visits/reducer.ts'
 import type { ChildMasteryState } from '../src/warmup/adaptive/contracts.ts'
 import { encodeChangedCloudWarmupQueueEntry, encodeCloudWarmupVisit } from '../src/persistence/warmup/cloudCodec.ts'
+import { encodeTier2ReadingCloudProgress } from '../src/persistence/tier2ReadingCloud.ts'
+import type { Tier2ReadingProgressRecord } from '../src/readingPractice/contracts.ts'
 
 let environment: RulesTestEnvironment
 
@@ -42,6 +44,65 @@ before(async () => {
 
 after(async () => {
   await environment?.cleanup()
+})
+
+function readingProgress(id = 'reading-progress-1', revision = 1): Tier2ReadingProgressRecord {
+  const target = {
+    id: 'reading-word-1',
+    text: '帮助',
+    sentence: '',
+    datasetId: 'dataset-1',
+    grade: 'Grade 2',
+    language: 'mandarin' as const,
+    tier: 'tier-2' as const,
+    activityType: 'reading' as const,
+  }
+  return {
+    schemaVersion: 1,
+    contractId: 'tier2-reading-progress-v1',
+    id,
+    childId: 'maya',
+    grade: 'Grade 2',
+    schoolYear: '2026–2027',
+    activityModule: 'mandarin-tier2-reading',
+    profileId: 'grade-2-tier-2-reading-v1',
+    profileVersion: 1,
+    pathwayKind: 'test-review',
+    reviewCycle: 1,
+    cohortIds: ['dataset-1'],
+    targetOccurrenceIds: [target.id],
+    revision,
+    status: 'in-progress',
+    run: {
+      kind: 'test-review',
+      queue: [target],
+      index: 1,
+      attempts: [{ promptKind: 'test-review', target, correct: true, countsTowardScore: true }],
+    },
+    startedAt: '2026-10-04T16:00:00.000Z',
+    updatedAt: `2026-10-04T16:0${revision}:00.000Z`,
+  }
+}
+
+test('Tier 2 reading rules allow owned metadata, reject recordings, and require increasing revisions', async () => {
+  const parent = environment.authenticatedContext('parent').firestore()
+  const intruder = environment.authenticatedContext('intruder').firestore()
+  const path = 'families/family-parent/children/maya/tier2ReadingProgress/reading-progress-1'
+  await assertSucceeds(setDoc(doc(parent, path), encodeTier2ReadingCloudProgress(readingProgress())))
+  await assertFails(setDoc(doc(intruder, path), encodeTier2ReadingCloudProgress(readingProgress('reading-progress-1', 2))))
+  await assertFails(setDoc(doc(parent, path), encodeTier2ReadingCloudProgress(readingProgress())))
+  await assertSucceeds(setDoc(doc(parent, path), encodeTier2ReadingCloudProgress(readingProgress('reading-progress-1', 2))))
+
+  const unsafe = {
+    ...encodeTier2ReadingCloudProgress(readingProgress('reading-progress-with-audio')),
+    runJson: '{"kind":"test-review","audio":"data:audio/webm;base64,abc"}',
+  }
+  await assertFails(
+    setDoc(
+      doc(parent, 'families/family-parent/children/maya/tier2ReadingProgress/reading-progress-with-audio'),
+      unsafe,
+    ),
+  )
 })
 
 function receipt(transitionId: string, expectedRevision: number) {

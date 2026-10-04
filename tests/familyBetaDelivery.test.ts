@@ -19,6 +19,9 @@ import {
   GRADE2_CURRICULUM_DOCUMENT_ID,
   GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
   GRADE2_CURRICULUM_SOURCE_PATH,
+  GRADE5_CURRICULUM_DOCUMENT_ID,
+  GRADE5_CURRICULUM_SNAPSHOT_SCHEMA,
+  GRADE5_CURRICULUM_SOURCE_PATH,
   type FamilyBetaArtifactManifest,
   type FamilyBetaGrade,
   familyBetaGradeConfig,
@@ -54,28 +57,32 @@ function verifiedArtifact(artifactGrade: FamilyBetaGrade = 'kindergarten') {
   )
   writeFileSync(resolve(directory, 'app.js'), 'console.log("family beta")\n')
   let curriculumSource: FamilyBetaArtifactManifest['curriculumSource']
-  if (artifactGrade === 'grade2') {
+  if (artifactGrade === 'grade2' || artifactGrade === 'grade5') {
+    const documentId = artifactGrade === 'grade2' ? GRADE2_CURRICULUM_DOCUMENT_ID : GRADE5_CURRICULUM_DOCUMENT_ID
+    const schema = artifactGrade === 'grade2' ? GRADE2_CURRICULUM_SNAPSHOT_SCHEMA : GRADE5_CURRICULUM_SNAPSHOT_SCHEMA
+    const sourcePath = artifactGrade === 'grade2' ? GRADE2_CURRICULUM_SOURCE_PATH : GRADE5_CURRICULUM_SOURCE_PATH
     writeFileSync(resolve(directory, '.nojekyll'), '\n')
     const presentation = {
-      presentationId: GRADE2_CURRICULUM_DOCUMENT_ID,
+      presentationId: documentId,
       slides: [{ objectId: 'slide-1', text: 'Week 10/5-10/9\nMandarin\nTier 1: 英雄' }],
     }
     const contentSha256 = sha256(JSON.stringify(presentation))
     const snapshot = {
-      schema: GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
+      schema,
       source: {
         type: 'google-slides',
-        documentId: GRADE2_CURRICULUM_DOCUMENT_ID,
-        documentUrl: `https://docs.google.com/presentation/d/${GRADE2_CURRICULUM_DOCUMENT_ID}`,
+        documentId,
+        documentUrl: `https://docs.google.com/presentation/d/${documentId}`,
         retrievedAt: '2026-10-03T00:00:00.000Z',
         contentSha256,
       },
       presentation,
     }
-    const curriculumPath = resolve(directory, GRADE2_CURRICULUM_SOURCE_PATH)
+    const curriculumPath = resolve(directory, sourcePath)
     mkdirSync(dirname(curriculumPath), { recursive: true })
     writeFileSync(curriculumPath, `${JSON.stringify(snapshot, null, 2)}\n`)
-    curriculumSource = { ...snapshot.source, artifactPath: GRADE2_CURRICULUM_SOURCE_PATH, datasetCount: 1 }
+    curriculumSource = { ...snapshot.source, artifactPath: sourcePath, datasetCount: 1 }
+    if (artifactGrade === 'grade5') rmSync(resolve(directory, '.nojekyll'), { force: true })
   }
   const files = artifactFileRecords(directory)
   const manifest: FamilyBetaArtifactManifest = {
@@ -119,9 +126,22 @@ test('a Grade 2 artifact carries its durable identity and GitHub Pages marker', 
   try {
     const manifest = verifyFamilyBetaArtifact(directory, 'grade2')
     assert.equal(manifest.status, 'Family beta')
-    assert.match(manifest.persistence, /Tier 1 writing durable here/)
+    assert.match(manifest.persistence, /Tier 1 writing and Tier 2 reading metadata are durable/)
     assert.ok(manifest.files.some((file) => file.path === '.nojekyll'))
     assert.equal(manifest.curriculumSource?.documentId, GRADE2_CURRICULUM_DOCUMENT_ID)
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('a Grade 5 artifact carries its reviewed public curriculum and durable identity', () => {
+  const directory = verifiedArtifact('grade5')
+  try {
+    const manifest = verifyFamilyBetaArtifact(directory, 'grade5')
+    assert.equal(manifest.status, 'Public')
+    assert.match(manifest.persistence, /Device progress/)
+    assert.equal(manifest.curriculumSource?.documentId, GRADE5_CURRICULUM_DOCUMENT_ID)
+    assert.ok(manifest.files.some((file) => file.path === GRADE5_CURRICULUM_SOURCE_PATH))
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

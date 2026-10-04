@@ -68,7 +68,7 @@ test('a started pre-activity Warmup can finalize one partial graph point and con
   await page.getByRole('button', { name: 'Skip Timer' }).click()
   await page.getByRole('button', { name: /I got it right/i }).click()
   await page.getByRole('button', { name: 'Continue to activity' }).click()
-  await expect(page.getByText(/Word 1/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Word 1', exact: true })).toBeVisible()
   const snapshot = await warmupSnapshot(page)
   expect(snapshot.attemptedCount).toBe(1)
   expect(snapshot.graphCount).toBe(1)

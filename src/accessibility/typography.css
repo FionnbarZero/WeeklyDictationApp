@@ -1,0 +1,180 @@
+:root {
+  --wd-font-ui: "DM Sans", Inter, ui-rounded, "Avenir Next", system-ui, sans-serif;
+  --wd-font-display: Fraunces, Georgia, serif;
+  --wd-font-mandarin: "Songti SC", STSong, SimSun, serif;
+  --wd-font-mandarin-handwriting: "Kaiti SC", STKaiti, KaiTi, serif;
+  --wd-font-size-minimum: 0.75rem;
+  --wd-font-size-support: 0.875rem;
+  --wd-font-size-character: clamp(4.5rem, 16vw, 7rem);
+  --wd-font-size-character-chip: 1.5rem;
+}
+
+/* The child-facing minimum is 12px. These selectors previously rendered at 8–11px. */
+.manual-test-date-banner span,
+.curriculum-source-status,
+.local-backup-control,
+.profile-switcher-copy small,
+.child-menu > p,
+.child-menu small,
+.eyebrow,
+.mini-profile,
+.status-pill,
+.tier2-step,
+.tier2-pathway-button span,
+.set-label,
+.score-badge,
+.set-date,
+.set-footer,
+.today-strip span,
+.success-banner button,
+.set-chip,
+.replay-button,
+.answer-label,
+.answer-actions button,
+.answer-note,
+.practice-footnote,
+.score-row-copy span,
+.attempt-count,
+.chart-column,
+.chart-value,
+.history-note,
+.warmup-axis-label,
+.warmup-graph-summary,
+.legacy-mastery-note,
+.profile-card > span:not(.avatar):not(.profile-check),
+.modal-secondary,
+.bottom-nav button,
+.context-box span,
+.review-label,
+.dictation-status,
+.backup-action-card p:not(.eyebrow),
+.backup-preview dl div,
+.backup-checksum,
+.backup-checksum code,
+.backup-no-write,
+.backup-apply-controls label,
+.release-identity,
+.release-identity-panel code,
+.promotion-banner button,
+.tier1-review-controls .context-unavailable,
+.learning-hub-profile,
+.learning-hub-eyebrow,
+.learning-hub-section-heading > span,
+.learning-hub-section-card > small,
+.learning-hub-cohort-heading > span,
+.learning-hub-word-label,
+.learning-hub-source-details,
+.learning-hub-activity-note,
+.deferred-collection-rule,
+.deferred-compare-control > span,
+.deferred-review-content > p:not(.answer-label),
+.deferred-missing-recording,
+.deferred-submit-bar span,
+.request-debug-details,
+.request-panel pre,
+.lab-details,
+.lab-mode-note,
+.practice-summary-panel,
+.k-score-list article span,
+.k-scoreboard > small,
+.k-manual-note,
+.k-lab-settings,
+.k-score-total span,
+.k-round-label,
+.lgh-time,
+.lgh-channels span,
+.lgh-count span,
+.lgh-mark small,
+.lgh-safety,
+.lgh-eyebrow,
+.lgh-result pre,
+.lgh-boss-response .answer-label,
+.lgh-recording-note,
+.skywriting-heading .skywriting-eyebrow,
+.skywriting-exit,
+.skywriting-round-label,
+.skywriting-input-hint,
+.skywriting-pad-actions button,
+.skywriting-lane-note,
+.skywriting-pad-help,
+.skywriting-pad-footer small,
+.skywriting-live-score,
+.skywriting-promptbar .skywriting-listen,
+.skywriting-promptbar .skywriting-primary,
+.skywriting-comparison-label,
+.skywriting-wrong,
+.skywriting-right,
+.sky-lab-grade-results li span,
+.sky-lab-results > small,
+.sky-lab-eyebrow,
+.sky-lab-count span,
+.sky-lab-grade-results p,
+.sky-acq-eyebrow,
+.sky-acq-boundary,
+.sky-acq-audio-status,
+.sky-acq-results small,
+.sky-acq-primary,
+.sky-acq-assessment button,
+.font-compare-header p,
+.font-compare-card header p,
+.font-compare-header > strong,
+.font-description,
+.font-target-picker > span,
+.font-target-picker small,
+.font-compare-card header > span,
+.lg-phase-steps span,
+.lg-heading p,
+.lg-kicker,
+.lg-round-label,
+.lg-stat-row span,
+.lg-complete-stats span,
+.lg-sequence-tools button,
+.lg-lane-label,
+.t2-eyebrow,
+.t2-cohort-list span,
+.t2-debug,
+.t2-prompt-meta span {
+  font-size: var(--wd-font-size-minimum) !important;
+}
+
+/* Primary Mandarin prompts share one size and one print-style font. */
+.answer-word,
+.reading-answer-word,
+.deferred-reading-word,
+.k-reading-word,
+.k-reveal-word,
+.lg-prompt-word,
+.lg-reveal-word,
+.t2-reading-target {
+  font-family: var(--wd-font-mandarin) !important;
+  font-size: var(--wd-font-size-character) !important;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* Word chips are deliberately smaller than the active teaching prompt. */
+.tier2-word-list span,
+.learning-hub-word-list span,
+.k-targets span {
+  font-family: var(--wd-font-mandarin);
+  font-size: var(--wd-font-size-character-chip);
+}
+
+/* Handwriting comparison is the documented size exception: it scales by word length. */
+.skywriting-trace-character,
+.skywriting-reveal-word,
+.skywriting-keyboard-entry input,
+.skywriting-typed-preview {
+  font-family: var(--wd-font-mandarin);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

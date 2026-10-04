@@ -1,10 +1,12 @@
 import { grade2PracticeProfile } from './grade2.ts'
 import { kindergartenWritingPracticeProfile } from './kindergarten.ts'
+import { grade5PracticeProfile } from './grade5.ts'
 import type { WritingPracticeProfile } from './model.ts'
 
 export const writingPracticeProfiles: readonly WritingPracticeProfile[] = [
   grade2PracticeProfile,
   kindergartenWritingPracticeProfile,
+  grade5PracticeProfile,
 ]
 
 export function practiceProfileForGrade(grade: string | null | undefined) {

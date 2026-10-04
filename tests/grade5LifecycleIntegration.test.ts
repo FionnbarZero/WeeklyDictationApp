@@ -7,7 +7,10 @@ import { SOURCE_REGISTRY } from '../src/config.ts'
 import { buildGrade5LearningHub, resolveGrade5SourceLifecycle } from '../src/grade5Lab/learningHub.ts'
 import { grade5WritingLabProfile } from '../src/grade5Lab/practiceProfile.ts'
 import { grade5LabWarmupSelection, grade5LabWritingRequestIsConnected } from '../src/grade5Lab/writingPractice.ts'
-import { grade5LabReadingRequestIsConnected } from '../src/grade5Lab/readingPractice.ts'
+import {
+  grade5LabReadingRequestIsConnected,
+  grade5LabReadingWarmupPathway,
+} from '../src/grade5Lab/readingPractice.ts'
 import { lifecycleProgressionEventsFrom } from '../src/lifecycle/curriculumProgression.ts'
 import { resolveGrade5ProgressionLifecycle } from '../src/lifecycle/strategies/grade5ProgressionStrategy.ts'
 import { practiceProfileForGrade } from '../src/practice/profiles/registry.ts'
@@ -187,7 +190,7 @@ test('each connected Grade 5 writing activity receives up to six unique mastery 
   const rotationWarmup = grade5LabWarmupSelection(source, '2026-09-29', () => 0)
 
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityMaximum, 6)
-  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'undecided')
+  assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'required')
   assert.equal(grade5WritingLabProfile.timers.testReview, 10)
   assert.equal(recentWarmup.words.length, 5)
   assert.equal(rotationWarmup.words.length, 5)
@@ -198,12 +201,24 @@ test('each connected Grade 5 writing activity receives up to six unique mastery 
   }
 })
 
-test('Grade 5 remains development-only despite having a registered lifecycle strategy', () => {
+test('each ordinary Grade 5 reading activity receives its own up-to-six-target mastery Warmup', () => {
+  const warmup = grade5LabReadingWarmupPathway(extraction(), '2026-09-29', 'test-review-1', () => 0)
+  const targets = warmup.cohorts.flatMap((cohort) => cohort.targets)
+
+  assert.equal(warmup.kind, 'mastery')
+  assert.equal(warmup.available, true)
+  assert.ok(targets.length > 0 && targets.length <= 6)
+  assert.equal(new Set(targets.map((target) => target.id)).size, targets.length)
+  assert.ok(targets.every((target) => target.datasetId === week0831))
+  assert.equal(warmup.cohorts[0]?.datasetId, '__grade5-reading-warmup__:test-review-1')
+})
+
+test('Grade 5 is production-registered with its own lifecycle and practice profile', () => {
   const registryEntry = SOURCE_REGISTRY.find((entry) => entry.grade === 'Grade 5')
 
-  assert.equal(registryEntry?.active, false)
-  assert.equal(registryEntry?.practiceProfileId, 'grade-5-unimplemented')
-  assert.equal(practiceProfileForGrade('Grade 5'), null)
+  assert.equal(registryEntry?.active, true)
+  assert.equal(registryEntry?.practiceProfileId, practiceProfileForGrade('Grade 5')?.id)
+  assert.equal(practiceProfileForGrade('Grade 5')?.grade, 'Grade 5')
 })
 
 test('Grade 5 writing and reading launch requests are connected, including mastery reacquisition', () => {

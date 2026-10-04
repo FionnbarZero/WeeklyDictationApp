@@ -11,12 +11,14 @@ export type WritingPadState = {
   strokes: WritingStroke[]
   activeStroke: WritingStroke | null
   tapDrawing: boolean
+  typedText: string
 }
 
 export const emptyWritingPadState: WritingPadState = {
   strokes: [],
   activeStroke: null,
   tapDrawing: false,
+  typedText: '',
 }
 
 function clamp(value: number) {
@@ -37,17 +39,14 @@ export function normalizedWritingPoint(
 function finishActiveStroke(state: WritingPadState): WritingPadState {
   if (!state.activeStroke?.length) return { ...state, activeStroke: null, tapDrawing: false }
   return {
+    ...state,
     strokes: [...state.strokes, state.activeStroke],
     activeStroke: null,
     tapDrawing: false,
   }
 }
 
-export function beginWritingStroke(
-  state: WritingPadState,
-  point: WritingPoint,
-  mode: WritingPadMode,
-): WritingPadState {
+export function beginWritingStroke(state: WritingPadState, point: WritingPoint, mode: WritingPadMode): WritingPadState {
   if (mode === 'tap-to-draw' && state.tapDrawing) return finishActiveStroke(state)
   return {
     ...state,
@@ -75,6 +74,7 @@ export function cancelWritingStroke(state: WritingPadState): WritingPadState {
 export function pauseTapWritingStroke(state: WritingPadState): WritingPadState {
   if (!state.tapDrawing || !state.activeStroke?.length) return state
   return {
+    ...state,
     strokes: [...state.strokes, state.activeStroke],
     activeStroke: null,
     tapDrawing: true,
@@ -87,9 +87,28 @@ export function undoWritingStroke(state: WritingPadState): WritingPadState {
 }
 
 export function clearWritingPad(): WritingPadState {
-  return { strokes: [], activeStroke: null, tapDrawing: false }
+  return { strokes: [], activeStroke: null, tapDrawing: false, typedText: '' }
 }
 
 export function writingPadHasInk(state: WritingPadState) {
-  return state.strokes.length > 0 || Boolean(state.activeStroke?.length)
+  return state.strokes.length > 0 || Boolean(state.activeStroke?.length) || state.typedText.trim().length > 0
+}
+
+const hanCharacter = /\p{Script=Han}/u
+const hanCharactersOnly = /^\p{Script=Han}+$/u
+
+/**
+ * The keyboard response is the Hanzi selected from a device's Chinese Pinyin
+ * input method. Uncommitted Latin Pinyin is not a finished response.
+ */
+export function typedChineseInputIssue(value: string) {
+  const response = value.trim()
+  if (!response) return null
+  if (!hanCharacter.test(response)) return 'Choose Chinese characters from your Pinyin keyboard before continuing.'
+  if (!hanCharactersOnly.test(response)) return 'Submit Chinese characters only.'
+  return null
+}
+
+export function setWritingPadText(state: WritingPadState, typedText: string): WritingPadState {
+  return { ...state, typedText: typedText.normalize('NFC') }
 }

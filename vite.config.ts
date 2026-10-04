@@ -30,7 +30,7 @@ const releaseIdentityByPage = {
   'index.html': {
     grade: 'Grade 2',
     status: 'Family beta',
-    persistence: 'Tier 1 writing durable here · Tier 2 reading session only',
+    persistence: 'Tier 1 writing and Tier 2 reading metadata are durable',
   },
   'kindergarten-learning-lab.html': {
     grade: 'Kindergarten',
@@ -39,8 +39,8 @@ const releaseIdentityByPage = {
   },
   'grade5-learning-hub.html': {
     grade: 'Grade 5',
-    status: 'Experimental',
-    persistence: 'Session only',
+    status: 'Public',
+    persistence: 'Device progress · microphone recordings are never saved',
   },
 } as const
 

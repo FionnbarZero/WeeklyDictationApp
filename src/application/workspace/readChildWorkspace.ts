@@ -16,6 +16,7 @@ export async function readChildWorkspace(
     adaptiveState,
     acquisitionProgressions,
     distractorTargetObservations,
+    readingProgress,
     visits,
     queueEntries,
     mastery,
@@ -32,6 +33,7 @@ export async function readChildWorkspace(
     reads.readAdaptiveState(scope, signal),
     reads.listAcquisitionProgressions(scope, signal),
     reads.listDistractorTargetObservations(scope, signal),
+    reads.listTier2ReadingProgress(scope, signal),
     reads.listWarmupVisits(scope, signal),
     reads.listWarmupQueueEntries(scope, signal),
     reads.listWarmupMastery(scope, signal),
@@ -64,6 +66,7 @@ export async function readChildWorkspace(
     adaptiveState,
     acquisitionProgressions,
     distractorTargetObservations,
+    readingProgress,
     warmup: {
       visits,
       queueEntries,

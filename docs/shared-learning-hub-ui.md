@@ -28,4 +28,4 @@ The Kindergarten lab remains the visual reference, but its lifecycle is delibera
 
 ## Safety checks
 
-Architecture tests inventory the shared TypeScript files and reject grade, lifecycle, practice-engine, domain, or persistence dependencies. Grade 5 tests verify that the adapter preserves its four sections and returns the original Tier 1 writing launch request. The Grade 5 page remains a development-only lab and continues using the shared `PracticeView` for connected writing activities.
+Architecture tests inventory the shared TypeScript files and reject grade, lifecycle, practice-engine, domain, or persistence dependencies. Grade 5 tests verify that the adapter preserves its four sections and returns the original Tier 1 writing launch request. The public Grade 5 page loads a reviewed, checksummed curriculum snapshot and continues using the shared `PracticeView` for connected writing activities.
