@@ -18,6 +18,7 @@ import {
 } from '../tier2/pathway.ts'
 import { ReadingResponsePanel } from './ReadingResponsePanel.tsx'
 import { readingShowCopyInstruction, type ReadingSpeechSegment } from './contracts.ts'
+import { browserSpeech, requireCompletedSpeech } from '../audio/browserSpeech.ts'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -59,33 +60,16 @@ export type Tier2ReadingPracticeProps = {
   readonly sessionNote?: string
 }
 
-function speakSegment(segment: ReadingSpeechSegment): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!segment.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    const utterance = new SpeechSynthesisUtterance(segment.text)
-    utterance.lang = segment.language
-    utterance.rate = segment.rate
-    let settled = false
-    const finish = (error?: Error) => {
-      if (settled) return
-      settled = true
-      window.clearTimeout(timeout)
-      if (error) reject(error)
-      else resolve()
-    }
-    const timeout = window.setTimeout(() => finish(new Error('Mandarin speech playback timed out.')), 10_000)
-    utterance.onend = () => finish()
-    utterance.onerror = () => finish(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
-  })
-}
-
-async function speakSequence(segments: readonly ReadingSpeechSegment[]) {
-  window.speechSynthesis.cancel()
-  for (const segment of segments) await speakSegment(segment)
+function speakSequence(segments: readonly ReadingSpeechSegment[]) {
+  return requireCompletedSpeech(
+    browserSpeech.play(
+      segments.map((segment) => ({
+        text: segment.text,
+        language: segment.language,
+        rate: segment.rate,
+      })),
+    ),
+  )
 }
 
 function initialRun(
@@ -141,7 +125,7 @@ export function Tier2ReadingPractice({
   const randomRef = useRef(random)
   const [run, setRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+  useEffect(() => () => browserSpeech.cancel(), [])
 
   function answerAcquisition(correct: boolean) {
     setRun((current) => {
@@ -182,7 +166,7 @@ export function Tier2ReadingPractice({
   }
 
   function exit() {
-    window.speechSynthesis?.cancel()
+    browserSpeech.cancel()
     onExit()
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook } from './kindergartenSheetsImporter.ts'
-import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
 import {
   answerKindergartenAcquisitionLab,
   kindergartenCandidateIsUsableInLab,
@@ -72,10 +72,6 @@ function speakText(text: string, language = 'zh-CN', rate = 0.55) {
   utterance.rate = rate
   window.speechSynthesis.speak(utterance)
   return () => window.speechSynthesis.cancel()
-}
-
-function speakWord(word: Word) {
-  return speakText(word.text)
 }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
@@ -403,7 +399,6 @@ function KindergartenLearningLab() {
   }
 
   if (writingPractice) {
-    const promptWord = writingPractice.state.flow.prompt?.word
     const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
     const correct = scored.filter((item) => item.correct).length
     return <main className="k-lab-shell practice">
@@ -412,38 +407,35 @@ function KindergartenLearningLab() {
         session={writingSessionFor(writingPractice)}
         datasets={[writingPractice.dataset]}
         onExit={() => leavePractice('Writing practice exited. No score was added.')}
-        onReplay={() => promptWord ? speakWord(promptWord) : undefined}
         onBeginWarmup={() => undefined}
         onInterstitialComplete={() => undefined}
         onDictationComplete={(method = 'timer') => revealWriting(method)}
         onStartReview={() => undefined}
         onAnswer={answerWriting}
-        onSpeakWord={speakWord}
-        onSpeakReviewInstruction={() => undefined}
         reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
         timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
+        wordAudioMode="word-only"
+        wordAudioRate={0.55}
       />
     </main>
   }
 
   if (testReviewSession && testReviewDataset) {
-    const activeWord = activePracticeWord(testReviewSession)
     return <main className="k-lab-shell practice">
       <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
       <PracticeView
         session={testReviewSession}
         datasets={[testReviewDataset]}
         onExit={() => leavePractice('Final Boss exited. No score was added.')}
-        onReplay={() => testReviewSession.stage === 'complete' ? speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9) : activeWord ? speakWord(activeWord) : undefined}
         onBeginWarmup={() => undefined}
         onInterstitialComplete={() => setTestReviewSession((current) => current?.stage === 'interstitial' ? { ...current, stage: 'dictation' } : current)}
         onDictationComplete={completeTestReviewDictation}
         onStartReview={() => setTestReviewSession((current) => current?.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current)}
         onAnswer={answerTestReview}
-        onSpeakWord={speakWord}
-        onSpeakReviewInstruction={() => speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9)}
         reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
         timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
+        wordAudioMode="word-only"
+        wordAudioRate={0.55}
       />
     </main>
   }

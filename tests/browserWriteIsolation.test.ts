@@ -98,7 +98,9 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
   assert.doesNotMatch(source, /answerAcquisitionPrompt\(current\.acquisition/)
   assert.doesNotMatch(source, /saveCloudAcquisitionProgress/)
   assert.match(source, /const session: PracticeSession = \{[\s\S]*acquisition: checkpoint\.nextFlow,[\s\S]*primaryAnswers/)
-  assert.match(source, /className="replay-button" onClick=\{onReplay\}/)
+  assert.match(source, /className="replay-button" onClick=\{\(\) => playWordAudio\(/)
+  assert.match(source, /Writing opens after you hear the word\./)
+  assert.match(source, /Try word audio again/)
   assert.doesNotMatch(source, /setInterval\(\(\) => setSeconds/)
 })
 

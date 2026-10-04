@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
-import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
 import {
   answerGrade5AcquisitionLab,
   revealGrade5AcquisitionLab,
@@ -101,16 +101,6 @@ function candidateFor(request: Grade5ActivityLaunchRequest): WeeklyDatasetCandid
   return candidate
 }
 
-function speakWord(word: Word) {
-  if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(word.text)
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.55
-  window.speechSynthesis.speak(utterance)
-  return () => window.speechSynthesis.cancel()
-}
-
 function speakReadingReference(word: Word): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
@@ -125,11 +115,6 @@ function speakReadingReference(word: Word): Promise<void> {
     utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
     window.speechSynthesis.speak(utterance)
   })
-}
-
-function speakCurrentWord() {
-  const word = activeSession ? activePracticeWord(activeSession) : undefined
-  return word ? speakWord(word) : undefined
 }
 
 function latestProgressionDate(extraction: Grade5SourceExtraction) {
@@ -190,7 +175,7 @@ function initialPracticeSession(
 
 function primaryStartState(session: PracticeSession): PracticeSession {
   if (session.primaryQueue.length === 0) return { ...session, segment: 'primary', stage: 'complete', queue: [], index: 0 }
-  if (session.acquisition?.prompt) return { ...session, segment: 'primary', stage: 'dictation', queue: [session.acquisition.prompt.word], index: 0 }
+  if (session.acquisition?.prompt) return { ...session, segment: 'primary', stage: 'interstitial', queue: [session.acquisition.prompt.word], index: 0 }
   return { ...session, segment: 'primary', stage: 'interstitial', queue: session.primaryQueue, index: 0 }
 }
 
@@ -331,16 +316,15 @@ function renderPracticeView() {
       session={activeSession}
       datasets={activeDatasets}
       onExit={leavePractice}
-      onReplay={speakCurrentWord}
       onBeginWarmup={beginWarmup}
       onInterstitialComplete={completeInterstitial}
       onDictationComplete={completeDictationWord}
       onStartReview={startPrimaryReview}
       onAnswer={handlePracticeAnswer}
-      onSpeakWord={speakWord}
-      onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
       timerSecondsOverride={grade5WritingLabProfile.timers.testReview}
+      wordAudioMode="word-only"
+      wordAudioRate={0.55}
     />,
   )
 }
