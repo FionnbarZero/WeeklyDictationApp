@@ -14,6 +14,7 @@
 | --- | --- |
 | Stable destination | `https://weeklydictation-k-beta.web.app` |
 | Preview destination | `https://weeklydictation-k-beta--candidate-250d348f5279-kpf11k1z.web.app` |
+| Retained rollback destination | `https://weeklydictation-k-beta--rollback-stable-250d348f5279-4kkjswl0.web.app` |
 | Source revision | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` |
 | Hosting version | `856c70eaec380dc5` |
 | Built artifact | `kindergarten-250d348f52792235ce72b7157b26e7cd0ad7f0bb.tar.gz` |
@@ -29,7 +30,7 @@
 - Established the first independent Kindergarten stable destination from an immutable reviewed artifact.
 - Added visible grade, experimental status, version, revision, and session-only identity.
 - Kept the development fixture, activity surface, persistence behavior, source gates, and schemas unchanged.
-- Known limitations retained: current activities are not yet independently product-approved; no durable progress; source registry inactive; no retained rollback channel.
+- Known limitations retained: current activities are not yet independently product-approved; no durable progress; source registry inactive.
 - Known release defect: rewritten `/` responses can retain Firebase's one-hour default cache because this artifact predates the root-route `no-store` correction.
 
 ## Verification
@@ -40,6 +41,7 @@
 | Remote CI | [All four quality, build, browser, and Firestore Emulator jobs passed](https://github.com/FionnbarZero/WeeklyDictationApp/actions/runs/37134555662) for revision `250d348f52792235ce72b7157b26e7cd0ad7f0bb` |
 | Preview identity | Candidate and live channels resolve to Hosting version `856c70eaec380dc5` |
 | Live identity | Displays Kindergarten, Experimental, `0.2.0-stage2`, full revision, and Session only |
+| Rollback identity | Non-expiring `rollback-stable-250d348f5279` serves Hosting version `856c70eaec380dc5` and the full source revision |
 | Adult activity acceptance | Not recorded; smoke-test defect inventory is in progress |
 | Post-promotion observation | Not recorded |
 
@@ -56,12 +58,12 @@
 - Launch check: live root returns HTTP 200 and displays the expected identity
 - Resume check: not applicable — session only
 - Acceptance decision: open pending the defect inventory and activity matrix
-- Previous known-good artifact: none recorded for this initial stable promotion
-- Retained rollback channel: absent
+- Previous known-good artifact: none predates this initial stable promotion; this release is retained as the baseline for the next promotion
+- Retained rollback channel: `rollback-stable-250d348f5279`; no `expireTime`; verified `2026-10-04T00:08:48.719Z`
 - Data restore required: no
 - Stop conditions: privacy, retained audio, wrong curriculum/lifecycle, or durable-progress claims require containment
 
 ## Closeout
 
 - Final status: promoted, not yet accepted
-- Required follow-up: finish adult activity acceptance, promote the approved cache-safe/fix artifact, preserve the accepted current live version under a retained rollback channel, and record observation
+- Required follow-up: finish adult activity acceptance, promote the approved cache-safe/fix artifact through exact-artifact review, and record observation

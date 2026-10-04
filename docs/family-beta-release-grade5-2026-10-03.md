@@ -14,6 +14,7 @@
 | --- | --- |
 | Stable destination | `https://weeklydictation-g5-beta.web.app` |
 | Preview destination | `https://weeklydictation-g5-beta--candidate-a55d972ccb6f-exovn6v0.web.app` |
+| Retained rollback destination | `https://weeklydictation-g5-beta--rollback-stable-a55d972ccb6f-1qadbkg1.web.app` |
 | Source revision | `a55d972ccb6f6db00c81b202d4e5bba16a889025` |
 | Hosting version | `d9bf9c316262a8a8` |
 | Built artifact | `grade5-a55d972ccb6f6db00c81b202d4e5bba16a889025.tar.gz` |
@@ -30,7 +31,7 @@
 - Corrected rewritten-root caching so application-shell responses use `Cache-Control: no-store` while fingerprinted assets remain immutable.
 - Preserved visible grade, experimental status, version, revision, and session-only identity.
 - Kept curriculum, activity behavior, persistence, source activation, and schemas unchanged.
-- Known limitations retained: development fixture; source registry inactive; Warmup policy and durable two-review-cycle persistence unresolved; no retained rollback channel.
+- Known limitations retained: development fixture; source registry inactive; Warmup policy and durable two-review-cycle persistence unresolved.
 
 ## Verification
 
@@ -40,6 +41,7 @@
 | Remote CI | [All four quality, build, browser, and Firestore Emulator jobs passed](https://github.com/FionnbarZero/WeeklyDictationApp/actions/runs/37159399005) for revision `a55d972ccb6f6db00c81b202d4e5bba16a889025` |
 | Preview identity | Candidate and live channels resolve to Hosting version `d9bf9c316262a8a8` |
 | Live identity | Displays Grade 5, Experimental, `0.2.0-stage2`, full revision, and Session only |
+| Rollback identity | Non-expiring `rollback-stable-a55d972ccb6f` serves Hosting version `d9bf9c316262a8a8` and the full source revision |
 | Cache check | Live root returns `Cache-Control: no-store`; fingerprinted assets retain immutable caching |
 | Adult activity acceptance | Detailed matrix not recorded in the repository |
 | Post-promotion observation | Not recorded |
@@ -57,12 +59,12 @@
 - Launch check: live root returns HTTP 200 and displays the expected identity
 - Resume check: not applicable — session only
 - Acceptance decision: open pending the recorded activity matrix and observation window
-- Previous known-good artifact: none recorded for this initial stable promotion
-- Retained rollback channel: absent
+- Previous known-good artifact: none predates this initial stable promotion; this release is retained as the baseline for the next promotion
+- Retained rollback channel: `rollback-stable-a55d972ccb6f`; no `expireTime`; verified `2026-10-04T00:09:04.313Z`
 - Data restore required: no
 - Stop conditions: privacy, retained audio, wrong review cycle/lifecycle, or durable-progress claims require containment
 
 ## Closeout
 
 - Final status: promoted, not yet accepted
-- Required follow-up: complete the adult activity matrix and observation record, then preserve the accepted live version under a retained rollback channel before the next promotion
+- Required follow-up: complete the adult activity matrix and observation record

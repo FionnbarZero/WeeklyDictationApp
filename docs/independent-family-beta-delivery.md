@@ -1,6 +1,6 @@
 # Independent family beta delivery
 
-Status: repository controls implemented; both Hosting sites are provisioned and initial stable releases are active; retained rollback channels and complete acceptance records remain open.
+Status: repository controls implemented; both Hosting sites, initial stable releases, and retained rollback channels are active; complete acceptance records remain open.
 
 This delivery path isolates the two session-only applications without moving Grade 2. The existing GitHub Pages origin remains the Grade 2 data origin until verified lossless restore makes an origin change safe.
 
@@ -25,7 +25,14 @@ Verified through the authenticated Firebase Hosting channel inventory on 2026-10
 
 Both live roots display the recorded revision and session-only status. Grade 5 uses the corrected `Cache-Control: no-store` rule for rewritten roots. Kindergarten still uses the earlier HTML-only rule, so `/` can receive Firebase's one-hour default cache; fix this only through an approved exact-artifact promotion.
 
-Neither site currently has a retained `rollback-*` channel. The candidate channels expire on 2026-10-10 and must not be treated as permanent rollback targets. Before the next promotion, preserve the current accepted live version under `rollback-<current-revision>` and record it in the next manifest.
+Verified through the authenticated Firebase Hosting channel inventory on 2026-10-04:
+
+| Grade | Retained rollback channel | Hosting version | Expiration |
+| --- | --- | --- | --- |
+| Kindergarten | [`rollback-stable-250d348f5279`](https://weeklydictation-k-beta--rollback-stable-250d348f5279-4kkjswl0.web.app) | `856c70eaec380dc5` | none |
+| Grade 5 | [`rollback-stable-a55d972ccb6f`](https://weeklydictation-g5-beta--rollback-stable-a55d972ccb6f-1qadbkg1.web.app) | `d9bf9c316262a8a8` | none |
+
+Each retained channel serves the same Hosting version and embedded Git revision as its live site. Creating these records did not change either live channel. The earlier `rollback-<revision>` rehearsal channels use Firebase's seven-day preview default and expire on 2026-10-11; they are not rollback authorities and may expire normally.
 
 ## Immutable artifact contract
 
@@ -75,7 +82,7 @@ npm run family-beta:promote -- \
   --confirm-site weeklydictation-k-beta
 ```
 
-For later promotions, replace `--initial-release` with `--previous-revision <full-current-stable-revision>`. The command verifies the current live revision, clones it to `rollback-<previous-revision>`, clones the reviewed candidate to `live`, and verifies both channels. It never rebuilds during promotion.
+For later promotions, first provision the revision-scoped `rollback-stable-<previous-revision>` channel through the authenticated Firebase Hosting API without `ttl` or `expireTime`, and confirm that its channel record has no `expireTime`. Then replace `--initial-release` with `--previous-revision <full-current-stable-revision>`. The command now fails before changing live if that retained channel is absent or expiring, verifies the current live revision, clones it to the retained channel, clones the reviewed candidate to `live`, and verifies both channels. It never rebuilds during promotion.
 
 Rollback also uses a server-side clone:
 

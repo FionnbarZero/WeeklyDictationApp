@@ -35,9 +35,9 @@ Verified on 2026-10-03:
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
-| Kindergarten | `https://weeklydictation-k-beta.web.app` | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | Adult defect review is active; no retained `rollback-*` channel; rewritten-root cache fix not yet promoted |
+| Kindergarten | `https://weeklydictation-k-beta.web.app` | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | Non-expiring `rollback-stable-250d348f5279` verified; adult defect review active; rewritten-root cache fix not yet promoted |
 | Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | `a6df41db07331fd0c8dde190dbf80b10650184df` through Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023` | Restore release is merged but not live or rehearsed against family-browser state |
-| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | No retained `rollback-*` channel; detailed adult acceptance and observation record incomplete |
+| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | Non-expiring `rollback-stable-a55d972ccb6f` verified; detailed adult acceptance and observation record incomplete |
 
 ## Release identity and manifest
 

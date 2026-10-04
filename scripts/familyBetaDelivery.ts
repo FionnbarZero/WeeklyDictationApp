@@ -10,11 +10,16 @@ export type FamilyBetaDeliveryIdentity = {
 export type FamilyBetaHostingChannel = {
   name: string
   url: string
+  expireTime?: string
   release?: { version?: { name?: string } }
 }
 
 export function channelHasRelease(channel: FamilyBetaHostingChannel | undefined) {
   return Boolean(channel?.release?.version?.name)
+}
+
+export function channelIsRetained(channel: FamilyBetaHostingChannel | undefined) {
+  return Boolean(channel && !channel.expireTime)
 }
 
 export const familyBetaHostingHeaders = [
