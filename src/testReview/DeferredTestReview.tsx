@@ -53,7 +53,10 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   const [review, setReview] = useState<TestReviewState>(() => createTestReviewState(targets))
   const [captures, setCaptures] = useState<RetainedReadingCapture[]>([])
   const [writingByTargetId, setWritingByTargetId] = useState<Record<string, WritingPadState>>({})
-  const [writingAudio, setWritingAudio] = useState<{ status: 'loading' | 'ready' | 'error'; error: string | null }>({ status: 'loading', error: null })
+  const [writingAudio, setWritingAudio] = useState<{ status: 'loading' | 'ready' | 'error'; error: string | null }>({
+    status: 'loading',
+    error: null,
+  })
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const capturesRef = useRef<RetainedReadingCapture[]>([])
   const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
@@ -132,23 +135,26 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       setWritingAudio({ status: 'loading', error: null })
       const attempt = onPlayWritingPrompt?.(activeTarget)
       const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
-      void started.then(() => {
-        if (writingPlaybackRef.current !== playback) return
-        setWritingAudio({ status: 'ready', error: null })
-        if (attempt) void promptAudioCompleted(attempt).catch((audioError) => {
+      void started
+        .then(() => {
+          if (writingPlaybackRef.current !== playback) return
+          setWritingAudio({ status: 'ready', error: null })
+          if (attempt)
+            void promptAudioCompleted(attempt).catch((audioError) => {
+              if (writingPlaybackRef.current !== playback) return
+              setWritingAudio({
+                status: 'error',
+                error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+              })
+            })
+        })
+        .catch((audioError) => {
           if (writingPlaybackRef.current !== playback) return
           setWritingAudio({
             status: 'error',
             error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
           })
         })
-      }).catch((audioError) => {
-        if (writingPlaybackRef.current !== playback) return
-        setWritingAudio({
-          status: 'error',
-          error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
-        })
-      })
       return () => {
         writingPlaybackRef.current += 1
         stopActiveAudio()
@@ -163,23 +169,26 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     setWritingAudio({ status: 'loading', error: null })
     const attempt = onPlayWritingPrompt?.(activeTarget)
     const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
-    void started.then(() => {
-      if (writingPlaybackRef.current !== playback) return
-      setWritingAudio({ status: 'ready', error: null })
-      if (attempt) void promptAudioCompleted(attempt).catch((audioError) => {
+    void started
+      .then(() => {
+        if (writingPlaybackRef.current !== playback) return
+        setWritingAudio({ status: 'ready', error: null })
+        if (attempt)
+          void promptAudioCompleted(attempt).catch((audioError) => {
+            if (writingPlaybackRef.current !== playback) return
+            setWritingAudio({
+              status: 'error',
+              error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+            })
+          })
+      })
+      .catch((audioError) => {
         if (writingPlaybackRef.current !== playback) return
         setWritingAudio({
           status: 'error',
           error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
         })
       })
-    }).catch((audioError) => {
-      if (writingPlaybackRef.current !== playback) return
-      setWritingAudio({
-        status: 'error',
-        error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
-      })
-    })
   }
 
   useEffect(() => {

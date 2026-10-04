@@ -65,7 +65,9 @@ test('Kindergarten writing Final Boss submits one mixed final score', async ({ p
   await expect(page.getByText('7 of 14 correct')).toBeVisible()
 })
 
-test('Kindergarten writing Final Boss blocks the timer and exposes recovery when prompt audio fails', async ({ page }) => {
+test('Kindergarten writing Final Boss blocks the timer and exposes recovery when prompt audio fails', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () {
       return Promise.reject(new DOMException('Playback was blocked.', 'NotAllowedError'))
@@ -74,7 +76,9 @@ test('Kindergarten writing Final Boss blocks the timer and exposes recovery when
       configurable: true,
       value: {
         cancel() {},
-        getVoices() { return [] },
+        getVoices() {
+          return []
+        },
         resume() {},
         speak(utterance: SpeechSynthesisUtterance) {
           window.setTimeout(() => utterance.onerror?.({} as SpeechSynthesisErrorEvent), 0)
@@ -243,9 +247,11 @@ test('Kindergarten reading Final Boss plays the child recording before the corre
 
   await expect(firstRow.getByText('Comparison complete. Choose Yes or Not yet.')).toBeVisible()
   await expect(assessment).toBeEnabled()
-  await expect.poll(() =>
-    page.evaluate(() => (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.length),
-  ).toBeGreaterThanOrEqual(2)
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.length),
+    )
+    .toBeGreaterThanOrEqual(2)
   const playbackOrder = await page.evaluate(() =>
     (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.slice(0, 2),
   )
