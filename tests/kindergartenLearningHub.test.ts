@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { SheetsWorkbookPayload } from '../src/curriculum/model.ts'
-import { kindergartenCurrentSourceWeek } from '../src/kindergartenLab/currentWeek.ts'
+import { kindergartenCurrentSourceWeek, kindergartenPreviousSourceWeek } from '../src/kindergartenLab/currentWeek.ts'
 import { kindergartenLearningHubView } from '../src/kindergartenLab/learningHub.ts'
 import { kindergartenUnitReviewForLab } from '../src/kindergartenLab/unitReview.ts'
 import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
@@ -49,7 +49,9 @@ test('Final Boss owns cumulative review and Spirit Realm owns mastery warmup', (
 })
 
 test('the authoritative top spreadsheet tab selects the current curriculum week', () => {
-  assert.equal(kindergartenCurrentSourceWeek(candidates)?.rawDate, 'Week 8 10/05')
+  const authoritativeCurrent = kindergartenCurrentSourceWeek(candidates)
+  assert.equal(authoritativeCurrent?.rawDate, 'Week 8 10/05')
+  assert.equal(kindergartenPreviousSourceWeek(candidates, authoritativeCurrent)?.rawDate, 'Week 7 09/28')
 })
 
 test('the Unit 1 review week opens the Final Boss and holds acquisition and mastery', () => {
@@ -65,7 +67,7 @@ test('the Unit 1 review week opens the Final Boss and holds acquisition and mast
 })
 
 test('the week after review opens the next acquisition cohort and moves Unit 1 to mastery', () => {
-  const nextHub = kindergartenLearningHubView(nextUnit, review)
+  const nextHub = kindergartenLearningHubView(nextUnit, review, reviewWeek)
   assert.deepEqual(nextHub.sections.map((section) => [section.id, section.available]), [
     ['current-week', true],
     ['ninja-skills', true],
@@ -73,4 +75,7 @@ test('the week after review opens the next acquisition cohort and moves Unit 1 t
     ['spirit-realm', true],
   ])
   assert.equal(nextHub.sections[0].cohorts[0].label, 'Week 8 10/05')
+  assert.equal(nextHub.sections[1].cohorts[0].label, 'Week 7 09/28')
+  assert.equal(nextHub.sections[1].cohorts[0].groups[0].words.length, 14)
+  assert.equal(nextHub.sections[1].cohorts[0].groups[1].words.length, 9)
 })

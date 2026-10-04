@@ -53,6 +53,26 @@ function currentWeekCohort(candidate: WeeklyDatasetCandidate): LearningHubCohort
   }
 }
 
+function ninjaSkillsCohort(
+  candidate: WeeklyDatasetCandidate,
+  review: KindergartenUnitReviewLab | null,
+): LearningHubCohort {
+  const usesCumulativeReview = candidate.status === 'no-instruction'
+    && candidate.noInstructionReason === 'unit-review'
+    && Boolean(review)
+  const tier1Words = usesCumulativeReview ? review!.tier1Words : candidate.tier1.map((word) => word.text)
+  const tier2Words = usesCumulativeReview ? review!.tier2Words : candidate.tier2.map((word) => word.text)
+  return {
+    id: candidate.datasetId || candidate.source.sourceUnitId,
+    label: candidate.rawDate || candidate.dateRangeLabel || 'Previous week',
+    countLabel: `${tier1Words.length} writing · ${tier2Words.length} reading`,
+    groups: [
+      { label: 'Writing characters', words: tier1Words },
+      { label: 'High-frequency reading', words: tier2Words },
+    ],
+  }
+}
+
 function unitCohort(review: KindergartenUnitReviewLab): LearningHubCohort {
   return {
     id: review.dataset.id,
@@ -80,11 +100,14 @@ function section(
 export function kindergartenLearningHubView(
   candidate: WeeklyDatasetCandidate,
   review: KindergartenUnitReviewLab | null,
+  ninjaCandidate: WeeklyDatasetCandidate = candidate,
 ): LearningHubViewModel<KindergartenHubLaunch> {
   const week = currentWeekCohort(candidate)
+  const ninjaWeek = ninjaSkillsCohort(ninjaCandidate, review)
   const unit = review ? unitCohort(review) : null
   const isReviewWeek = candidate.status === 'no-instruction' && candidate.noInstructionReason === 'unit-review'
   const hasCurrentVocabulary = candidate.status === 'valid' && candidate.tier1.length > 0
+  const hasNinjaVocabulary = ninjaWeek.groups.some((group) => group.words.length > 0)
   const afterUnitReview = Boolean(candidate.normalizedStartDate
     && candidate.normalizedStartDate > KINDERGARTEN_UNIT_ONE_LAB_FIXTURE.reviewEndDate)
   const currentWeekUnavailableReason = isReviewWeek
@@ -117,13 +140,15 @@ export function kindergartenLearningHubView(
       subtitle: 'Build reading and writing power through three quick games.',
       actionLabel: 'Choose a game',
       theme: 'blue',
-      cohorts: [week],
+      cohorts: [ninjaWeek],
       activities: [
         launchActivity('ninja-listening', 'Listening game', 'Listening Lily Pads', 'Hear a word, then help the ninja land on the matching lily pad.', '🐸'),
         launchActivity('ninja-memory', 'Reading game', 'Memory Lanterns', 'Turn over lanterns and match pairs of the same word.', '🏮'),
         launchActivity('ninja-sky-writing', 'Writing game', 'Sky Writing', 'Hear a character, write it in the air or on paper, then check your work.', '☁️'),
       ],
-    }, hasCurrentVocabulary, currentWeekUnavailableReason),
+    }, !isReviewWeek && hasNinjaVocabulary, isReviewWeek
+      ? 'Ninja Skills pauses during the cumulative Unit 1 review and assessment week.'
+      : 'The previous spreadsheet period does not contain words for Ninja Skills.'),
     section({
       id: 'final-boss',
       number: '3',

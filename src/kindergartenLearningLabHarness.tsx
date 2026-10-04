@@ -20,7 +20,7 @@ import {
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
-import { kindergartenCurrentSourceWeek } from './kindergartenLab/currentWeek.ts'
+import { kindergartenCurrentSourceWeek, kindergartenPreviousSourceWeek } from './kindergartenLab/currentWeek.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
 import {
@@ -206,6 +206,7 @@ function KindergartenLearningLab() {
 
   const selectedCandidate = candidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId)
     || kindergartenCurrentSourceWeek(candidates)
+  const ninjaCandidate = kindergartenPreviousSourceWeek(candidates, selectedCandidate)
   const unitReview = useMemo<KindergartenUnitReviewLab | null>(() => {
     if (!candidates.length) return null
     try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
@@ -213,7 +214,16 @@ function KindergartenLearningLab() {
   const masteryDataset = useMemo(() => masteryDatasetFor(unitReview), [unitReview])
   const tier1Words = selectedCandidate?.tier1.map((word) => word.text) || []
   const tier2Words = selectedCandidate?.tier2.map((word) => word.text) || []
-  const choicePool = [...tier2Words, ...tier1Words]
+  const ninjaUsesUnitReview = ninjaCandidate?.status === 'no-instruction'
+    && ninjaCandidate.noInstructionReason === 'unit-review'
+    && Boolean(unitReview)
+  const ninjaTier1Words = ninjaUsesUnitReview
+    ? unitReview!.tier1Words
+    : ninjaCandidate?.tier1.map((word) => word.text) || []
+  const ninjaTier2Words = ninjaUsesUnitReview
+    ? unitReview!.tier2Words
+    : ninjaCandidate?.tier2.map((word) => word.text) || []
+  const ninjaChoicePool = [...ninjaTier2Words, ...ninjaTier1Words]
 
   function recordScore(score: ScoreInput) {
     setScores((current) => [...current, {
@@ -499,10 +509,10 @@ function KindergartenLearningLab() {
   }
 
   const speak = (text: string) => { speakText(text) }
-  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
-  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={ninjaTier2Words} choicePool={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting
-    words={tier1Words}
+    words={ninjaTier1Words}
     onExit={() => returnToHub()}
     onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
     speak={speak}
@@ -510,7 +520,7 @@ function KindergartenLearningLab() {
   if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
 
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>
-  const hubModel = kindergartenLearningHubView(selectedCandidate, unitReview)
+  const hubModel = kindergartenLearningHubView(selectedCandidate, unitReview, ninjaCandidate || selectedCandidate)
 
   return <main className="k-lab-shell k-hub-shell">
     <p className="k-lab-safety">Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write, saved progress, or production activation</p>

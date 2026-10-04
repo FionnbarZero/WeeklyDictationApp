@@ -65,6 +65,14 @@ const exitCases: ExitCase[] = [
   },
 ]
 
+test('Kindergarten separates the current Dojo week from the previous Ninja Skills period', async ({ page }) => {
+  await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
+
+  await expect(page.getByRole('button', { name: /Enter the Dojo/ })).toContainText('Week 8 10/05')
+  await expect(page.getByRole('button', { name: /Practice your Ninja Skills/ })).toContainText('Week 7 09/28')
+})
+
 for (const exitCase of exitCases) {
   test(`Kindergarten ${exitCase.activity} exits back to the Learning Hub without crashing`, async ({ page }) => {
     const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
