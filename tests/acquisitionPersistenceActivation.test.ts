@@ -8,6 +8,9 @@ import {
   prepareAcquisitionProgress,
   recoverAcquisitionCheckpoints,
 } from '../src/application/acquisitionPersistence.ts'
+import { answerAcquisition, revealAcquisition, startAcquisition } from '../src/acquisition/engine.ts'
+import { createAcquisitionProgressEnvelope } from '../src/acquisition/persistence/migration.ts'
+import { grade2AcquisitionStrategyV3 } from '../src/acquisition/strategies/grade2.ts'
 import { createInitialState, type AppState, type Dataset } from '../src/domain.ts'
 import { acquisitionReceiptMatchesCheckpoint, buildCloudAcquisitionCheckpointWrites, cloudDataToAppState } from '../src/firestoreClient.ts'
 import { createApplicationBackup, restoreApplicationBackup } from '../src/persistence/applicationBackup.ts'
@@ -76,6 +79,68 @@ test('legacy progress migrates in place while malformed progress is preserved an
   const wrongIdBlocked = prepareAcquisitionProgress({ ...stateWithDataset(), acquisitionProgressEnvelopes: [wrongId] }, 'maya', dataset, '2026-09-29T16:03:00.000Z', () => 0)
   assert.equal(wrongIdBlocked.status, 'blocked')
   assert.equal(wrongIdBlocked.state.acquisitionProgressEnvelopes?.[0], wrongId)
+})
+
+test('saved Grade 2 v3 progress keeps its exact position while adopting the longer v4 timer', () => {
+  const currentContext = acquisitionPersistenceContext('maya', dataset)
+  const v3Context = { ...currentContext, strategy: grade2AcquisitionStrategyV3, strategyUpgrades: [] }
+  const targetSet = v3Context.targetSet
+  let v3Flow = startAcquisition(targetSet, grade2AcquisitionStrategyV3, () => 0)
+  for (let index = 0; index < 2; index += 1) {
+    v3Flow = answerAcquisition(revealAcquisition(v3Flow), targetSet, grade2AcquisitionStrategyV3, true, () => 0)
+  }
+  assert.equal(v3Flow.prompt?.kind, 'show-copy')
+  assert.equal(v3Flow.prompt?.timerSeconds, 10)
+  const v3Envelope = createAcquisitionProgressEnvelope(v3Context, v3Flow, '2026-09-29T16:00:00.000Z')
+
+  const prepared = prepareAcquisitionProgress(
+    { ...stateWithDataset(), acquisitionProgressEnvelopes: [v3Envelope] },
+    'maya',
+    dataset,
+    '2026-09-29T16:01:00.000Z',
+    () => 0,
+  )
+
+  assert.equal(prepared.status, 'ready')
+  if (prepared.status !== 'ready') return
+  assert.equal(prepared.envelope.strategyId, 'grade2-acquisition-v4')
+  assert.equal(prepared.envelope.strategyVersion, 4)
+  assert.equal(prepared.envelope.flow.targetIndex, v3Flow.targetIndex)
+  assert.equal(prepared.envelope.flow.phase, v3Flow.phase)
+  assert.equal(prepared.envelope.flow.step, v3Flow.step)
+  assert.equal(prepared.envelope.flow.prompt?.id, v3Flow.prompt?.id)
+  assert.equal(prepared.envelope.flow.prompt?.word.id, v3Flow.prompt?.word.id)
+  assert.equal(prepared.envelope.flow.prompt?.timerSeconds, 20)
+})
+
+test('a pending Grade 2 v3 answer recovers before its progression upgrades to v4', () => {
+  const currentContext = acquisitionPersistenceContext('maya', dataset)
+  const v3Context = { ...currentContext, strategy: grade2AcquisitionStrategyV3, strategyUpgrades: [] }
+  const v3Flow = startAcquisition(v3Context.targetSet, grade2AcquisitionStrategyV3, () => 0)
+  const v3Envelope = createAcquisitionProgressEnvelope(v3Context, v3Flow, '2026-09-29T16:00:00.000Z')
+  assert.ok(v3Envelope.flow.prompt)
+  const checkpoint = createAcquisitionAnswerCheckpoint({
+    envelope: v3Envelope,
+    context: v3Context,
+    response: { correct: true, revealMethod: 'timer' },
+    answeredPromptId: v3Envelope.flow.prompt.id,
+    sessionId: 'v3-session',
+    occurredAt: '2026-09-29T16:00:01.000Z',
+    random: () => 0,
+  })
+
+  const recovered = recoverAcquisitionCheckpoints(stateWithDataset(), [{ checkpoint, baseEnvelope: v3Envelope }])
+  assert.equal(recovered.status, 'recovered', recovered.reason)
+  assert.equal(recovered.state.acquisitionProgressEnvelopes?.[0].strategyVersion, 3)
+  assert.equal(recovered.state.acquisitionProgressEnvelopes?.[0].revision, 1)
+
+  const prepared = prepareAcquisitionProgress(recovered.state, 'maya', dataset, '2026-09-29T16:01:00.000Z', () => 0)
+  assert.equal(prepared.status, 'ready')
+  if (prepared.status !== 'ready') return
+  assert.equal(prepared.envelope.strategyVersion, 4)
+  assert.equal(prepared.envelope.revision, 1)
+  assert.equal(prepared.envelope.flow.step, 1)
+  assert.equal(prepared.envelope.flow.prompt?.timerSeconds, 10)
 })
 
 test('one application reducer applies flow, receipt, score fact, and pending checkpoint exactly once', () => {

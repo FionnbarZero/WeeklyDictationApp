@@ -325,10 +325,10 @@ test('canonical validation detects content changed after fingerprinting', () => 
   assert.ok(validateWeeklyDatasetCandidate(changed).some((outcome) => outcome.code === 'fingerprint_mismatch'))
 })
 
-test('Grade 2 Acquisition strategy v3 is explicitly versioned', () => {
+test('Grade 2 Acquisition strategy v4 is explicitly versioned', () => {
   assert.equal(grade2PracticeProfile.version, 2)
-  assert.equal(grade2PracticeProfile.acquisition.id, 'grade2-acquisition-v3')
-  assert.equal(grade2PracticeProfile.acquisition.version, 3)
+  assert.equal(grade2PracticeProfile.acquisition.id, 'grade2-acquisition-v4')
+  assert.equal(grade2PracticeProfile.acquisition.version, 4)
   assert.deepEqual(grade2PracticeProfile.timers, { warmup: 10, testReview: 10 })
   assert.equal(grade2PracticeProfile.lifecycle.primaryWarmupTrials, 6)
   assert.deepEqual(grade2PracticeProfile.acquisition.introductionSequence, ['familiar-dt', 'familiar-dt', 'show-copy', 'target'])

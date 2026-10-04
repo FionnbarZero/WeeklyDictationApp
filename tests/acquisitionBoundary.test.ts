@@ -104,7 +104,7 @@ function traceFrom(flow: AcquisitionFlow, count: number) {
   return trace
 }
 
-test('the approved Grade 2 Acquisition v3 JSON and prompt trace stay fixed', () => {
+test('the approved Grade 2 Acquisition v4 JSON and prompt trace stay fixed', () => {
   const started = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   assert.equal(started.strategyId, golden.strategyId)
   assert.equal(started.strategyVersion, golden.strategyVersion)

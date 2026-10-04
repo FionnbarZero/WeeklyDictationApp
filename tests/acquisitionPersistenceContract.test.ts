@@ -94,7 +94,7 @@ test('a new envelope stores and validates the complete canonical identity and fl
   if (!result.valid) assert.match(result.errors.join(' '), /identity tuple|childId/)
 })
 
-test('every successful Grade 2 v3 Introduction and Expanded position checkpoints and validates', () => {
+test('every successful Grade 2 v4 Introduction and Expanded position checkpoints and validates', () => {
   let envelope = startedEnvelope()
   const visited = new Set<string>()
   let guard = 0

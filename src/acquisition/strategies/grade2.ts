@@ -12,7 +12,7 @@ const familiarDtTargets: AcquisitionTarget[] = [
   activityType: 'dictation',
 }))
 
-export const grade2AcquisitionStrategy = {
+export const grade2AcquisitionStrategyV3 = {
   id: 'grade2-acquisition-v3',
   version: 3,
   timers: {
@@ -25,6 +25,27 @@ export const grade2AcquisitionStrategy = {
     expandedDecrementSeconds: 1,
     correctionShowCopySeconds: 10,
     correctionHiddenSeconds: 10,
+  },
+  dtObservationMode: 'collect',
+  familiarDtTargets,
+  introductionSequence: ['familiar-dt', 'familiar-dt', 'show-copy', 'target'],
+  expandedSequence: ['target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'],
+  correctionSequence: ['show-copy', 'show-copy', 'show-copy', 'target', 'familiar-dt', 'target'],
+} as const satisfies AcquisitionStrategy
+
+export const grade2AcquisitionStrategy = {
+  id: 'grade2-acquisition-v4',
+  version: 4,
+  timers: {
+    familiarDtSeconds: 10,
+    earnedDtSeconds: 10,
+    introductionShowCopySeconds: 20,
+    introductionHiddenTargetSeconds: 20,
+    expandedStartSeconds: 20,
+    expandedMinimumSeconds: 10,
+    expandedDecrementSeconds: 10,
+    correctionShowCopySeconds: 20,
+    correctionHiddenSeconds: 20,
   },
   dtObservationMode: 'collect',
   familiarDtTargets,

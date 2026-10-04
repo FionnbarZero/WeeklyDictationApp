@@ -310,7 +310,7 @@ test('Acquisition audio follows the active prompt instead of the flat primary qu
 
 test('phase timers remain configurable by lifecycle', () => {
   assert.equal(timerSecondsFor('Grade 2', 'warmup', 'acquisition'), 10)
-  assert.equal(timerSecondsFor('Grade 2', 'primary', 'acquisition'), 10)
+  assert.equal(timerSecondsFor('Grade 2', 'primary', 'acquisition'), 20)
   assert.equal(timerSecondsFor('Grade 2', 'primary', 'test-review'), 10)
   assert.equal(timerSecondsFor('Kindergarten', 'primary', 'acquisition'), 10)
   assert.equal(timerSecondsFor('Kindergarten', 'primary', 'test-review'), 10)
@@ -407,16 +407,16 @@ function enterExpandedTrials(dataset: typeof currentDataset, random: () => numbe
 test('Acquisition uses the approved Familiar DT pool and Introduction sequence', () => {
   assert.deepEqual(FAMILIAR_DT_WORDS.map((word) => word.text), ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '大', '小', '上', '下', '人', '水'])
   const config = acquisitionTimerConfigFor('Grade 2')
-  assert.equal(config.familiarDtSeconds, 5)
-  assert.equal(config.introductionShowCopySeconds, 10)
-  assert.equal(config.introductionHiddenTargetSeconds, 10)
-  assert.equal(config.correctionHiddenSeconds, 10)
+  assert.equal(config.familiarDtSeconds, 10)
+  assert.equal(config.introductionShowCopySeconds, 20)
+  assert.equal(config.introductionHiddenTargetSeconds, 20)
+  assert.equal(config.correctionHiddenSeconds, 20)
 
   const dataset = { ...currentDataset, words: currentDataset.words.slice(0, 2) }
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   assert.equal(flow.phase, 'introduction')
   assert.equal(flow.prompt?.kind, 'familiar-dt')
-  assert.equal(flow.prompt?.timerSeconds, 5)
+  assert.equal(flow.prompt?.timerSeconds, 10)
   const firstDt = flow.prompt?.word.id
   flow = answerPrompt(flow, dataset)
   assert.equal(flow.prompt?.kind, 'familiar-dt')
@@ -424,10 +424,10 @@ test('Acquisition uses the approved Familiar DT pool and Introduction sequence',
   flow = answerPrompt(flow, dataset)
   assert.equal(flow.prompt?.kind, 'show-copy')
   assert.equal(flow.prompt?.word.id, dataset.words[0].id)
-  assert.equal(flow.prompt?.timerSeconds, 10)
+  assert.equal(flow.prompt?.timerSeconds, 20)
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.prompt?.kind, 'target')
-  assert.equal(flow.prompt?.timerSeconds, 10)
+  assert.equal(flow.prompt?.timerSeconds, 20)
   flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.phase, 'expanded-trials')
   assert.equal(flow.step, 0)
@@ -443,7 +443,7 @@ test('Expanded Trials use the approved 10-position sequence and four target time
     if (flow.prompt?.kind === 'target') targetTimers.push(flow.prompt.timerSeconds)
     flow = answerPrompt(flow, dataset)
   }
-  assert.deepEqual(targetTimers, [10, 9, 8, 7])
+  assert.deepEqual(targetTimers, [20, 10, 10, 10])
   assert.equal(flow.targetIndex, 1)
   assert.equal(flow.phase, 'introduction')
   assert.deepEqual(flow.earnedDtPool.map((word) => word.id), [dataset.words[0].id])
@@ -462,7 +462,7 @@ test('DT positions use Familiar DTs until an Earned DT exists, then honor the 50
   assert.equal(flow.step, 1)
   assert.equal(flow.prompt?.kind, 'earned-dt')
   assert.equal(flow.prompt?.word.id, dataset.words[0].id)
-  assert.equal(flow.prompt?.timerSeconds, 5)
+  assert.equal(flow.prompt?.timerSeconds, 10)
 })
 
 test('Familiar DT shuffle bags exhaust the approved pool before reuse and avoid consecutive repeats', () => {
@@ -485,20 +485,20 @@ test('Correction uses three copies, hidden target, new Familiar DT, and final hi
   assert.equal(flow.phase, 'correction')
   for (let index = 0; index < 3; index += 1) {
     assert.equal(flow.prompt?.kind, 'show-copy')
-    assert.equal(flow.prompt?.timerSeconds, 10)
+    assert.equal(flow.prompt?.timerSeconds, 20)
     flow = answerPrompt(flow, dataset, false)
   }
   assert.equal(flow.prompt?.kind, 'target')
-  assert.equal(flow.prompt?.timerSeconds, 10)
+  assert.equal(flow.prompt?.timerSeconds, 20)
   flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.prompt?.kind, 'familiar-dt')
   flow = answerPrompt(flow, dataset, false)
   assert.equal(flow.prompt?.kind, 'target')
-  assert.equal(flow.prompt?.timerSeconds, 10)
+  assert.equal(flow.prompt?.timerSeconds, 20)
   flow = answerPrompt(flow, dataset, true)
   assert.equal(flow.phase, 'expanded-trials')
   assert.equal(flow.step, 0)
-  assert.equal(flow.prompt?.timerSeconds, 10)
+  assert.equal(flow.prompt?.timerSeconds, 20)
 })
 
 test('successful weekly-target Correction resumes the next unfinished Expanded Trials position', () => {
@@ -524,7 +524,7 @@ test('successful weekly-target Correction resumes the next unfinished Expanded T
   assert.equal(flow.step, 3)
   assert.equal(flow.expandedTargetAttempts, 2)
   assert.equal(flow.prompt?.kind, 'familiar-dt')
-  assert.equal(flow.prompt?.timerSeconds, 5)
+  assert.equal(flow.prompt?.timerSeconds, 10)
 })
 
 test('three consecutive hidden-target errors restart the affected word from Introduction', () => {
@@ -740,8 +740,8 @@ test('legacy Established-DT local state hydrates and resumes with Familiar-DT fi
   const resumed = resumeAcquisitionFlow(acquisitionProgressFor(reloaded, 'maya', currentDataset.id)?.flow, currentDataset, 'Grade 2', () => 0)
   assert.equal(reloaded.distractorTargetObservations[0].poolType, 'familiar')
   assert.equal(reloaded.distractorTargetObservations[0].wordId, 'familiar-dt-1')
-  assert.equal(resumed.strategyId, 'grade2-acquisition-v3')
-  assert.equal(resumed.strategyVersion, 3)
+  assert.equal(resumed.strategyId, 'grade2-acquisition-v4')
+  assert.equal(resumed.strategyVersion, 4)
   assert.equal(resumed.targetIndex, started.targetIndex)
   assert.equal(resumed.phase, started.phase)
   assert.equal(resumed.step, started.step)

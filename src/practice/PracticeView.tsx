@@ -17,6 +17,7 @@ import { SelfAssessmentActions } from './SelfAssessmentActions'
 import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
 import type { TestReviewCompletion } from '../testReview/contracts.ts'
 import { browserSpeech, requireCompletedSpeech, type SpeechPlayback } from '../audio/browserSpeech.ts'
+import { cancelRecordedMandarinAudio, playRecordedMandarin } from '../audio/recordedMandarinAudio.ts'
 
 export type PracticeViewProps = {
   session: PracticeSession
@@ -56,25 +57,28 @@ function playWordAudio(
   warmup: boolean,
   mode: 'dictation-sequence' | 'word-only',
   wordRate?: number,
+  preferRecordedAudio = false,
   onFirstWordComplete?: () => void,
 ): SpeechPlayback {
   const parts = mode === 'word-only' ? [{ text: word.text, rate: wordRate ?? 0.55 }] : audioPartsForWord(word, warmup)
-  return browserSpeech.play(
-    parts.map((part) => ({
+  const segments = parts.map((part) => ({
       text: part.text,
       language: 'zh-CN',
       rate: part.rate,
-    })),
-    {
-      pauseMs: AUDIO_PAUSE_MS,
-      onSegmentComplete: (index) => {
-        if (index === 0) onFirstWordComplete?.()
-      },
+    }))
+  const options = {
+    pauseMs: AUDIO_PAUSE_MS,
+    onSegmentComplete: (index: number) => {
+      if (index === 0) onFirstWordComplete?.()
     },
-  )
+  }
+  if (preferRecordedAudio) return playRecordedMandarin(segments, options)
+  cancelRecordedMandarinAudio()
+  return browserSpeech.play(segments, options)
 }
 
 function playReviewInstruction(instruction: string) {
+  cancelRecordedMandarinAudio()
   return browserSpeech.play([{ text: instruction, language: 'en-GB', rate: 0.9 }])
 }
 
@@ -127,7 +131,10 @@ function SequentialPracticeView({
     })
   }
   useEffect(() => { setWritingByResponse({}) }, [session.id])
-  useEffect(() => () => browserSpeech.cancel(), [])
+  useEffect(() => () => {
+    cancelRecordedMandarinAudio()
+    browserSpeech.cancel()
+  }, [])
   useEffect(() => {
     if (session.stage === 'warmup-intro') return
     if (session.stage === 'interstitial') {
@@ -145,7 +152,9 @@ function SequentialPracticeView({
       }
       announcedWritingResponse.current = writingResponseId
       setInterstitialAudioStatus('playing')
-      const playback = term ? playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate, revealWriting) : undefined
+      const playback = term
+        ? playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate, session.grade === 'Grade 2', revealWriting)
+        : undefined
       if (!playback) setInterstitialAudioStatus('error')
       else {
         watchdog = window.setTimeout(() => {
@@ -175,7 +184,7 @@ function SequentialPracticeView({
       announcedWritingResponse.current = null
       return
     }
-    const playback = playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate)
+    const playback = playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate, session.grade === 'Grade 2')
     return playback.cancel
   }, [
     stageKey,
@@ -189,6 +198,7 @@ function SequentialPracticeView({
     reviewInstruction,
     wordAudioMode,
     wordAudioRate,
+    session.grade,
   ])
   const position = practicePosition(session)
   const progress = session.segment === 'warmup'
@@ -216,7 +226,7 @@ function SequentialPracticeView({
         <div className="tier1-writing-instructions">
           <div className="speaker-orb"><div className="orb-ring" /><Volume2 size={24} strokeWidth={1.7} /></div>
           <div><h1>{showCopy ? <>Trace the word<br /><span>as you listen.</span></> : <>Listen, then write<br /><span>what you hear.</span></>}</h1><p className="practice-helper">{showCopy ? 'Write directly over the Songti characters.' : 'Write the word on the screen before the timer ends.'}</p></div>
-          <div className="tier1-writing-audio-actions"><button className="replay-button" onClick={() => playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate)}><RotateCcw size={16} /> Replay sequence</button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button></div>
+          <div className="tier1-writing-audio-actions"><button className="replay-button" onClick={() => playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate, session.grade === 'Grade 2')}><RotateCcw size={16} /> Replay sequence</button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button></div>
         </div>
         <div className="tier1-writing-response"><SkyWritingAcquisition key={writingResponseId} word={term.text} phase="writing" traceTarget={showCopy} padState={writingPadState} onPadStateChange={updateWritingPad} /></div>
         <p className="dictation-status">Your writing stays on this device only. The comparison appears when the timer ends or is skipped.</p>
@@ -224,7 +234,7 @@ function SequentialPracticeView({
       {session.stage === 'review' && term && writingResponseId && <>
         <div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup review' : `${promptLabel} review`} · {dataset?.dateRange}</span><span className="review-label">Compare your writing</span></div>
         <div className="tier1-writing-response"><SkyWritingAcquisition key={writingResponseId} word={term.text} phase="review" traceTarget={showCopy} padState={writingPadState} onPadStateChange={updateWritingPad} /></div>
-        <div className="tier1-review-controls"><button className="replay-button" onClick={() => playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate)}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<SelfAssessmentActions onIncorrect={() => onAnswer(false)} onCorrect={() => onAnswer(true)} /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></div>
+        <div className="tier1-review-controls"><button className="replay-button" onClick={() => playWordAudio(term, isWarmup, wordAudioMode, wordAudioRate, session.grade === 'Grade 2')}><RotateCcw size={16} /> Replay word sequence</button>{term.sentence.trim() ? <div className="context-box"><span>In a sentence</span><p>{term.sentence}</p></div> : <p className="context-unavailable">No approved context sentence is available for this word yet.</p>}<SelfAssessmentActions onIncorrect={() => onAnswer(false)} onCorrect={() => onAnswer(true)} /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></div>
       </>}
     </section>
     <p className="practice-footnote"><Headphones size={14} /> Mandarin audio plays automatically · You can replay it anytime</p>
@@ -243,7 +253,13 @@ export function PracticeView(props: PracticeViewProps) {
       writingTimerSeconds={timerSeconds}
       onPlayReference={(word) =>
         requireCompletedSpeech(
-          playWordAudio(word, false, props.wordAudioMode || 'dictation-sequence', props.wordAudioRate),
+          playWordAudio(
+            word,
+            false,
+            props.wordAudioMode || 'dictation-sequence',
+            props.wordAudioRate,
+            props.session.grade === 'Grade 2',
+          ),
         )
       }
       onDiscard={() => props.onAnswer('skip-test-review')}

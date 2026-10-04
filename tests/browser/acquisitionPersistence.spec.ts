@@ -14,6 +14,7 @@ type StoredAcquisitionSnapshot = {
 async function installSpeechRecorder(page: import('@playwright/test').Page) {
   await page.addInitScript(() => {
     const spoken: string[] = []
+    const recordedAudio: string[] = []
     class FakeSpeechSynthesisUtterance {
       text: string
       lang = ''
@@ -29,6 +30,7 @@ async function installSpeechRecorder(page: import('@playwright/test').Page) {
     }
 
     Object.defineProperty(window, '__writingSpeech', { configurable: true, value: spoken })
+    Object.defineProperty(window, '__writingAudio', { configurable: true, value: recordedAudio })
     Object.defineProperty(window, '__writingSpeechShouldFail', {
       configurable: true,
       value: false,
@@ -58,6 +60,34 @@ async function installSpeechRecorder(page: import('@playwright/test').Page) {
         },
       },
     })
+    class FakeAudio {
+      src: string
+      preload = ''
+      playbackRate = 1
+      onended: null | (() => void) = null
+      onerror: null | (() => void) = null
+
+      constructor(src: string) {
+        this.src = src
+      }
+
+      play() {
+        recordedAudio.push(this.src)
+        window.setTimeout(() => {
+          const testWindow = window as typeof window & { __writingSpeechShouldFail: boolean }
+          if (testWindow.__writingSpeechShouldFail) this.onerror?.()
+          else this.onended?.()
+        }, 100)
+        return Promise.resolve()
+      }
+
+      pause() {}
+      load() {}
+      removeAttribute(name: string) {
+        if (name === 'src') this.src = ''
+      }
+    }
+    Object.defineProperty(window, 'Audio', { configurable: true, value: FakeAudio })
   })
 }
 
@@ -117,16 +147,14 @@ test('Learn to Write speaks each word before revealing the writing trackpad', as
   await expect(page.getByText('Listen carefully. Writing opens after you hear the word.')).toBeVisible()
   await expect
     .poll(() =>
-      page.evaluate(
-        () => (window as typeof window & { __writingSpeech: string[] }).__writingSpeech.length,
-      ),
+      page.evaluate(() => (window as typeof window & { __writingAudio: string[] }).__writingAudio.length),
     )
     .toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toHaveCount(0)
 
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
-  const firstWord = await page.evaluate(
-    () => (window as typeof window & { __writingSpeech: string[] }).__writingSpeech[0],
+  const firstWord = await page.evaluate(() =>
+    (window as typeof window & { __writingAudio: string[] }).__writingAudio[0],
   )
   expect(firstWord).toBeTruthy()
 
@@ -135,9 +163,7 @@ test('Learn to Write speaks each word before revealing the writing trackpad', as
   await expect(page.getByText('Listen carefully. Writing opens after you hear the word.')).toBeVisible()
   await expect
     .poll(() =>
-      page.evaluate(
-        () => (window as typeof window & { __writingSpeech: string[] }).__writingSpeech.length,
-      ),
+      page.evaluate(() => (window as typeof window & { __writingAudio: string[] }).__writingAudio.length),
     )
     .toBeGreaterThan(1)
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toHaveCount(0)

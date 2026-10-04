@@ -1,8 +1,9 @@
-import { startAcquisition } from '../acquisition/engine.ts'
-import type { AcquisitionCheckpoint, AcquisitionPersistenceContext, AcquisitionProgressEnvelope } from '../acquisition/persistence/contracts.ts'
-import { acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
+import { acquisitionPromptTimer, startAcquisition } from '../acquisition/engine.ts'
+import type { AcquisitionCheckpoint, AcquisitionPersistenceContext, AcquisitionProgressEnvelope, AcquisitionStrategyUpgrade } from '../acquisition/persistence/contracts.ts'
+import { acquisitionProgressionId, acquisitionStrategyFingerprint } from '../acquisition/persistence/identity.ts'
 import { createAcquisitionProgressEnvelope, migrateAcquisitionProgress } from '../acquisition/persistence/migration.ts'
 import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint, buildAcquisitionResumeCheckpoint } from '../acquisition/persistence/reducer.ts'
+import { grade2AcquisitionStrategy, grade2AcquisitionStrategyV3 } from '../acquisition/strategies/grade2.ts'
 import { APP_VERSION } from '../config.ts'
 import { schoolYearToken } from '../curriculum/identity.ts'
 import type {
@@ -23,12 +24,37 @@ export const ACQUISITION_ACTIVITY_MODULE = 'mandarin-tier1-writing'
 export const createAcquisitionAnswerCheckpoint = buildAcquisitionCheckpoint
 export const createAcquisitionResumeCheckpoint = buildAcquisitionResumeCheckpoint
 
-export function acquisitionPersistenceContext(
+const grade2V3ToV4Upgrade: AcquisitionStrategyUpgrade<Word> = {
+  id: 'grade2-acquisition-v3-to-v4-writing-time',
+  fromStrategyId: grade2AcquisitionStrategyV3.id,
+  fromStrategyVersion: grade2AcquisitionStrategyV3.version,
+  fromStrategyFingerprint: acquisitionStrategyFingerprint(grade2AcquisitionStrategyV3),
+  toStrategyId: grade2AcquisitionStrategy.id,
+  toStrategyVersion: grade2AcquisitionStrategy.version,
+  upgrade: (flow, _targetSet, strategy) => ({
+    ...flow,
+    strategyId: strategy.id,
+    strategyVersion: strategy.version,
+    prompt: flow.prompt ? {
+      ...flow.prompt,
+      timerSeconds: acquisitionPromptTimer(
+        strategy,
+        flow.phase,
+        flow.prompt.kind,
+        flow.expandedTargetAttempts,
+      ),
+      revealed: false,
+    } : null,
+  }),
+}
+
+function acquisitionPersistenceContextWithStrategy(
   childId: string,
   dataset: Dataset,
-  grade = dataset.grade,
+  grade: string,
+  strategy: AcquisitionPersistenceContext<Word>['strategy'],
+  strategyUpgrades: AcquisitionPersistenceContext<Word>['strategyUpgrades'] = [],
 ): AcquisitionPersistenceContext<Word> {
-  const profile = requirePracticeProfileForGrade(grade)
   return {
     identity: {
       childId,
@@ -41,8 +67,24 @@ export function acquisitionPersistenceContext(
     lifecycleStage: { kind: 'acquisition' },
     applicationVersion: APP_VERSION,
     targetSet: { id: dataset.id, targets: dataset.words },
-    strategy: profile.acquisition,
+    strategy,
+    strategyUpgrades,
   }
+}
+
+export function acquisitionPersistenceContext(
+  childId: string,
+  dataset: Dataset,
+  grade = dataset.grade,
+): AcquisitionPersistenceContext<Word> {
+  const profile = requirePracticeProfileForGrade(grade)
+  return acquisitionPersistenceContextWithStrategy(
+    childId,
+    dataset,
+    grade,
+    profile.acquisition,
+    grade === 'Grade 2' ? [grade2V3ToV4Upgrade] : [],
+  )
 }
 
 type PreparedAcquisition = {
@@ -270,8 +312,20 @@ export function recoverAcquisitionCheckpoints(
     if (!dataset) return { status: 'blocked', state, recoveredTransitionIds, reason: `Pending Acquisition transition ${checkpoint.transitionId} has no canonical dataset.` }
     let context: AcquisitionPersistenceContext<Word>
     try {
-      context = acquisitionPersistenceContext(baseEnvelope.childId, dataset, baseEnvelope.grade)
       const envelope = (state.acquisitionProgressEnvelopes || []).find((item) => item.id === checkpoint.progressionId)
+      const recoveryEnvelope = envelope || baseEnvelope
+      const isGrade2V3 = recoveryEnvelope.grade === 'Grade 2'
+        && recoveryEnvelope.strategyId === grade2AcquisitionStrategyV3.id
+        && recoveryEnvelope.strategyVersion === grade2AcquisitionStrategyV3.version
+        && recoveryEnvelope.strategyFingerprint === acquisitionStrategyFingerprint(grade2AcquisitionStrategyV3)
+      context = isGrade2V3
+        ? acquisitionPersistenceContextWithStrategy(
+            baseEnvelope.childId,
+            dataset,
+            baseEnvelope.grade,
+            grade2AcquisitionStrategyV3,
+          )
+        : acquisitionPersistenceContext(baseEnvelope.childId, dataset, baseEnvelope.grade)
       if (!envelope) {
         const restored = migrateAcquisitionProgress(baseEnvelope, context)
         if (restored.status === 'quarantined') return { status: 'blocked', state, recoveredTransitionIds, reason: restored.reason }

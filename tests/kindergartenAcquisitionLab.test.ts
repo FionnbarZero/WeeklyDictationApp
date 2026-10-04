@@ -4,7 +4,7 @@ import test from 'node:test'
 import { startAcquisition, revealAcquisition } from '../src/acquisition/engine.ts'
 import { transitionAcquisition } from '../src/acquisition/transition.ts'
 import type { AcquisitionStrategy, AcquisitionTargetSet } from '../src/acquisition/contracts.ts'
-import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
+import { grade2AcquisitionStrategy, grade2AcquisitionStrategyV3 } from '../src/acquisition/strategies/grade2.ts'
 import { kindergartenAcquisitionStrategy } from '../src/acquisition/strategies/kindergarten.ts'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from '../src/curriculum/model.ts'
 import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
@@ -51,18 +51,19 @@ function semanticTrace(strategy: AcquisitionStrategy) {
   return trace
 }
 
-test('Kindergarten owns a distinct strategy with behavior equivalent to Grade 2 today', () => {
+test('Kindergarten keeps its distinct timing when Grade 2 receives a longer writing schedule', () => {
   assert.notStrictEqual(kindergartenAcquisitionStrategy, grade2AcquisitionStrategy)
   assert.notStrictEqual(kindergartenAcquisitionStrategy.familiarDtTargets, grade2AcquisitionStrategy.familiarDtTargets)
   assert.notStrictEqual(kindergartenAcquisitionStrategy.familiarDtTargets[0], grade2AcquisitionStrategy.familiarDtTargets[0])
   assert.equal(kindergartenAcquisitionStrategy.id, 'kindergarten-acquisition-v1')
   assert.equal(kindergartenAcquisitionStrategy.version, 1)
-  assert.deepEqual(kindergartenAcquisitionStrategy.timers, grade2AcquisitionStrategy.timers)
+  assert.deepEqual(kindergartenAcquisitionStrategy.timers, grade2AcquisitionStrategyV3.timers)
+  assert.notDeepEqual(kindergartenAcquisitionStrategy.timers, grade2AcquisitionStrategy.timers)
   assert.deepEqual(kindergartenAcquisitionStrategy.introductionSequence, grade2AcquisitionStrategy.introductionSequence)
   assert.deepEqual(kindergartenAcquisitionStrategy.expandedSequence, grade2AcquisitionStrategy.expandedSequence)
   assert.deepEqual(kindergartenAcquisitionStrategy.correctionSequence, grade2AcquisitionStrategy.correctionSequence)
   assert.deepEqual(kindergartenAcquisitionStrategy.familiarDtTargets.map((target) => target.text), grade2AcquisitionStrategy.familiarDtTargets.map((target) => target.text))
-  assert.deepEqual(semanticTrace(kindergartenAcquisitionStrategy), semanticTrace(grade2AcquisitionStrategy))
+  assert.deepEqual(semanticTrace(kindergartenAcquisitionStrategy), semanticTrace(grade2AcquisitionStrategyV3))
 })
 
 test('the Kindergarten lab profile stays isolated from the registered production profile', () => {
