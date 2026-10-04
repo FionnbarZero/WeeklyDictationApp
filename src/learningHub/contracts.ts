@@ -40,8 +40,15 @@ export type LearningHubSection<Launch> = {
   theme: LearningHubTheme
   available: boolean
   unavailableReason?: string
+  cohortPickerLabel?: string
+  cohortSummaryLabel?: string
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]
+}
+
+export type LearningHubLaunchContext = {
+  sectionId: string
+  cohortId: string | null
 }
 
 export type LearningHubViewModel<Launch> = {

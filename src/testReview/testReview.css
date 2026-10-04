@@ -25,13 +25,15 @@
 .deferred-reading-review-target { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .deferred-reading-review-target .deferred-review-word { margin: 4px 0; }
 .deferred-compare-control { display: grid; flex: 0 0 auto; justify-items: center; gap: 6px; }
-.deferred-compare-control > span { color: #625982; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.deferred-compare-control > span { max-width: 150px; color: #625982; font-size: 10px; font-weight: 800; line-height: 1.3; text-align: center; }
 .deferred-compare-button { display: grid; place-items: center; width: 66px; height: 66px; border-radius: 50%; color: white; background: #625982; box-shadow: 0 8px 18px rgb(70 61 111 / 20%); }
 .deferred-compare-button:hover { background: #514873; transform: translateY(-1px); }
 .deferred-compare-button:focus-visible { outline: 4px solid #e6a83e; outline-offset: 3px; }
+.deferred-compare-button:disabled { cursor: wait; opacity: .62; transform: none; }
 .deferred-review-content > p:not(.answer-label) { margin: 0; color: var(--muted); font-size: 11px; }
 .deferred-review-row .answer-actions { grid-template-columns: 1fr 1fr; }
 .deferred-review-row .answer-actions button { min-height: 47px; }
+.deferred-review-row .answer-actions button:disabled { cursor: not-allowed; opacity: .42; }
 .deferred-writing-review-row { grid-template-columns: 45px minmax(0, 1fr); align-items: start; }
 .deferred-writing-review-row .answer-actions { grid-column: 2; width: min(100%, 420px); justify-self: end; }
 .deferred-writing-review-row .skywriting-workspace { margin-top: 14px; }

@@ -61,6 +61,21 @@ test('Writing character maps to Tier 1 and High frequency word maps to Tier 2', 
   }
 })
 
+test('Kindergarten unit identity comes from each authoritative spreadsheet tab', () => {
+  const byTitle = new Map(candidates.map((candidate) => [candidate.rawDate, candidate]))
+  assert.deepEqual(byTitle.get('Week 8 10/05')?.curriculumUnit, {
+    id: 'unit-2',
+    label: 'Unit 2',
+    title: 'Needs and Environment',
+  })
+  assert.deepEqual(byTitle.get('Week 7 09/28')?.curriculumUnit, {
+    id: 'unit-1',
+    label: 'Unit 1',
+    title: 'Building Communities',
+  })
+  assert.equal(byTitle.get('Week 2 08/24')?.curriculumUnit, null)
+})
+
 test('High-frequency reading words is a Kindergarten alias for Tier 2', () => {
   const candidate = candidateFromSheet({
     sheetId: 44,

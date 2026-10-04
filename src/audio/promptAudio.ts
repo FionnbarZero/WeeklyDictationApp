@@ -106,3 +106,42 @@ export function playCachedWordAudio(word: Word, warmup = false, options: CachedA
     },
   }
 }
+
+export function playCachedWordAudioOnce(word: Word, options: CachedAudioOptions = {}): Promise<void> {
+  const storagePath = word.audio?.storagePath
+  if (!storagePath || (!options.createAudio && typeof Audio === 'undefined')) {
+    return Promise.reject(new Error('No approved audio recording is available for this prompt.'))
+  }
+
+  const createAudio = options.createAudio || (() => new Audio())
+  const resolveUrl = options.resolveUrl || defaultAudioUrl
+  const audio = createAudio()
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const cleanup = () => {
+      audio.removeEventListener('ended', finish)
+      audio.removeEventListener('error', fail)
+    }
+    const finish = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve()
+    }
+    const fail = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('The correct Mandarin pronunciation could not play. Tap the headphones to try again.'))
+    }
+
+    audio.addEventListener('ended', finish)
+    audio.addEventListener('error', fail)
+    audio.src = resolveUrl(storagePath)
+    audio.playbackRate = 1
+    audio.preload = 'auto'
+    audio.load()
+    void audio.play().catch(fail)
+  })
+}

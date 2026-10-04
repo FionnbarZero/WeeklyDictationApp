@@ -86,9 +86,9 @@ test('Kindergarten uses the shared four-path hub with games, separate reading pa
   assert.doesNotMatch(games, /Sky Writing/)
   assert.match(skyWriting, /Sky Writing/)
   assert.match(readingPractice, /dataset\.vocabulary!\.tier2/)
-  assert.match(unitReview, /explicit development fixture/i)
-  assert.match(unitReview, /__kindergarten-unit-1-review-lab__/)
-  assert.doesNotMatch(productionEntries, /KINDERGARTEN_UNIT_ONE_LAB_FIXTURE|kindergartenUnitReviewForLab/)
+  assert.match(unitReview, /source-derived cumulative pools/i)
+  assert.match(unitReview, /__kindergarten-\$\{unit\.id\}-review-lab__/)
+  assert.doesNotMatch(productionEntries, /kindergartenUnitPoolForLab|kindergartenUnitReviewForLab/)
   assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${games}\n${readingPractice}\n${skyWriting}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
 })
 

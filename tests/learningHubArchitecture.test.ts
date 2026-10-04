@@ -45,7 +45,7 @@ test('the shared Learning Hub remains a grade-neutral presentation boundary', ()
   assert.doesNotMatch(combined, /grade\s*[25]|kindergarten/i)
   assert.doesNotMatch(combined, /curriculum|lifecycle|acquisition|warmup|firestore|firebase|localStorage|App\.tsx|domain(?:\.ts)?/i)
   assert.doesNotMatch(combined, /\brequire\s*\(|\bimport\s*\(|^\s*\/\/\/\s*<reference\b/m)
-  assert.match(source('../src/learningHub/LearningHub.tsx'), /onLaunch: \(launch: Launch\) => void/)
+  assert.match(source('../src/learningHub/LearningHub.tsx'), /onLaunch: \(launch: Launch, context: LearningHubLaunchContext\) => void/)
   assert.match(source('../src/learningHub/contracts.ts'), /LearningHubViewModel<Launch>/)
 })
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceSpreadsheetId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
-  "generatedAt": "2026-10-03T23:32:35Z",
+  "generatedAt": "2026-10-04T04:10:58Z",
   "voice": {
     "provider": "apple-local-beta",
     "name": "Tingting",
@@ -11,71 +11,171 @@
   "assets": {
     "一": {
       "storagePath": "audio/kindergarten/u4e00.wav",
-      "sourceUnitIds": ["Week 3 08/31"]
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
     },
     "二": {
       "storagePath": "audio/kindergarten/u4e8c.wav",
-      "sourceUnitIds": ["Week 3 08/31"]
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
     },
     "三": {
       "storagePath": "audio/kindergarten/u4e09.wav",
-      "sourceUnitIds": ["Week 3 08/31"]
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
     },
     "人": {
       "storagePath": "audio/kindergarten/u4eba.wav",
-      "sourceUnitIds": ["Week 3 08/31"]
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
     },
     "四": {
       "storagePath": "audio/kindergarten/u56db.wav",
-      "sourceUnitIds": ["Week 4 09/08"]
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
     },
     "五": {
       "storagePath": "audio/kindergarten/u4e94.wav",
-      "sourceUnitIds": ["Week 4 09/08"]
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
     },
     "六": {
       "storagePath": "audio/kindergarten/u516d.wav",
-      "sourceUnitIds": ["Week 4 09/08"]
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
     },
     "心": {
       "storagePath": "audio/kindergarten/u5fc3.wav",
-      "sourceUnitIds": ["Week 4 09/08"]
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
     },
     "七": {
       "storagePath": "audio/kindergarten/u4e03.wav",
-      "sourceUnitIds": ["Week 5 09/14"]
+      "sourceUnitIds": [
+        "Week 5 09/14"
+      ]
     },
     "八": {
       "storagePath": "audio/kindergarten/u516b.wav",
-      "sourceUnitIds": ["Week 5 09/14"]
+      "sourceUnitIds": [
+        "Week 5 09/14"
+      ]
     },
     "水": {
       "storagePath": "audio/kindergarten/u6c34.wav",
-      "sourceUnitIds": ["Week 5 09/14"]
+      "sourceUnitIds": [
+        "Week 5 09/14"
+      ]
     },
     "九": {
       "storagePath": "audio/kindergarten/u4e5d.wav",
-      "sourceUnitIds": ["Week 6 09/21"]
+      "sourceUnitIds": [
+        "Week 6 09/21"
+      ]
     },
     "十": {
       "storagePath": "audio/kindergarten/u5341.wav",
-      "sourceUnitIds": ["Week 6 09/21"]
+      "sourceUnitIds": [
+        "Week 6 09/21"
+      ]
     },
     "白": {
       "storagePath": "audio/kindergarten/u767d.wav",
-      "sourceUnitIds": ["Week 6 09/21"]
+      "sourceUnitIds": [
+        "Week 6 09/21"
+      ]
     },
     "牛": {
       "storagePath": "audio/kindergarten/u725b.wav",
-      "sourceUnitIds": ["Week 8 10/05"]
+      "sourceUnitIds": [
+        "Week 8 10/05"
+      ]
     },
     "羊": {
       "storagePath": "audio/kindergarten/u7f8a.wav",
-      "sourceUnitIds": ["Week 8 10/05"]
+      "sourceUnitIds": [
+        "Week 8 10/05"
+      ]
     },
     "小": {
       "storagePath": "audio/kindergarten/u5c0f.wav",
-      "sourceUnitIds": ["Week 3 08/31"]
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
+    },
+    "爸爸": {
+      "storagePath": "audio/kindergarten/u7238-u7238.wav",
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
+    },
+    "妈妈": {
+      "storagePath": "audio/kindergarten/u5988-u5988.wav",
+      "sourceUnitIds": [
+        "Week 3 08/31"
+      ]
+    },
+    "我": {
+      "storagePath": "audio/kindergarten/u6211.wav",
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
+    },
+    "开心": {
+      "storagePath": "audio/kindergarten/u5f00-u5fc3.wav",
+      "sourceUnitIds": [
+        "Week 4 09/08"
+      ]
+    },
+    "有": {
+      "storagePath": "audio/kindergarten/u6709.wav",
+      "sourceUnitIds": [
+        "Week 5 09/14"
+      ]
+    },
+    "没有": {
+      "storagePath": "audio/kindergarten/u6ca1-u6709.wav",
+      "sourceUnitIds": [
+        "Week 5 09/14"
+      ]
+    },
+    "红色": {
+      "storagePath": "audio/kindergarten/u7ea2-u8272.wav",
+      "sourceUnitIds": [
+        "Week 6 09/21"
+      ]
+    },
+    "蓝色": {
+      "storagePath": "audio/kindergarten/u84dd-u8272.wav",
+      "sourceUnitIds": [
+        "Week 6 09/21"
+      ]
+    },
+    "猫": {
+      "storagePath": "audio/kindergarten/u732b.wav",
+      "sourceUnitIds": [
+        "Week 8 10/05"
+      ]
+    },
+    "狗": {
+      "storagePath": "audio/kindergarten/u72d7.wav",
+      "sourceUnitIds": [
+        "Week 8 10/05"
+      ]
+    },
+    "鸟": {
+      "storagePath": "audio/kindergarten/u9e1f.wav",
+      "sourceUnitIds": [
+        "Week 8 10/05"
+      ]
     },
     "大": {
       "storagePath": "audio/kindergarten/u5927.wav",

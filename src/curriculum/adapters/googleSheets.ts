@@ -13,6 +13,7 @@ export type SheetsParserProfile = {
   academicYearStartMonth: number
   writingCharacterHeading: RegExp
   highFrequencyWordHeading: RegExp
+  unitHeading?: RegExp
   reviewWeekHeading?: RegExp
   termSeparators: RegExp
 }
@@ -93,6 +94,20 @@ function extractLabeledTerms(text: string, heading: RegExp, profile: SheetsParse
   return cleanTerms(firstLine, profile)
 }
 
+function extractCurriculumUnit(text: string, profile: SheetsParserProfile) {
+  if (!profile.unitHeading) return undefined
+  const match = stableMatch(profile.unitHeading, text)
+  if (!match) return null
+  const unitNumber = match[1]?.trim()
+  if (!unitNumber) return null
+  const title = match[2]?.trim() || null
+  return {
+    id: `unit-${unitNumber.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    label: `Unit ${unitNumber}`,
+    title,
+  }
+}
+
 function activationBlockers(
   title: string,
   cycle: MondaySundayCycle | null,
@@ -140,6 +155,7 @@ export function candidateFromSheet(
   const text = mandarinSectionText(sheet)
   const tier1 = extractLabeledTerms(text, profile.writingCharacterHeading, profile)
   const tier2 = extractLabeledTerms(text, profile.highFrequencyWordHeading, profile)
+  const curriculumUnit = extractCurriculumUnit(text, profile)
   const isReviewWeek = Boolean(profile.reviewWeekHeading && stableMatch(profile.reviewWeekHeading, text))
   const assignedWeek = cycle ? { startDate: cycle.startDate, endDate: cycle.endDate } : null
 
@@ -158,6 +174,7 @@ export function candidateFromSheet(
       adapterId: profile.sourceAdapterId,
     },
     sourceSectionLabel: /Mandarin/i.test(text) ? 'Mandarin' : null,
+    ...(curriculumUnit !== undefined ? { curriculumUnit } : {}),
     instructionalRole: 'unassigned',
     tier1,
     tier2,

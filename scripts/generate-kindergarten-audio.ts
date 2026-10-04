@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -18,6 +18,7 @@ const root = resolve(import.meta.dirname, '..')
 const manifestPath = resolve(root, 'public/audio/kindergarten/manifest.json')
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Manifest
 const localPreview = process.argv.includes('--local-preview')
+const onlyMissing = process.argv.includes('--only-missing')
 const apiKey = process.env.GOOGLE_CLOUD_TTS_API_KEY
 
 if (!localPreview && !apiKey) {
@@ -35,6 +36,12 @@ function generateLocalPreview(text: string, outputPath: string) {
   } finally {
     rmSync(temporary, { force: true, recursive: true })
   }
+}
+
+function hasAudioPayload(outputPath: string) {
+  if (!existsSync(outputPath)) return false
+  const bytes = readFileSync(outputPath)
+  return bytes.length > 4096 && bytes.subarray(4096).some((byte) => byte !== 0)
 }
 
 async function generateGoogleCloud(text: string, outputPath: string) {
@@ -59,9 +66,13 @@ async function generateGoogleCloud(text: string, outputPath: string) {
 
 for (const [text, asset] of Object.entries(manifest.assets)) {
   const outputPath = resolve(root, 'public', asset.storagePath)
+  if (onlyMissing && hasAudioPayload(outputPath)) continue
   mkdirSync(resolve(outputPath, '..'), { recursive: true })
   if (localPreview) generateLocalPreview(text, outputPath)
   else await generateGoogleCloud(text, outputPath)
+  if (!hasAudioPayload(outputPath)) {
+    throw new Error(`Generated audio for ${text} contains no playable audio payload.`)
+  }
 }
 
 manifest.generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')

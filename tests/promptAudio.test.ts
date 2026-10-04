@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { playCachedWordAudio, promptAudioStarted, stopPromptAudio } from '../src/audio/promptAudio.ts'
+import {
+  playCachedWordAudio,
+  playCachedWordAudioOnce,
+  promptAudioStarted,
+  stopPromptAudio,
+} from '../src/audio/promptAudio.ts'
 import type { Word } from '../src/domain/contracts.ts'
 
 type Listener = () => void
@@ -90,6 +95,26 @@ test('warmup cached audio uses the planned faster playback rate', async () => {
   await promptAudioStarted(attempt)
   assert.equal(audio.playbackRate, 1.5)
   stopPromptAudio(attempt)
+})
+
+test('one-shot cached audio resolves only after the correct pronunciation finishes', async () => {
+  const audio = new FakeAudio()
+  let finished = false
+  const playback = playCachedWordAudioOnce(word, {
+    createAudio: () => audio,
+    resolveUrl: (path) => `https://example.test/${path}`,
+  }).then(() => {
+    finished = true
+  })
+
+  await Promise.resolve()
+  assert.equal(audio.src, 'https://example.test/audio/kindergarten/u4e09.wav')
+  assert.equal(audio.playCount, 1)
+  assert.equal(finished, false)
+
+  audio.emit('ended')
+  await playback
+  assert.equal(finished, true)
 })
 
 test('missing and failed recordings reject with a visible-actionable error', async () => {

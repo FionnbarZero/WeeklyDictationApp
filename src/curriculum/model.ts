@@ -16,6 +16,12 @@ export type SourceMetadata = {
   adapterId: string
 }
 
+export type CurriculumUnitIdentity = {
+  id: string
+  label: string
+  title: string | null
+}
+
 export type VocabularyOccurrenceCandidate = {
   text: string
   sourcePosition: number
@@ -33,6 +39,7 @@ export type WeeklyDatasetCandidate = {
   assignedWeek: { startDate: string; endDate: string } | null
   source: SourceMetadata
   sourceSectionLabel: string | null
+  curriculumUnit?: CurriculumUnitIdentity | null
   instructionalRole: InstructionalRole
   tier1: VocabularyOccurrenceCandidate[]
   tier2: VocabularyOccurrenceCandidate[]

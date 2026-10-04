@@ -9,8 +9,11 @@ The Kindergarten learning lab is a development-only child-experience harness at 
 - Tier 1 `Writing character` targets enter the shared `PracticeView` and shared Acquisition engine.
 - Tier 1 writing uses checked-in cached Mandarin prompt recordings derived from the registered workbook targets. A prompt plays three times with one-second pauses, Replay starts the same cached recording sequence, and the timer does not start until the first recording starts successfully.
 - Tier 2 `High frequency word` targets use the shared reading runner with prompt-local microphone recording and session-only self-assessment. No recording, reading result, or reading progress is retained.
-- The Dojo uses the workbook's authoritative current tab (`Week 8 10/05` in the current fixture). Ninja Skills uses the immediately preceding spreadsheet period (`Week 7 09/28`); because that tab is the Unit 1 review period, its games use the cumulative Unit 1 review words rather than the new Unit 2 cohort.
-- The **Prepare for your test** card aggregates Unit 1 teaching from August 31 through September 27 and its authoritative review week from September 28 through October 4. Its shared Test Review presentation uses the 14 observed Tier 1 writing targets; the nine Tier 2 words remain preserved and displayed separately. Unit 1 becomes eligible for Mastery on October 5, after the review period and end-of-unit assessment.
+- The Dojo uses only the workbook's authoritative current tab (`Week 8 10/05` in the current fixture), keeping Tier 1 writing and Tier 2 reading separate.
+- Ninja Skills groups every arrived vocabulary target by the spreadsheet's unit heading and presents a **Choose a unit** menu before the games. In the current fixture, Unit 1 remains its own 14-writing/nine-reading pool and Unit 2 remains its own two-writing/three-reading pool; a game receives only the selected unit.
+- Final Boss is the growing cumulative pool for the current spreadsheet unit. On Week 8 it contains only the arrived Unit 2 targets (two writing and three reading); each later Unit 2 tab will add its targets. It stays playable during teaching and during the unit's explicit review week.
+- Spirit Realm contains the latest completed unit only after that unit's spreadsheet review and assessment week has ended. On Week 8, Unit 1 supplies its 14 writing and nine reading targets.
+- These activity-pool rules are Kindergarten-specific. Grade 2 and Grade 5 continue to use their existing lifecycle projections.
 
 ## Acquisition ownership
 
@@ -32,7 +35,7 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - No active week is inferred from the browser date; the workbook's authoritative current tab selects it.
 - No Warmup policy is assumed or simulated.
 - No durable Tier 2 attempt, score, adaptive state, progress record, or retained microphone audio exists.
-- Unit 1 teaching and review dates are explicit in both the lab fixture and the lifecycle profile and are grounded in the Weekly Focus workbook; they are not inferred from workbook order.
+- Unit identity, current-week selection, vocabulary, and review markers come from the Weekly Focus workbook. The lab groups targets by each tab's `Unit N: Title` heading and never infers a unit from workbook position alone.
 - The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
 - The current family-beta audio artifacts use the local Mainland Mandarin `Tingting` voice and preserve that provenance in `public/audio/kindergarten/manifest.json`. The generation script is ready for the planned `cmn-CN-Wavenet-C` replacement, but the configured Google Cloud project must enable Text-to-Speech before those production files can be generated.
 - Refreshing or leaving discards all lab state.

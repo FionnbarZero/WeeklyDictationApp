@@ -16,9 +16,9 @@ const fixture = JSON.parse(
   readFileSync(new URL('./fixtures/kindergarten-workbook.json', import.meta.url), 'utf8'),
 ) as Omit<SheetsWorkbookPayload, 'sourceType'>
 
-test('every authoritative Kindergarten writing target and Familiar DT has a cached recording', () => {
+test('every authoritative Kindergarten reading and writing target plus Familiar DT has a cached recording', () => {
   const authoritativeTargets = inspectKindergartenWorkbook(fixture).flatMap((candidate) =>
-    candidate.tier1.map((target) => target.text),
+    [...candidate.tier1, ...candidate.tier2].map((target) => target.text),
   )
   const familiarTargets = kindergartenAcquisitionStrategy.familiarDtTargets.map((target) => target.text)
   const required = new Set([...authoritativeTargets, ...familiarTargets])

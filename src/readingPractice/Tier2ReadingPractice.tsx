@@ -55,6 +55,7 @@ export type Tier2ReadingPracticeProps = {
   readonly label: string
   readonly onExit: () => void
   readonly onComplete: (summary: Tier2ReadingPracticeSummary) => void
+  readonly onPlayReference?: (target: Tier2ReadingTarget) => Promise<void>
   readonly random?: () => number
   readonly sessionNote?: string
 }
@@ -135,6 +136,7 @@ export function Tier2ReadingPractice({
   label,
   onExit,
   onComplete,
+  onPlayReference,
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
 }: Tier2ReadingPracticeProps) {
@@ -233,7 +235,9 @@ export function Tier2ReadingPractice({
           targetText={target.text}
           assessed={!showContinue}
           teachingPrompt={showContinue}
-          onPlayReference={() => speakSequence([{ text: target.text, language: 'zh-CN', rate: 0.55 }])}
+          onPlayReference={() => onPlayReference
+            ? onPlayReference(target)
+            : speakSequence([{ text: target.text, language: 'zh-CN', rate: 0.55 }])}
           onPlayTeachingIntroduction={() => speakSequence(readingShowCopyInstruction(target.text))}
           onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
           onContinue={() => answerAcquisition(true)}

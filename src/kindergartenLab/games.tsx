@@ -1,5 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, Check, RotateCcw, Sparkles, Volume2, X } from 'lucide-react'
+import {
+  promptAudioStarted,
+  stopPromptAudio,
+  type PromptAudioAttempt,
+} from '../audio/promptAudio.ts'
 import type { Word } from '../domain/contracts.ts'
 
 export type KindergartenScoreKind = 'Current week' | 'Ninja game' | 'Final Boss' | 'Spirit Realm'
@@ -221,19 +226,52 @@ export function CurrentWeekReading({ words, onExit, onComplete, speak }: {
   </GameShell>
 }
 
-export function MasteryWarmup({ words, onExit, onAnswer, onComplete, speak }: {
+export function MasteryWarmup({ words, onExit, onAnswer, onComplete, playWord }: {
   words: Word[]
   onExit: () => void
   onAnswer: (word: Word, correct: boolean) => void
   onComplete: (score: CompleteScore) => void
-  speak: (text: string) => void
+  playWord: (word: Word) => PromptAudioAttempt
 }) {
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [correct, setCorrect] = useState(0)
   const [complete, setComplete] = useState(false)
+  const [audioStatus, setAudioStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [audioMessage, setAudioMessage] = useState('')
+  const activeAudioRef = useRef<PromptAudioAttempt>(undefined)
   const word = words[index]
   const isReading = word?.tier === 'tier-2'
+
+  const observeAudio = useCallback((attempt: PromptAudioAttempt) => {
+    stopPromptAudio(activeAudioRef.current)
+    activeAudioRef.current = attempt
+    setAudioStatus('loading')
+    setAudioMessage('')
+    void promptAudioStarted(attempt).then(() => {
+      if (activeAudioRef.current === attempt) setAudioStatus('ready')
+    }).catch((audioError) => {
+      if (activeAudioRef.current !== attempt) return
+      setAudioStatus('error')
+      setAudioMessage(audioError instanceof Error ? audioError.message : 'The word audio could not play.')
+    })
+  }, [])
+
+  const replayAudio = useCallback(() => {
+    if (word) observeAudio(playWord(word))
+  }, [observeAudio, playWord, word])
+
+  useEffect(() => {
+    if (!word || complete) return
+    const attempt = playWord(word)
+    observeAudio(attempt)
+    return () => {
+      stopPromptAudio(attempt)
+      if (activeAudioRef.current === attempt) activeAudioRef.current = undefined
+    }
+  }, [complete, observeAudio, playWord, word])
+
+  useEffect(() => () => stopPromptAudio(activeAudioRef.current), [])
 
   function answer(value: boolean) {
     onAnswer(word, value)
@@ -254,7 +292,10 @@ export function MasteryWarmup({ words, onExit, onAnswer, onComplete, speak }: {
       {!revealed ? <>
         <h2>{isReading ? 'Listen, then say the word' : 'Listen, then write the character'}</h2>
         <p>{isReading ? 'Say it aloud before you reveal it.' : 'Write it in the air or on paper before you reveal it.'}</p>
-        <button className="k-listen-button" type="button" onClick={() => speak(word.text)}><Volume2 size={24} /> Hear the word</button>
+        <button className="k-listen-button" type="button" onClick={replayAudio}><Volume2 size={24} /> Hear the word</button>
+        {audioStatus === 'loading' && <p className="k-round-label" role="status">Playing the word…</p>}
+        {audioStatus === 'ready' && <p className="k-round-label" role="status">The word played automatically.</p>}
+        {audioStatus === 'error' && <p className="recording-error" role="alert">{audioMessage} Tap Hear the word to try again.</p>}
         <button className="k-primary" type="button" onClick={() => setRevealed(true)}>Reveal the word <Sparkles size={17} /></button>
       </> : <>
         <p className="k-eyebrow">The word was</p>

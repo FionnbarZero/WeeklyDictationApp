@@ -17,7 +17,11 @@ import {
   startKindergartenAcquisitionLab,
 } from '../src/kindergartenLab/acquisitionLab.ts'
 import { kindergartenWritingLabProfile } from '../src/kindergartenLab/practiceProfile.ts'
-import { kindergartenUnitReviewForLab } from '../src/kindergartenLab/unitReview.ts'
+import {
+  kindergartenNinjaUnitPoolsForLab,
+  kindergartenUnitPoolForLab,
+  kindergartenUnitReviewForLab,
+} from '../src/kindergartenLab/unitReview.ts'
 import { kindergartenWritingPracticeProfile } from '../src/practice/profiles/kindergarten.ts'
 import { practiceProfileForGrade } from '../src/practice/profiles/registry.ts'
 
@@ -113,7 +117,7 @@ test('the Kindergarten lab runs the shared engine and keeps Familiar-DT diagnost
   assert.equal(state.assessments[0].countsTowardWeeklyScore, false)
 })
 
-test('the explicit Unit 1 lab fixture accumulates Tier 1 and preserves Tier 2 separately', () => {
+test('the authoritative Unit 1 review tab accumulates Tier 1 and preserves Tier 2 separately', () => {
   const review = kindergartenUnitReviewForLab(candidates)
   assert.equal(review.label, 'Unit 1')
   assert.equal(review.sourceWeekCount, 4)
@@ -125,4 +129,28 @@ test('the explicit Unit 1 lab fixture accumulates Tier 1 and preserves Tier 2 se
   assert.ok(review.dataset.words.every((word) => word.tier === 'tier-1' && word.activityType === 'dictation'))
   assert.ok(review.dataset.words.every((word) => word.audio?.storagePath?.endsWith('.wav')))
   assert.ok(review.tier2Words.every((word) => !review.dataset.words.some((target) => target.text === word)))
+})
+
+test('the current Unit 2 Final Boss grows only from arrived tabs in that spreadsheet unit', () => {
+  const current = candidates.find((candidate) => candidate.rawDate === 'Week 8 10/05')
+  assert.ok(current)
+  const finalBoss = kindergartenUnitPoolForLab(candidates, current)
+  const ninjaUnits = kindergartenNinjaUnitPoolsForLab(candidates, current)
+
+  assert.equal(finalBoss.kind, 'active-unit')
+  assert.equal(finalBoss.unitId, 'unit-2')
+  assert.equal(finalBoss.label, 'Unit 2')
+  assert.equal(finalBoss.title, 'Needs and Environment')
+  assert.equal(finalBoss.sourceWeekCount, 1)
+  assert.deepEqual(finalBoss.tier1Words, ['牛', '羊'])
+  assert.deepEqual(finalBoss.tier2Words, ['猫', '狗', '鸟'])
+  assert.equal(finalBoss.dataset.startDate, '2026-10-05')
+  assert.equal(finalBoss.dataset.endDate, '2026-10-11')
+
+  assert.deepEqual(ninjaUnits.map((pool) => [pool.label, pool.tier1Words.length, pool.tier2Words.length]), [
+    ['Unit 1', 14, 9],
+    ['Unit 2', 2, 3],
+  ])
+  assert.deepEqual(ninjaUnits[1].tier1Words, ['牛', '羊'])
+  assert.deepEqual(ninjaUnits[1].tier2Words, ['猫', '狗', '鸟'])
 })
