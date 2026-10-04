@@ -22,5 +22,11 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
     },
+    {
+      command: 'npx vite preview --outDir family-beta-dist/grade2 --host 127.0.0.1 --port 5199',
+      url: 'http://127.0.0.1:5199',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
   ],
 })

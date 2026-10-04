@@ -54,3 +54,9 @@ Retain the verified backup privately through the release rollback window. Record
 The evidence file is designed to exclude the selected-profile identifier, browser storage keys, and captured values. It is safe to review, but inspect it before sharing. Keep the original capture until the promoted release and rollback candidate have both been accepted; then delete it according to the family's retention decision.
 
 A passing rehearsal proves the candidate's local backup and restore controls against a disposable copy of the captured state. It does not authorize deployment by itself and does not prove the activity behavior is product-correct.
+
+## Recorded rehearsal
+
+The real-family-state rehearsal passed against exact merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39` at `2026-10-04T01:53:12.341Z`. All required checks above passed, external page network access was blocked, and no live browser storage was written. The retained private backup SHA-256 is recorded in the [draft Grade 2 release manifest](./family-beta-release-grade2-2026-10-03.md); the backup itself remains outside the repository.
+
+Because the delivery controls land after that revision, repeat the rehearsal against the exact final promotion revision before approving the release. Keep the stable Grade 2 origin unchanged: verified backups intentionally reject a different origin.

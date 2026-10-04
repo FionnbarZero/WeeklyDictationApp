@@ -29,21 +29,21 @@ Each grade must have one documented stable beta destination. A stable destinatio
 
 Each proposed update receives a temporary preview deployment. The adult reviewer verifies the affected activity on that preview before promotion. Promotion uses the exact reviewed artifact or Hosting version; it does not create a different rebuild from the same source commit.
 
-Every stable deployment retains at least one previous known-good Hosting release. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
+Every stable deployment retains at least one previous known-good Hosting release or Git deployment tree. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
 Verified on 2026-10-03:
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
 | Kindergarten | `https://weeklydictation-k-beta.web.app` | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | Non-expiring `rollback-stable-250d348f5279` verified; adult defect review active; rewritten-root cache fix not yet promoted |
-| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | `a6df41db07331fd0c8dde190dbf80b10650184df` through Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023` | Restore release is merged but not live or rehearsed against family-browser state |
+| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | `a6df41db07331fd0c8dde190dbf80b10650184df` through Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023` | Restore rehearsal passed on merged candidate `8355522`; exact-artifact preview, approval, and promotion remain open |
 | Grade 5 | `https://weeklydictation-g5-beta.web.app` | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | Non-expiring `rollback-stable-a55d972ccb6f` verified; detailed adult acceptance and observation record incomplete |
 
 ## Release identity and manifest
 
 The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. Kindergarten and Grade 5 now use dedicated Firebase Hosting sites. The legacy GitHub Pages artifact still serves all historical routes, but it remains the stable Grade 2 origin only; it is not the promotion path for the two independent session-only apps.
 
-The repository-side Kindergarten and Grade 5 artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). They deliberately exclude Grade 2 and the shared GitHub Pages branch.
+The repository-side artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). Kindergarten and Grade 5 use independent Firebase stable sites. Grade 2 uses a Firebase preview-only site and guarded fast-forward deployment commits on its existing GitHub Pages origin.
 
 Every child-facing beta displays a concise identifier containing:
 
@@ -89,7 +89,9 @@ Merged Grade 2 source includes a parent-facing **Protect progress** control. **D
 
 **Preview restore** verifies the checksum, current origin, selected profile, application schema, recovery journals, and deep record relationships without writing any browser key. It reports the selected profile's before/after counts while preserving current shared curriculum, unrelated profiles, and newer unrelated records.
 
-**Apply selected-profile restore** requires explicit confirmation and first downloads an automatic pre-restore backup. It writes application state and both recovery journals through one restore journal, verifies every write, rolls back a failed transaction, replays a known partial transaction at startup, and fails closed without overwriting unexpected newer storage. Exact replay is idempotent. These controls are code-complete but do not close C0 until they pass an operator rehearsal with a disposable copy of real family-browser state.
+**Apply selected-profile restore** requires explicit confirmation and first downloads an automatic pre-restore backup. It writes application state and both recovery journals through one restore journal, verifies every write, rolls back a failed transaction, replays a known partial transaction at startup, and fails closed without overwriting unexpected newer storage. Exact replay is idempotent.
+
+The disposable rehearsal against the real family-browser capture passed on merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39` at `2026-10-04T01:53:12.341Z`. It covered zero-write preview, wrong-profile rejection, selected-profile merge, unrelated-profile preservation, automatic safety backup, reload, duplicate replay, interrupted-write recovery, injected rollback, and unexpected-newer-storage rejection. No live browser storage was written. The verified private backup remains outside the repository; only its privacy-safe checksum and result belong in a release manifest.
 
 The current live Grade 2 artifact does not expose these controls yet. For the first safety release only, use the origin-bound, download-only capture and isolated candidate procedure in [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md). It does not write the live browser profile or send the captured state over the network.
 
@@ -115,6 +117,8 @@ Before any Grade 2 change that can affect persistence, create a verified whole-l
 - deterministic checksum.
 
 Restore first runs in preview mode. It validates scope, schema, referential integrity, transition identities, duplicate protection, and checksum without writing. Apply must remain idempotent, preserve current shared curriculum and unrelated profiles, and produce a comparison report. Rehearsal must cover wrong-profile input, interrupted writes, duplicate restore, malformed journals, unexpected newer storage, and rollback.
+
+The backup origin must match the active origin. Do not weaken this check to move Grade 2 to another domain. The Grade 2 stable release stays at `https://fionnbarzero.github.io/WeeklyDictationApp/`; its Firebase destination is preview-only and may use only synthetic or isolated disposable state.
 
 The beta cannot rely on Firestore managed export/import while the project remains on the no-billing plan. Enabling billing, scheduled backups, or point-in-time recovery requires a separate cost and operations decision.
 

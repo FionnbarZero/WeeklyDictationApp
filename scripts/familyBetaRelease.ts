@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
 export const FAMILY_BETA_ARTIFACT_SCHEMA = 'weekly-dictation-family-beta-artifact-v1' as const
-export const FAMILY_BETA_GRADES = ['kindergarten', 'grade5'] as const
+export const FAMILY_BETA_GRADES = ['kindergarten', 'grade2', 'grade5'] as const
 export type FamilyBetaGrade = (typeof FAMILY_BETA_GRADES)[number]
 export const FAMILY_BETA_FIREBASE_PROJECT_ID = 'weeklydictationapp'
 
@@ -14,6 +14,13 @@ export const familyBetaGradeConfig = {
     status: 'Experimental',
     persistence: 'Session only',
     siteId: 'weeklydictation-k-beta',
+  },
+  grade2: {
+    displayName: 'Grade 2',
+    sourceHtml: 'index.html',
+    status: 'Family beta',
+    persistence: 'Tier 1 writing durable here · Tier 2 reading session only',
+    siteId: 'weeklydictation-g2-preview',
   },
   grade5: {
     displayName: 'Grade 5',
@@ -55,9 +62,13 @@ const fullGitRevisionPattern = /^[a-f0-9]{40}$/i
 const sha256Pattern = /^[a-f0-9]{64}$/i
 const firebaseResourcePattern = /^[a-z0-9][a-z0-9-]{4,28}[a-z0-9]$/
 
+function isFamilyBetaGrade(value: unknown): value is FamilyBetaGrade {
+  return typeof value === 'string' && (FAMILY_BETA_GRADES as readonly string[]).includes(value)
+}
+
 export function requireFamilyBetaGrade(value: string | undefined): FamilyBetaGrade {
-  if (value === 'kindergarten' || value === 'grade5') return value
-  throw new Error('Family beta grade must be kindergarten or grade5.')
+  if (isFamilyBetaGrade(value)) return value
+  throw new Error('Family beta grade must be kindergarten, grade2, or grade5.')
 }
 
 export function requireFullGitRevision(value: string | undefined, label = 'Git revision') {
@@ -126,7 +137,7 @@ function isManifest(value: unknown): value is FamilyBetaArtifactManifest {
   const manifest = value as Record<string, unknown>
   return (
     manifest.schema === FAMILY_BETA_ARTIFACT_SCHEMA &&
-    (manifest.grade === 'kindergarten' || manifest.grade === 'grade5') &&
+    isFamilyBetaGrade(manifest.grade) &&
     typeof manifest.displayName === 'string' &&
     typeof manifest.status === 'string' &&
     typeof manifest.persistence === 'string' &&
@@ -192,6 +203,9 @@ export function verifyFamilyBetaArtifact(directory: string, expectedGrade?: Fami
     throw new Error('The family beta artifact has no root entry page.')
   if (actualFiles.some((file) => file.path.endsWith('.html') && file.path !== 'index.html')) {
     throw new Error('A grade artifact must not contain another application entry page.')
+  }
+  if (parsed.grade === 'grade2' && !actualFiles.some((file) => file.path === '.nojekyll')) {
+    throw new Error('A Grade 2 GitHub Pages artifact must include .nojekyll.')
   }
 
   const html = readFileSync(resolve(directory, 'index.html'), 'utf8')

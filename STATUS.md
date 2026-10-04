@@ -6,7 +6,7 @@ This is the authoritative capability matrix for what exists today. A visible UI 
 
 ## Current operating posture
 
-The product owner reports that one child currently uses each of the Kindergarten, Grade 2, and Grade 5 applications. This is treated as a closed, adult-supervised family beta rather than a public production launch. Kindergarten and Grade 5 now have independent Firebase Hosting destinations with visible release identity and non-expiring rollback targets. Grade 2 remains on its existing GitHub Pages origin so browser-local progress is not stranded. The immediate priority is to complete the remaining C0 operational evidence: Grade 2 backup/restore rehearsal, adult activity acceptance, and recorded observation.
+The product owner reports that one child currently uses each of the Kindergarten, Grade 2, and Grade 5 applications. This is treated as a closed, adult-supervised family beta rather than a public production launch. Kindergarten and Grade 5 now have independent Firebase Hosting destinations with visible release identity and non-expiring rollback targets. Grade 2 remains on its existing GitHub Pages origin so browser-local progress is not stranded. Its real-state disposable restore rehearsal passed; the immediate priority is the exact final artifact preview, repeat rehearsal, adult approval, guarded promotion, and recorded observation.
 
 The synthetic staging project remains separate from the family beta. Real child data, email addresses, recordings, authentication state, and copied family documents are still prohibited in synthetic staging. See [Controlled family beta operations](./docs/family-beta-operations.md).
 
@@ -14,16 +14,17 @@ The synthetic staging project remains separate from the family beta. Real child 
 
 | Gate | Current result | Notes |
 | --- | --- | --- |
-| Unit tests | 536 passing | Node test runner, including selected-child restore, crash recovery, workspace synchronization, practice coordination, and staging safeguards |
+| Unit tests | 548 passing | Node test runner, including Grade 2 delivery locking, selected-child restore, crash recovery, workspace synchronization, practice coordination, and staging safeguards |
 | Production build | Passing | TypeScript/Vite build plus deterministic performance-budget check |
-| Initial asset budgets | Passing | Production: 549,530/550,000 JavaScript bytes and 41,725/60,000 CSS bytes; only 470 JavaScript bytes remain |
+| Initial asset budgets | Passing | Production: 549,332/550,000 JavaScript bytes and 41,725/60,000 CSS bytes; 668 JavaScript bytes remain |
 | Browser suite | 44 passing | Includes selected-profile backup/restore, prototype parity, persistence recovery, keyboard focus, and unexpected console/page-error enforcement |
+| Isolated family-beta artifacts | 3 passing | Kindergarten and Grade 5 remain session-only; Grade 2 opens at artifact root with durable-progress protection and visible persistence identity |
 | Frozen static prototype suite | 23 tests | Includes five selected visual references |
 | Public preview suite | 3 passing | Grade 5 Acquisition and both reentry pathways in the built preview artifact |
 | Firestore Emulator | 8 passing | Includes scoped collection-group reads; expected permission-denied output is produced by rejection tests |
 | Frozen reference | `prototype-baseline-2026-10` | Commit `104ca427c743c5e4d00fb9e995c06e1a06874649` |
 
-The results above passed locally on merged source revision `69777c703bb16c8af6d8a70857f002693019bd18`. The quality, build, browser, and Emulator jobs also passed for pull request 44 and post-merge `main` revision `73f664626602ba83b880d75a9d598d74bcf97136`. `main` now requires a pull request, a current branch, all four checks, resolved conversations, and administrator compliance; force pushes and deletion are disabled.
+The results above passed locally on the Grade 2 delivery candidate based on merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39`; remote CI and the final candidate revision remain pending. `main` requires a pull request, a current branch, all four checks, resolved conversations, and administrator compliance; force pushes and deletion are disabled.
 
 ## Capability vocabulary
 
@@ -38,7 +39,7 @@ Combinations must be validated centrally before the planned capability registry 
 
 | Grade / capability | Availability | Results | Recording | Family beta posture | Production eligibility | Principal blocker |
 | --- | --- | --- | --- | --- | --- | --- |
-| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta with browser-local persistence; selected-child verified restore is merged but not live or operationally rehearsed | `blocked` | Real-browser backup/restore rehearsal, release promotion, migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
+| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta with browser-local persistence; selected-child verified restore is merged and passed a disposable rehearsal against real family-browser state, but is not live | `blocked` | Exact final artifact preview/rehearsal, release promotion, migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
 | Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | Experimental only; must not imply retained progress | `blocked` | Approved behavior contract, versioned Tier 2 persistence, and reference-audio/privacy gates |
 | Kindergarten Tier 1 writing | `development` | `session-only` | N/A | Independent stable destination is live with explicit session-only status; activity defects are under adult review | `blocked` | Approved activity contract and bug fixes, trusted importer deployment, source activation review, and release relationship with Tier 2 |
 | Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
@@ -73,7 +74,7 @@ Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73
 
 - Kindergarten and Grade 5 have independent Hosting sites, exact-artifact release tooling, and non-expiring revision-scoped rollback channels serving the same Hosting versions as live. Detailed adult acceptance/observation remains unrecorded.
 - Kindergarten live source revision `250d348f52792235ce72b7157b26e7cd0ad7f0bb` predates the rewritten-root no-cache fix. Root requests can remain cached for one hour until an approved replacement artifact is promoted.
-- Grade 2 progress remains tied to the current browser profile and GitHub Pages origin. A checksum-verified whole-local-state backup, deep scope-aware preview, selected-child transactional apply, automatic pre-restore backup, and startup recovery are merged, but the live artifact does not contain them and no real family-beta restore rehearsal has passed.
+- Grade 2 progress remains tied to the current browser profile and GitHub Pages origin. A checksum-verified whole-local-state backup, deep scope-aware preview, selected-child transactional apply, automatic pre-restore backup, and startup recovery are merged. Their real-state disposable rehearsal passed on `8355522`, but the live artifact does not contain them and the final promotion revision must be rehearsed again.
 - Grade 2's live artifact still lacks visible release and persistence identity. Kindergarten and Grade 5 display those fields consistently.
 - Kindergarten and Grade 5 are session-only development experiences; beta availability must not be presented as saved progress or production eligibility.
 - Current activity tests largely characterize the implemented activity models rather than independently proving that every child-facing activity is product-correct. Activity corrections remain grade-specific behavior changes.

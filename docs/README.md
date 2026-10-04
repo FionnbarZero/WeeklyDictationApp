@@ -39,6 +39,7 @@
 - [Family beta release manifest template](./family-beta-release-manifest-template.md)
 - [Kindergarten family beta release — 2026-10-03](./family-beta-release-kindergarten-2026-10-03.md)
 - [Grade 5 family beta release — 2026-10-03](./family-beta-release-grade5-2026-10-03.md)
+- [Grade 2 family beta safety release — 2026-10-03](./family-beta-release-grade2-2026-10-03.md)
 - [Independent family beta delivery](./independent-family-beta-delivery.md)
 - [Staging foundation](./staging-foundation.md)
 - [Backend importer](./backend-import.md)

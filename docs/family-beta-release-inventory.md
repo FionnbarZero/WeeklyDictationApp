@@ -9,7 +9,7 @@ This inventory records the three closed-family-beta applications without identif
 | Grade | Stable destination | Live source and artifact | Persistence | Release protection |
 | --- | --- | --- | --- | --- |
 | Kindergarten | `https://weeklydictation-k-beta.web.app` | Source `250d348f52792235ce72b7157b26e7cd0ad7f0bb`; Hosting version `856c70eaec380dc5`; artifact SHA-256 `71d59ef35fa3cb9a2c856973c751ff56ce5f7e64dc5d9724ba44bed89923a5d0` | Session only | Independent live and preview channels; visible identity; non-expiring rollback channel for the same Hosting version; adult defect review active |
-| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023`; effective source `a6df41db07331fd0c8dde190dbf80b10650184df` | Browser-local durable Tier 1; Tier 2 session only | Frozen artifact and offline rollback evidence; merged restore is not live or operator-rehearsed |
+| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023`; effective source `a6df41db07331fd0c8dde190dbf80b10650184df` | Browser-local durable Tier 1; Tier 2 session only | Frozen artifact and offline rollback evidence; merged restore passed a real-state disposable rehearsal but is not live |
 | Grade 5 | `https://weeklydictation-g5-beta.web.app` | Source `a55d972ccb6f6db00c81b202d4e5bba16a889025`; Hosting version `d9bf9c316262a8a8`; artifact SHA-256 `37d0c7fd366ea59a530f5ad29682b8bc6d8cf592273d2f00e33b5d7a04dbacdb` | Session only | Independent live and preview channels; visible identity and safe rewritten-root cache headers; non-expiring rollback channel for the same Hosting version |
 
 The legacy GitHub Pages artifact still serves Kindergarten and Grade 5 routes, but those routes are not the independent promotion path. Confirm that child bookmarks use the dedicated Firebase destinations before changing or retiring any legacy route.
@@ -25,7 +25,8 @@ The legacy GitHub Pages artifact still serves Kindergarten and Grade 5 routes, b
 | Child-data location | Browser `localStorage` under the GitHub Pages origin: `weekly-dictation-state-v2`, `weekly-dictation-acquisition-pending-v1`, and `weekly-dictation-warmup-pending-v1`. |
 | Stored contracts | Application state version 2; Acquisition persistence version 1; Adaptive Warmup visit version 1. |
 | Merged protection | Truthfully labelled whole-local-state SHA-256 backup and scope checks; selected-child deep zero-write preview and merge; before/after report; automatic pre-restore backup; transactional three-key apply; rollback on write failure; startup recovery; idempotent replay. |
-| Live protection | The current live artifact predates release identity and restore UI. No real family-browser verified backup or lossless restore rehearsal is recorded. |
+| Operational rehearsal | Merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39` passed verified backup, zero-write preview, selected-profile apply, unrelated-profile preservation, reload, idempotent replay, interrupted-write recovery, injected rollback, and unexpected-newer-storage rejection against an isolated copy of the real family-browser state. |
+| Live protection | The current live artifact predates release identity and restore UI. The verified private backup is retained outside the repository; exact-artifact preview, adult approval, and promotion remain open. |
 | Known limitations | Progress remains tied to one origin and browser profile. Origin changes can strand data. Activity behavior is not independently product-approved. |
 
 Do not promote a Grade 2 persistence-affecting change until the exact family-browser state is protected, the restore path passes on a disposable copy, the current origin is retained, and rollback evidence is recorded. Backup files contain learning records and must remain in private family-controlled storage.
@@ -61,8 +62,9 @@ Do not promote a Grade 2 persistence-affecting change until the exact family-bro
 1. Confirm the exact child bookmarks use the two dedicated Firebase sites and the unchanged Grade 2 origin.
 2. Finish the adult activity-acceptance and observation fields in both session-only release manifests.
 3. Correct Kindergarten's rewritten-root cache behavior through an approved exact-artifact promotion, not an unreviewed rebuild.
-4. Use the [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md) to capture the real browser state locally, rehearse preview/apply/interruption/replay/rollback on a disposable copy, and record only the non-identifying evidence.
-5. Promote the exact Grade 2 safety artifact on its existing origin only after its backup and rollback gates pass.
-6. Rehearse critical and high-severity containment decisions and retain the non-identifying record.
+4. Package the exact final Grade 2 revision, deploy it to the preview-only Firebase site, and repeat the private rehearsal against that exact revision.
+5. Complete the [draft Grade 2 release manifest](./family-beta-release-grade2-2026-10-03.md), adult preview acceptance, promotion dry run, and rollback dry run.
+6. Promote the exact Grade 2 safety artifact on its existing origin only after confirming the Kindergarten and Grade 5 bookmarks use their independent sites.
+7. Rehearse critical and high-severity containment decisions and retain the non-identifying record.
 
 Until these controls pass, do not treat C0 as closed. Proposed activity fixes use temporary previews and the [family beta release manifest](./family-beta-release-manifest-template.md).
