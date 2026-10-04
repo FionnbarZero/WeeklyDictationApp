@@ -16,6 +16,7 @@ import {
 import {
   familyBetaHostingConfig,
   channelHasRelease,
+  channelIsRetained,
   previewDeliveryPlan,
   promotionDeliveryPlan,
   rollbackDeliveryPlan,
@@ -134,6 +135,18 @@ async function verifyHostedRevision(identity: FamilyBetaDeliveryIdentity, channe
   console.log(`Verified ${identity.siteId}:${channelId} at ${hosted.url} as revision ${expected}.`)
 }
 
+async function assertRetainedRollbackTarget(identity: FamilyBetaDeliveryIdentity, revision: string) {
+  const channelId = rollbackChannelId(revision)
+  const target = channel(identity, channelId)
+  if (!channelIsRetained(target)) {
+    throw new Error(
+      `Rollback channel ${identity.siteId}:${channelId} expires at ${target.expireTime}. ` +
+        'Provision this revision-scoped channel without an expiration before promotion.',
+    )
+  }
+  if (channelHasRelease(target)) await verifyHostedRevision(identity, channelId, revision)
+}
+
 async function preview(identity: FamilyBetaDeliveryIdentity) {
   const artifactDirectory = resolve(root, flag('--artifact') || `family-beta-dist/${identity.grade}`)
   const manifest = verifyFamilyBetaArtifact(artifactDirectory, identity.grade)
@@ -170,6 +183,7 @@ async function promote(identity: FamilyBetaDeliveryIdentity) {
   await verifyHostedRevision(identity, candidateChannelId(revision), revision)
   if (initialRelease) assertNoLiveRelease(identity)
   if (previousRevision) await verifyHostedRevision(identity, 'live', previousRevision)
+  if (previousRevision) await assertRetainedRollbackTarget(identity, previousRevision)
   for (const command of plan.commands) run(command)
   if (previousRevision) await verifyHostedRevision(identity, rollbackChannelId(previousRevision), previousRevision)
   await verifyHostedRevision(identity, 'live', revision)

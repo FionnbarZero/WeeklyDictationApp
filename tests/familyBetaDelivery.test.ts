@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import test from 'node:test'
 import {
   channelHasRelease,
+  channelIsRetained,
   familyBetaHostingConfig,
   familyBetaHostingHeaders,
   previewDeliveryPlan,
@@ -99,7 +100,7 @@ test('artifact verification rejects mutations, dirty builds, and a destination-g
 
 test('preview, exact promotion, and rollback plans remain grade-specific', () => {
   assert.equal(candidateChannelId(revision), 'candidate-1234567890ab')
-  assert.equal(rollbackChannelId(previousRevision), 'rollback-abcdef123456')
+  assert.equal(rollbackChannelId(previousRevision), 'rollback-stable-abcdef123456')
 
   const preview = previewDeliveryPlan(identity, revision, '.firebase-family-beta-123.generated.json')
   assert.equal(preview.channel, 'candidate-1234567890ab')
@@ -112,7 +113,7 @@ test('preview, exact promotion, and rollback plans remain grade-specific', () =>
   assert.match(promotion.commands[1].join(' '), /weeklydictation-k-beta:candidate-.* weeklydictation-k-beta:live/)
 
   const rollback = rollbackDeliveryPlan(identity, previousRevision)
-  assert.equal(rollback.source, 'rollback-abcdef123456')
+  assert.equal(rollback.source, 'rollback-stable-abcdef123456')
   assert.doesNotMatch(rollback.commands.flat().join(' '), /grade5|weeklydictation-g5-beta/)
 })
 
@@ -133,6 +134,24 @@ test('an automatically provisioned empty live channel is not an existing release
       release: { version: { name: 'projects/example/sites/example/versions/abc123' } },
     }),
     true,
+  )
+})
+
+test('only channels without an expiration satisfy retained rollback policy', () => {
+  assert.equal(
+    channelIsRetained({
+      name: 'projects/example/sites/example/channels/rollback-stable-abc123',
+      url: 'https://example.web.app',
+    }),
+    true,
+  )
+  assert.equal(
+    channelIsRetained({
+      name: 'projects/example/sites/example/channels/rollback-abc123',
+      url: 'https://example.web.app',
+      expireTime: '2026-10-11T00:00:00Z',
+    }),
+    false,
   )
 })
 

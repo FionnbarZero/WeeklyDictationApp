@@ -80,6 +80,8 @@ For Grade 2, a persistence-affecting promotion cannot proceed without a checksum
 ## Rollback
 
 - Previous known-good artifact or Hosting version:
+- Retained rollback channel and URL:
+- Rollback channel expiration: `none` required for a retained target
 - Grade-specific rollback procedure:
 - Data restore required: `yes | no`
 - Restore procedure and backup identity:

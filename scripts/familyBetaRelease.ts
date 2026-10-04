@@ -89,7 +89,7 @@ export function candidateChannelId(revision: string) {
 }
 
 export function rollbackChannelId(revision: string) {
-  return `rollback-${requireFullGitRevision(revision).slice(0, 12)}`
+  return `rollback-stable-${requireFullGitRevision(revision).slice(0, 12)}`
 }
 
 export function sha256(content: string | Buffer) {
