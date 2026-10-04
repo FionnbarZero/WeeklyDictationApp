@@ -5,12 +5,12 @@
   "status": "Family beta",
   "persistence": "Tier 1 writing durable here · Tier 2 reading session only",
   "applicationVersion": "0.2.0-stage2",
-  "sourceRevision": "47a59fe0900186a09fefbee222fbbd5e9e08af72",
-  "sourceCommittedAt": "2026-10-03T21:41:11-07:00",
+  "sourceRevision": "c9613b61fd9bb7258b03d02cd0d3fc69779ca44b",
+  "sourceCommittedAt": "2026-10-03T21:43:35-07:00",
   "dirty": false,
   "entry": "index.html",
   "build": {
-    "command": "npm run package:family-beta -- --grade grade2",
+    "command": "npm run package:family-beta -- --grade grade2 --curriculum-snapshot public/curriculum/grade2-presentation.json",
     "node": "v26.8.1",
     "npm": "11.19.0",
     "packageLockSha256": "0e66c1e5c258fef5f523e36ec671d949d64566472f3fbaa2c70a23e90f2daa2d"
@@ -24,7 +24,7 @@
     "artifactPath": "curriculum/grade2-presentation.json",
     "datasetCount": 6
   },
-  "fileTreeSha256": "6d8309d9050c368c49a27f9b8383376fceec8ed9c4dc6f2b168b21c796ebbece",
+  "fileTreeSha256": "df274d48cdcd7e16ee8fe057a2782d450d9d49417c5c2c5b19b6f5d77d04d775",
   "files": [
     {
       "path": ".nojekyll",
@@ -32,29 +32,29 @@
       "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
     },
     {
+      "path": "assets/app-BwVblV7V.js",
+      "bytes": 461147,
+      "sha256": "da10abcfc97f937985a02c4a77d4be14fe89ee567e4ab1de9be03b5446b6723f"
+    },
+    {
       "path": "assets/app-CX8Svtwt.css",
       "bytes": 41344,
       "sha256": "f142a6b9a86357262a3bd197544f726705bbb3351c47e894b5d54f47de213c30"
     },
     {
-      "path": "assets/app-DDXnpcr4.js",
-      "bytes": 461147,
-      "sha256": "46a956bf1cb8efa83d50ec94b7a2e9f75c26c085b414c641169cfa69ee0c05db"
-    },
-    {
-      "path": "assets/audioRecorder-BR6NkrSa.js",
+      "path": "assets/audioRecorder-CfC2LhKZ.js",
       "bytes": 4308,
-      "sha256": "d89a79b7bd8dbc68ba77829c574b2df604a44b1c6a3fdba966b6b51447c04784"
+      "sha256": "764bdb3d0c707cfe29f99b4ac03cac88cae14185752904152c7e108de356b716"
     },
     {
-      "path": "assets/automaticGrade2Curriculum-DHQ9tU06.js",
+      "path": "assets/automaticGrade2Curriculum-BiG6vPfB.js",
       "bytes": 3544,
-      "sha256": "8157bcc5e264268cec6a4dffca9152396d0d6b5799096b48286a0d4918a4d542"
+      "sha256": "c63e865931114924633ce01f999a1c47d740cb4054df47c77154db79dbaf18ee"
     },
     {
-      "path": "assets/domain-E0IPhhlZ.js",
+      "path": "assets/domain-C7Sw35IG.js",
       "bytes": 64765,
-      "sha256": "cb64d0faacec0f764e45b9dec6451fdbd1e445769753d95086ade12f4d815b74"
+      "sha256": "98d2e785032343e81d4d45d1d5910ff13885eeb4173ca7acd88e03b2d8b947b3"
     },
     {
       "path": "assets/engine-DHkT6is5.js",
@@ -62,9 +62,9 @@
       "sha256": "4fc1dcf9c96e4f24d27e8dfdcf1ad497b88688a38fdc6754b0f8c763a03cabbc"
     },
     {
-      "path": "assets/HistoryView-DK51AHA1.js",
+      "path": "assets/HistoryView-DqgzPuRh.js",
       "bytes": 6119,
-      "sha256": "3cf6ded65d1b3013c4a57e18a6dce2a08319a88e020f388ca0a45fdd0f0e323a"
+      "sha256": "1319f20b87ef4e3760077769bab9f08f4d46906095a9ca86371697ef2a0c5475"
     },
     {
       "path": "assets/index.esm-C0PLPHFW.js",
@@ -92,24 +92,24 @@
       "sha256": "9f49ef046fdeb53c76fc39ed3588f408e00d4c76e3a3182ffc6547615dc0198a"
     },
     {
-      "path": "assets/LocalBackupTools-DcQvGMu0.js",
+      "path": "assets/LocalBackupTools-Bj4NzLVD.js",
       "bytes": 37210,
-      "sha256": "bf95c217cff258f135e0340597e18d87483ca60d703f08961dcd250568695805"
+      "sha256": "b474a47919a547adac51494d90c5c8ea0495cb163547e7b50f92082cd54d2546"
     },
     {
-      "path": "assets/LocalRestoreGate-CuVweDh9.js",
+      "path": "assets/LocalRestoreGate-BEDHk7td.js",
       "bytes": 920,
-      "sha256": "cd4ce6d38f42e53abe22abd463bdc2d1c949d5c54bc335b37003e9530e127c2a"
+      "sha256": "7429ca405fc6915ebc3e0158bc0f683196e1d958d0a92da0db0d9adec4a39572"
     },
     {
-      "path": "assets/localRestoreJournal-CAVnp6Mn.js",
+      "path": "assets/localRestoreJournal-B_XIRQf8.js",
       "bytes": 2333,
-      "sha256": "c8c5ff16e9240d7137154e7d278be5f942e0e9fc4ac616c71d4bac4bb0be1697"
+      "sha256": "a0b24a23914b5ab4812bcbb25ef2396d03f8cdcd45014cbab1a534d4d89e96d1"
     },
     {
-      "path": "assets/PracticeView-B7HU73VB.js",
+      "path": "assets/PracticeView-CzCiAfaS.js",
       "bytes": 28182,
-      "sha256": "43eacef75af7fafad6bcc8810470a4e19d75f31bcb30a8bafca857681f96c63a"
+      "sha256": "bcee89cea5e882baff413ec5edc5decfb6bfeb66f13b5909c426b79b6684e65b"
     },
     {
       "path": "assets/PracticeView-TKGILwlB.css",
@@ -117,9 +117,9 @@
       "sha256": "45896ce1cffe201e4a219420ad95335b7fed3600eca63aca6423a51f29463f85"
     },
     {
-      "path": "assets/Tier2ReadingPractice-CVHRZWn_.js",
+      "path": "assets/Tier2ReadingPractice--eauV9sI.js",
       "bytes": 12112,
-      "sha256": "23b856d999b0ab98c1efd7c644243723e03dae48ae66293dea68fcf8cdcf389d"
+      "sha256": "b80f0ef9e61d0f64dfc956a0027f8f98a63b1daad928eb9378dd9101df7e654c"
     },
     {
       "path": "curriculum/grade2-presentation.json",
@@ -129,7 +129,7 @@
     {
       "path": "index.html",
       "bytes": 1601,
-      "sha256": "0ccdaa45cba7f7b6090526dba9ffff46470a8f9aecb94baf49fe8c25a00a9c7c"
+      "sha256": "e2810f1c9ecee122d550dc13a64f7eb5b6bdb7c634a00370c6a8195608675e37"
     }
   ]
 }
