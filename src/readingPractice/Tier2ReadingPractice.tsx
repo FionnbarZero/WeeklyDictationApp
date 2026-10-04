@@ -17,8 +17,13 @@ import {
   tier2ReadingPathwayTargets,
 } from '../tier2/pathway.ts'
 import { ReadingResponsePanel } from './ReadingResponsePanel.tsx'
-import { readingShowCopyInstruction, type ReadingSpeechSegment } from './contracts.ts'
-import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
+import {
+  playCachedWordAudioOnce,
+  playReadingTeachingSequence,
+  stopActiveAudio,
+} from '../audio/promptAudio.ts'
+import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
+import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -69,14 +74,19 @@ export type Tier2ReadingPracticeProps = {
   readonly sessionNote?: string
 }
 
-async function speakSequence(segments: readonly ReadingSpeechSegment[]) {
-  const playback = playAudioPlan(segments.map((segment, index) => ({
-    text: segment.text,
-    language: segment.language,
-    rate: segment.rate,
-    pauseAfterMs: index === 0 ? 0 : undefined,
-  })))
-  await promptAudioCompleted(playback)
+function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playCachedWordAudioOnce(target, { playbackRate: audio.readingRate })
+}
+
+function defaultTeachingIntroduction(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playReadingTeachingSequence(target, {
+    playbackRate: audio.readingRate,
+    sentenceRate: audio.readingRate,
+    instructionRate: audio.instructionRate,
+    pauseMs: audio.segmentGapMs,
+  })
 }
 
 function initialRun(
@@ -120,7 +130,31 @@ function summaryFor(run: ReadingRun): Tier2ReadingPracticeSummary {
   }
 }
 
-export function Tier2ReadingPractice({
+export function Tier2ReadingPractice(props: Tier2ReadingPracticeProps) {
+  if (props.pathway.kind === 'test-review') {
+    const targets = tier2ReadingPathwayTargets(props.pathway)
+    return <DeferredTestReview
+      mode="reading"
+      targets={targets}
+      activityLabel={props.label}
+      onPlayReference={(target) => props.onPlayReference
+        ? props.onPlayReference(target)
+        : defaultReadingReference(props.profile, target)}
+      onDiscard={props.onExit}
+      onComplete={(completion) => props.onComplete({
+        kind: 'test-review',
+        attempted: completion.attempted,
+        correct: completion.correct,
+        diagnostics: 0,
+      })}
+      exitLabel="Exit reading"
+      sessionNote={props.sessionNote}
+    />
+  }
+  return <ImmediateTier2ReadingPractice {...props} />
+}
+
+function ImmediateTier2ReadingPractice({
   profile,
   pathway,
   label,
@@ -233,10 +267,10 @@ export function Tier2ReadingPractice({
           allowSkipTimer={run.kind === 'mastery'}
           onPlayReference={() => onPlayReference
             ? onPlayReference(target)
-            : speakSequence([{ text: target.text, language: 'zh-CN', rate: 0.55 }])}
+            : defaultReadingReference(profile, target)}
           onPlayTeachingIntroduction={() => onPlayTeachingIntroduction
             ? onPlayTeachingIntroduction(target, { firstPresentationOfNewTarget })
-            : speakSequence(readingShowCopyInstruction(target))}
+            : defaultTeachingIntroduction(profile, target)}
           onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
           onContinue={() => answerAcquisition(true)}
         />

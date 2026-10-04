@@ -42,9 +42,10 @@ export type AudioPlanOptions = {
   voiceLoadTimeoutMs?: number
 }
 
-type CachedAudioOptions = AudioPlanOptions & {
+export type CachedAudioOptions = AudioPlanOptions & {
   playbackRate?: number
   sentenceRate?: number
+  instructionRate?: number
   newTargetAnnouncement?: string
   newTargetAnnouncementStoragePath?: string
 }
@@ -420,8 +421,8 @@ function dictationSegments(word: Word, playbackRate: number, sentenceRate: numbe
   ]
 }
 
-export function playCachedWordAudio(word: Word, warmup = false, options: CachedAudioOptions = {}): PromptAudioAttempt {
-  const playbackRate = options.playbackRate ?? (warmup ? 1.5 : 1)
+export function playCachedWordAudio(word: Word, _warmup = false, options: CachedAudioOptions = {}): PromptAudioAttempt {
+  const playbackRate = options.playbackRate ?? 1
   const sentenceRate = options.sentenceRate ?? playbackRate
   return playAudioPlan(dictationSegments(word, playbackRate, sentenceRate), options)
 }
@@ -442,7 +443,7 @@ export function playReadingTeachingSequence(word: Word, options: CachedAudioOpti
     {
       text: options.newTargetAnnouncement || 'Read and record',
       language: 'en-GB',
-      rate: 0.9,
+      rate: options.instructionRate ?? 0.9,
       storagePath: options.newTargetAnnouncementStoragePath,
       pauseAfterMs: 0,
     },

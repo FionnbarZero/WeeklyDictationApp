@@ -106,6 +106,31 @@ test('reading teaching plays a cached English announcement before the Mandarin s
   ])
 })
 
+test('reading teaching applies the grade-owned English instruction rate', async () => {
+  const spokenRates: number[] = []
+  const speech = {
+    cancel() {},
+    getVoices: () => [],
+    resume() {},
+    speak(utterance: SpeechSynthesisUtterance) {
+      spokenRates.push(utterance.rate)
+      utterance.onstart?.({} as SpeechSynthesisEvent)
+      utterance.onend?.({} as SpeechSynthesisEvent)
+    },
+  } as unknown as SpeechSynthesis
+
+  await playReadingTeachingSequence({ ...word, audio: undefined }, {
+    instructionRate: 0.8,
+    playbackRate: 0.25,
+    createUtterance: (text) => ({ text } as SpeechSynthesisUtterance),
+    pauseMs: 0,
+    speech,
+    voiceLoadTimeoutMs: 0,
+  })
+
+  assert.deepEqual(spokenRates, [0.8, 0.25, 0.25, 0.25])
+})
+
 test('cached prompt audio plays the approved recording three times with 0.75-second pauses', async () => {
   const audio = new FakeAudio()
   const timers: Array<() => void> = []
@@ -189,11 +214,11 @@ test('an approved context produces word, context, word, word at one rate with 0.
   assert.ok(audios.every((audio) => audio.playbackRate === 1.5))
 })
 
-test('warmup cached audio uses the planned faster playback rate', async () => {
+test('the legacy warmup flag cannot change Mandarin speed implicitly', async () => {
   const audio = new FakeAudio()
   const attempt = playCachedWordAudio(word, true, { createAudio: () => audio, resolveUrl: (path) => path })
   await promptAudioStarted(attempt)
-  assert.equal(audio.playbackRate, 1.5)
+  assert.equal(audio.playbackRate, 1)
   stopPromptAudio(attempt)
 })
 

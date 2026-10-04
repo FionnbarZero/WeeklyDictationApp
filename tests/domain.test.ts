@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  AUDIO_PAUSE_MS,
   FAMILIAR_DT_WORDS,
   acquisitionTimerConfigFor,
   activePracticeWord,
-  audioPartsForWord,
   answerAcquisitionPrompt,
   acquisitionProgressFor,
   buildWarmupSelection,
@@ -288,17 +286,6 @@ test('hydration does not reintroduce old placeholders or fabricate no-data fallb
   const emptyHydration = hydrateLocalState(placeholderState, { presentationId: grade2DeckProfile.sourceDeckId, slides: [{ objectId: 'malformed', text: 'Not a weekly dataset' }] }, grade2DeckProfile)
   assert.equal(emptyHydration.batch.status, 'error')
   assert.equal(emptyHydration.state.datasets.length, 0)
-})
-
-test('audio sequence and warmup rate are stable', () => {
-  const audioWord = { ...currentDataset.words[0], sentence: '这是一个短句。' }
-  const normal = audioPartsForWord(audioWord)
-  const warmup = audioPartsForWord(audioWord, true)
-  assert.deepEqual(normal.map((part) => part.text), [audioWord.text, audioWord.sentence, audioWord.text, audioWord.text])
-  assert.equal(AUDIO_PAUSE_MS, 750)
-  assert.ok(normal.every((part) => part.rate === normal[0].rate))
-  assert.equal(warmup[0].rate, normal[0].rate * 1.5)
-  assert.equal(warmup[1].rate, normal[1].rate * 1.5)
 })
 
 test('Acquisition audio follows the active prompt instead of the flat primary queue', () => {

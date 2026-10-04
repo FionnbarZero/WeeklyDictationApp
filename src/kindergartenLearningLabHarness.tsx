@@ -54,11 +54,13 @@ import {
   stopActiveAudio,
 } from './audio/promptAudio.ts'
 import { kindergartenInstructionAudio, withKindergartenAudio } from './audio/kindergartenAudio.ts'
+import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
+const kindergartenAudioProfile = gradeAudioProfileFor('Kindergarten')
 
 type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
 type StandaloneActivity = Exclude<KindergartenHubActivityKind,
@@ -89,13 +91,18 @@ function speakText(text: string, language = 'zh-CN', rate = 0.55) {
 }
 
 function speakWord(word: Word, warmup = false) {
-  return playCachedWordAudio(withKindergartenAudio(word), warmup, warmup ? {} : { playbackRate: 1.5, sentenceRate: 1.5 })
+  const rate = warmup ? kindergartenAudioProfile.masteryRate : kindergartenAudioProfile.dictationRate
+  return playCachedWordAudio(withKindergartenAudio(word), warmup, {
+    playbackRate: rate,
+    sentenceRate: rate,
+    pauseMs: kindergartenAudioProfile.segmentGapMs,
+  })
 }
 
 function playMasteryWord(word: Word) { return speakWord(word, true) }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
-  return playCachedWordAudioOnce(withKindergartenAudio(target), { playbackRate: 1.5 })
+  return playCachedWordAudioOnce(withKindergartenAudio(target), { playbackRate: kindergartenAudioProfile.readingRate })
 }
 
 function speakReadingIntroduction(
@@ -104,8 +111,10 @@ function speakReadingIntroduction(
 ): Promise<void> {
   const newTargetInstruction = kindergartenInstructionAudio('newTarget')
   return playReadingTeachingSequence(withKindergartenAudio(target), {
-    playbackRate: 1.5,
-    sentenceRate: 1.5,
+    playbackRate: kindergartenAudioProfile.readingRate,
+    sentenceRate: kindergartenAudioProfile.readingRate,
+    instructionRate: kindergartenAudioProfile.instructionRate,
+    pauseMs: kindergartenAudioProfile.segmentGapMs,
     ...(context.firstPresentationOfNewTarget
       ? {
           newTargetAnnouncement: newTargetInstruction.text,

@@ -72,8 +72,12 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
 
   await openGrade2LearningActivity(page, 'The Final Boss Test', 'Reading Test')
   await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
-  await expect(page.getByText('Test Review 1', { exact: true })).toBeVisible()
+  await expect(page.getByText('Collect first', { exact: true })).toBeVisible()
+  await expect(page.getByText(/model pronunciation and correctness buttons stay hidden until every response is collected/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record my reading' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit reading' }).click()
+  await expect(page.getByRole('heading', { name: 'Exit without saving?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Exit without saving' }).click()
 
   await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Reading mastery')
   await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
@@ -85,7 +89,6 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
     const fallback = page.getByRole('alert').filter({ hasText: 'Recording is unavailable.' })
     await expect(fallback).toContainText('Microphone permission was not granted.')
     await page.getByRole('button', { name: 'Continue without recording' }).click()
-    await page.getByRole('button', { name: 'Hear the example pronunciation' }).click()
     await expect(page.getByText('Did your reading match the example?')).toBeVisible()
     await page.getByRole('button', { name: 'Yes' }).click()
   }

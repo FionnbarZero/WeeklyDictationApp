@@ -4,7 +4,7 @@ import {
   ShieldCheck, Sparkles, X,
 } from 'lucide-react'
 import {
-  APP_STATE_KEY, AUDIO_PAUSE_MS, activePracticeWord, audioPartsForWord, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
+  APP_STATE_KEY, activePracticeWord, type AppState, type Dataset, type DatasetLifecycle, type DatasetScore,
   createInitialState, revealAcquisitionPrompt,
   filterDatasetsForChild, latestScore, localDateKey, createSessionId, requireDatasetLifecycle, resolveDatasetLifecycles, sortDatasetsNewestFirst, shouldSuggestGradePromotion, nextGrade, type LifecyclePhase,
   type PracticeSession, type PracticeTarget, type Word,
@@ -33,7 +33,8 @@ import { tier2ReadingProfileForScope } from './tier2/registry'
 import { grade2LearningHubView, type Grade2LearningHubLaunch } from './grade2/learningHub.ts'
 import type { LearningHubProps } from './learningHub/LearningHub.tsx'
 import { useDialogFocus } from './accessibility/useDialogFocus.ts'
-import { playAudioPlan, stopActiveAudio } from './audio/lazyPromptAudio.ts'
+import { playAudioPlan, playCachedWordAudio, stopActiveAudio } from './audio/lazyPromptAudio.ts'
+import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 
 const Tier2ReadingPractice = lazy(() =>
   import('./readingPractice/Tier2ReadingPractice.tsx').then((module) => ({
@@ -76,7 +77,7 @@ function localStorageGet(key: string) { try { return window.localStorage.getItem
 function localStorageSet(key: string, value: string) { try { window.localStorage.setItem(key, value); return true } catch { return false } }
 type SpeechPart = { text: string; rate: number; lang?: 'zh-CN' | 'en-GB' | 'en-IE' | 'en-US' }
 
-function playSpeechSequence(parts: SpeechPart[], pauseMs = AUDIO_PAUSE_MS) {
+function playSpeechSequence(parts: SpeechPart[], pauseMs = gradeAudioProfileFor('Grade 2').segmentGapMs) {
   return playAudioPlan(parts.map((part) => ({
     text: part.text,
     language: part.lang || 'zh-CN',
@@ -84,7 +85,15 @@ function playSpeechSequence(parts: SpeechPart[], pauseMs = AUDIO_PAUSE_MS) {
   })), { pauseMs })
 }
 
-function speakWord(word: Word, warmup: boolean) { return playSpeechSequence(audioPartsForWord(word, warmup)) }
+function speakWord(word: Word, warmup: boolean) {
+  const profile = gradeAudioProfileFor(word.grade || 'Grade 2')
+  const rate = warmup ? profile.masteryRate : profile.dictationRate
+  return playCachedWordAudio(word, warmup, {
+    playbackRate: rate,
+    sentenceRate: rate,
+    pauseMs: profile.segmentGapMs,
+  })
+}
 function speakReviewInstruction() { return playSpeechSequence([{ text: REVIEW_INSTRUCTION, rate: 0.9, lang: 'en-GB' }], 0) }
 function lifecycleLabel(lifecycle: DatasetLifecycle) { return lifecycle === 'acquisition' ? 'Acquisition' : lifecycle === 'test-review' ? 'Test Review' : lifecycle === 'future' ? 'Future' : lifecycle === 'no-instruction' ? 'Writing Workshop' : 'Mastered' }
 function phaseLabel(phase: LifecyclePhase) { return phase === 'test-review' ? 'Test Review' : phase === 'warmup' ? 'Warmup' : 'Acquisition' }

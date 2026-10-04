@@ -273,9 +273,6 @@ export function activePracticeWord(session: Pick<PracticeSession, 'segment' | 'a
 
 export const APP_STATE_KEY = 'weekly-dictation-state-v2'
 export const LEGACY_ATTEMPTS_KEY = 'weekly-dictation-attempts'
-export const AUDIO_PAUSE_MS = 750
-export const NORMAL_WORD_RATE = 0.25
-export const NORMAL_SENTENCE_RATE = NORMAL_WORD_RATE
 export const GRADE_ORDER = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
 
 export function acquisitionTimerConfigFor(grade: string) {
@@ -286,14 +283,6 @@ export function acquisitionTimerConfigFor(grade: string) {
 export const FAMILIAR_DT_WORDS: Word[] = grade2AcquisitionStrategy.familiarDtTargets
 /** @deprecated Read-only compatibility alias for pre-v3 callers. */
 export const ESTABLISHED_DT_WORDS = FAMILIAR_DT_WORDS
-
-export type AudioPart = { text: string; rate: number }
-
-export function audioPartsForWord(word: Word, warmup = false): AudioPart[] {
-  const multiplier = warmup ? 1.5 : 1
-  const wordRate = Math.min(1, NORMAL_WORD_RATE * multiplier)
-  return [{ text: word.text, rate: wordRate }, ...(word.sentence.trim() ? [{ text: word.sentence, rate: wordRate }] : []), { text: word.text, rate: wordRate }, { text: word.text, rate: wordRate }]
-}
 
 export function timerSecondsFor(grade: string | null | undefined, segment: string | null | undefined, primaryPhase: string | null | undefined) {
   const profile = requirePracticeProfileForGrade(grade)

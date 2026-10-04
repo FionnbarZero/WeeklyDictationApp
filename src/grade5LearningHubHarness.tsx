@@ -2,8 +2,9 @@ import { createRoot } from 'react-dom/client'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
-import { activePracticeWord, audioPartsForWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
-import { playAudioPlan, playCachedWordAudioOnce, playReadingTeachingSequence, stopActiveAudio } from './audio/promptAudio.ts'
+import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { playCachedWordAudio, playCachedWordAudioOnce, playReadingTeachingSequence, stopActiveAudio } from './audio/promptAudio.ts'
+import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import {
   answerGrade5AcquisitionLab,
   revealGrade5AcquisitionLab,
@@ -39,6 +40,7 @@ const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
+const grade5AudioProfile = gradeAudioProfileFor('Grade 5')
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -103,20 +105,24 @@ function candidateFor(request: Grade5ActivityLaunchRequest): WeeklyDatasetCandid
 }
 
 function speakWord(word: Word) {
-  return playAudioPlan(audioPartsForWord(word).map((part) => ({
-    text: part.text,
-    language: 'zh-CN',
-    rate: part.rate,
-    storagePath: part.text === word.text ? word.audio?.storagePath : word.audio?.contextStoragePath,
-  })))
+  return playCachedWordAudio(word, false, {
+    playbackRate: grade5AudioProfile.dictationRate,
+    sentenceRate: grade5AudioProfile.dictationRate,
+    pauseMs: grade5AudioProfile.segmentGapMs,
+  })
 }
 
 function speakReadingReference(word: Word): Promise<void> {
-  return playCachedWordAudioOnce(word, { playbackRate: 0.25 })
+  return playCachedWordAudioOnce(word, { playbackRate: grade5AudioProfile.readingRate })
 }
 
 function speakReadingIntroduction(word: Word): Promise<void> {
-  return playReadingTeachingSequence(word, { playbackRate: 0.25, sentenceRate: 0.25 })
+  return playReadingTeachingSequence(word, {
+    playbackRate: grade5AudioProfile.readingRate,
+    sentenceRate: grade5AudioProfile.readingRate,
+    instructionRate: grade5AudioProfile.instructionRate,
+    pauseMs: grade5AudioProfile.segmentGapMs,
+  })
 }
 
 function speakCurrentWord() {
