@@ -39,7 +39,7 @@ jobs:
       - run: npm run build:public-preview
       - run: npm run build:prototype-baseline
       - run: npm run package:family-beta -- --grade kindergarten
-      - run: npm run package:family-beta -- --grade grade2
+      - run: npm run package:family-beta -- --grade grade2 --curriculum-snapshot public/curriculum/grade2-presentation.json
       - run: npm run package:family-beta -- --grade grade5
 
   browser:
@@ -54,7 +54,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run package:family-beta -- --grade kindergarten
-      - run: npm run package:family-beta -- --grade grade2
+      - run: npm run package:family-beta -- --grade grade2 --curriculum-snapshot public/curriculum/grade2-presentation.json
       - run: npm run package:family-beta -- --grade grade5
       - run: npm run test:family-beta-artifacts
       - run: npm run test:browser
