@@ -18,7 +18,8 @@ test('the Kindergarten learning lab uses an explicit public-preview gate and sta
   assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
   assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/kindergarten-workbook\.json', import\.meta\.url\)\.href/)
   assert.match(harnessSource, /tests\/fixtures\/kindergarten-workbook\.json/)
-  assert.match(harnessSource, /Manual selection only—this lab does not infer the active week/)
+  assert.match(harnessSource, /kindergartenSourceWeekForDate/)
+  assert.match(harnessSource, /Defaults to the spreadsheet week/)
   assert.doesNotMatch(harnessSource, /from ['"].*(firebase|firestore)|localStorage\.|googleapis|fetch\(['"]https:/i)
 })
 

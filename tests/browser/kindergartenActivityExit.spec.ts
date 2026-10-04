@@ -10,6 +10,11 @@ type ExitCase = {
   status: string
 }
 
+async function selectWeek8(page: import('@playwright/test').Page) {
+  await page.getByText('Development fixture controls').click()
+  await page.getByLabel('Current fixture week').selectOption('1759563195')
+}
+
 const exitCases: ExitCase[] = [
   {
     section: /Enter the Dojo/,
@@ -60,6 +65,7 @@ for (const exitCase of exitCases) {
     const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
 
     await page.goto('/kindergarten-learning-lab.html')
+    await selectWeek8(page)
     await page.getByRole('button', { name: exitCase.section }).click()
     await page.getByRole('button', { name: exitCase.activity, exact: true }).click()
     await page.getByRole('button', { name: exitCase.exit }).click()
@@ -83,6 +89,7 @@ test('Kindergarten writing automatically plays and replays a cached Mandarin rec
   })
 
   await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
   await page.getByRole('button', { name: /Enter the Dojo/ }).click()
   await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
 
@@ -99,6 +106,7 @@ test('Kindergarten writing automatically plays and replays a cached Mandarin rec
 test('Kindergarten cached Mandarin audio is served and accepted by the browser media engine', async ({ page }) => {
   const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
   await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
   await page.getByRole('button', { name: /Enter the Dojo/ }).click()
   const audioResponse = page.waitForResponse((response) => /\/audio\/kindergarten\/u[0-9a-f]+\.wav$/.test(response.url()))
   await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
@@ -120,6 +128,7 @@ test('Kindergarten writing exposes an actionable error when browser playback fai
   })
 
   await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek8(page)
   await page.getByRole('button', { name: /Enter the Dojo/ }).click()
   await page.getByRole('button', { name: 'Writing characters', exact: true }).click()
 

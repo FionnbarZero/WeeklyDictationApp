@@ -20,6 +20,7 @@ import {
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
+import { kindergartenCurrentDateKey, kindergartenSourceWeekForDate } from './kindergartenLab/currentWeek.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
 import {
@@ -44,7 +45,6 @@ import { withKindergartenAudio } from './audio/kindergartenAudio.ts'
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
-const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
 
 type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
@@ -192,9 +192,8 @@ function KindergartenLearningLab() {
       })
       .then((payload) => {
         const inspected = inspectKindergartenWorkbook(normalizeWorkbook(payload))
-        const usable = inspected.filter(kindergartenCandidateIsUsableInLab)
-        const preferred = usable.find((candidate) => candidate.rawDate === DEFAULT_FIXTURE_TAB) || usable[0]
-        if (!preferred) throw new Error('The fixture has no Kindergarten vocabulary tab usable by the lab.')
+        const preferred = kindergartenSourceWeekForDate(inspected)
+        if (!preferred) throw new Error('The fixture has no dated Kindergarten source tab usable by the lab.')
         setCandidates(inspected)
         setSelectedSourceUnitId(preferred.source.sourceUnitId)
         setStatus('Kindergarten paths loaded. Choose an adventure and your session scores will appear in the Ninja Record.')
@@ -205,8 +204,8 @@ function KindergartenLearningLab() {
       })
   }, [])
 
-  const usableCandidates = useMemo(() => candidates.filter(kindergartenCandidateIsUsableInLab), [candidates])
-  const selectedCandidate = usableCandidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId) || usableCandidates[0]
+  const selectedCandidate = candidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId)
+    || kindergartenSourceWeekForDate(candidates)
   const unitReview = useMemo<KindergartenUnitReviewLab | null>(() => {
     if (!candidates.length) return null
     try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
@@ -249,7 +248,7 @@ function KindergartenLearningLab() {
   }
 
   function startWriting() {
-    if (!selectedCandidate) return
+    if (!selectedCandidate || !kindergartenCandidateIsUsableInLab(selectedCandidate)) return
     try {
       setWritingPractice({
         state: startKindergartenAcquisitionLab(selectedCandidate),
@@ -370,7 +369,7 @@ function KindergartenLearningLab() {
   function launchFromHub(launch: KindergartenHubLaunch) {
     if (launch.kind === 'dojo-writing') { startWriting(); return }
     if (launch.kind === 'dojo-reading') {
-      if (selectedCandidate) {
+      if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
         setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
         setStatus('Running the current-week high-frequency reading Acquisition flow.')
       } else {
@@ -519,9 +518,9 @@ function KindergartenLearningLab() {
       <summary>Development fixture controls</summary>
       <label className="k-week-picker">Current fixture week
         <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => setSelectedSourceUnitId(event.target.value)}>
-          {usableCandidates.map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
+          {candidates.filter((candidate) => candidate.assignedWeek).map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
         </select>
-        <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
+        <span className="k-manual-note">Defaults to the spreadsheet week for {kindergartenCurrentDateKey()}. Select another week only to test that fixture.</span>
       </label>
     </details>
     <LearningHub model={hubModel} onLaunch={launchFromHub} />

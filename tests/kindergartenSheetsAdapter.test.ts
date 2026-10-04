@@ -43,6 +43,7 @@ test('observed weekly tabs preserve source order and source-neutral provenance',
 
 test('Writing character maps to Tier 1 and High frequency word maps to Tier 2', () => {
   const expected = new Map([
+    ['Week 8 10/05', { tier1: ['牛', '羊'], tier2: ['猫', '狗', '鸟'] }],
     ['Week 6 09/21', { tier1: ['九', '十', '白'], tier2: ['红色', '蓝色'] }],
     ['Week 5 09/14', { tier1: ['七', '八', '水'], tier2: ['有', '没有'] }],
     ['Week 4 09/08', { tier1: ['四', '五', '六', '心'], tier2: ['我', '开心'] }],
@@ -79,6 +80,7 @@ test('weekly tab dates normalize to the containing Monday-through-Sunday cycle',
   assert.deepEqual(byTitle.get('Week 4 09/08')?.assignedWeek, { startDate: '2026-09-07', endDate: '2026-09-13' })
   assert.deepEqual(byTitle.get('Week 6 09/21')?.assignedWeek, { startDate: '2026-09-21', endDate: '2026-09-27' })
   assert.deepEqual(byTitle.get('Week 7 09/28')?.assignedWeek, { startDate: '2026-09-28', endDate: '2026-10-04' })
+  assert.deepEqual(byTitle.get('Week 8 10/05')?.assignedWeek, { startDate: '2026-10-05', endDate: '2026-10-11' })
   assert.deepEqual(mondaySundayCycleFromTabTitle('Week 20 01/05', kindergartenSheetsProfile), {
     sourceDate: '2027-01-05',
     startDate: '2027-01-04',
@@ -151,8 +153,8 @@ test('the dry-run summary exposes normalized dates, vocabulary, and activation b
   assert.equal(summary.datePolicy, 'monday-through-sunday')
   assert.equal(summary.activation, 'inactive-source-registry')
   assert.equal(summary.sourceDocumentId, KINDERGARTEN_SHEETS_ID)
-  assert.equal(summary.sourceUnitCount, 7)
-  assert.equal(summary.vocabularyUnitCount, 4)
+  assert.equal(summary.sourceUnitCount, 8)
+  assert.equal(summary.vocabularyUnitCount, 5)
   assert.ok(summary.units.filter((unit) => unit.tier1.length > 0).every((unit) => unit.blockers.length === 0))
   assert.deepEqual(summary.units.find((unit) => unit.tabTitle === 'Week 7 09/28')?.blockers, [])
   assert.ok(summary.units
