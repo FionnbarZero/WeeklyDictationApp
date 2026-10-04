@@ -20,7 +20,7 @@ import {
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
-import { kindergartenCurrentDateKey, kindergartenSourceWeekForDate } from './kindergartenLab/currentWeek.ts'
+import { kindergartenCurrentSourceWeek } from './kindergartenLab/currentWeek.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
 import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
 import {
@@ -192,7 +192,7 @@ function KindergartenLearningLab() {
       })
       .then((payload) => {
         const inspected = inspectKindergartenWorkbook(normalizeWorkbook(payload))
-        const preferred = kindergartenSourceWeekForDate(inspected)
+        const preferred = kindergartenCurrentSourceWeek(inspected)
         if (!preferred) throw new Error('The fixture has no dated Kindergarten source tab usable by the lab.')
         setCandidates(inspected)
         setSelectedSourceUnitId(preferred.source.sourceUnitId)
@@ -205,7 +205,7 @@ function KindergartenLearningLab() {
   }, [])
 
   const selectedCandidate = candidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId)
-    || kindergartenSourceWeekForDate(candidates)
+    || kindergartenCurrentSourceWeek(candidates)
   const unitReview = useMemo<KindergartenUnitReviewLab | null>(() => {
     if (!candidates.length) return null
     try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
@@ -520,7 +520,7 @@ function KindergartenLearningLab() {
         <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => setSelectedSourceUnitId(event.target.value)}>
           {candidates.filter((candidate) => candidate.assignedWeek).map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
         </select>
-        <span className="k-manual-note">Defaults to the spreadsheet week for {kindergartenCurrentDateKey()}. Select another week only to test that fixture.</span>
+        <span className="k-manual-note">Defaults to the authoritative top spreadsheet tab. Select another week only to test that fixture.</span>
       </label>
     </details>
     <LearningHub model={hubModel} onLaunch={launchFromHub} />

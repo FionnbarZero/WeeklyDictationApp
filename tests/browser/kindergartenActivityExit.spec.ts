@@ -15,6 +15,11 @@ async function selectWeek8(page: import('@playwright/test').Page) {
   await page.getByLabel('Current fixture week').selectOption('1759563195')
 }
 
+async function selectWeek7(page: import('@playwright/test').Page) {
+  await page.getByText('Development fixture controls').click()
+  await page.getByLabel('Current fixture week').selectOption('459793081')
+}
+
 const exitCases: ExitCase[] = [
   {
     section: /Enter the Dojo/,
@@ -146,6 +151,7 @@ test('Kindergarten Reading Final Boss confirms and exits without retaining a sco
   const expectNoBrowserErrors = watchForUnexpectedBrowserErrors(page)
 
   await page.goto('/kindergarten-learning-lab.html')
+  await selectWeek7(page)
   await page.getByRole('button', { name: /The Final Boss Test/ }).click()
   await page.getByRole('button', { name: 'Reading Test', exact: true }).click()
   await page.getByRole('button', { name: 'Exit without saving' }).click()

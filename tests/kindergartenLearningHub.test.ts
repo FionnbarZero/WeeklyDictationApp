@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { SheetsWorkbookPayload } from '../src/curriculum/model.ts'
-import { kindergartenSourceWeekForDate } from '../src/kindergartenLab/currentWeek.ts'
+import { kindergartenCurrentSourceWeek } from '../src/kindergartenLab/currentWeek.ts'
 import { kindergartenLearningHubView } from '../src/kindergartenLab/learningHub.ts'
 import { kindergartenUnitReviewForLab } from '../src/kindergartenLab/unitReview.ts'
 import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
@@ -48,9 +48,8 @@ test('Final Boss owns cumulative review and Spirit Realm owns mastery warmup', (
   assert.equal(hub.sections[3].cohorts[0].groups[1].words.length, 9)
 })
 
-test('the calendar selects the authoritative review week instead of a hard-coded acquisition week', () => {
-  assert.equal(kindergartenSourceWeekForDate(candidates, '2026-10-03')?.rawDate, 'Week 7 09/28')
-  assert.equal(kindergartenSourceWeekForDate(candidates, '2026-10-05')?.rawDate, 'Week 8 10/05')
+test('the authoritative top spreadsheet tab selects the current curriculum week', () => {
+  assert.equal(kindergartenCurrentSourceWeek(candidates)?.rawDate, 'Week 8 10/05')
 })
 
 test('the Unit 1 review week opens the Final Boss and holds acquisition and mastery', () => {
