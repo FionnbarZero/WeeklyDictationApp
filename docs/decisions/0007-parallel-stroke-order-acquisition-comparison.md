@@ -10,15 +10,25 @@ The Phase 1 Stroke Order activity is a shared, session-only learning game with g
 
 The Dojo presents the existing Writing Acquisition and an experimental Stroke Order Acquisition side by side for the same cohort.
 
+Children may choose either interface or complete both. Every launch starts a new Adaptive Warmup visit; launching the second interface does not reuse the first interface's Warmup visit. The longitudinal Warmup mastery state remains shared as described below.
+
 Stroke Order uses the exact Acquisition strategy owned by the selected grade, including Introduction, Expanded Trials, Correction, Familiar-DT trials, earned-DT behavior, ongoing DT practice, grade-owned timers, audio cadence, repetition, timer-start rules, and the configured pre-activity Adaptive Warmup policy. Introduction and Correction expose the model; timed Expanded Trials preserve the existing hidden-target behavior. Correctness remains child self-assessment during the comparison.
 
-The two interfaces have separate versioned Acquisition progression identities and separate scores and reports. Completing or advancing one interface never advances the other. Adaptive Warmup mastery state remains shared because it represents longitudinal word knowledge rather than interface-specific Acquisition progress. The existing Writing Acquisition remains the official result; Stroke Order uses the same score calculation but is labeled experimental and is not merged into the official Writing Acquisition score or progression.
+The experimental interface retains the Phase 1 child controls: Review now, Skip timer, replay, undo, and clear. A multi-character target is taught and assessed as one word on one term-level pad; visible stroke numbering restarts for each character.
+
+The two interfaces have separate versioned Acquisition progression identities and separate scores and reports. Completing or advancing one interface never advances the other. Adaptive Warmup mastery state remains shared because it represents longitudinal word knowledge rather than interface-specific Acquisition progress. The existing Writing Acquisition remains the official result; Stroke Order uses the same score calculation but is labeled experimental and is not merged into the official Writing Acquisition score or progression. The child sees an experimental completion result, and the adult can inspect the experimental result in History.
 
 Stroke Order persistence checkpoints after completed Acquisition transitions. Resume restores the latest completed checkpoint, discards any unfinished drawing, and restarts the same prompt with a blank pad. An unfinished older cohort remains resumable after a later cohort becomes active. Durable records include source and target-set identity, activity and schema versions, prompt state, self-assessment, retries, active time, exit/resume evidence, mode order, revision, and completion timestamps. Raw handwriting coordinates and images are never persisted. Existing Phase 1 visits are not migrated because they were session-only.
+
+The Enter the Dojo screen provides a Reenter control with dated cohort choices. The dated reentry surface covers writing Acquisition, reading Acquisition, and Stroke Order Acquisition rather than placing historical resume only in History. Whether completed historical cohorts also appear alongside unfinished cohorts remains a separate product decision.
 
 The current standalone three-step Stroke Order prototype remains available only as a development reference and rollback aid. The Dojo card launches the Acquisition-driven variant.
 
 Weekly source activation and Stroke Order eligibility are separate gates. Missing stroke geometry disables only Stroke Order for that cohort and identifies the unsupported characters; canonical import and the existing Writing Acquisition continue. Grade 2 is exercised in isolated synthetic staging. Kindergarten is integrated into the authenticated application behind a beta/release flag rather than gaining persistence inside the standalone lab. Initial rollout uses Grade 2 staging and a Kindergarten beta candidate; stable promotion requires a separate explicit approval.
+
+Grade 5 is also included during prototype development, without treating the existing Grade 5 development lab as a production curriculum launch. Until a dedicated Grade 5 Stroke Order set is created, its temporary target set is `需要`, `吸收`, and `各种各样`. These targets require local stroke geometry for `需`, `要`, `吸`, `收`, `各`, `种`, and `样`. Live Grade 5 source activation, importing, and production persistence require a separate decision.
+
+The first release-acceptance device matrix covers iPad touch input and trackpad input. The comparison retains completion, accuracy, retry count, active time, exits/resumes, child preference, and interface-order evidence rather than selecting a single success metric in advance. The exact active-time pause rules remain undecided and must be fixed before implementation of analytics and release-gate tests.
 
 ## Consequences
 
