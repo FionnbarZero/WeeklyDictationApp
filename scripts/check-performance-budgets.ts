@@ -46,7 +46,7 @@ const requiredLazyChunks = [
   'LocalBackupTools',
   'HomeViews',
   'ProfileModal',
-  'Grade2StrokeOrderExperience',
+  'Grade2StrokeOrderAcquisitionExperience',
 ]
 for (const chunkName of requiredLazyChunks) {
   const entry = Object.entries(manifest).find(([, chunk]) => chunk.name === chunkName)
