@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { ArrowLeft, Check, RotateCcw, Sparkles, Volume2, X } from 'lucide-react'
 import type { Word } from '../domain/contracts.ts'
 
-export type KindergartenScoreKind = 'Current week' | 'Ninja game' | 'Final Boss' | 'Spirit Realm'
+export type KindergartenScoreKind = 'Current week' | 'Ninja game' | 'Ninja module' | 'Final Boss' | 'Spirit Realm'
 
 export type KindergartenScoreRecord = {
   id: string
@@ -284,7 +284,7 @@ export function NinjaRecord({ scores }: { scores: KindergartenScoreRecord[] }) {
         <strong>{score.label}</strong>
         <b>{score.correct}/{score.total}</b>
       </article>)}
-    </div> : <p className="k-empty-score">Finish a Dojo activity, game, Final Boss review, or Spirit Realm warmup to add a score here.</p>}
+    </div> : <p className="k-empty-score">Finish a Dojo activity, learning module, Final Boss review, or Spirit Realm warmup to add a score here.</p>}
     <small>Development lab: these scores stay only for this open visit and are not saved to a child account.</small>
   </section>
 }

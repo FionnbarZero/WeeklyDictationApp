@@ -17,6 +17,7 @@ function projectTier(candidate: WeeklyDatasetCandidate, tier: VocabularyTier, va
     language: 'mandarin',
     tier,
     activityType: activityTypeFor(tier),
+    ...(value.learningModule ? { learningModule: value.learningModule } : {}),
   }))
 }
 
@@ -68,6 +69,7 @@ function candidateOccurrences(words: Word[]): VocabularyOccurrenceCandidate[] {
     text: word.text,
     sourcePosition: index + 1,
     targetOccurrenceId: word.id,
+    ...(word.learningModule ? { learningModule: word.learningModule } : {}),
   }))
 }
 

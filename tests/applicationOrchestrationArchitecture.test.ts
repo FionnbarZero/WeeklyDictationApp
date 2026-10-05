@@ -34,6 +34,17 @@ test('workspace application operations stay independent from React and Firestore
   }
 })
 
+test('the entry shell defers authenticated workspace and curriculum code', () => {
+  const main = source('src/main.tsx')
+  const shell = source('src/AppShell.tsx')
+  const runtimeConfig = source('src/runtimeConfig.ts')
+
+  assert.match(main, /import App from '.\/AppShell'/)
+  assert.match(shell, /lazy\(\(\) => import\('\.\/App\.tsx'\)\)/)
+  assert.doesNotMatch(shell, /from ['"]\.\/config/)
+  assert.doesNotMatch(runtimeConfig, /from ['"][^'"]*(?:domain|curriculum|practice|lifecycle)/)
+})
+
 test('App delegates family and child workspace synchronization without raw collection loading', () => {
   const app = source('src/App.tsx')
   assert.match(app, /readFamilyWorkspace/)
@@ -106,7 +117,7 @@ test('profile switching and sign-out stay unavailable during an active experienc
   assert.match(app, /const activityControlsLocked = activeExperience !== null \|\| practiceStartInFlight/)
   assert.match(app, /startPracticeOperation\([\s\S]*?finally\(\(\) => setPracticeStartInFlight\(false\)\)/)
   assert.match(app, /if \(activityControlsLocked\) return/)
-  assert.match(app, /className="profile-switcher" disabled=\{activityControlsLocked\}/)
+  assert.match(app, /className="profile-switcher"[\s\S]{0,160}disabled=\{activityControlsLocked\}/)
   assert.match(app, /showChildMenu && !activityControlsLocked/)
   assert.match(app, /Exit the current activity before switching profiles or signing out\./)
 })

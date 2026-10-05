@@ -1,4 +1,4 @@
-import { stagingObservabilityEnabled } from './config.ts'
+import { stagingObservabilityEnabled } from './runtimeConfig.ts'
 import { firebaseSdkApp } from './firebaseSdkRuntime.ts'
 
 let initialization: Promise<void> | null = null

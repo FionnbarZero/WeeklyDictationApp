@@ -1,5 +1,6 @@
 import { readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 type ManifestChunk = {
   file: string
@@ -12,6 +13,7 @@ type ManifestChunk = {
 
 type Budgets = {
   initialJavaScriptBytes: number
+  initialJavaScriptGzipBytes: number
   initialCssBytes: number
 }
 
@@ -35,10 +37,23 @@ const initialJavaScript = initialChunks.reduce(
   (total, chunk) => total + (chunk.file.endsWith('.js') ? statSync(resolve(dist, chunk.file)).size : 0),
   0,
 )
+const initialJavaScriptGzip = initialChunks.reduce(
+  (total, chunk) =>
+    total + (chunk.file.endsWith('.js') ? gzipSync(readFileSync(resolve(dist, chunk.file))).byteLength : 0),
+  0,
+)
 const initialCssFiles = new Set(initialChunks.flatMap((chunk) => chunk.css || []))
 const initialCss = [...initialCssFiles].reduce((total, file) => total + statSync(resolve(dist, file)).size, 0)
 
-const requiredLazyChunks = ['PracticeView', 'HistoryView', 'Tier2ReadingPractice', 'LocalBackupTools']
+const requiredLazyChunks = [
+  'App',
+  'Grade2HomeView',
+  'PracticeView',
+  'HistoryView',
+  'Tier2ReadingPractice',
+  'LocalBackupTools',
+  'LearningModuleHost',
+]
 for (const chunkName of requiredLazyChunks) {
   const entry = Object.entries(manifest).find(([, chunk]) => chunk.name === chunkName)
   if (!entry || initialChunkKeys.has(entry[0])) {
@@ -46,11 +61,27 @@ for (const chunkName of requiredLazyChunks) {
   }
 }
 
-const forbiddenInitialSources = /(Harness|Prototype|testing\.tsx)/i
+const requiredLazySources = [
+  'src/learningModules/dictation-streak/Game.tsx',
+  'src/learningModules/speed-match/Game.tsx',
+  'src/learningModules/target-blast/Game.tsx',
+  'src/learningModules/memory-lanterns/Game.tsx',
+  'src/learningModules/context-gap-dash/Game.tsx',
+  'src/learningModules/sushi-scramble/Game.tsx',
+]
+for (const source of requiredLazySources) {
+  const entry = Object.entries(manifest).find(([, chunk]) => chunk.src === source)
+  if (!entry || initialChunkKeys.has(entry[0])) {
+    throw new Error(`${source} must remain outside the initial application bundle.`)
+  }
+}
+
+const forbiddenInitialSources =
+  /(Harness|Prototype|testing\.tsx|(?:^|[/\\])(?:learningGames|ninjaSkills)(?:[/\\])|node_modules[/\\]phaser)/i
 for (const key of initialChunkKeys) {
   const source = manifest[key]?.src || key
   if (forbiddenInitialSources.test(source)) {
-    throw new Error(`Development-only module ${source} is present in the initial application bundle.`)
+    throw new Error(`Forbidden module ${source} is present in the initial application bundle.`)
   }
 }
 
@@ -59,10 +90,15 @@ if (initialJavaScript > budgets.initialJavaScriptBytes) {
     `Initial JavaScript is ${initialJavaScript} bytes; budget is ${budgets.initialJavaScriptBytes} bytes.`,
   )
 }
+if (initialJavaScriptGzip > budgets.initialJavaScriptGzipBytes) {
+  throw new Error(
+    `Initial compressed JavaScript is ${initialJavaScriptGzip} bytes; gzip budget is ${budgets.initialJavaScriptGzipBytes} bytes.`,
+  )
+}
 if (initialCss > budgets.initialCssBytes) {
   throw new Error(`Initial CSS is ${initialCss} bytes; budget is ${budgets.initialCssBytes} bytes.`)
 }
 
 console.log(
-  `Performance budgets passed: ${initialJavaScript}/${budgets.initialJavaScriptBytes} initial JS bytes, ${initialCss}/${budgets.initialCssBytes} initial CSS bytes.`,
+  `Performance budgets passed: ${initialJavaScript}/${budgets.initialJavaScriptBytes} initial JS bytes, ${initialJavaScriptGzip}/${budgets.initialJavaScriptGzipBytes} initial gzip bytes, ${initialCss}/${budgets.initialCssBytes} initial CSS bytes.`,
 )

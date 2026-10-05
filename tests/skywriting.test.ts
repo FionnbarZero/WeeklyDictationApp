@@ -139,7 +139,7 @@ test('every shared Tier 1 writing activity uses the Songti Sky Writing response'
   assert.match(finalReview, /<SkyWritingAcquisition/)
   assert.match(finalReview, /phase="review"/)
   assert.doesNotMatch(`${testReviewCollector}\n${finalReview}`, /write the response on paper|check your paper/i)
-  assert.match(productionApp, /<PracticeView session=\{session\}/)
+  assert.match(productionApp, /<PracticeView[\s\S]{0,120}session=\{session\}/)
   assert.match(kindergarten, /<PracticeView/)
   assert.match(grade5, /<PracticeView/)
 })

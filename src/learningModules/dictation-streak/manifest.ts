@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'dictation-streak', title: 'Dictation Streak', description: 'Listen to a Mandarin word, type exactly what you hear, and build a streak.', activityLabel: 'Listen and type', channels: ['tier-1-writing'], skills: ['writing'], inputKind: 'production', estimatedSeconds: [60, 120] } as const

@@ -9,6 +9,27 @@ export type Word = {
   tier?: 'tier-1' | 'tier-2' | 'tier-3'
   activityType?: 'dictation' | 'reading' | 'spelling'
   audio?: { storagePath?: string; voice?: string; generatedAt?: string }
+  /** Reviewed enrichment used only by optional Ninja Skills learning modules. */
+  learningModule?: AuthoritativeLearningModuleMetadata
+}
+
+export type PinyinInputStep = {
+  pinyin: string
+  candidates: string[]
+}
+
+export type AuthoritativeLearningModuleMetadata = {
+  meaning?: string
+  pinyinText?: string
+  pinyinSteps?: PinyinInputStep[]
+  context?: {
+    sentence: string
+    tokens: string[]
+  }
+  audio?: {
+    wordStoragePath?: string
+    sentenceStoragePath?: string
+  }
 }
 
 export type DatasetSourceMetadata = {

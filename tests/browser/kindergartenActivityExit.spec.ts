@@ -6,7 +6,7 @@ test.use({ viewport: { width: 390, height: 844 }, permissions: [] })
 type ExitCase = {
   section: RegExp
   activity: string
-  exit: 'Exit game' | 'Exit practice' | 'Exit reading'
+  exit: 'Exit game' | 'Exit learning module' | 'Exit practice' | 'Exit reading'
   status: string
 }
 
@@ -25,20 +25,14 @@ const exitCases: ExitCase[] = [
   },
   {
     section: /Practice your Ninja Skills/,
-    activity: 'Listening Lily Pads',
-    exit: 'Exit game',
+    activity: 'Start Shadow Strike Dojo',
+    exit: 'Exit learning module',
     status: 'Returned to the Kindergarten paths.',
   },
   {
     section: /Practice your Ninja Skills/,
-    activity: 'Memory Lanterns',
-    exit: 'Exit game',
-    status: 'Returned to the Kindergarten paths.',
-  },
-  {
-    section: /Practice your Ninja Skills/,
-    activity: 'Sky Writing',
-    exit: 'Exit game',
+    activity: 'Start Memory Lanterns',
+    exit: 'Exit learning module',
     status: 'Returned to the Kindergarten paths.',
   },
   {
@@ -64,7 +58,10 @@ for (const exitCase of exitCases) {
     await page.getByRole('button', { name: exitCase.activity, exact: true }).click()
     await page.getByRole('button', { name: exitCase.exit }).click()
 
-    await expect(page.getByRole('heading', { name: /Ready for your next adventure/ })).toBeVisible()
+    const returnHeading = exitCase.exit === 'Exit learning module'
+      ? /How do you want to train/
+      : /Ready for your next adventure/
+    await expect(page.getByRole('heading', { name: returnHeading })).toBeVisible()
     await expect(page.getByText(exitCase.status)).toBeVisible()
     await expect(page.getByText('No scores yet')).toBeVisible()
     expectNoBrowserErrors()

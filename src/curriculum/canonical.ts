@@ -13,7 +13,7 @@ function normalizeOccurrences(datasetId: string | null, tier: VocabularyTier, va
   return values.map((value, index): VocabularyOccurrenceCandidate => {
     const text = typeof value === 'string' ? value : value.text
     const sourcePosition = typeof value === 'string' ? index + 1 : value.sourcePosition
-    return { text, sourcePosition, targetOccurrenceId: datasetId ? targetOccurrenceIdFor(datasetId, tier, sourcePosition) : null }
+    return { text, sourcePosition, targetOccurrenceId: datasetId ? targetOccurrenceIdFor(datasetId, tier, sourcePosition) : null, ...(typeof value !== 'string' && value.learningModule ? { learningModule: value.learningModule } : {}) }
   })
 }
 

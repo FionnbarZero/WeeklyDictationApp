@@ -93,3 +93,22 @@ test('Reenter the Training Dojo offers collect-first writing and reading Test Re
   await expect(page.getByText('Reading Test Review 1')).toBeVisible()
   await expect(page.getByText(/collect every response first/i)).toBeVisible()
 })
+
+test('Grade 5 Test Review 1 exposes the six shared learning modules and launches Memory Lanterns', async ({ page }) => {
+  await page.goto('/grade5-learning-hub.html')
+  await openSection(page, 'Practice your Ninja Skills')
+
+  for (const title of [
+    'Dictation Streak',
+    'Shuriken Match',
+    'Shadow Strike Dojo',
+    'Memory Lanterns',
+    'Context Gap Dash',
+    'Sushi Scramble',
+  ]) await expect(page.getByRole('heading', { name: title })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Start Memory Lanterns' }).click()
+  await expect(page.getByRole('heading', { name: 'Memory Lanterns' })).toBeVisible()
+  await page.getByRole('button', { name: 'Exit learning module' }).click()
+  await expect(page.getByRole('heading', { name: 'How do you want to train?' })).toBeVisible()
+})

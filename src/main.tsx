@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App'
+import App from './AppShell'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { resolveManualTestClock } from './manualTestClock'
 import { initializeStagingObservability } from './stagingObservability'

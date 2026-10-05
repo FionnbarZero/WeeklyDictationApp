@@ -63,6 +63,7 @@
 .learning-hub-action { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 13px; color: #29303a; background: #fffdf9; cursor: pointer; font-weight: 850; text-align: center; text-decoration: none; box-shadow: 0 5px 14px rgb(35 49 57 / 8%); }
 .learning-hub-action:hover:not(:disabled) { transform: translateY(-1px); }
 .learning-hub-action:disabled { cursor: not-allowed; opacity: .5; }
+.learning-hub-inactive-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding-top: 20px; }
 @media (max-width: 760px) {
   .learning-hub-topbar { min-height: 62px; }
   .learning-hub-welcome { padding-top: 30px; }
@@ -73,6 +74,7 @@
   .learning-hub-section-grid, .learning-hub-word-groups, .learning-hub-activity-grid { grid-template-columns: 1fr; }
   .learning-hub-section-card { min-height: 270px; padding: 25px; }
   .learning-hub-activity { min-height: 310px; padding: 25px; }
+  .learning-hub-inactive-actions { align-items: stretch; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
   .learning-hub-section-card, .learning-hub-action { transition: none; }

@@ -1,4 +1,4 @@
-import { firebaseConfig, firebaseConfigReady } from './config.ts'
+import { firebaseConfig, firebaseConfigReady } from './runtimeConfig.ts'
 import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
 
 type StoredAuth = {

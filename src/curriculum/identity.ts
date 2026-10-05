@@ -19,7 +19,7 @@ export function targetOccurrenceIdFor(datasetId: string, tier: VocabularyTier, s
 }
 
 function orderedTierContent(values: VocabularyOccurrenceCandidate[]) {
-  return values.map(({ text, sourcePosition }) => ({ text, sourcePosition }))
+  return values.map(({ text, sourcePosition, learningModule }) => ({ text, sourcePosition, ...(learningModule ? { learningModule } : {}) }))
 }
 
 function stableHash(value: string) {
