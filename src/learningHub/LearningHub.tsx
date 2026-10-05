@@ -70,15 +70,15 @@ function SectionDetail<Launch>({
     ? section.defaultCohortId!
     : section.cohorts[0]?.id || ''
   const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
-  const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId)
-    || section.cohorts[0]
-  const visibleCohorts = section.cohortPickerLabel && selectedCohort
-    ? [selectedCohort]
-    : section.cohorts
+  const [selectedReentryId, setSelectedReentryId] = useState(section.reentry?.cohorts[0]?.id || '')
+  const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId) || section.cohorts[0]
+  const visibleCohorts = section.cohortPickerLabel && selectedCohort ? [selectedCohort] : section.cohorts
   const launchContext: LearningHubLaunchContext = {
     sectionId: section.id,
     cohortId: section.cohortPickerLabel ? selectedCohort?.id || null : section.cohorts[0]?.id || null,
   }
+  const selectedReentry =
+    section.reentry?.cohorts.find((cohort) => cohort.id === selectedReentryId) || section.reentry?.cohorts[0]
 
   useEffect(() => {
     if (selectedCohortId && !section.cohorts.some((cohort) => cohort.id === selectedCohortId)) {
@@ -90,16 +90,26 @@ function SectionDetail<Launch>({
     setSelectedCohortId(defaultCohortId)
   }, [defaultCohortId])
 
-  return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`}>
-    <button className="learning-hub-back" type="button" onClick={onBack}>← Back to all challenges</button>
-    <header className="learning-hub-detail-heading">
-      <div>
-        <p className="learning-hub-eyebrow">{section.kicker}</p>
-        <h1>{section.detailTitle || section.title}</h1>
-        <p>{section.detailSubtitle || section.subtitle}</p>
-      </div>
-      <span className="learning-hub-section-mark">{section.number}</span>
-    </header>
+  useEffect(() => {
+    const defaultReentryId = section.reentry?.cohorts[0]?.id || ''
+    if (!selectedReentryId || !section.reentry?.cohorts.some((cohort) => cohort.id === selectedReentryId)) {
+      setSelectedReentryId(defaultReentryId)
+    }
+  }, [section.reentry, selectedReentryId])
+
+  return (
+    <section className={`learning-hub-detail learning-hub-theme-${section.theme}`}>
+      <button className="learning-hub-back" type="button" onClick={onBack}>
+        ← Back to all challenges
+      </button>
+      <header className="learning-hub-detail-heading">
+        <div>
+          <p className="learning-hub-eyebrow">{section.kicker}</p>
+          <h1>{section.detailTitle || section.title}</h1>
+          <p>{section.detailSubtitle || section.subtitle}</p>
+        </div>
+        <span className="learning-hub-section-mark">{section.number}</span>
+      </header>
 
     {section.cohortPickerLabel && section.cohorts.length > 0 && <label className="learning-hub-cohort-picker">
       <span>{section.cohortPickerLabel}</span>
@@ -123,15 +133,77 @@ function SectionDetail<Launch>({
       </article>) : <p className="learning-hub-unavailable">{section.unavailableReason || 'No cohort is available.'}</p>}
     </div>
 
-    <div className="learning-hub-activity-heading">
-      <p className="learning-hub-eyebrow">Choose an activity</p>
-      <h2>How do you want to train?</h2>
-    </div>
-    <div className="learning-hub-activity-grid">
-      {section.activities.map((activity, index) =>
-        <ActivityCard key={activity.id} activity={activity} index={index} theme={section.theme} launchContext={launchContext} onLaunch={onLaunch} />)}
-    </div>
-  </section>
+      {section.reentry && section.reentry.cohorts.length > 0 && (
+        <details className="learning-hub-reentry">
+          <summary>
+            <span>{section.reentry.label}</span>
+            <small>
+              {section.reentry.cohorts.length} historical date{section.reentry.cohorts.length === 1 ? '' : 's'}
+            </small>
+          </summary>
+          <div className="learning-hub-reentry-body">
+            <p>{section.reentry.description}</p>
+            <label className="learning-hub-cohort-picker">
+              <span>{section.reentry.pickerLabel}</span>
+              <select
+                aria-label={section.reentry.pickerLabel}
+                value={selectedReentry?.id || ''}
+                onChange={(event) => setSelectedReentryId(event.target.value)}
+              >
+                {section.reentry.cohorts.map((cohort) => (
+                  <option key={cohort.id} value={cohort.id}>
+                    {cohort.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedReentry && (
+              <div className="learning-hub-reentry-selection">
+                <div>
+                  <p className="learning-hub-eyebrow">{selectedReentry.label}</p>
+                  <strong>{selectedReentry.statusLabel}</strong>
+                </div>
+                <div className="learning-hub-reentry-actions">
+                  {selectedReentry.actions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      disabled={action.kind === 'disabled'}
+                      title={action.kind === 'disabled' ? action.reason : undefined}
+                      onClick={() =>
+                        action.kind === 'launch' &&
+                        onLaunch(action.launch, { sectionId: section.id, cohortId: selectedReentry.id })
+                      }
+                    >
+                      <strong>{action.label}</strong>
+                      <span>{action.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
+      <div className="learning-hub-activity-heading">
+        <p className="learning-hub-eyebrow">Choose an activity</p>
+        <h2>How do you want to train?</h2>
+      </div>
+      <div className="learning-hub-activity-grid">
+        {section.activities.map((activity, index) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            index={index}
+            theme={section.theme}
+            launchContext={launchContext}
+            onLaunch={onLaunch}
+          />
+        ))}
+      </div>
+    </section>
+  )
 }
 
 export function LearningHub<Launch>({ model, onLaunch, showTopbar = true }: LearningHubProps<Launch>) {

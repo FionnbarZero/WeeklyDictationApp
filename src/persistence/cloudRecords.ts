@@ -35,6 +35,9 @@ export type CloudSession = {
   warmupOnly?: boolean
   status: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'abandoned'
   warmupStatus: 'in_progress' | 'partial' | 'completed' | 'skipped' | 'not_started'
+  experienceId?: 'writing' | 'stroke-order' | 'reading'
+  progressionId?: string
+  visitId?: string
   applicationVersion: string
 }
 

@@ -12,9 +12,10 @@ import {
   type LifecyclePhase,
   type PracticeTarget,
 } from '../domain.ts'
-import { grade2LearningHubView, type Grade2LearningHubLaunch } from '../grade2/learningHub.ts'
+import { grade2LearningHubView, type DojoLaunchSelection, type Grade2LearningHubLaunch } from '../grade2/learningHub.ts'
 import type { LearningHubProps } from '../learningHub/LearningHub.tsx'
 import type { WritingPracticeProfile } from '../practice/profiles/model.ts'
+import type { DojoReentryCohort } from '../practice/dojoReentry.ts'
 import type { ProfileChild } from '../profiles/ProfileModal.tsx'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
 import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
@@ -55,6 +56,7 @@ export function HomeView({
   acquisitionTarget,
   testReviewTarget,
   readingLifecycle,
+  reentryCohorts,
   warmupWords,
   completedSummary,
   currentDate,
@@ -73,14 +75,15 @@ export function HomeView({
   acquisitionTarget: PracticeTarget | null
   testReviewTarget: PracticeTarget | null
   readingLifecycle: Tier2ReadingLifecycle | null
+  reentryCohorts: readonly DojoReentryCohort[]
   warmupWords: number
   completedSummary: string | null
   currentDate: Date
   lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>
-  onStart: (target: PracticeTarget) => void
-  onStartStrokeOrder: (target: PracticeTarget) => void
+  onStart: (target: PracticeTarget, selection?: DojoLaunchSelection) => void
+  onStartStrokeOrder: (target: PracticeTarget, selection?: DojoLaunchSelection) => void
   onStartWarmup: () => void
-  onStartReading: (pathway: Tier2ReadingPathway) => void
+  onStartReading: (pathway: Tier2ReadingPathway, selection?: DojoLaunchSelection) => void
   onHistory: () => void
   onProfiles: () => void
 }) {
@@ -101,12 +104,13 @@ export function HomeView({
       acquisitionTarget,
       testReviewTarget,
       readingLifecycle,
+      reentryCohorts,
       warmupWordCount: warmupWords,
     })
     const launch = (request: Grade2LearningHubLaunch) => {
-      if (request.kind === 'writing') onStart(request.target)
-      else if (request.kind === 'stroke-order') onStartStrokeOrder(request.target)
-      else if (request.kind === 'reading') onStartReading(request.pathway)
+      if (request.kind === 'writing') onStart(request.target, request.selection)
+      else if (request.kind === 'stroke-order') onStartStrokeOrder(request.target, request.selection)
+      else if (request.kind === 'reading') onStartReading(request.pathway, request.selection)
       else onStartWarmup()
     }
     return (
@@ -344,7 +348,8 @@ function Tier2ReadingPathways({
         <p className="eyebrow">Tier 2 reading</p>
         <h2>Look, listen, record, and compare</h2>
         <p>
-          Reading follows the same curriculum stages as writing while keeping its own targets and session-only results.
+          Reading follows the same curriculum stages as writing while keeping its own targets and saved Acquisition
+          progress.
         </p>
       </div>
       <div className="tier2-pathway-list">

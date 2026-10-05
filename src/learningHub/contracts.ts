@@ -28,6 +28,36 @@ export type LearningHubActivity<Launch> = {
   action: LearningHubAction<Launch>
 }
 
+export type LearningHubReentryAction<Launch> =
+  | {
+      id: string
+      label: string
+      description: string
+      kind: 'launch'
+      launch: Launch
+    }
+  | {
+      id: string
+      label: string
+      description: string
+      kind: 'disabled'
+      reason: string
+    }
+
+export type LearningHubReentryCohort<Launch> = {
+  id: string
+  label: string
+  statusLabel: string
+  actions: LearningHubReentryAction<Launch>[]
+}
+
+export type LearningHubReentry<Launch> = {
+  label: string
+  description: string
+  pickerLabel: string
+  cohorts: LearningHubReentryCohort<Launch>[]
+}
+
 export type LearningHubSection<Launch> = {
   id: string
   number: string
@@ -45,6 +75,7 @@ export type LearningHubSection<Launch> = {
   cohortSummaryLabel?: string
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]
+  reentry?: LearningHubReentry<Launch>
 }
 
 export type LearningHubLaunchContext = {

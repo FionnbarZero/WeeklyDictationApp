@@ -10,6 +10,8 @@ import type {
 export const ACQUISITION_PROGRESS_SCHEMA_VERSION = 1 as const
 export const ACQUISITION_PERSISTENCE_CONTRACT_ID = 'acquisition-persistence-v1' as const
 
+export type AcquisitionExperienceId = 'writing' | 'stroke-order' | 'reading'
+
 export type AcquisitionProgressIdentity = {
   readonly childId: string
   readonly datasetId: string
@@ -17,6 +19,10 @@ export type AcquisitionProgressIdentity = {
   readonly schoolYear: string
   readonly activityModule: string
   readonly tier: 'tier-1' | 'tier-2' | 'tier-3'
+  /** Legacy records omit this field and are interpreted as Writing. */
+  readonly experienceId?: AcquisitionExperienceId
+  /** One durable Acquisition attempt. Reopening an unfinished attempt retains this ID. */
+  readonly visitId?: string
 }
 
 export type AcquisitionLifecycleStage =

@@ -43,7 +43,7 @@ function pathway(kind: Tier2ReadingPathway['kind'], source: Dataset, cycle?: num
   }
 }
 
-const acquisition = dataset('grade2-acquisition', '9/21–9/27', ['学', '校'], ['老师', '同学'])
+const acquisition = dataset('grade2-acquisition', '9/21–9/27', ['大', '小'], ['老师', '同学'])
 const review = dataset('grade2-review', '9/14–9/20', ['天', '地'], ['白天', '土地'])
 const mastery = dataset('grade2-mastery', '9/7–9/13', ['人', '口'], ['大人', '门口'])
 const acquisitionTarget: PracticeTarget = { dataset: acquisition, phase: 'acquisition' }
@@ -97,6 +97,61 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
   if (spiritRealm.activities[0].action.kind === 'launch') assert.equal(spiritRealm.activities[0].action.launch.kind, 'warmup')
 })
 
+test('the Dojo exposes every historical cohort with per-activity launch states', () => {
+  const older = {
+    ...dataset('grade2-older', '9/1–9/7', ['上', '下'], ['早上', '下午']),
+    startDate: '2026-09-01',
+    endDate: '2026-09-07',
+  }
+  const model = grade2LearningHubView({
+    childName: 'Maya',
+    datasets: [acquisition, review, mastery, older],
+    masteredDatasets: [mastery],
+    acquisitionTarget,
+    testReviewTarget,
+    readingLifecycle,
+    warmupWordCount: 16,
+    reentryCohorts: [
+      {
+        dataset: older,
+        experiences: [
+          { experienceId: 'writing', status: 'in-progress', progressionId: 'writing-progress' },
+          { experienceId: 'stroke-order', status: 'not-started' },
+          { experienceId: 'reading', status: 'completed', progressionId: 'reading-progress' },
+        ],
+        updatedAt: '2026-09-04T12:00:00.000Z',
+      },
+    ],
+  })
+  const reentry = model.sections[0].reentry
+  assert.ok(reentry)
+  assert.equal(reentry.label, 'Reenter')
+  assert.deepEqual(
+    reentry.cohorts.map((cohort) => cohort.label),
+    ['9/1–9/7'],
+  )
+  assert.equal(reentry.cohorts[0].statusLabel, '1 unfinished · 1 completed · 1 available to start')
+  assert.deepEqual(
+    reentry.cohorts[0].actions.map((action) => action.label),
+    ['Continue Writing', 'Start Stroke Order', 'Practice again Reading'],
+  )
+  assert.ok(reentry.cohorts[0].actions.every((action) => action.kind === 'launch'))
+  assert.deepEqual(
+    reentry.cohorts[0].actions.map((action) => (action.kind === 'launch' ? action.launch.kind : 'disabled')),
+    ['writing', 'stroke-order', 'reading'],
+  )
+  const readingAction = reentry.cohorts[0].actions[2]
+  assert.equal(readingAction.kind, 'launch')
+  if (readingAction.kind !== 'launch') return
+  const reading = readingAction.launch
+  assert.equal(reading.kind, 'reading')
+  if (reading.kind === 'reading')
+    assert.deepEqual(
+      reading.pathway.cohorts.map((cohort) => cohort.datasetId),
+      [older.id],
+    )
+})
+
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
   const app = [
     readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'),
@@ -105,9 +160,12 @@ test('the Grade 2 production home uses the shared Learning Hub without replacing
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /grade2LearningHubView/)
   assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
-  assert.match(app, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
-  assert.match(app, /else if \(request\.kind === 'stroke-order'\) onStartStrokeOrder\(request\.target\)/)
-  assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
+  assert.match(app, /if \(request\.kind === 'writing'\) onStart\(request\.target, request\.selection\)/)
+  assert.match(
+    app,
+    /else if \(request\.kind === 'stroke-order'\) onStartStrokeOrder\(request\.target, request\.selection\)/,
+  )
+  assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway, request\.selection\)/)
   assert.match(app, /else onStartWarmup\(\)/)
   assert.match(main, /learningHub\/learningHub\.css/)
 })

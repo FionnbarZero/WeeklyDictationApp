@@ -13,8 +13,8 @@ import { summarizeLearningGame } from '../model.ts'
 import type { StrokeDrawing, StrokeOrderActivityProps, StrokeOrderRound, StrokePoint } from './contracts.ts'
 import './strokeOrder.css'
 
-type InkStroke = StrokePoint[]
-type InkDrawing = InkStroke[]
+export type InkStroke = StrokePoint[]
+export type InkDrawing = InkStroke[]
 type ActivityPhase = 'copy' | 'copy-review' | 'memory' | 'memory-review'
 type Feedback = 'correct' | 'incorrect'
 type NarrationState = 'idle' | 'playing' | 'ready' | 'error'
@@ -22,7 +22,7 @@ type NarrationState = 'idle' | 'playing' | 'ready' | 'error'
 const strokeAnimationStaggerSeconds = 0.55
 const strokeAnimationDurationSeconds = 0.46
 
-function modelAnimationDurationMs(strokeCount: number) {
+export function modelAnimationDurationMs(strokeCount: number) {
   if (strokeCount <= 0) return 0
   return ((strokeCount - 1) * strokeAnimationStaggerSeconds + strokeAnimationDurationSeconds) * 1000
 }
@@ -72,7 +72,7 @@ function PracticeGrid({ characterCount }: { readonly characterCount: number }) {
   )
 }
 
-function StrokePad({
+export function StrokePad({
   round,
   strokes,
   onStrokeComplete,
@@ -233,7 +233,7 @@ function StrokePad({
   )
 }
 
-function ReferencePad({ round }: { readonly round: StrokeOrderRound }) {
+export function ReferencePad({ round }: { readonly round: StrokeOrderRound }) {
   const characters = [...round.targetText]
   const viewBoxWidth = Math.max(1, characters.length) * 100
   return (
@@ -268,7 +268,7 @@ function ReferencePad({ round }: { readonly round: StrokeOrderRound }) {
   )
 }
 
-function DrawingTools({
+export function DrawingTools({
   drawing,
   setDrawing,
 }: {

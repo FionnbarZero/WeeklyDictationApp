@@ -29,7 +29,7 @@ const releaseIdentityByPage = {
   'index.html': {
     grade: 'Grade 2',
     status: 'Family beta',
-    persistence: 'Tier 1 writing durable here · Tier 2 reading session only',
+    persistence: 'Writing, Reading, and Stroke Order Acquisition durable here',
   },
   'kindergarten-learning-lab.html': {
     grade: 'Kindergarten',

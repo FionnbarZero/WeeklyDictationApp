@@ -17,6 +17,7 @@ import {
   createAcquisitionResumeCheckpoint,
   markAcquisitionCheckpointCommitted,
   prepareAcquisitionProgress,
+  type AcquisitionProgressSelection,
 } from '../acquisitionPersistence.ts'
 import {
   cloudWarmupSeedForVisit,
@@ -60,6 +61,7 @@ export async function startPractice(input: {
   state: AppState
   child: { id: string; grade: string; schoolYear: string }
   target: PracticeTarget | null
+  acquisition?: AcquisitionProgressSelection
   primaryDatasets: Dataset[]
   lifecycleResolution: DatasetLifecycleResolution
   sessionId: string
@@ -159,9 +161,29 @@ export async function startPractice(input: {
   const primaryPhase = input.target?.phase || 'acquisition'
   const warmupOnly = !input.target
   let state = revalidatedWarmup.state
+  const acquisitionSelection =
+    input.target?.phase === 'acquisition'
+      ? {
+          ...input.acquisition,
+          experienceId: input.acquisition?.experienceId || 'writing',
+          ...((input.acquisition?.startNewVisit ||
+            input.acquisition?.experienceId === 'reading' ||
+            input.acquisition?.experienceId === 'stroke-order') &&
+          !input.acquisition?.progressionId
+            ? { visitId: input.acquisition?.visitId || input.sessionId }
+            : {}),
+        }
+      : undefined
   let preparedAcquisition =
     input.target?.phase === 'acquisition'
-      ? prepareAcquisitionProgress(state, input.child.id, input.target.dataset, startedAt)
+      ? prepareAcquisitionProgress(
+          state,
+          input.child.id,
+          input.target.dataset,
+          startedAt,
+          Math.random,
+          acquisitionSelection,
+        )
       : null
   if (preparedAcquisition?.status === 'blocked') {
     return {
@@ -194,6 +216,13 @@ export async function startPractice(input: {
         reviewCycle: input.target?.phase === 'test-review' ? (input.target.reviewCycle ?? 1) : undefined,
         warmupOnly,
         warmupStatus: 'in_progress',
+        ...(preparedAcquisition?.status === 'ready'
+          ? {
+              experienceId: preparedAcquisition.envelope.experienceId || 'writing',
+              progressionId: preparedAcquisition.envelope.id,
+              visitId: preparedAcquisition.envelope.visitId,
+            }
+          : {}),
       })
       if (!cloudSession) throw new Error('The cloud session capability is unavailable.')
     } catch (error) {
@@ -271,6 +300,12 @@ export async function startPractice(input: {
     cloudSessionId: input.persistence.cloud ? input.sessionId : undefined,
     preparedAcquisitionProgress:
       preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined,
+    acquisitionExperienceId:
+      preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.experienceId || 'writing' : undefined,
+    acquisitionProgressionId: preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.id : undefined,
+    acquisitionVisitId: preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.visitId : undefined,
+    acquisitionTargets:
+      preparedAcquisition?.status === 'ready' ? [...preparedAcquisition.context.targetSet.targets] : undefined,
   })
   return {
     status: 'started',

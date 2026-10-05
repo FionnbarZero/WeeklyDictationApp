@@ -37,10 +37,25 @@ test('the Tier 2 reading boundary contains only its approved modules and depende
     'acquisition.ts': ['../acquisition/contracts.ts', './contracts.ts'],
     'contracts.ts': ['../acquisition/contracts.ts', '../domain/contracts.ts', '../lifecycle/contracts.ts'],
     'lifecycle.ts': ['../domain/contracts.ts', '../lifecycle/contracts.ts', './contracts.ts', './acquisition.ts'],
-    'pathway.ts': ['../acquisition/contracts.ts', './contracts.ts'],
-    'profiles/grade2.ts': ['../../acquisition/strategies/grade2.ts', '../../lifecycle/strategies/grade2ReplacementStrategy.ts', '../acquisition.ts', '../contracts.ts'],
-    'profiles/grade5.ts': ['../../acquisition/strategies/grade5.ts', '../../lifecycle/strategies/grade5ProgressionStrategy.ts', '../acquisition.ts', '../contracts.ts'],
-    'profiles/kindergarten.ts': ['../../acquisition/strategies/kindergarten.ts', '../../lifecycle/strategies/kindergartenUnitStrategy.ts', '../acquisition.ts', '../contracts.ts'],
+    'pathway.ts': ['../acquisition/contracts.ts', '../domain/contracts.ts', './acquisition.ts', './contracts.ts'],
+    'profiles/grade2.ts': [
+      '../../acquisition/strategies/grade2.ts',
+      '../../lifecycle/strategies/grade2ReplacementStrategy.ts',
+      '../acquisition.ts',
+      '../contracts.ts',
+    ],
+    'profiles/grade5.ts': [
+      '../../acquisition/strategies/grade5.ts',
+      '../../lifecycle/strategies/grade5ProgressionStrategy.ts',
+      '../acquisition.ts',
+      '../contracts.ts',
+    ],
+    'profiles/kindergarten.ts': [
+      '../../acquisition/strategies/kindergarten.ts',
+      '../../lifecycle/strategies/kindergartenUnitStrategy.ts',
+      '../acquisition.ts',
+      '../contracts.ts',
+    ],
     'registry.ts': ['./contracts.ts', './profiles/grade2.ts', './profiles/grade5.ts', './profiles/kindergarten.ts'],
   }
   assert.deepEqual(typeScriptFiles(tier2Directory), Object.keys(approvedImports).sort())
@@ -65,6 +80,7 @@ test('Tier 2 reading cannot depend on UI, persistence, configuration, or the dom
 test('the Tier 2 boundary is imported only by approved reading integration surfaces', () => {
   const approvedConsumers = new Set([
     'src/App.tsx',
+    'src/application/acquisitionPersistence.ts',
     'src/grade2/learningHub.ts',
     'src/home/HomeViews.tsx',
     'src/grade5Lab/readingPractice.ts',

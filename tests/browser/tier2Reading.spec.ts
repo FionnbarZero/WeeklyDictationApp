@@ -54,21 +54,26 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.local-import-status')).toContainText('Validated 4 weekly datasets')
 })
 
-test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial without persisting reading results', async ({ page }) => {
+test('Grade 2 keeps Reading Acquisition durable while session-only routes recover from microphone denial', async ({ page }) => {
   const storedCounts = () => page.evaluate((stateKey) => {
     const state = JSON.parse(window.localStorage.getItem(stateKey) || '{}')
     return {
       results: state.results?.length || 0,
       scores: state.scores?.length || 0,
+      readingProgress: state.acquisitionProgressEnvelopes?.filter(
+        (entry: { experienceId?: string }) => entry.experienceId === 'reading',
+      ).length || 0,
     }
   }, APP_STATE_KEY)
   const before = await storedCounts()
 
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Read the Words')
-  await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip Warmup' }).click()
+  await expect(page.getByText(/Reading progress is checkpointed after every completed comparison/i)).toBeVisible()
   await expect(page.getByText(/Learn to Read · 1 of 3/i)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Record my reading' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit reading' }).click()
+  await expect.poll(() => storedCounts()).toEqual({ ...before, readingProgress: before.readingProgress + 1 })
 
   await openGrade2LearningActivity(page, 'The Final Boss Test', 'Reading Test')
   await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
@@ -96,5 +101,5 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
   await expect(page.getByRole('heading', { name: 'Reading path complete' })).toBeVisible()
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByText(/This prototype reading visit was not saved\./)).toBeVisible()
-  expect(await storedCounts()).toEqual(before)
+  expect(await storedCounts()).toEqual({ ...before, readingProgress: before.readingProgress + 1 })
 })

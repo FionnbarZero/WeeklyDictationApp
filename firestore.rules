@@ -25,7 +25,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'id', 'childId', 'familyId', 'sessionDate', 'localDate', 'startedAt', 'completedAt',
           'primaryPhase', 'datasetId', 'datasetIds', 'reviewGroupId', 'reviewCycle', 'warmupOnly',
-          'status', 'warmupStatus', 'applicationVersion'
+          'status', 'warmupStatus', 'experienceId', 'progressionId', 'visitId', 'applicationVersion'
         ])
         && request.resource.data.id == sessionId
         && request.resource.data.childId == childId
@@ -42,6 +42,16 @@ service cloud.firestore {
         && (!('warmupOnly' in request.resource.data) || request.resource.data.warmupOnly is bool)
         && validSessionStatus()
         && request.resource.data.warmupStatus in ['in_progress', 'partial', 'completed', 'skipped', 'not_started']
+        && (!('experienceId' in request.resource.data)
+          || request.resource.data.experienceId in ['writing', 'stroke-order', 'reading'])
+        && (!('progressionId' in request.resource.data) || request.resource.data.progressionId is string)
+        && (!('visitId' in request.resource.data) || request.resource.data.visitId is string)
+        && ((!('experienceId' in request.resource.data)
+              && !('progressionId' in request.resource.data)
+              && !('visitId' in request.resource.data))
+          || (request.resource.data.primaryPhase == 'acquisition'
+              && request.resource.data.experienceId in ['writing', 'stroke-order', 'reading']
+              && request.resource.data.progressionId is string))
         && request.resource.data.applicationVersion is string
         && (!('reviewCycle' in request.resource.data)
           || (request.resource.data.primaryPhase == 'test-review'
@@ -65,7 +75,17 @@ service cloud.firestore {
         && session.id == sessionId
         && session.childId == childId
         && session.familyId == familyId
-        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
+        && (exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
+          || ('progressionId' in session
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data.id == session.progressionId
+            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data.datasetId == request.resource.data.sourceDatasetId
+            && ((!('experienceId' in getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data)
+                  && session.experienceId == 'writing')
+              || getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data.experienceId == session.experienceId)
+            && ((!('visitId' in session)
+                  && !('visitId' in getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data))
+              || getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data.visitId == session.visitId)
+            && request.resource.data.wordId in getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/acquisitionProgressions/$(session.progressionId)).data.targetOccurrenceIds))
         && (request.resource.data.sourceDatasetId == session.datasetId
           || ('datasetIds' in session && request.resource.data.sourceDatasetId in session.datasetIds))
         && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
@@ -111,6 +131,9 @@ service cloud.firestore {
         && request.resource.data.grade is string
         && request.resource.data.schoolYear is string
         && request.resource.data.activityModule is string
+        && (!('experienceId' in request.resource.data)
+          || request.resource.data.experienceId in ['writing', 'stroke-order', 'reading'])
+        && (!('visitId' in request.resource.data) || request.resource.data.visitId is string)
         && request.resource.data.tier in ['tier-1', 'tier-2', 'tier-3']
         && request.resource.data.strategyId is string
         && request.resource.data.strategyVersion is int
@@ -716,6 +739,10 @@ service cloud.firestore {
                 && request.resource.data.grade == resource.data.grade
                 && request.resource.data.schoolYear == resource.data.schoolYear
                 && request.resource.data.activityModule == resource.data.activityModule
+                && ((!('experienceId' in resource.data) && !('experienceId' in request.resource.data))
+                  || request.resource.data.experienceId == resource.data.experienceId)
+                && ((!('visitId' in resource.data) && !('visitId' in request.resource.data))
+                  || request.resource.data.visitId == resource.data.visitId)
                 && request.resource.data.tier == resource.data.tier
                 && request.resource.data.createdAt == resource.data.createdAt
                 && request.resource.data.strategyId == resource.data.strategyId

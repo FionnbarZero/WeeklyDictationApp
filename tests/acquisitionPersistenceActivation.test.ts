@@ -125,19 +125,40 @@ test('one application reducer applies flow, receipt, score fact, and pending che
   assert.equal(acquisitionReceiptMatchesCheckpoint({ ...envelope.lastAppliedTransition!, payloadFingerprint: 'different' }, scoredCheckpoint), false)
 })
 
-test('cloud hydration quarantines duplicate current progress instead of selecting by list order', () => {
-  const cloudDataset = importWeeklyDatasets({
-    presentationId: grade2DeckProfile.sourceDeckId,
-    slides: [{ objectId: 'cloud-duplicate-slide', text: 'Week 9/28-10/2\nMandarin\nTier 1: 需要、部分' }],
-  }, [], grade2DeckProfile).datasets[0]
-  const fresh = prepareAcquisitionProgress({ ...createInitialState(), datasets: [cloudDataset] }, 'maya', cloudDataset, '2026-09-29T16:00:00.000Z', () => 0)
+test('cloud hydration preserves a valid visit while quarantining a malformed conflicting path', () => {
+  const cloudDataset = importWeeklyDatasets(
+    {
+      presentationId: grade2DeckProfile.sourceDeckId,
+      slides: [{ objectId: 'cloud-duplicate-slide', text: 'Week 9/28-10/2\nMandarin\nTier 1: 需要、部分' }],
+    },
+    [],
+    grade2DeckProfile,
+  ).datasets[0]
+  const fresh = prepareAcquisitionProgress(
+    { ...createInitialState(), datasets: [cloudDataset] },
+    'maya',
+    cloudDataset,
+    '2026-09-29T16:00:00.000Z',
+    () => 0,
+  )
   assert.equal(fresh.status, 'ready')
   if (fresh.status !== 'ready') return
   const duplicate = { ...fresh.envelope, id: 'conflicting-cloud-path' }
-  const hydrated = cloudDataToAppState([cloudDataset], [], [], [], 'maya', 'Grade 2', undefined, [fresh.envelope, duplicate], [], '2026–2027')
-  assert.equal(hydrated.acquisitionProgressEnvelopes?.length, 0)
+  const hydrated = cloudDataToAppState(
+    [cloudDataset],
+    [],
+    [],
+    [],
+    'maya',
+    'Grade 2',
+    undefined,
+    [fresh.envelope, duplicate],
+    [],
+    '2026–2027',
+  )
+  assert.equal(hydrated.acquisitionProgressEnvelopes?.length, 1)
   assert.equal(hydrated.acquisitionProgressQuarantine?.length, 1)
-  assert.deepEqual(hydrated.acquisitionProgressQuarantine?.[0].raw, [fresh.envelope, duplicate])
+  assert.deepEqual(hydrated.acquisitionProgressQuarantine?.[0].raw, duplicate)
   const reopened = prepareAcquisitionProgress(hydrated, 'maya', cloudDataset, '2026-09-29T16:05:00.000Z', () => 0)
   assert.equal(reopened.status, 'blocked')
 })

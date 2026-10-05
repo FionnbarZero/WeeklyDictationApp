@@ -1,7 +1,12 @@
 import { expect, test } from './fixtures.ts'
 
 const entries = [
-  { path: '/', grade: 'Grade 2', status: 'Family beta', persistence: 'Tier 1 writing durable here' },
+  {
+    path: '/',
+    grade: 'Grade 2',
+    status: 'Family beta',
+    persistence: 'Writing, Reading, and Stroke Order Acquisition durable here',
+  },
   {
     path: '/kindergarten-learning-lab.html',
     grade: 'Kindergarten',

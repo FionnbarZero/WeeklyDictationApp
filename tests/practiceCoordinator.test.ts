@@ -145,6 +145,64 @@ test('a failed cloud session start blocks presentation without advancing local s
   assert.deepEqual(state, stateWithDataset())
 })
 
+test('Reading and Stroke Order launches each create a fresh Warmup and separate Acquisition visit', async () => {
+  const readingTarget = {
+    id: 'grade2-coordinator-reading',
+    text: '需要',
+    sentence: '',
+    datasetId: dataset.id,
+    grade: 'Grade 2',
+    language: 'mandarin' as const,
+    tier: 'tier-2' as const,
+    activityType: 'reading' as const,
+  }
+  const sharedDataset: Dataset = {
+    ...dataset,
+    vocabulary: { tier1: dataset.words, tier2: [readingTarget], tier3: [] },
+  }
+  const state = { ...createInitialState(), datasets: [sharedDataset] }
+  const lifecycleResolution = resolveDatasetLifecycles([sharedDataset], startedAt)
+  const reading = await startPractice({
+    state,
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target: { dataset: sharedDataset, phase: 'acquisition' },
+    acquisition: { experienceId: 'reading', startNewVisit: true },
+    primaryDatasets: [sharedDataset],
+    lifecycleResolution,
+    sessionId: 'reading-session',
+    startedAt,
+    persistence: startPersistence(false),
+  })
+  assert.equal(reading.status, 'started')
+  if (reading.status !== 'started') return
+  assert.equal(reading.session.acquisitionExperienceId, 'reading')
+  assert.equal(reading.session.acquisitionVisitId, 'reading-session')
+  assert.equal(reading.session.adaptiveWarmupVisitId, 'reading-session-warmup')
+  assert.deepEqual(
+    reading.session.primaryQueue.map((word) => word.id),
+    [readingTarget.id],
+  )
+
+  const stroke = await startPractice({
+    state: reading.state,
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target: { dataset: sharedDataset, phase: 'acquisition' },
+    acquisition: { experienceId: 'stroke-order', startNewVisit: true },
+    primaryDatasets: [sharedDataset],
+    lifecycleResolution,
+    sessionId: 'stroke-session',
+    startedAt: new Date('2026-10-01T16:01:00.000Z'),
+    persistence: startPersistence(false),
+  })
+  assert.equal(stroke.status, 'started')
+  if (stroke.status !== 'started') return
+  assert.equal(stroke.session.acquisitionExperienceId, 'stroke-order')
+  assert.equal(stroke.session.acquisitionVisitId, 'stroke-session')
+  assert.equal(stroke.session.adaptiveWarmupVisitId, 'stroke-session-warmup')
+  assert.notEqual(stroke.session.adaptiveWarmupVisitId, reading.session.adaptiveWarmupVisitId)
+  assert.notEqual(stroke.session.acquisitionProgressionId, reading.session.acquisitionProgressionId)
+})
+
 test('leaving Acquisition preserves a partial cloud session while leaving Test Review abandons it', async () => {
   const state = stateWithDataset()
   const baseSession = createPracticeSessionForTarget({

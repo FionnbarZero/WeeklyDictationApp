@@ -3,7 +3,7 @@ import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../a
 import type { CloudAttempt, CloudSession } from '../../persistence/cloudRecords.ts'
 import type { VersionedChildMasteryState, WarmupTransition, WarmupVisit } from '../../warmup/visits/contracts.ts'
 import {
-  acquisitionPersistenceContext,
+  acquisitionPersistenceContextForProgress,
   applyAcquisitionCheckpointToAppState,
   createAcquisitionAnswerCheckpoint,
   markAcquisitionCheckpointCommitted,
@@ -69,9 +69,12 @@ export function recordPracticeAnswer(input: {
   if (current.segment === 'primary' && current.acquisition) {
     const dataset = input.state.datasets.find((item) => item.id === current.primaryDatasetId)
     if (!dataset || !current.acquisition.prompt?.revealed) return { status: 'ignored' }
-    const context = acquisitionPersistenceContext(current.childId, dataset, current.grade)
-    const envelope = (input.state.acquisitionProgressEnvelopes || []).find(
-      (item) => item.childId === current.childId && item.datasetId === dataset.id,
+    const envelope = (input.state.acquisitionProgressEnvelopes || []).find((item) =>
+      current.acquisitionProgressionId
+        ? item.id === current.acquisitionProgressionId
+        : item.childId === current.childId &&
+          item.datasetId === dataset.id &&
+          (item.experienceId === undefined || item.experienceId === 'writing'),
     )
     if (!envelope) {
       return {
@@ -80,6 +83,7 @@ export function recordPracticeAnswer(input: {
           'Acquisition progress was not loaded. This answer was not recorded; reopen the activity and try again.',
       }
     }
+    const context = acquisitionPersistenceContextForProgress(current.childId, dataset, envelope)
     let checkpoint: ReturnType<typeof createAcquisitionAnswerCheckpoint>
     try {
       checkpoint = createAcquisitionAnswerCheckpoint({

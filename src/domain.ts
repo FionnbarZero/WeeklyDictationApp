@@ -15,7 +15,12 @@ import type {
   EngineAcquisitionFlow,
   EngineAcquisitionPrompt,
 } from './acquisition/contracts.ts'
-import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope, AcquisitionTransitionReceipt } from './acquisition/persistence/contracts.ts'
+import type {
+  AcquisitionCheckpoint,
+  AcquisitionExperienceId,
+  AcquisitionProgressEnvelope,
+  AcquisitionTransitionReceipt,
+} from './acquisition/persistence/contracts.ts'
 import { grade2AcquisitionStrategy } from './acquisition/strategies/grade2.ts'
 import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 import type { LifecycleSet } from './lifecycle/contracts.ts'
@@ -182,6 +187,7 @@ export type AcquisitionProgressQuarantineRecord = {
   id: string
   childId: string
   datasetId: string
+  experienceId?: AcquisitionExperienceId
   reason: string
   quarantinedAt: string
   raw: unknown
@@ -250,6 +256,9 @@ export type PracticeSession = {
   warmupRandomRotationWordIds: string[]
   warmupRotationCycleId: number
   acquisition?: AcquisitionFlow
+  acquisitionExperienceId?: AcquisitionExperienceId
+  acquisitionProgressionId?: string
+  acquisitionVisitId?: string
   currentRevealMethod?: RevealMethod
   warmupSkipped?: boolean
   testReviewSkipped?: boolean
@@ -462,6 +471,10 @@ export function createPracticeSessionForTarget(options: {
   acquisitionProgress?: AcquisitionFlow
   /** A versioned persistence envelope already owns start/resume normalization. */
   preparedAcquisitionProgress?: AcquisitionFlow
+  acquisitionExperienceId?: AcquisitionExperienceId
+  acquisitionProgressionId?: string
+  acquisitionVisitId?: string
+  acquisitionTargets?: Word[]
   random?: () => number
 }): PracticeSession {
   requirePracticeProfileForGrade(options.grade)
@@ -475,9 +488,10 @@ export function createPracticeSessionForTarget(options: {
     ? target.reviewDatasets
     : target ? [target.dataset] : []
   const primaryDatasetIds = [...new Set(reviewDatasets.map((dataset) => dataset.id))]
-  const primaryQueue = target?.phase === 'test-review'
-    ? reviewDatasets.flatMap((dataset) => dataset.words)
-    : target?.dataset.words || []
+  const primaryQueue =
+    target?.phase === 'test-review'
+      ? reviewDatasets.flatMap((dataset) => dataset.words)
+      : options.acquisitionTargets || target?.dataset.words || []
   const primaryDatasetId = target?.dataset.id || options.warmup.words[0]?.datasetId || 'warmup-only'
   const warmupCategoryByWordId = Object.fromEntries(options.warmup.words.map((word) => [
     word.id,
@@ -504,9 +518,14 @@ export function createPracticeSessionForTarget(options: {
     warmupCategoryByWordId,
     warmupRandomRotationWordIds: options.warmup.randomRotationWordIds,
     warmupRotationCycleId: options.warmup.rotationCycleId,
-    acquisition: target?.phase === 'acquisition'
-      ? options.preparedAcquisitionProgress || resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random)
-      : undefined,
+    acquisition:
+      target?.phase === 'acquisition'
+        ? options.preparedAcquisitionProgress ||
+          resumeAcquisitionFlow(options.acquisitionProgress, target.dataset, options.grade, random)
+        : undefined,
+    acquisitionExperienceId: target?.phase === 'acquisition' ? options.acquisitionExperienceId || 'writing' : undefined,
+    acquisitionProgressionId: target?.phase === 'acquisition' ? options.acquisitionProgressionId : undefined,
+    acquisitionVisitId: target?.phase === 'acquisition' ? options.acquisitionVisitId : undefined,
     warmupOnly: !target,
     cloudSessionId: options.cloudSessionId,
   }

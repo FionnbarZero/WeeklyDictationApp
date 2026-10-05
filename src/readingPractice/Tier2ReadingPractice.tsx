@@ -24,6 +24,7 @@ import {
 } from '../audio/promptAudio.ts'
 import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
 import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
+import type { SessionAnswer } from '../domain.ts'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -72,6 +73,9 @@ export type Tier2ReadingPracticeProps = {
   ) => Promise<void>
   readonly random?: () => number
   readonly sessionNote?: string
+  readonly acquisitionFlow?: EngineAcquisitionFlow<Tier2ReadingTarget>
+  readonly acquisitionAnswers?: readonly SessionAnswer[]
+  readonly onAcquisitionAnswer?: (correct: boolean) => void
 }
 
 function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
@@ -164,14 +168,30 @@ function ImmediateTier2ReadingPractice({
   onPlayTeachingIntroduction,
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
+  acquisitionFlow,
+  acquisitionAnswers = [],
+  onAcquisitionAnswer,
 }: Tier2ReadingPracticeProps) {
   const randomRef = useRef(random)
-  const [run, setRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
+  const [localRun, setLocalRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
+  const controlled = pathway.kind === 'acquisition' && Boolean(acquisitionFlow && onAcquisitionAnswer)
+  const run: ReadingRun = controlled
+    ? {
+        kind: 'acquisition',
+        targetSet: tier2ReadingAcquisitionTargetSet(pathway),
+        flow: acquisitionFlow!,
+        assessments: [],
+      }
+    : localRun
 
   useEffect(() => () => stopActiveAudio(), [])
 
   function answerAcquisition(correct: boolean) {
-    setRun((current) => {
+    if (controlled) {
+      onAcquisitionAnswer?.(correct)
+      return
+    }
+    setLocalRun((current) => {
       if (current.kind !== 'acquisition' || !current.flow.prompt) return current
       const transition = transitionAcquisition(
         revealAcquisition(current.flow),
@@ -191,7 +211,7 @@ function ImmediateTier2ReadingPractice({
   }
 
   function answerQueue(correct: boolean) {
-    setRun((current) => {
+    setLocalRun((current) => {
       if (current.kind === 'acquisition') return current
       const target = current.queue[current.index]
       if (!target) return current
@@ -226,18 +246,28 @@ function ImmediateTier2ReadingPractice({
   const progressPosition = run.kind === 'acquisition' ? run.flow.targetIndex : run.index
   const progress = complete ? 100 : Math.round((progressPosition / Math.max(total, 1)) * 100)
   const showContinue = run.kind === 'acquisition' && acquisitionPrompt?.kind === 'show-copy'
-  const firstPresentationOfNewTarget = showContinue
-    && run.kind === 'acquisition'
-    && run.flow.phase === 'introduction'
-    && run.flow.correctionRole === undefined
-  const promptId = acquisitionPrompt?.id
-    || `${pathway.kind}:${run.kind === 'acquisition' ? run.flow.trialNumber : run.index}:${target?.id || 'complete'}`
-  const promptPhase = run.kind === 'acquisition'
-    ? `${run.flow.phase} · ${acquisitionPrompt?.kind}`
-    : run.kind === 'test-review'
-      ? `Test Review ${pathway.cycle || 1}`
-      : 'Mastery reading'
-  const summary = summaryFor(run)
+  const firstPresentationOfNewTarget =
+    showContinue &&
+    run.kind === 'acquisition' &&
+    run.flow.phase === 'introduction' &&
+    run.flow.correctionRole === undefined
+  const promptId =
+    acquisitionPrompt?.id ||
+    `${pathway.kind}:${run.kind === 'acquisition' ? run.flow.trialNumber : run.index}:${target?.id || 'complete'}`
+  const promptPhase =
+    run.kind === 'acquisition'
+      ? `${run.flow.phase} · ${acquisitionPrompt?.kind}`
+      : run.kind === 'test-review'
+        ? `Test Review ${pathway.cycle || 1}`
+        : 'Mastery reading'
+  const summary = controlled
+    ? {
+        kind: 'acquisition' as const,
+        attempted: acquisitionAnswers.filter((answer) => answer.countsTowardWeeklyScore).length,
+        correct: acquisitionAnswers.filter((answer) => answer.countsTowardWeeklyScore && answer.correct).length,
+        diagnostics: acquisitionAnswers.filter((answer) => answer.dtPoolType).length,
+      }
+    : summaryFor(run)
 
   return <div className="reading-practice-page practice-page">
     <div className="practice-top">

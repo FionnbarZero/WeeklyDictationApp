@@ -44,9 +44,9 @@ after(async () => {
   await environment?.cleanup()
 })
 
-function receipt(transitionId: string, expectedRevision: number) {
+function receipt(transitionId: string, expectedRevision: number, progressionId = 'progression-1') {
   return {
-    progressionId: 'progression-1',
+    progressionId,
     transitionId,
     payloadFingerprint: `fingerprint-${transitionId}`,
     operation: 'answer',
@@ -256,6 +256,52 @@ test('the next revision, scored attempt, and DT observation require the same ato
     id: 'unreceipted', childId: 'maya', sessionId: 'session-1', datasetId: 'dataset-1', wordId: 'word-1', text: '需要',
     poolType: 'earned', correct: true, revealMethod: 'timer', reviewedAt: '2026-09-29T16:00:03.000Z', transitionId: 'missing-transition',
   }))
+})
+
+test('a Reading attempt may use its progression target set but cannot borrow another experience identity', async () => {
+  const database = environment.authenticatedContext('parent').firestore()
+  const progressionId = 'progression-reading-1'
+  const transitionId = 'transition-reading-1'
+  const applied = receipt(transitionId, 0, progressionId)
+  const session = {
+    id: 'reading-session-1', childId: 'maya', familyId: 'family-parent', status: 'in_progress',
+    primaryPhase: 'acquisition', datasetId: 'dataset-1', sessionDate: '2026-09-29T16:00:00.000Z',
+    localDate: '2026-09-29', startedAt: '2026-09-29T16:00:00.000Z', warmupStatus: 'skipped',
+    experienceId: 'reading', progressionId, visitId: 'reading-visit-1', applicationVersion: 'test',
+  }
+  await assertSucceeds(setDoc(doc(database, `families/family-parent/children/maya/sessions/${session.id}`), session))
+  const progressionRecord = {
+    ...progression(1, transitionId),
+    id: progressionId,
+    activityModule: 'mandarin-tier2-reading',
+    tier: 'tier-2',
+    experienceId: 'reading',
+    visitId: 'reading-visit-1',
+    targetOccurrenceIds: ['tier2-word-1'],
+    lastAppliedTransition: applied,
+  }
+  const batch = writeBatch(database)
+  batch.set(doc(database, `families/family-parent/children/maya/acquisitionProgressions/${progressionId}`), progressionRecord)
+  batch.set(doc(database, `families/family-parent/children/maya/acquisitionTransitions/${transitionId}`), applied)
+  batch.set(doc(database, `families/family-parent/children/maya/sessions/${session.id}/attempts/reading-attempt-1`), {
+    id: 'reading-attempt-1', sessionId: session.id, wordId: 'tier2-word-1', sourceDatasetId: 'dataset-1',
+    phase: 'acquisition', correct: true, reviewedAt: applied.appliedAt, completionStatus: 'complete', transitionId,
+  })
+  await assertSucceeds(batch.commit())
+
+  const mismatchedSession = { ...session, id: 'mismatched-stroke-session', experienceId: 'stroke-order' }
+  await assertSucceeds(setDoc(
+    doc(database, `families/family-parent/children/maya/sessions/${mismatchedSession.id}`),
+    mismatchedSession,
+  ))
+  await assertFails(setDoc(
+    doc(database, `families/family-parent/children/maya/sessions/${mismatchedSession.id}/attempts/borrowed-reading-attempt`),
+    {
+      id: 'borrowed-reading-attempt', sessionId: mismatchedSession.id, wordId: 'tier2-word-1',
+      sourceDatasetId: 'dataset-1', phase: 'acquisition', correct: true,
+      reviewedAt: '2026-09-29T16:00:02.000Z', completionStatus: 'complete',
+    },
+  ))
 })
 
 test('Test Review cycle identity is accepted only on matching session, attempt, and score records', async () => {

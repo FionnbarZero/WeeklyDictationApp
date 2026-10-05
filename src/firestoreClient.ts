@@ -40,7 +40,10 @@ import {
   warmupReceiptMatchesTransition,
 } from './persistence/warmup/cloudWrites.ts'
 import { migrateAcquisitionProgress } from './acquisition/persistence/migration.ts'
-import { acquisitionPersistenceContext } from './application/acquisitionPersistence.ts'
+import {
+  acquisitionPersistenceContext,
+  acquisitionPersistenceContextForProgress,
+} from './application/acquisitionPersistence.ts'
 import { practiceProfileForGrade } from './practice/profiles/registry.ts'
 import { isCanonicalDataset } from './slidesImporter.ts'
 import { isTestReviewCycle, storedTestReviewCycle, type TestReviewCycle } from './testReview/contracts.ts'
@@ -824,6 +827,10 @@ export function cloudDataToAppState(
       isCanonicalDataset(dataset) && !seenDatasetIds.has(dataset.id) && (seenDatasetIds.add(dataset.id), true),
   )
   const datasetsById = new Map(datasets.map((dataset) => [dataset.id, dataset]))
+  const datasetHasWord = (dataset: Dataset, wordId: string) =>
+    [...dataset.words, ...(dataset.vocabulary?.tier2 || []), ...(dataset.vocabulary?.tier3 || [])].some(
+      (word) => word.id === wordId,
+    )
   const sessions = rawSessions.filter(
     (session) =>
       session.childId === childId &&
@@ -843,7 +850,7 @@ export function cloudDataToAppState(
     return (
       sessionIds.has(attempt.sessionId) &&
       datasetsById.has(attempt.sourceDatasetId) &&
-      datasetsById.get(attempt.sourceDatasetId)!.words.some((word) => word.id === attempt.wordId) &&
+      datasetHasWord(datasetsById.get(attempt.sourceDatasetId)!, attempt.wordId) &&
       (attempt.completionStatus === 'complete' || attempt.completionStatus === 'temporary') &&
       validReviewCycle
     )
@@ -971,32 +978,37 @@ export function cloudDataToAppState(
   )
   const acquisitionProgressEnvelopes: AcquisitionProgressEnvelope<Word>[] = []
   const acquisitionProgressQuarantine: NonNullable<AppState['acquisitionProgressQuarantine']> = []
-  for (const dataset of datasets) {
-    const candidates = rawProgressions.filter(
-      (progression) => progression.childId === childId && progression.datasetId === dataset.id,
-    )
-    const currentCandidates = candidates.filter((progression) => 'contractId' in progression)
-    if (currentCandidates.length > 1 || (currentCandidates.length === 0 && candidates.length > 1)) {
+  const progressionGroups = new Map<string, Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>>()
+  for (const progression of rawProgressions) {
+    if (progression.childId !== childId || !datasetsById.has(progression.datasetId)) continue
+    progressionGroups.set(progression.id, [...(progressionGroups.get(progression.id) || []), progression])
+  }
+  for (const [progressionId, candidates] of progressionGroups) {
+    const dataset = datasetsById.get(candidates[0].datasetId)!
+    if (candidates.length > 1) {
       acquisitionProgressQuarantine.push({
-        id: `acq-quarantine-${childId}-${dataset.id}`,
+        id: `acq-quarantine-${childId}-${dataset.id}-${progressionId}`,
         childId,
         datasetId: dataset.id,
-        reason: 'Conflicting cloud Acquisition records reuse the same child and dataset identity.',
+        reason: 'Conflicting cloud Acquisition records reuse the same progression identity.',
         quarantinedAt: new Date().toISOString(),
         raw: candidates,
       })
       continue
     }
-    const candidate = currentCandidates[0] || candidates[0]
-    if (!candidate) continue
+    const candidate = candidates[0]
     try {
-      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade)
+      const context =
+        'contractId' in candidate
+          ? acquisitionPersistenceContextForProgress(childId, dataset, candidate)
+          : acquisitionPersistenceContext(childId, dataset, dataset.grade)
       const migrated = migrateAcquisitionProgress(candidate, context)
       if (migrated.status === 'quarantined') {
         acquisitionProgressQuarantine.push({
-          id: `acq-quarantine-${childId}-${dataset.id}`,
+          id: `acq-quarantine-${childId}-${dataset.id}-${progressionId}`,
           childId,
           datasetId: dataset.id,
+          ...('contractId' in candidate && candidate.experienceId ? { experienceId: candidate.experienceId } : {}),
           reason: migrated.reason,
           quarantinedAt: new Date().toISOString(),
           raw: migrated.raw,
@@ -1006,9 +1018,10 @@ export function cloudDataToAppState(
       }
     } catch (error) {
       acquisitionProgressQuarantine.push({
-        id: `acq-quarantine-${childId}-${dataset.id}`,
+        id: `acq-quarantine-${childId}-${dataset.id}-${progressionId}`,
         childId,
         datasetId: dataset.id,
+        ...('contractId' in candidate && candidate.experienceId ? { experienceId: candidate.experienceId } : {}),
         reason: error instanceof Error ? error.message : 'No Acquisition profile was available.',
         quarantinedAt: new Date().toISOString(),
         raw: candidate,

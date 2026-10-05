@@ -1,5 +1,10 @@
 import { startAcquisition } from '../acquisition/engine.ts'
-import type { AcquisitionCheckpoint, AcquisitionPersistenceContext, AcquisitionProgressEnvelope } from '../acquisition/persistence/contracts.ts'
+import type {
+  AcquisitionCheckpoint,
+  AcquisitionExperienceId,
+  AcquisitionPersistenceContext,
+  AcquisitionProgressEnvelope,
+} from '../acquisition/persistence/contracts.ts'
 import { acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
 import { createAcquisitionProgressEnvelope, migrateAcquisitionProgress } from '../acquisition/persistence/migration.ts'
 import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint, buildAcquisitionResumeCheckpoint } from '../acquisition/persistence/reducer.ts'
@@ -17,46 +22,104 @@ import type {
 } from '../domain.ts'
 import { requirePracticeProfileForGrade } from '../practice/profiles/registry.ts'
 import type { PendingAcquisitionCommit } from '../persistence/acquisitionPendingJournal.ts'
+import { isTier2ReadingTarget } from '../tier2/acquisition.ts'
+import { TIER2_READING_ACTIVITY_MODULE } from '../tier2/contracts.ts'
+import { tier2ReadingProfileForScope } from '../tier2/registry.ts'
 import { acquisitionStrategyUpgradesFor } from './acquisitionStrategyUpgrades.ts'
 
 export const ACQUISITION_ACTIVITY_MODULE = 'mandarin-tier1-writing'
+export const STROKE_ORDER_ACQUISITION_ACTIVITY_MODULE = 'mandarin-tier1-stroke-order'
 
 export const createAcquisitionAnswerCheckpoint = buildAcquisitionCheckpoint
 export const createAcquisitionResumeCheckpoint = buildAcquisitionResumeCheckpoint
+
+export type AcquisitionProgressSelection = {
+  readonly experienceId?: AcquisitionExperienceId
+  readonly progressionId?: string
+  readonly startNewVisit?: boolean
+  readonly visitId?: string
+}
+
+type AcquisitionContextSelection = Pick<AcquisitionProgressSelection, 'experienceId' | 'visitId'> & {
+  readonly explicitExperience?: boolean
+}
+
+function experienceForProgress(
+  progress: Pick<AcquisitionProgressEnvelope<Word>, 'activityModule'> &
+    Partial<Pick<AcquisitionProgressEnvelope<Word>, 'experienceId'>>,
+): AcquisitionExperienceId {
+  if (progress.experienceId) return progress.experienceId
+  if (progress.activityModule === STROKE_ORDER_ACQUISITION_ACTIVITY_MODULE) return 'stroke-order'
+  if (progress.activityModule === TIER2_READING_ACTIVITY_MODULE) return 'reading'
+  return 'writing'
+}
 
 export function acquisitionPersistenceContext(
   childId: string,
   dataset: Dataset,
   grade = dataset.grade,
+  selection: AcquisitionContextSelection = {},
 ): AcquisitionPersistenceContext<Word> {
-  const profile = requirePracticeProfileForGrade(grade)
+  const experienceId = selection.experienceId || 'writing'
+  const writingProfile = requirePracticeProfileForGrade(grade)
+  const readingProfile =
+    experienceId === 'reading' ? tier2ReadingProfileForScope(grade, schoolYearToken(dataset.schoolYear)) : null
+  if (experienceId === 'reading' && !readingProfile) {
+    throw new Error(`No Tier 2 Reading profile is registered for ${grade} ${dataset.schoolYear}.`)
+  }
+  const readingTargets = (dataset.vocabulary?.tier2 || []).filter(isTier2ReadingTarget)
+  const targets = experienceId === 'reading' ? readingTargets : dataset.words
+  const strategy = experienceId === 'reading' ? readingProfile!.acquisitionStrategy : writingProfile.acquisition
+  const activityModule =
+    experienceId === 'reading'
+      ? TIER2_READING_ACTIVITY_MODULE
+      : experienceId === 'stroke-order'
+        ? STROKE_ORDER_ACQUISITION_ACTIVITY_MODULE
+        : ACQUISITION_ACTIVITY_MODULE
+  const explicitIdentity = experienceId !== 'writing' || Boolean(selection.visitId) || selection.explicitExperience
   return {
     identity: {
       childId,
       datasetId: dataset.id,
       grade,
       schoolYear: schoolYearToken(dataset.schoolYear),
-      activityModule: ACQUISITION_ACTIVITY_MODULE,
-      tier: 'tier-1',
+      activityModule,
+      tier: experienceId === 'reading' ? 'tier-2' : 'tier-1',
+      ...(explicitIdentity ? { experienceId } : {}),
+      ...(selection.visitId ? { visitId: selection.visitId } : {}),
     },
     lifecycleStage: { kind: 'acquisition' },
     applicationVersion: APP_VERSION,
-    targetSet: { id: dataset.id, targets: dataset.words },
-    strategy: profile.acquisition,
-    strategyUpgrades: acquisitionStrategyUpgradesFor(profile.acquisition),
+    targetSet: { id: dataset.id, targets },
+    strategy,
+    strategyUpgrades: experienceId === 'reading' ? [] : acquisitionStrategyUpgradesFor(strategy),
   }
 }
 
-type PreparedAcquisition = {
-  status: 'ready'
-  state: AppState
-  envelope: AcquisitionProgressEnvelope<Word>
-  context: AcquisitionPersistenceContext<Word>
-} | {
-  status: 'blocked'
-  state: AppState
-  reason: string
+export function acquisitionPersistenceContextForProgress(
+  childId: string,
+  dataset: Dataset,
+  progress: AcquisitionProgressEnvelope<Word>,
+) {
+  return acquisitionPersistenceContext(childId, dataset, progress.grade, {
+    experienceId: experienceForProgress(progress),
+    visitId: progress.visitId,
+    explicitExperience: Boolean(progress.experienceId),
+  })
 }
+
+type PreparedAcquisition =
+  | {
+      status: 'ready'
+      state: AppState
+      envelope: AcquisitionProgressEnvelope<Word>
+      context: AcquisitionPersistenceContext<Word>
+    }
+  | {
+      status: 'blocked'
+      state: AppState
+      reason: string
+    }
 
 function replaceEnvelope(state: AppState, envelope: AcquisitionProgressEnvelope<Word>) {
   const current = state.acquisitionProgressEnvelopes || []
@@ -72,9 +135,18 @@ function quarantineRecord(
   reason: string,
   raw: unknown,
   quarantinedAt: string,
+  experienceId: AcquisitionExperienceId = 'writing',
 ) {
-  const id = `acq-quarantine-${childId}-${datasetId}`
-  const record: AcquisitionProgressQuarantineRecord = { id, childId, datasetId, reason, quarantinedAt, raw }
+  const id = `acq-quarantine-${childId}-${datasetId}-${experienceId}`
+  const record: AcquisitionProgressQuarantineRecord = {
+    id,
+    childId,
+    datasetId,
+    experienceId,
+    reason,
+    quarantinedAt,
+    raw,
+  }
   const existing = state.acquisitionProgressQuarantine || []
   return existing.some((item) => item.id === id)
     ? existing.map((item) => item.id === id ? record : item)
@@ -91,32 +163,92 @@ export function prepareAcquisitionProgress(
   dataset: Dataset,
   timestamp: string,
   random: () => number = Math.random,
+  selection: AcquisitionProgressSelection = {},
 ): PreparedAcquisition {
-  const context = acquisitionPersistenceContext(childId, dataset)
-  const progressionId = acquisitionProgressionId(context.identity)
-  const existingQuarantine = (state.acquisitionProgressQuarantine || []).find((item) => item.childId === childId && item.datasetId === dataset.id)
+  const experienceId = selection.experienceId || 'writing'
+  const existingQuarantine = (state.acquisitionProgressQuarantine || []).find(
+    (item) =>
+      item.childId === childId && item.datasetId === dataset.id && (item.experienceId || 'writing') === experienceId,
+  )
   if (existingQuarantine) return { status: 'blocked', state, reason: existingQuarantine.reason }
-  const currentMatches = (state.acquisitionProgressEnvelopes || []).filter((item) => item && (
-    item.id === progressionId
-      || (item.childId === childId && item.datasetId === dataset.id)
-  ))
-  const legacyMatches = state.acquisitionProgressions.filter((item) => item.childId === childId && item.datasetId === dataset.id)
-  if (currentMatches.length > 1 || (currentMatches.length === 0 && legacyMatches.length > 1)) {
-    const raw = currentMatches.length > 1 ? currentMatches : legacyMatches
+  const experienceMatches = (state.acquisitionProgressEnvelopes || [])
+    .filter(
+      (item) =>
+        item.childId === childId && item.datasetId === dataset.id && experienceForProgress(item) === experienceId,
+    )
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+  const requestedMatches = selection.progressionId
+    ? experienceMatches.filter((item) => item.id === selection.progressionId)
+    : []
+  const selectedCurrent = selection.startNewVisit
+    ? undefined
+    : selection.progressionId
+      ? requestedMatches[0]
+      : experienceMatches.find((item) => item.status === 'in-progress') || experienceMatches[0]
+  const legacyMatches =
+    experienceId === 'writing' && !selection.startNewVisit
+      ? state.acquisitionProgressions.filter(
+          (item) =>
+            item.childId === childId &&
+            item.datasetId === dataset.id &&
+            (!selection.progressionId || item.id === selection.progressionId),
+        )
+      : []
+  if (requestedMatches.length > 1 || (!selectedCurrent && legacyMatches.length > 1)) {
+    const raw = requestedMatches.length > 1 ? requestedMatches : legacyMatches
     const reason = 'Conflicting saved Acquisition records reuse the same child and dataset identity.'
     return {
       status: 'blocked',
-      state: { ...state, acquisitionProgressQuarantine: quarantineRecord(state, childId, dataset.id, reason, raw, timestamp) },
+      state: {
+        ...state,
+        acquisitionProgressQuarantine: quarantineRecord(
+          state,
+          childId,
+          dataset.id,
+          reason,
+          raw,
+          timestamp,
+          experienceId,
+        ),
+      },
       reason,
     }
   }
-  const raw = currentMatches[0] || legacyMatches[0]
+  if (selection.progressionId && !selectedCurrent && legacyMatches.length === 0) {
+    return { status: 'blocked', state, reason: 'The selected Acquisition visit is no longer available.' }
+  }
+  const raw = selectedCurrent || legacyMatches[0]
+  const context =
+    raw && 'contractId' in raw
+      ? acquisitionPersistenceContextForProgress(childId, dataset, raw)
+      : acquisitionPersistenceContext(childId, dataset, dataset.grade, {
+          experienceId,
+          visitId: selection.startNewVisit || experienceId !== 'writing' ? selection.visitId : undefined,
+        })
+  if (context.targetSet.targets.length === 0) {
+    return {
+      status: 'blocked',
+      state,
+      reason: `No ${experienceId === 'reading' ? 'Reading' : 'Writing'} targets are available for this dataset.`,
+    }
+  }
   if (raw) {
     const migrated = migrateAcquisitionProgress(raw, context)
     if (migrated.status === 'quarantined') {
       return {
         status: 'blocked',
-        state: { ...state, acquisitionProgressQuarantine: quarantineRecord(state, childId, dataset.id, migrated.reason, migrated.raw, timestamp) },
+        state: {
+          ...state,
+          acquisitionProgressQuarantine: quarantineRecord(
+            state,
+            childId,
+            dataset.id,
+            migrated.reason,
+            migrated.raw,
+            timestamp,
+            experienceId,
+          ),
+        },
         reason: migrated.reason,
       }
     }
@@ -272,7 +404,7 @@ export function recoverAcquisitionCheckpoints(
     if (!dataset) return { status: 'blocked', state, recoveredTransitionIds, reason: `Pending Acquisition transition ${checkpoint.transitionId} has no canonical dataset.` }
     let context: AcquisitionPersistenceContext<Word>
     try {
-      context = acquisitionPersistenceContext(baseEnvelope.childId, dataset, baseEnvelope.grade)
+      context = acquisitionPersistenceContextForProgress(baseEnvelope.childId, dataset, baseEnvelope)
       const envelope = (state.acquisitionProgressEnvelopes || []).find((item) => item.id === checkpoint.progressionId)
       if (!envelope) {
         const restored = migrateAcquisitionProgress(baseEnvelope, context)

@@ -47,12 +47,17 @@ import { hydrateLocalStateFromJson } from './localHydration'
 import type { PracticeAnswer } from './practice/PracticeView'
 import { practiceProfileForGrade } from './practice/profiles/registry'
 import { practiceTargetsForLifecycle } from './practice/targets'
+import { dojoReentryCohorts, type DojoExperienceId } from './practice/dojoReentry.ts'
+import type { DojoLaunchSelection } from './grade2/learningHub.ts'
 import { lifecycleStrategyForGradeAndSchoolYear } from './lifecycle/registry'
 import type { Tier2ReadingPracticeSummary } from './readingPractice/Tier2ReadingPractice'
 import type { TestReviewCompletion } from './testReview/contracts.ts'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from './tier2/contracts'
+import type { Tier2ReadingTarget } from './tier2/contracts'
+import type { EngineAcquisitionFlow } from './acquisition/contracts.ts'
 import { resolveTier2ReadingLifecycle } from './tier2/lifecycle'
 import { tier2ReadingProfileForScope } from './tier2/registry'
+import { tier2ReadingAcquisitionPathwayForDataset } from './tier2/pathway.ts'
 import { playAudioPlan, playCachedWordAudio, stopActiveAudio } from './audio/lazyPromptAudio.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import type { ProfileChild } from './profiles/ProfileModal.tsx'
@@ -66,7 +71,9 @@ const AuthScreen = lazy(() => import('./auth/AuthScreen.tsx').then((module) => (
 const PracticeView = lazy(() =>
   import('./practice/PracticeView.tsx').then((module) => ({ default: module.PracticeView })),
 )
-const Grade2StrokeOrderExperience = lazy(() => import('./learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx'))
+const Grade2StrokeOrderAcquisitionExperience = lazy(
+  () => import('./learningGames/strokeOrder/Grade2StrokeOrderAcquisitionExperience.tsx'),
+)
 const HistoryView = lazy(() => import('./progress/HistoryView.tsx'))
 const LocalBackupTools = lazy(() =>
   import('./backup/LocalBackupTools.tsx').then((module) => ({ default: module.LocalBackupTools })),
@@ -92,7 +99,6 @@ type AppClock = () => Date
 type ActiveExperience =
   | { kind: 'practice'; session: PracticeSession }
   | { kind: 'reading'; pathway: Tier2ReadingPathway }
-  | { kind: 'stroke-order'; target: PracticeTarget }
   | null
 
 const demoChildren: Child[] = [
@@ -421,6 +427,19 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     [selectedChild, practiceProfile, primaryDatasets, state, currentDateKey, lifecycleResolution],
   )
   const warmupWordCount = warmupPreview?.status === 'ready' ? warmupPreview.visit.assignedQueueSize : 0
+  const reentryCohorts = useMemo(
+    () =>
+      selectedChild
+        ? dojoReentryCohorts({
+            state,
+            childId: selectedChild.id,
+            datasets: primaryDatasets,
+            activeDatasetId: lifecycleResolution?.acquisition?.id,
+            currentDateKey,
+          })
+        : [],
+    [lifecycleResolution?.acquisition?.id, primaryDatasets, selectedChild, state],
+  )
   const promotionSuggested = Boolean(selectedChild && shouldSuggestGradePromotion(selectedChild, currentDate))
 
   useEffect(() => {
@@ -538,7 +557,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const startPractice = useCallback(
-    async (target: PracticeTarget | null) => {
+    async (
+      target: PracticeTarget | null,
+      experienceId: DojoExperienceId = 'writing',
+      selection?: DojoLaunchSelection,
+    ) => {
       if (!selectedChild || !lifecycleResolution || practiceStartInFlight) return
       setPracticeStartInFlight(true)
       setShowChildMenu(false)
@@ -548,6 +571,14 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         state,
         child: selectedChild,
         target,
+        acquisition:
+          target?.phase === 'acquisition'
+            ? {
+                experienceId,
+                progressionId: selection?.intent === 'continue' ? selection.progressionId : undefined,
+                startNewVisit: selection?.intent === 'start' || selection?.intent === 'practice-again',
+              }
+            : undefined,
         primaryDatasets,
         lifecycleResolution,
         sessionId: id,
@@ -616,9 +647,19 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setView(nextView)
   }
   const exitPractice = () => leavePractice('home')
-  const startReading = (pathway: Tier2ReadingPathway) => {
+  const startReading = (pathway: Tier2ReadingPathway, selection?: DojoLaunchSelection) => {
     setShowChildMenu(false)
     setCompletedSummary(null)
+    if (pathway.kind === 'acquisition') {
+      const datasetId = pathway.cohorts[0]?.datasetId
+      const dataset = primaryDatasets.find((candidate) => candidate.id === datasetId)
+      if (!dataset) {
+        setCloudError('The selected Reading dataset is no longer available.')
+        return
+      }
+      void startPractice({ dataset, phase: 'acquisition' }, 'reading', selection)
+      return
+    }
     setReadingPathway(pathway)
   }
   const finishReading = (summary: Tier2ReadingPracticeSummary) => {
@@ -848,28 +889,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       if (completionInFlightRef.current === current.id) completionInFlightRef.current = null
     }
   }
-  const answer = (correct: PracticeAnswer) => {
-    if (typeof correct === 'object') {
-      if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
-      return
-    }
-    if (correct === 'skip-warmup') {
-      skipWarmup()
-      return
-    }
-    if (correct === 'continue-primary') {
-      continueToPrimaryAfterPartialWarmup()
-      return
-    }
-    if (correct === 'skip-test-review') {
-      void discardTestReview()
-      return
-    }
-    if (correct === 'done') {
-      void finishAcquisitionForToday()
-      return
-    }
-    const current = session
+  const recordBooleanAnswer = (current: PracticeSession | null, correct: boolean) => {
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const cloudEnabled = Boolean(auth.user && cloudScope)
     const result = recordPracticeAnswerOperation({
@@ -914,6 +934,42 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       return
     }
     if (result.session) setSession(result.session)
+  }
+  const answerAcquisitionExperience = (correct: boolean, revealMethod: 'timer' | 'skip_timer' | 'show_answer') => {
+    const current = session
+    if (!current?.acquisition?.prompt || current.segment !== 'primary') return
+    recordBooleanAnswer(
+      {
+        ...current,
+        acquisition: revealAcquisitionPrompt(current.acquisition),
+        stage: 'review',
+        currentRevealMethod: revealMethod,
+      },
+      correct,
+    )
+  }
+  const answer = (correct: PracticeAnswer) => {
+    if (typeof correct === 'object') {
+      if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
+      return
+    }
+    if (correct === 'skip-warmup') {
+      skipWarmup()
+      return
+    }
+    if (correct === 'continue-primary') {
+      continueToPrimaryAfterPartialWarmup()
+      return
+    }
+    if (correct === 'skip-test-review') {
+      void discardTestReview()
+      return
+    }
+    if (correct === 'done') {
+      void finishAcquisitionForToday()
+      return
+    }
+    recordBooleanAnswer(session, correct)
   }
   const navigate = (nextView: BaseView) => {
     stopActiveAudio()
@@ -1000,6 +1056,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const showLearningHome =
     primaryChoices.length > 0 ||
     (selectedChild.grade === 'Grade 2' && (warmupWordCount > 0 || primaryDatasets.length > 0))
+  const acquisitionDataset =
+    session?.primaryPhase === 'acquisition'
+      ? state.datasets.find((dataset) => dataset.id === session.primaryDatasetId) || null
+      : null
+  const controlledReadingPathway =
+    session?.acquisitionExperienceId === 'reading' && acquisitionDataset
+      ? tier2ReadingAcquisitionPathwayForDataset(acquisitionDataset)
+      : null
+  const customAcquisitionIsActive = Boolean(
+    session?.segment === 'primary' &&
+      (session.acquisitionExperienceId === 'reading' || session.acquisitionExperienceId === 'stroke-order'),
+  )
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -1134,12 +1202,13 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               acquisitionTarget={primaryChoices.find((choice) => choice.phase === 'acquisition') || null}
               testReviewTarget={primaryChoices.find((choice) => choice.phase === 'test-review') || null}
               readingLifecycle={readingLifecycle}
+              reentryCohorts={reentryCohorts}
               warmupWords={warmupWordCount}
               completedSummary={completedSummary}
               currentDate={currentDate}
               lifecycleResolution={lifecycleResolution}
-              onStart={(target) => void startPractice(target)}
-              onStartStrokeOrder={(target) => setActiveExperience({ kind: 'stroke-order', target })}
+              onStart={(target, selection) => void startPractice(target, 'writing', selection)}
+              onStartStrokeOrder={(target, selection) => void startPractice(target, 'stroke-order', selection)}
               onStartWarmup={() => void startPractice(null)}
               onStartReading={startReading}
               onHistory={() => setView('history')}
@@ -1158,7 +1227,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
             />
           )}
         </Suspense>
-        {view === 'practice' && session && (
+        {view === 'practice' && session && !customAcquisitionIsActive && (
           <Suspense
             fallback={
               <div className="page loading-surface" role="status">
@@ -1186,6 +1255,52 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
             />
           </Suspense>
         )}
+        {view === 'practice' &&
+          session?.segment === 'primary' &&
+          session.acquisitionExperienceId === 'reading' &&
+          controlledReadingPathway &&
+          readingProfile && (
+            <Suspense
+              fallback={
+                <div className="page loading-surface" role="status">
+                  Loading saved Reading Acquisition…
+                </div>
+              }
+            >
+              <Tier2ReadingPractice
+                key={`${session.id}-${session.acquisitionProgressionId}`}
+                profile={readingProfile}
+                pathway={controlledReadingPathway}
+                label={readingPathwayLabel(controlledReadingPathway)}
+                acquisitionFlow={session.acquisition as EngineAcquisitionFlow<Tier2ReadingTarget>}
+                acquisitionAnswers={session.primaryAnswers}
+                onAcquisitionAnswer={(correct) => answerAcquisitionExperience(correct, 'show_answer')}
+                onExit={exitPractice}
+                onComplete={() => void finishAcquisitionForToday()}
+                sessionNote="Reading progress is checkpointed after every completed comparison. Recordings are never retained."
+              />
+            </Suspense>
+          )}
+        {view === 'practice' &&
+          session?.segment === 'primary' &&
+          session.acquisitionExperienceId === 'stroke-order' &&
+          acquisitionDataset && (
+            <Suspense
+              fallback={
+                <div className="page loading-surface" role="status">
+                  Loading saved Stroke Order Acquisition…
+                </div>
+              }
+            >
+              <Grade2StrokeOrderAcquisitionExperience
+                session={session}
+                target={{ dataset: acquisitionDataset, phase: 'acquisition' }}
+                onExit={exitPractice}
+                onAnswer={answerAcquisitionExperience}
+                onComplete={() => void finishAcquisitionForToday()}
+              />
+            </Suspense>
+          )}
         {view === 'reading' && readingPathway && readingProfile && (
           <Suspense
             fallback={
@@ -1206,17 +1321,6 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               onComplete={finishReading}
               sessionNote="Prototype reading visit · recording and results are not saved yet"
             />
-          </Suspense>
-        )}
-        {activeExperience?.kind === 'stroke-order' && (
-          <Suspense
-            fallback={
-              <div className="page loading-surface" role="status">
-                Loading Stroke Order…
-              </div>
-            }
-          >
-            <Grade2StrokeOrderExperience target={activeExperience.target} onClose={() => setActiveExperience(null)} />
           </Suspense>
         )}
         {view === 'history' && (

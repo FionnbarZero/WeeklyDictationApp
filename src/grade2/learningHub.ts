@@ -1,4 +1,5 @@
 import type { Dataset, PracticeTarget } from '../domain.ts'
+import type { DojoExperienceId, DojoReentryCohort } from '../practice/dojoReentry.ts'
 import type {
   LearningHubActivity,
   LearningHubCohort,
@@ -7,12 +8,18 @@ import type {
 } from '../learningHub/contracts.ts'
 import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
-import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
+import { tier2ReadingAcquisitionPathwayForDataset, tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
+import { grade2StrokeOrderConfig } from '../learningGames/strokeOrder/grade2Adapter.ts'
+
+export type DojoLaunchSelection = {
+  readonly intent: 'start' | 'continue' | 'practice-again'
+  readonly progressionId?: string
+}
 
 export type Grade2LearningHubLaunch =
-  | { kind: 'writing'; target: PracticeTarget }
-  | { kind: 'stroke-order'; target: PracticeTarget }
-  | { kind: 'reading'; pathway: Tier2ReadingPathway }
+  | { kind: 'writing'; target: PracticeTarget; selection?: DojoLaunchSelection }
+  | { kind: 'stroke-order'; target: PracticeTarget; selection?: DojoLaunchSelection }
+  | { kind: 'reading'; pathway: Tier2ReadingPathway; selection?: DojoLaunchSelection }
   | { kind: 'warmup' }
 
 export type Grade2LearningHubInput = {
@@ -23,6 +30,7 @@ export type Grade2LearningHubInput = {
   testReviewTarget: PracticeTarget | null
   readingLifecycle: Tier2ReadingLifecycle | null
   warmupWordCount: number
+  reentryCohorts?: readonly DojoReentryCohort[]
 }
 
 function uniqueWords(words: readonly string[]) {
@@ -103,6 +111,94 @@ function readingPathway(lifecycle: Tier2ReadingLifecycle | null, kind: Tier2Read
   return lifecycle.testReviews.find((pathway) => pathway.available) || null
 }
 
+const reentryExperienceLabels: Record<DojoExperienceId, string> = {
+  writing: 'Writing',
+  'stroke-order': 'Stroke Order',
+  reading: 'Reading',
+}
+
+function reentryFor(cohorts: readonly DojoReentryCohort[]): LearningHubSection<Grade2LearningHubLaunch>['reentry'] {
+  if (cohorts.length === 0) return undefined
+  return {
+    label: 'Reenter',
+    description:
+      'Choose any earlier date to continue unfinished work, start another activity, or practice a completed activity again.',
+    pickerLabel: 'Choose a historical date',
+    cohorts: cohorts.map((cohort) => {
+      const target: PracticeTarget = { dataset: cohort.dataset, phase: 'acquisition' }
+      const reading = tier2ReadingAcquisitionPathwayForDataset(cohort.dataset)
+      const strokeAvailable = grade2StrokeOrderConfig(target).unsupportedTargets.length === 0
+      const byExperience = new Map(cohort.experiences.map((experience) => [experience.experienceId, experience]))
+      const actionFor = (
+        experienceId: DojoExperienceId,
+        launch: Grade2LearningHubLaunch | null,
+        capabilityReason: string,
+      ) => {
+        const experience = byExperience.get(experienceId)!
+        const activity = reentryExperienceLabels[experienceId]
+        if (!launch || experience.status === 'unavailable') {
+          const reason = experience.unavailableReason || capabilityReason
+          return {
+            id: `${cohort.dataset.id}-${experienceId}`,
+            kind: 'disabled' as const,
+            label: `${activity} Unavailable`,
+            description: reason,
+            reason,
+          }
+        }
+        const intent =
+          experience.status === 'in-progress'
+            ? ('continue' as const)
+            : experience.status === 'completed'
+              ? ('practice-again' as const)
+              : ('start' as const)
+        const verb = intent === 'continue' ? 'Continue' : intent === 'practice-again' ? 'Practice again' : 'Start'
+        return {
+          id: `${cohort.dataset.id}-${experienceId}`,
+          kind: 'launch' as const,
+          label: `${verb} ${activity}`,
+          description:
+            intent === 'continue'
+              ? 'Resume the latest saved prompt.'
+              : intent === 'practice-again'
+                ? 'Create a new visit without changing the completed cohort.'
+                : `Begin ${activity} for this date.`,
+          launch: { ...launch, selection: { intent, progressionId: experience.progressionId } },
+        }
+      }
+      const completed = cohort.experiences.filter((experience) => experience.status === 'completed').length
+      const unfinished = cohort.experiences.filter((experience) => experience.status === 'in-progress').length
+      const availableToStart = cohort.experiences.filter((experience) => experience.status === 'not-started').length
+      const unavailable = cohort.experiences.filter((experience) => experience.status === 'unavailable').length
+      return {
+        id: cohort.dataset.id,
+        label: cohort.dataset.dateRange,
+        statusLabel: [
+          unfinished ? `${unfinished} unfinished` : '',
+          completed ? `${completed} completed` : '',
+          availableToStart ? `${availableToStart} available to start` : '',
+          unavailable ? `${unavailable} unavailable` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        actions: [
+          actionFor('writing', { kind: 'writing', target }, 'Writing targets are unavailable for this date.'),
+          actionFor(
+            'stroke-order',
+            strokeAvailable ? { kind: 'stroke-order', target } : null,
+            'Stroke geometry is incomplete for this date.',
+          ),
+          actionFor(
+            'reading',
+            reading ? { kind: 'reading', pathway: reading } : null,
+            'Reading targets are unavailable for this date.',
+          ),
+        ],
+      }
+    }),
+  }
+}
+
 export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHubViewModel<Grade2LearningHubLaunch> {
   const readingAcquisition = readingPathway(input.readingLifecycle, 'acquisition')
   const readingReview = readingPathway(input.readingLifecycle, 'test-review')
@@ -117,7 +213,8 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
   const reviewCohort = cohort('grade-2-final-boss', reviewDatasets)
   const masteryCohort = cohort('grade-2-spirit-realm', input.masteredDatasets)
   const gamesCohort = dojoCohort || masteryCohort
-  const dojoAvailable = Boolean(input.acquisitionTarget || readingAcquisition)
+  const dojoReentry = reentryFor(input.reentryCohorts || [])
+  const dojoAvailable = Boolean(input.acquisitionTarget || readingAcquisition || dojoReentry)
   const finalBossAvailable = Boolean(input.testReviewTarget || readingReview)
   const spiritRealmAvailable = input.warmupWordCount > 0 || Boolean(readingMastery)
 
@@ -144,16 +241,45 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         title: SHARED_LEARNING_PATH_TITLES.dojo,
         subtitle: 'Learn this week’s writing and reading words.',
         detailTitle: 'Welcome to the Dojo',
-        detailSubtitle: 'Choose writing or reading. The existing Grade 2 teaching sequence remains unchanged.',
+        detailSubtitle: 'Choose Writing, Reading, or Stroke Order. Each activity keeps its own progress.',
         actionLabel: SHARED_LEARNING_PATH_TITLES.dojo,
         theme: 'gold',
         available: dojoAvailable,
         ...(!dojoAvailable ? { unavailableReason: 'This week’s Acquisition words are not available.' } : {}),
         cohort: dojoCohort,
+        ...(dojoReentry ? { reentry: dojoReentry } : {}),
         activities: [
-          launchActivity('dojo-writing', 'Tier 1 · Writing', 'Learn to Write', 'Complete the established Grade 2 Acquisition sequence.', '✍️', input.acquisitionTarget ? { kind: 'writing', target: input.acquisitionTarget } : null, 'No writing Acquisition cohort is active.'),
-          launchActivity('dojo-stroke-order', 'Tier 1 · Writing game', 'Stroke Order', 'Watch each target form, copy its strokes, then write it from memory.', '🥋', input.acquisitionTarget ? { kind: 'stroke-order', target: input.acquisitionTarget } : null, 'No writing Acquisition cohort is active.'),
-          launchActivity('dojo-reading', 'Tier 2 · Reading', 'Read the Words', 'Look, listen, record, compare, and self-assess each reading word.', '🎧', readingAcquisition ? { kind: 'reading', pathway: readingAcquisition } : null, 'No reading Acquisition cohort is active.'),
+          launchActivity(
+            'dojo-writing',
+            'Tier 1 · Writing',
+            'Learn to Write',
+            'Complete the established Grade 2 Acquisition sequence.',
+            '✍️',
+            input.acquisitionTarget ? { kind: 'writing', target: input.acquisitionTarget } : null,
+            'No writing Acquisition cohort is active.',
+          ),
+          launchActivity(
+            'dojo-stroke-order',
+            'Tier 1 · Writing game',
+            'Stroke Order',
+            'Watch each target form, copy its strokes, then write it from memory.',
+            '🥋',
+            input.acquisitionTarget && grade2StrokeOrderConfig(input.acquisitionTarget).unsupportedTargets.length === 0
+              ? { kind: 'stroke-order', target: input.acquisitionTarget }
+              : null,
+            input.acquisitionTarget
+              ? 'Stroke geometry is incomplete for this cohort.'
+              : 'No writing Acquisition cohort is active.',
+          ),
+          launchActivity(
+            'dojo-reading',
+            'Tier 2 · Reading',
+            'Read the Words',
+            'Look, listen, record, compare, and self-assess each reading word.',
+            '🎧',
+            readingAcquisition ? { kind: 'reading', pathway: readingAcquisition } : null,
+            'No reading Acquisition cohort is active.',
+          ),
         ],
       }),
       section({
