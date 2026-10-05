@@ -1,5 +1,7 @@
 # Grade 5 release review
 
+**Release update:** The owner subsequently approved updating all three live apps. All three are now published and verified. See the [live release record](./family-beta-live-2026-10-05.md) for permanent links, deployed versions, and rollback details. The remaining sections preserve the pre-publication review evidence and approval gates as historical context.
+
 Grade 5 is the first release candidate. The hosted review uses automatic teacher curriculum updates and saves completed scores and problem reports on one browser/device. It has not replaced the live Grade 5 app. Kindergarten and Grade 2 have not been published.
 
 ## Review link and exact build

@@ -1,6 +1,6 @@
 # Family beta reconciliation and acceptance report
 
-The later [Grade 5 release review](./grade5-review-2026-10-05.md) records the approved hosted curriculum service and the current hosted candidate. It supersedes this earlier report's statements that curriculum hosting is still pending. Stable grade apps remain unchanged until separately approved.
+**Release update:** The owner subsequently approved updating all three live apps. The [live release record](./family-beta-live-2026-10-05.md) contains the verified permanent links and rollback details. The [Grade 5 release review](./grade5-review-2026-10-05.md) records the approved hosted curriculum service and candidate acceptance. These later records supersede this earlier report's pending-hosting and pending-deployment statements. The sections below preserve the original review evidence as historical context.
 
 ## Decision
 
