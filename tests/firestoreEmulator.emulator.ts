@@ -3,6 +3,8 @@ import test, { after, before } from 'node:test'
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
+import { createResultRepository } from '../src/familyBeta/cloud.ts'
+import { makeResult } from '../src/familyBeta/model.ts'
 import { grade2Tier1WritingAdaptiveWarmupProfile } from '../src/warmup/adaptive/profiles/grade2.ts'
 import { childMasteryStateId, createMasteryOccurrence, masteryRotationStateId } from '../src/warmup/adaptive/identity.ts'
 import { buildWarmupAnswerTransition, createWarmupVisit } from '../src/warmup/visits/reducer.ts'
@@ -20,15 +22,15 @@ before(async () => {
     const database = context.firestore()
     await setDoc(doc(database, 'users/parent'), { familyId: 'family-parent', role: 'parent' })
     await setDoc(doc(database, 'families/family-parent'), { ownerParentId: 'parent' })
-    await setDoc(doc(database, 'families/family-parent/children/maya'), { id: 'maya', active: true })
+    await setDoc(doc(database, 'families/family-parent/children/maya'), { id: 'maya', active: true, grade: 'Grade 2' })
     await setDoc(doc(database, 'families/family-parent/children/maya/sessions/session-1'), {
-      id: 'session-1', childId: 'maya', familyId: 'family-parent', status: 'in_progress', primaryPhase: 'acquisition',
+      id: 'session-1', childId: 'maya', familyId: 'family-parent', datasetId: 'dataset-1', status: 'in_progress', primaryPhase: 'acquisition',
     })
     await setDoc(doc(database, 'families/family-parent/children/maya/sessions/session-1/attempts/seed-attempt'), {
       id: 'seed-attempt', sessionId: 'session-1', wordId: 'word-1', sourceDatasetId: 'dataset-1',
       phase: 'acquisition', correct: true, reviewedAt: '2026-09-29T15:59:00.000Z', completionStatus: 'complete',
     })
-    await setDoc(doc(database, 'datasets/dataset-1'), { id: 'dataset-1' })
+    await setDoc(doc(database, 'datasets/dataset-1'), { id: 'dataset-1', dateRange: '9/28–10/2' })
     await setDoc(doc(database, 'datasets/dataset-1/words/word-1'), { id: 'word-1' })
     await setDoc(doc(database, 'users/intruder'), { familyId: 'family-intruder', role: 'parent' })
     await setDoc(doc(database, 'families/family-intruder'), { ownerParentId: 'intruder' })
@@ -70,6 +72,30 @@ function mockToken(uid: string) {
     firebase: { sign_in_provider: 'custom', identities: {} },
   })}.`
 }
+
+test('family beta results persist across independent clients, retry once, and reject unauthorized changes', async () => {
+  const host = process.env.FIRESTORE_EMULATOR_HOST!
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent', endpoint: `http://${host}`, token: async () => mockToken('parent') }
+  const firstDevice = createResultRepository(config)
+  const secondDevice = createResultRepository(config)
+  const result = makeResult({ id: 'maya', nickname: 'Synthetic learner', grade: 'Grade 2', active: true }, { id: 'beta-emulator-result', activity: 'Writing review', channel: 'writing', datasetIds: ['dataset-1'], correct: 2, attempted: 3 })
+  await firstDevice.save(result)
+  await firstDevice.save(result)
+  assert.deepEqual(await secondDevice.list('maya'), [result])
+  await assert.rejects(firstDevice.save({ ...result, correct: 3 }))
+  const intruder = createResultRepository({ ...config, token: async () => mockToken('intruder') })
+  await assert.rejects(intruder.list('maya'))
+  await assert.rejects(intruder.save({ ...result, id: 'unauthorized' }))
+  const owner = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  const path = 'families/family-parent/children/maya/betaResults'
+  await assertFails(getDoc(doc(anonymous, `${path}/${result.id}`)))
+  await assertFails(setDoc(doc(owner, `${path}/audio`), { ...result, id: 'audio', recording: 'forbidden' }))
+  await assertFails(setDoc(doc(owner, `${path}/nested`), { ...result, id: 'nested', datasetIds: [{ recording: 'forbidden' }] }))
+  await assertFails(setDoc(doc(owner, `${path}/number`), { ...result, id: 'number', datasetIds: [123] }))
+  await assertFails(setDoc(doc(owner, `${path}/grade`), { ...result, id: 'grade', grade: 'Grade 5' }))
+  await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
+})
 
 async function runCollectionGroupQuery(uid: string, parent: string, collectionId: string) {
   const host = process.env.FIRESTORE_EMULATOR_HOST
@@ -265,19 +291,35 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
     reviewCycle: 2, datasetId: 'dataset-1', sessionDate: '2026-09-30T16:00:00.000Z', localDate: '2026-09-30',
     startedAt: '2026-09-30T16:00:00.000Z', warmupStatus: 'skipped', applicationVersion: 'test',
   }
-  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2'), session))
-  await assertSucceeds(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/review-attempt'), {
-    id: 'review-attempt', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
-    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete',
-  }))
+  const sessionReference = doc(database, 'families/family-parent/children/maya/sessions/test-review-2')
+  await assertSucceeds(setDoc(sessionReference, { ...session, status: 'in_progress', warmupStatus: 'not_started' }))
   const scoreReference = doc(database, 'families/family-parent/children/maya/scores/review-score')
   const score = {
-    id: 'review-score', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
+    id: 'review-score', childId: 'maya', datasetId: 'dataset-1', datasetDateRange: '9/28–10/2', sessionId: 'test-review-2', sessionDate: '2026-09-30',
     phase: 'test-review', reviewCycle: 2, percent: 100, correct: 1, wordCount: 1,
   }
-  await assertSucceeds(setDoc(scoreReference, score))
+  const completion = writeBatch(database)
+  completion.set(sessionReference, session)
+  completion.set(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/review-attempt'), {
+    id: 'review-attempt', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete',
+  })
+  completion.set(scoreReference, score)
+  await assertSucceeds(completion.commit())
   await assertSucceeds(setDoc(scoreReference, score))
   await assertFails(setDoc(scoreReference, { ...score, percent: 0, correct: 0 }))
+  await assertFails(setDoc(sessionReference, { ...session, startedAt: '2026-09-30T17:00:00.000Z' }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-path'), { ...score }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-percent'), {
+    ...score, id: 'forged-percent', percent: 100, correct: 0,
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-date-range'), {
+    ...score, id: 'forged-date-range', datasetDateRange: 'invented',
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/extra-field'), {
+    id: 'extra-field', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete', unexpected: true,
+  }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/invalid-review-cycle'), { ...session, id: 'invalid-review-cycle', reviewCycle: 0 }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/acquisition-with-review-cycle'), { ...session, id: 'acquisition-with-review-cycle', primaryPhase: 'acquisition' }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/acquisition-with-review-cycle'), {

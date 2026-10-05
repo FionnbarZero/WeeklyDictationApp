@@ -82,12 +82,14 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
   const [dojo, ninjaSkills, finalBoss, spiritRealm] = hub.sections
   assert.equal(dojo.activities[0].action.kind, 'launch')
   assert.equal(dojo.activities[1].action.kind, 'launch')
+  assert.equal(dojo.activities[2].action.kind, 'launch')
   assert.ok(ninjaSkills.activities.every((activity) => activity.action.kind === 'disabled'))
   assert.equal(finalBoss.activities[0].action.kind, 'launch')
   assert.equal(finalBoss.activities[1].action.kind, 'launch')
   assert.equal(spiritRealm.activities[0].action.kind, 'launch')
   assert.equal(spiritRealm.activities[1].action.kind, 'launch')
   if (dojo.activities[0].action.kind === 'launch') assert.equal(dojo.activities[0].action.launch.kind, 'writing')
+  if (dojo.activities[1].action.kind === 'launch') assert.equal(dojo.activities[1].action.launch.kind, 'stroke-order')
   if (finalBoss.activities[0].action.kind === 'launch') {
     assert.equal(finalBoss.activities[0].action.launch.kind, 'writing')
     if (finalBoss.activities[0].action.launch.kind === 'writing') assert.equal(finalBoss.activities[0].action.launch.target.phase, 'test-review')
@@ -96,11 +98,15 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
 })
 
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
-  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const app = [
+    readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'),
+    readFileSync(new URL('../src/home/HomeViews.tsx', import.meta.url), 'utf8'),
+  ].join('\n')
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /grade2LearningHubView/)
   assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
   assert.match(app, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
+  assert.match(app, /else if \(request\.kind === 'stroke-order'\) onStartStrokeOrder\(request\.target\)/)
   assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
   assert.match(app, /else onStartWarmup\(\)/)
   assert.match(main, /learningHub\/learningHub\.css/)

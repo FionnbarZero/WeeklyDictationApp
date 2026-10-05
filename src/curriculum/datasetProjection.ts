@@ -2,6 +2,7 @@ import { isCanonicalWeeklyDatasetCandidate } from './canonical.ts'
 import { candidateContentFingerprint, canonicalDatasetId, targetOccurrenceIdFor } from './identity.ts'
 import type { VocabularyOccurrenceCandidate, VocabularyTier, WeeklyDatasetCandidate } from './model.ts'
 import type { Dataset, DatasetVocabulary, Word } from '../domain/contracts.ts'
+import { applyApprovedDictationContexts, type DictationContextCatalog } from './contextCatalog.ts'
 
 function activityTypeFor(tier: VocabularyTier): NonNullable<Word['activityType']> {
   return tier === 'tier-1' ? 'dictation' : 'reading'
@@ -20,7 +21,10 @@ function projectTier(candidate: WeeklyDatasetCandidate, tier: VocabularyTier, va
   }))
 }
 
-export function datasetFromCanonicalCandidate(candidate: WeeklyDatasetCandidate): Dataset {
+export function datasetFromCanonicalCandidate(
+  candidate: WeeklyDatasetCandidate,
+  contextCatalog?: DictationContextCatalog,
+): Dataset {
   if (!isCanonicalWeeklyDatasetCandidate(candidate) || candidate.status !== 'valid') {
     throw new Error('Only a valid canonical curriculum candidate can become a production dataset.')
   }
@@ -32,7 +36,7 @@ export function datasetFromCanonicalCandidate(candidate: WeeklyDatasetCandidate)
     tier2: projectTier(candidate, 'tier-2', candidate.tier2),
     tier3: projectTier(candidate, 'tier-3', candidate.tier3),
   }
-  return {
+  const dataset: Dataset = {
     id: candidate.datasetId,
     dateRange: candidate.dateRangeLabel,
     startDate: candidate.assignedWeek.startDate,
@@ -48,6 +52,13 @@ export function datasetFromCanonicalCandidate(candidate: WeeklyDatasetCandidate)
     instructionalRole: candidate.instructionalRole,
     vocabulary,
   }
+  // This projector is also used directly as an Array.map callback in existing
+  // import paths, where JavaScript supplies the numeric item index as argument
+  // two. Accept only an actual catalog object at this boundary.
+  const hasContextCatalog = Boolean(contextCatalog
+    && typeof contextCatalog === 'object'
+    && Array.isArray(contextCatalog.candidates))
+  return hasContextCatalog ? applyApprovedDictationContexts(dataset, contextCatalog!) : dataset
 }
 
 function tierIsCanonical(dataset: Dataset, tier: VocabularyTier, words: Word[]) {

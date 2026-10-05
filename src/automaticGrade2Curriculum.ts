@@ -31,6 +31,27 @@ async function sha256(value: string) {
 export async function fetchAutomaticGrade2Curriculum(
   options: { fetchImpl?: typeof fetch; baseUrl?: string; signal?: AbortSignal } = {},
 ): Promise<AutomaticGrade2Curriculum> {
+  if (
+    import.meta.env?.VITE_RECONCILIATION_PREVIEW === 'true' &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('family-preview') === '1'
+  ) {
+    const { fetchCurriculum } = await import('./familyBeta/curriculum.ts')
+    const loaded = await fetchCurriculum('Grade 2', options.signal)
+    const snapshot: Grade2CurriculumSnapshot = {
+      schema: 'weekly-dictation-grade2-curriculum-snapshot-v1',
+      source: {
+        type: 'google-slides',
+        documentId: '10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4',
+        documentUrl: `https://docs.google.com/presentation/d/${loaded.snapshot.sourceId}`,
+        retrievedAt: loaded.snapshot.retrievedAt,
+        contentSha256: '',
+      },
+      presentation: loaded.snapshot.payload as Grade2CurriculumSnapshot['presentation'],
+    }
+    snapshot.source.contentSha256 = await sha256(JSON.stringify(snapshot.presentation))
+    return { snapshot, datasetCount: loaded.datasets.length }
+  }
   const fetchImpl = options.fetchImpl || fetch
   const baseUrl = options.baseUrl ?? import.meta.env.BASE_URL
   const response = await fetchImpl(`${baseUrl}${GRADE2_CURRICULUM_SOURCE_PATH}`, {

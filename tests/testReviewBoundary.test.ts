@@ -162,6 +162,7 @@ test('shared deferred review is activated through writing practice and the Kinde
     'src/grade5LearningHubHarness.tsx',
     'src/kindergartenLearningLabHarness.tsx',
     'src/practice/PracticeView.tsx',
+    'src/readingPractice/Tier2ReadingPractice.tsx',
     'src/testReviewPrototype/TestReviewPrototype.tsx',
   ])
 
@@ -184,5 +185,8 @@ test('shared deferred review is activated through writing practice and the Kinde
   assert.match(kindergarten, /deferred-writing-test-review/)
   assert.match(kindergarten, /mode="reading"/)
   assert.match(kindergarten, /Final Boss Reading Test/)
-  assert.doesNotMatch(source('src/readingPractice/Tier2ReadingPractice.tsx'), /DeferredTestReview/)
+  const readingRunner = source('src/readingPractice/Tier2ReadingPractice.tsx')
+  assert.match(readingRunner, /pathway\.kind === 'test-review'/)
+  assert.match(readingRunner, /<DeferredTestReview/)
+  assert.match(readingRunner, /mode="reading"/)
 })

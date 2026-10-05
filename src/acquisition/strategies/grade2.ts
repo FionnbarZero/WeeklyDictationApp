@@ -13,8 +13,8 @@ const familiarDtTargets: AcquisitionTarget[] = [
 }))
 
 export const grade2AcquisitionStrategy = {
-  id: 'grade2-acquisition-v3',
-  version: 3,
+  id: 'grade2-acquisition-v4',
+  version: 4,
   timers: {
     familiarDtSeconds: 5,
     earnedDtSeconds: 5,
@@ -29,6 +29,6 @@ export const grade2AcquisitionStrategy = {
   dtObservationMode: 'collect',
   familiarDtTargets,
   introductionSequence: ['familiar-dt', 'familiar-dt', 'show-copy', 'target'],
-  expandedSequence: ['target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'],
+  expandedSequence: ['target', 'target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'],
   correctionSequence: ['show-copy', 'show-copy', 'show-copy', 'target', 'familiar-dt', 'target'],
 } as const satisfies AcquisitionStrategy

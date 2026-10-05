@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type {
   LearningHubActivity,
+  LearningHubLaunchContext,
   LearningHubSection,
   LearningHubViewModel,
   LearningHubWordGroup,
@@ -8,8 +9,9 @@ import type {
 
 export type LearningHubProps<Launch> = {
   model: LearningHubViewModel<Launch>
-  onLaunch: (launch: Launch) => void
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
   showTopbar?: boolean
+  hideUnavailable?: boolean
 }
 
 function WordGroup({ group }: { group: LearningHubWordGroup }) {
@@ -27,12 +29,14 @@ function ActivityCard<Launch>({
   activity,
   index,
   theme,
+  launchContext,
   onLaunch,
 }: {
   activity: LearningHubActivity<Launch>
   index: number
   theme: LearningHubSection<Launch>['theme']
-  onLaunch: (launch: Launch) => void
+  launchContext: LearningHubLaunchContext
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
 }) {
   const action = activity.action
   return <article className={`learning-hub-activity learning-hub-theme-${theme}`}>
@@ -49,7 +53,7 @@ function ActivityCard<Launch>({
           type="button"
           disabled={action.kind === 'disabled'}
           title={action.kind === 'disabled' ? action.reason : undefined}
-          onClick={() => action.kind === 'launch' && onLaunch(action.launch)}
+          onClick={() => action.kind === 'launch' && onLaunch(action.launch, launchContext)}
         >{action.label}</button>}
   </article>
 }
@@ -61,8 +65,32 @@ function SectionDetail<Launch>({
 }: {
   section: LearningHubSection<Launch>
   onBack: () => void
-  onLaunch: (launch: Launch) => void
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
 }) {
+  const defaultCohortId = section.cohorts.some((cohort) => cohort.id === section.defaultCohortId)
+    ? section.defaultCohortId!
+    : section.cohorts[0]?.id || ''
+  const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
+  const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId)
+    || section.cohorts[0]
+  const visibleCohorts = section.cohortPickerLabel && selectedCohort
+    ? [selectedCohort]
+    : section.cohorts
+  const launchContext: LearningHubLaunchContext = {
+    sectionId: section.id,
+    cohortId: section.cohortPickerLabel ? selectedCohort?.id || null : section.cohorts[0]?.id || null,
+  }
+
+  useEffect(() => {
+    if (selectedCohortId && !section.cohorts.some((cohort) => cohort.id === selectedCohortId)) {
+      setSelectedCohortId(defaultCohortId)
+    }
+  }, [defaultCohortId, section.cohorts, selectedCohortId])
+
+  useEffect(() => {
+    setSelectedCohortId(defaultCohortId)
+  }, [defaultCohortId])
+
   return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`}>
     <button className="learning-hub-back" type="button" onClick={onBack}>← Back to all challenges</button>
     <header className="learning-hub-detail-heading">
@@ -74,8 +102,15 @@ function SectionDetail<Launch>({
       <span className="learning-hub-section-mark">{section.number}</span>
     </header>
 
+    {section.cohortPickerLabel && section.cohorts.length > 0 && <label className="learning-hub-cohort-picker">
+      <span>{section.cohortPickerLabel}</span>
+      <select value={selectedCohort?.id || ''} onChange={(event) => setSelectedCohortId(event.target.value)}>
+        {section.cohorts.map((cohort) => <option key={cohort.id} value={cohort.id}>{cohort.label}</option>)}
+      </select>
+    </label>}
+
     <div className="learning-hub-cohorts">
-      {section.cohorts.length ? section.cohorts.map((cohort) => <article className="learning-hub-cohort" key={cohort.id}>
+      {visibleCohorts.length ? visibleCohorts.map((cohort) => <article className="learning-hub-cohort" key={cohort.id}>
         <div className="learning-hub-cohort-heading">
           <div><p className="learning-hub-eyebrow">{cohort.label}</p><h2>Words in this challenge</h2></div>
           <span>{cohort.countLabel}</span>
@@ -95,12 +130,13 @@ function SectionDetail<Launch>({
     </div>
     <div className="learning-hub-activity-grid">
       {section.activities.map((activity, index) =>
-        <ActivityCard key={activity.id} activity={activity} index={index} theme={section.theme} onLaunch={onLaunch} />)}
+        <ActivityCard key={activity.id} activity={activity} index={index} theme={section.theme} launchContext={launchContext} onLaunch={onLaunch} />)}
     </div>
   </section>
 }
 
-export function LearningHub<Launch>({ model, onLaunch, showTopbar = true }: LearningHubProps<Launch>) {
+export function LearningHub<Launch>({ model: originalModel, onLaunch, showTopbar = true, hideUnavailable = false }: LearningHubProps<Launch>) {
+  const model = hideUnavailable ? { ...originalModel, sections: originalModel.sections.map(section => ({ ...section, activities: section.activities.filter(activity => activity.action.kind !== 'disabled') })).filter(section => section.activities.length > 0) } : originalModel
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const selected = model.sections.find((section) => section.id === selectedSectionId)
 
@@ -152,7 +188,7 @@ export function LearningHub<Launch>({ model, onLaunch, showTopbar = true }: Lear
         <span className="learning-hub-eyebrow">{section.kicker}</span>
         <strong>{section.title}</strong>
         <span>{section.subtitle}</span>
-        <small>{section.cohorts[0]?.label || section.unavailableReason || 'Waiting for this challenge'}</small>
+        <small>{section.cohortSummaryLabel || section.cohorts[0]?.label || section.unavailableReason || 'Waiting for this challenge'}</small>
         <b>{section.available ? `${section.actionLabel} →` : 'Not available yet'}</b>
       </button>)}
     </section>

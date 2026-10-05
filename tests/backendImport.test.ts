@@ -133,6 +133,54 @@ test('trusted dataset writes persist the canonical fingerprint used by later run
   assert.equal(datasetWrite?.update.fields.instructionalRole.stringValue, 'weekly-acquisition')
 })
 
+test('multi-commit imports record resumable run progress and complete on idempotent replay', async () => {
+  const base = importWeeklyDatasets({ presentationId: grade2DeckProfile.sourceDeckId, slides: [{ objectId: 'large', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' }] }, [], grade2DeckProfile)
+  const templateWord = base.datasets[0].words[0]
+  const batch = {
+    ...base,
+    datasets: [{
+      ...base.datasets[0],
+      words: Array.from({ length: 500 }, (_, index) => ({ ...templateWord, id: `${base.datasets[0].id}-large-${index}` })),
+    }],
+  }
+  const firstAttempt: Array<{ writes: Array<{ update: { name: string; fields: Record<string, { stringValue?: string; integerValue?: string }> } }> }> = []
+  let requestCount = 0
+  await assert.rejects(
+    writeImportBatch('project', 'token', batch, async (_input, init) => {
+      requestCount += 1
+      firstAttempt.push(JSON.parse(String(init?.body)))
+      return requestCount === 2
+        ? new Response(JSON.stringify({ error: { message: 'simulated chunk failure' } }), { status: 503 })
+        : new Response('{}', { status: 200 })
+    }, '2026-09-26T12:00:00.000Z'),
+    /simulated chunk failure/,
+  )
+
+  const running = firstAttempt[0].writes[0].update
+  const failed = firstAttempt[2].writes[0].update
+  assert.match(running.name, /\/importRuns\/import-run-/)
+  assert.equal(running.fields.status.stringValue, 'running')
+  assert.equal(running.fields.committedDocumentCount.integerValue, '449')
+  assert.equal(failed.name, running.name)
+  assert.equal(failed.fields.status.stringValue, 'failed')
+  assert.equal(failed.fields.committedDocumentCount.integerValue, '449')
+
+  const replay: typeof firstAttempt = []
+  const replayBatch = {
+    ...batch,
+    datasets: batch.datasets.map((dataset) => ({ ...dataset, importedAt: '2099-01-01T00:00:00.000Z' })),
+  }
+  const result = await writeImportBatch('project', 'token', replayBatch, async (_input, init) => {
+    replay.push(JSON.parse(String(init?.body)))
+    return new Response('{}', { status: 200 })
+  }, '2026-09-26T12:01:00.000Z')
+  const complete = replay.at(-1)!.writes[0].update
+  assert.equal(complete.name, running.name)
+  assert.equal(complete.fields.status.stringValue, 'complete')
+  assert.equal(complete.fields.committedDocumentCount.integerValue, String(result.documentCount))
+  assert.equal(result.status, 'complete')
+})
+
 test('confirming a stored preview refreshes metadata without rewriting vocabulary', async () => {
   const current = candidateFromSlide({ objectId: 'current-slide', text: 'Week 9/21-9/25\nMandarin\nTier 1: 比如、部分' })
   const batch = importWeeklyDatasets({

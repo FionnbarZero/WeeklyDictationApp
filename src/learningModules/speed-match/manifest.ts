@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'speed-match', title: 'Shuriken Match', description: 'Hear and match Mandarin word seals with their English shadows before the ninja reaches the moon gate.', activityLabel: 'Ninja fluency', channels: ['tier-1-writing', 'tier-2-reading'], skills: ['receptive'], inputKind: 'pairs', estimatedSeconds: [45, 75] } as const

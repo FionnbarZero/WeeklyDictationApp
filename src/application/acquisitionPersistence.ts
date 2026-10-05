@@ -17,6 +17,7 @@ import type {
 } from '../domain.ts'
 import { requirePracticeProfileForGrade } from '../practice/profiles/registry.ts'
 import type { PendingAcquisitionCommit } from '../persistence/acquisitionPendingJournal.ts'
+import { acquisitionStrategyUpgradesFor } from './acquisitionStrategyUpgrades.ts'
 
 export const ACQUISITION_ACTIVITY_MODULE = 'mandarin-tier1-writing'
 
@@ -42,6 +43,7 @@ export function acquisitionPersistenceContext(
     applicationVersion: APP_VERSION,
     targetSet: { id: dataset.id, targets: dataset.words },
     strategy: profile.acquisition,
+    strategyUpgrades: acquisitionStrategyUpgradesFor(profile.acquisition),
   }
 }
 

@@ -89,6 +89,7 @@ export type Grade5SourceIssue = CurriculumSourceIssue & {
     | 'missing_confirmation_vocabulary'
     | 'confirmation_mismatch'
     | 'progression_chain_blocked'
+    | 'unchanged_cohort'
   severity: 'info' | 'warning' | 'error'
   message: string
   sourceUnitId?: string
@@ -377,6 +378,12 @@ function progressionEvidenceFor(
   let chainBlocked = false
   for (const candidate of ordered.slice(baselineIndex + 1)) {
     const parsed = parsedBySourceUnitId.get(candidate.source.sourceUnitId)
+    const previousSource = parsedBySourceUnitId.get(previousAccepted.source.sourceUnitId)
+    if (parsed && previousSource && sameVocabulary(candidateVocabulary(candidate), candidateVocabulary(previousAccepted))
+      && sameVocabulary(parsed.confirmation, previousSource.confirmation)) {
+      issues.push(issueForCandidate(candidate, 'unchanged_cohort', 'info', 'This teacher update repeats the same current and upcoming vocabulary. Existing assignments stay active without an extra progression event.'))
+      continue
+    }
     if (chainBlocked) {
       issues.push(issueForCandidate(candidate, 'progression_chain_blocked', 'error', 'This cohort remains pending because an earlier Grade 5 source conflict has not been resolved.'))
       continue

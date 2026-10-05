@@ -18,7 +18,8 @@ test('the Kindergarten learning lab uses an explicit public-preview gate and sta
   assert.match(harnessSource, /VITE_PUBLIC_PREVIEW/)
   assert.match(harnessSource, /new URL\('\.\.\/tests\/fixtures\/kindergarten-workbook\.json', import\.meta\.url\)\.href/)
   assert.match(harnessSource, /tests\/fixtures\/kindergarten-workbook\.json/)
-  assert.match(harnessSource, /Manual selection only—this lab does not infer the active week/)
+  assert.match(harnessSource, /kindergartenCurrentSourceWeek/)
+  assert.match(harnessSource, /Defaults to the authoritative top spreadsheet tab/)
   assert.doesNotMatch(harnessSource, /from ['"].*(firebase|firestore)|localStorage\.|googleapis|fetch\(['"]https:/i)
 })
 
@@ -85,9 +86,9 @@ test('Kindergarten uses the shared four-path hub with games, separate reading pa
   assert.doesNotMatch(games, /Sky Writing/)
   assert.match(skyWriting, /Sky Writing/)
   assert.match(readingPractice, /dataset\.vocabulary!\.tier2/)
-  assert.match(unitReview, /explicit development fixture/i)
-  assert.match(unitReview, /__kindergarten-unit-1-review-lab__/)
-  assert.doesNotMatch(productionEntries, /KINDERGARTEN_UNIT_ONE_LAB_FIXTURE|kindergartenUnitReviewForLab/)
+  assert.match(unitReview, /source-derived cumulative pools/i)
+  assert.match(unitReview, /__kindergarten-\$\{unit\.id\}-review-lab__/)
+  assert.doesNotMatch(productionEntries, /kindergartenUnitPoolForLab|kindergartenUnitReviewForLab/)
   assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${games}\n${readingPractice}\n${skyWriting}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
 })
 

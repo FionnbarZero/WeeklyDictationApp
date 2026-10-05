@@ -5,10 +5,10 @@ import { openGrade2LearningActivity } from './learningHub.ts'
 test('profile manager traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 6 weekly datasets')
-  const trigger = page.getByRole('button', { name: 'Profiles', exact: true })
+  const trigger = page.getByRole('button', { name: 'Choose child: Learner A, Grade 2' })
 
   await trigger.click()
+  await page.getByRole('button', { name: 'Manage profiles' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Who is practicing?' })
   await expect(dialog).toBeVisible()

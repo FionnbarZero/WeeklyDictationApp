@@ -20,6 +20,10 @@ import { validateAcquisitionProgressEnvelope } from '../src/acquisition/persiste
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
 import { kindergartenAcquisitionStrategy } from '../src/acquisition/strategies/kindergarten.ts'
 import { transitionAcquisition } from '../src/acquisition/transition.ts'
+import {
+  acquisitionStrategyUpgradesFor,
+  legacyAcquisitionStrategiesForTest,
+} from '../src/application/acquisitionStrategyUpgrades.ts'
 
 const targets: AcquisitionTarget[] = [
   { id: 'week-1-word-1', text: '需要', sentence: '我需要一本书。', datasetId: 'week-1', language: 'mandarin', tier: 'tier-1', activityType: 'dictation' },
@@ -243,6 +247,8 @@ test('checkpointed Earned-DT reacquisition preserves the original weekly resume 
   }
   envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
   seconds += 1
+  envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
+  seconds += 1
   assert.equal(envelope.flow.prompt?.kind, 'earned-dt')
   const reacquiredWordId = envelope.flow.prompt.word.id
 
@@ -262,14 +268,14 @@ test('checkpointed Earned-DT reacquisition preserves the original weekly resume 
   assert.equal(envelope.flow.phase, 'introduction')
   assert.equal(envelope.flow.correctionRole, 'earned-dt')
   assert.equal(envelope.flow.resumePosition?.currentTarget.id, targets[1].id)
-  assert.equal(envelope.flow.resumePosition?.step, 2)
+  assert.equal(envelope.flow.resumePosition?.step, 3)
 
   let guard = 0
   while (envelope.flow.correctionRole === 'earned-dt' && guard < 100) {
     if (envelope.flow.prompt?.kind === 'familiar-dt' || envelope.flow.prompt?.kind === 'earned-dt') {
       assert.equal(envelope.flow.prompt.kind, 'familiar-dt')
       assert.equal(envelope.flow.resumePosition?.currentTarget.id, targets[1].id)
-      assert.equal(envelope.flow.resumePosition?.step, 2)
+      assert.equal(envelope.flow.resumePosition?.step, 3)
     }
     envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, seconds))
     assert.equal(validateAcquisitionProgressEnvelope(envelope, context).valid, true)
@@ -280,7 +286,7 @@ test('checkpointed Earned-DT reacquisition preserves the original weekly resume 
   assert.equal(envelope.flow.currentTarget?.id, targets[1].id)
   assert.equal(envelope.flow.targetIndex, 1)
   assert.equal(envelope.flow.phase, 'expanded-trials')
-  assert.equal(envelope.flow.step, 2)
+  assert.equal(envelope.flow.step, 3)
   assert.equal(envelope.flow.resumePosition, undefined)
   assert.ok(envelope.flow.earnedDtPool.some((target) => target.id === reacquiredWordId))
 
@@ -341,6 +347,8 @@ test('weekly targets create scored facts while Earned DTs create one scored fact
     envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0, guard))
     guard += 1
   }
+  envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, guard))
+  guard += 1
   envelope = applied(envelope, answerCheckpoint(envelope, true, () => 0.75, guard))
   guard += 1
   assert.equal(envelope.flow.prompt?.kind, 'earned-dt')
@@ -581,6 +589,43 @@ test('a versioned strategy change requires an explicit upgrade path', () => {
   }
 })
 
+test('the production v3-to-v4 upgrade restarts only an ambiguous active target at Introduction', () => {
+  const previousStrategy = legacyAcquisitionStrategiesForTest.grade2V3
+  const previousContext: AcquisitionPersistenceContext = {
+    ...context,
+    strategy: previousStrategy,
+  }
+  let oldFlow = startAcquisition(targetSet, previousStrategy, () => 0)
+  while (!(oldFlow.phase === 'expanded-trials' && oldFlow.step === 3)) {
+    oldFlow = transitionAcquisition(
+      revealAcquisition(oldFlow),
+      targetSet,
+      previousStrategy,
+      { correct: true, revealMethod: 'timer' },
+      () => 0,
+    ).nextFlow
+  }
+  const oldEnvelope = createAcquisitionProgressEnvelope(previousContext, oldFlow, startedAt)
+  const upgradeContext: AcquisitionPersistenceContext = {
+    ...context,
+    strategyUpgrades: acquisitionStrategyUpgradesFor(grade2AcquisitionStrategy),
+  }
+
+  const result = migrateAcquisitionProgress(oldEnvelope, upgradeContext)
+  assert.equal(result.status, 'migrated')
+  if (result.status === 'quarantined') return
+  assert.equal(result.envelope.flow.strategyId, 'grade2-acquisition-v4')
+  assert.equal(result.envelope.flow.strategyVersion, 4)
+  assert.equal(result.envelope.flow.phase, 'introduction')
+  assert.equal(result.envelope.flow.step, 0)
+  assert.equal(result.envelope.flow.prompt?.kind, 'familiar-dt')
+  assert.equal(result.envelope.flow.currentTarget?.id, targets[0].id)
+  assert.equal(result.envelope.flow.targetIndex, 0)
+  assert.deepEqual(result.envelope.flow.earnedDtPool, [])
+  assert.equal(result.envelope.flow.trialNumber, oldFlow.trialNumber + 1)
+  assert.equal(validateAcquisitionProgressEnvelope(result.envelope, upgradeContext).valid, true)
+})
+
 test('a strategy upgrade requires its exact source fingerprint and cannot rewrite target order', () => {
   let completed = startedEnvelope()
   let guard = 1
@@ -654,6 +699,6 @@ test('the contract remains grade-neutral while preserving grade-owned strategy i
   }
   const envelope = createAcquisitionProgressEnvelope(kindergartenContext, startAcquisition(kindergartenTargets, kindergartenAcquisitionStrategy, () => 0), startedAt)
   assert.equal(validateAcquisitionProgressEnvelope(envelope, kindergartenContext).valid, true)
-  assert.equal(envelope.strategyId, 'kindergarten-acquisition-v1')
+  assert.equal(envelope.strategyId, 'kindergarten-acquisition-v2')
   assert.notEqual(envelope.id, startedEnvelope().id)
 })

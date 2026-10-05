@@ -7,6 +7,7 @@ import type {
 } from '../tier2/contracts.ts'
 import { kindergartenCandidateIsUsableInLab } from './acquisitionLab.ts'
 import type { KindergartenUnitReviewLab } from './unitReview.ts'
+import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'
 
 function cohort(datasetId: string, targets: readonly Tier2ReadingTarget[]): Tier2ReadingCohort {
   return {
@@ -36,7 +37,7 @@ export function kindergartenReadingAcquisitionPathway(candidate: WeeklyDatasetCa
   if (!kindergartenCandidateIsUsableInLab(candidate)) {
     throw new Error('Kindergarten reading requires one canonical inspected vocabulary tab.')
   }
-  const dataset = datasetFromCanonicalCandidate(candidate)
+  const dataset = datasetFromCanonicalCandidate(candidate, kindergartenDictationContextCatalog)
   return pathway('acquisition', [cohort(dataset.id, dataset.vocabulary!.tier2 as Tier2ReadingTarget[])])
 }
 

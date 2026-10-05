@@ -11,6 +11,7 @@ export type WritingPadState = {
   strokes: WritingStroke[]
   activeStroke: WritingStroke | null
   tapDrawing: boolean
+  typedText?: string
 }
 
 export const emptyWritingPadState: WritingPadState = {
@@ -90,6 +91,12 @@ export function clearWritingPad(): WritingPadState {
   return { strokes: [], activeStroke: null, tapDrawing: false }
 }
 
+export function setWritingPadTypedText(state: WritingPadState, typedText: string): WritingPadState {
+  if (typedText) return { ...state, typedText }
+  const { typedText: _removed, ...withoutTypedText } = state
+  return withoutTypedText
+}
+
 export function writingPadHasInk(state: WritingPadState) {
-  return state.strokes.length > 0 || Boolean(state.activeStroke?.length)
+  return state.strokes.length > 0 || Boolean(state.activeStroke?.length) || Boolean(state.typedText?.trim())
 }

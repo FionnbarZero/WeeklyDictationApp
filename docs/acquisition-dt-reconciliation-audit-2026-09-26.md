@@ -12,7 +12,7 @@ Implemented and reviewed:
 - Independent Familiar and Earned DT shuffle bags with repeat avoidance.
 - Introduction: two different Familiar DTs, one 10-second copy, one 10-second hidden weekly target.
 - Expanded Trials: `target, target, DT, target, DT, DT, target, DT, DT, DT, target` with target timers `10, 9, 8, 7, 6`.
-- Correction: two 10-second copies, one 10-second hidden target, one new 5-second Familiar DT, and one final 10-second hidden target.
+- Correction: three 10-second show-and-copy presentations, one 10-second hidden target, one new 5-second Familiar DT, and one final 10-second hidden target.
 - Three consecutive scored errors restart the affected weekly target or Earned DT at Introduction.
 - Successful Correction resumes the next unfinished teaching-sequence position.
 - Weekly targets become Earned DTs only after completing the teaching sequence.

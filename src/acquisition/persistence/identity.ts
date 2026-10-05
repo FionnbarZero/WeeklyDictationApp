@@ -54,6 +54,7 @@ export function acquisitionStrategyFingerprint<TTarget extends AcquisitionTarget
     version: strategy.version,
     timers: strategy.timers,
     dtObservationMode: strategy.dtObservationMode,
+    correctionPolicy: strategy.correctionPolicy,
     familiarDtTargets: strategy.familiarDtTargets.map(targetFingerprintValue),
     introductionSequence: strategy.introductionSequence,
     expandedSequence: strategy.expandedSequence,

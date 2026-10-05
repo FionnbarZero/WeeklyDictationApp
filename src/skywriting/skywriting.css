@@ -60,6 +60,9 @@
 .skywriting-pad-actions button { min-height: 36px; padding: 7px 11px; border: 1px solid #d7cbe7; color: #5f4c7e; background: #fff; font-size: .7rem; }
 .skywriting-pad-footer small { color: #887e90; font-size: .6rem; line-height: 1.2; white-space: nowrap; }
 .skywriting-pad-shell.is-disabled .skywriting-pad { cursor: default; }
+.skywriting-keyboard-alternative { display: flex; align-items: center; gap: 10px; padding: 4px 6px; color: #675d72; font-size: .68rem; font-weight: 700; }
+.skywriting-keyboard-alternative input { min-width: 0; flex: 1; min-height: 36px; padding: 6px 10px; border: 1px solid #d7cbe7; border-radius: 9px; background: #fff; color: #2f2737; font-size: 1rem; }
+.skywriting-keyboard-alternative input:disabled { background: #f6f2fa; opacity: 1; }
 .skywriting-reveal-word { display: grid; max-width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 4px 12px; place-items: center; color: #3f3458; font-family: "Songti SC", STSong, SimSun, serif; font-size: clamp(6rem, 9vw, 9rem); font-weight: 300; line-height: .82; }
 .skywriting-reveal-word[data-character-count="1"] { font-size: clamp(18rem, 25vw, 22rem); line-height: .72; }
 .skywriting-reveal-word[data-character-count="2"] { font-size: clamp(10rem, 15vw, 14rem); }

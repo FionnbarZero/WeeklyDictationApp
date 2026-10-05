@@ -1,5 +1,8 @@
 node_modules
 dist
+reconciliation-dist
+reconciliation-test-results/
+public-preview-dist
 prototype-dist
 family-beta-dist
 family-beta-artifacts

@@ -106,6 +106,7 @@ test('Earned-DT trials and their Correction targets count toward the official Ac
   while (flow.targetIndex === 0) flow = advance(flow)
   while (flow.phase === 'introduction') flow = advance(flow)
   flow = advance(flow, true, () => 0.75)
+  flow = advance(flow, true, () => 0.75)
   assert.equal(flow.prompt?.kind, 'earned-dt')
 
   const earnedAssessment = review(flow, false)

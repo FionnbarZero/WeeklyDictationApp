@@ -104,7 +104,7 @@ function traceFrom(flow: AcquisitionFlow, count: number) {
   return trace
 }
 
-test('the approved Grade 2 Acquisition v3 JSON and prompt trace stay fixed', () => {
+test('the approved Grade 2 Acquisition v4 JSON and prompt trace stay fixed', () => {
   const started = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   assert.equal(started.strategyId, golden.strategyId)
   assert.equal(started.strategyVersion, golden.strategyVersion)
@@ -124,11 +124,12 @@ test('serialized Correction, Earned-DT recovery, completion, and DT-only states 
   let earnedDtRecovery = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   while (earnedDtRecovery.targetIndex === 0) earnedDtRecovery = answer(earnedDtRecovery)
   while (earnedDtRecovery.phase === 'introduction') earnedDtRecovery = answer(earnedDtRecovery)
+  earnedDtRecovery = answer(earnedDtRecovery)
   earnedDtRecovery = answer(earnedDtRecovery, true, () => 0.75)
   earnedDtRecovery = answer(earnedDtRecovery, false)
   for (let index = 0; index < 6; index += 1) earnedDtRecovery = answer(earnedDtRecovery)
   assert.equal(earnedDtRecovery.phase, 'expanded-trials')
-  assert.equal(earnedDtRecovery.step, 2)
+  assert.equal(earnedDtRecovery.step, 3)
   assert.equal(hashJson(earnedDtRecovery), golden.earnedDtRecoveryFlowSha256)
 
   let completedTeaching = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
@@ -164,6 +165,7 @@ test('the engine preserves the exact 50/50 DT boundary', () => {
   let flow = startAcquisitionFlow(dataset, 'Grade 2', () => 0)
   while (flow.targetIndex === 0) flow = answer(flow)
   while (flow.phase === 'introduction') flow = answer(flow)
+  flow = answer(flow)
 
   const belowHalf = answer(flow, true, () => 0.499999)
   const atHalf = answer(flow, true, () => 0.5)

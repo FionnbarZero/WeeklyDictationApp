@@ -18,7 +18,7 @@ export function LegacyMasteryHistory({ scores }: { scores: readonly MonthlyRotat
       {ordered.map((score) => <div className="legacy-mastery-row" key={score.id}>
         <span className="legacy-mastery-dot" aria-hidden="true" />
         <div className="score-row-copy"><strong>{monthLabel(score.month)}</strong><span>{score.correct}/{score.total} correct · {score.status === 'finalized' ? 'Finalized month' : 'Month in progress'}</span></div>
-        <div className="score-bar"><span style={{ width: `${score.percent}%` }} /></div>
+        <div className="score-bar" role="progressbar" aria-label={`${monthLabel(score.month)} Mastery score`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={score.percent}><span style={{ width: `${score.percent}%` }} /></div>
         <strong className="score-number">{score.percent}%</strong>
       </div>)}
     </div>

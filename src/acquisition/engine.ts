@@ -47,10 +47,14 @@ export function acquisitionPromptTimer<TTarget extends AcquisitionTarget>(strate
   return Math.max(config.expandedMinimumSeconds, config.expandedStartSeconds - expandedTargetAttempts * config.expandedDecrementSeconds)
 }
 
+function feedbackOnlyCorrection<TTarget extends AcquisitionTarget>(strategy: AcquisitionStrategy<TTarget>, phase: AcquisitionPhase) {
+  return phase === 'correction' && strategy.correctionPolicy?.assessmentMode === 'feedback-only'
+}
+
 function makeAcquisitionPrompt<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, strategy: AcquisitionStrategy<TTarget>, kind: AcquisitionPromptKind, word: TTarget, targetWordId?: string): EngineAcquisitionFlow<TTarget> {
   const trialNumber = flow.trialNumber + 1
   const earnedDtTrial = kind === 'earned-dt' || (kind === 'target' && flow.correctionRole === 'earned-dt')
-  const weeklyTarget = kind === 'target' || earnedDtTrial
+  const weeklyTarget = (kind === 'target' || earnedDtTrial) && !feedbackOnlyCorrection(strategy, flow.phase)
   const dtPoolType = kind === 'familiar-dt' ? 'familiar' as const : earnedDtTrial ? 'earned' as const : undefined
   return {
     ...flow,
@@ -271,6 +275,36 @@ function restartIntroduction<TTarget extends AcquisitionTarget>(flow: EngineAcqu
   return coreAcquisitionPrompt({ ...restarted, currentTarget: word, phase: 'introduction', step: 0, expandedTargetAttempts: 0, correctionRole: role, prompt: null }, strategy, random)
 }
 
+/**
+ * Restart only the active target's teaching introduction after a strategy
+ * upgrade changes the meaning of an in-progress sequence position. Completed
+ * targets, earned DTs, error history, and an interrupted target resume point
+ * are preserved.
+ */
+export function restartCurrentAcquisitionIntroduction<TTarget extends AcquisitionTarget>(
+  flow: EngineAcquisitionFlow<TTarget>,
+  strategy: AcquisitionStrategy<TTarget>,
+  random: () => number,
+) {
+  if (!flow.currentTarget || flow.teachingComplete) return {
+    ...flow,
+    strategyId: strategy.id,
+    strategyVersion: strategy.version,
+  }
+  const current = {
+    ...flow,
+    strategyId: strategy.id,
+    strategyVersion: strategy.version,
+  }
+  return restartIntroduction(
+    current,
+    flow.currentTarget,
+    flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target',
+    strategy,
+    random,
+  )
+}
+
 function enterCorrection<TTarget extends AcquisitionTarget>(flow: EngineAcquisitionFlow<TTarget>, word: TTarget, role: 'current-target' | 'earned-dt', resumePosition: EngineAcquisitionFlow<TTarget>['resumePosition'], strategy: AcquisitionStrategy<TTarget>, random: () => number) {
   return coreAcquisitionPrompt({ ...flow, currentTarget: word, phase: 'correction', step: 0, correctionRole: role, resumePosition, prompt: null }, strategy, random)
 }
@@ -290,7 +324,10 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
   if (!prompt || !prompt.revealed) return flow
   if (prompt.kind === 'show-copy' || prompt.kind === 'familiar-dt') return advanceUnscoredOrFamiliarDt(flow, strategy, random)
 
-  const consecutiveErrors = errorsAfter(flow, prompt.word.id, correct)
+  const correctionIsFeedbackOnly = feedbackOnlyCorrection(strategy, flow.phase)
+  const consecutiveErrors = correctionIsFeedbackOnly
+    ? flow.consecutiveErrors
+    : errorsAfter(flow, prompt.word.id, correct)
   const updated = { ...flow, consecutiveErrors }
 
   if (prompt.kind === 'earned-dt') {
@@ -299,7 +336,7 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
     return enterCorrection(updated, prompt.word, 'earned-dt', flow.resumePosition, strategy, random)
   }
 
-  if (!correct && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', strategy, random)
+  if (!correct && !correctionIsFeedbackOnly && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', strategy, random)
 
   if (flow.phase === 'introduction') {
     if (correct) return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, prompt: null }, strategy, random)
@@ -311,8 +348,23 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
     const expandedTargetAttempts = flow.expandedTargetAttempts + 1
     const nextStep = flow.step + 1
     if (!correct) {
-      const resumePosition = { phase: 'expanded-trials' as const, step: nextStep, expandedTargetAttempts, currentTarget: prompt.word, targetIndex: flow.targetIndex }
-      return enterCorrection({ ...updated, expandedTargetAttempts }, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', resumePosition, strategy, random)
+      const retryFinalTarget = nextStep >= strategy.expandedSequence.length
+        && strategy.correctionPolicy?.finalExpandedFailure === 'retry-target-after-correction'
+      const resumePosition = {
+        phase: 'expanded-trials' as const,
+        step: retryFinalTarget ? flow.step : nextStep,
+        expandedTargetAttempts: retryFinalTarget ? flow.expandedTargetAttempts : expandedTargetAttempts,
+        currentTarget: prompt.word,
+        targetIndex: flow.targetIndex,
+      }
+      return enterCorrection(
+        retryFinalTarget ? updated : { ...updated, expandedTargetAttempts },
+        prompt.word,
+        flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target',
+        resumePosition,
+        strategy,
+        random,
+      )
     }
     return nextStep >= strategy.expandedSequence.length
       ? completeCurrentTarget({ ...updated, expandedTargetAttempts, prompt: null }, targetSet, strategy, random)

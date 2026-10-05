@@ -6,7 +6,7 @@ This delivery path isolates all three releases while preserving the existing Gra
 
 ## Destinations
 
-| Grade | Firebase project | Dedicated Hosting site | Stable destination | Persistence |
+| Grade | Stable site | Stable destination | Non-expiring rollback site | Persistence |
 | --- | --- | --- | --- | --- |
 | Kindergarten | `weeklydictationapp` | `weeklydictation-k-beta` | `https://weeklydictation-k-beta.web.app` | Session only |
 | Grade 5 | `weeklydictationapp` | `weeklydictation-g5-beta` | `https://weeklydictation-g5-beta.web.app` | Session only |
@@ -78,7 +78,8 @@ Preview an already packaged artifact:
 npm run family-beta:preview -- \
   --grade kindergarten \
   --confirm-project weeklydictationapp \
-  --confirm-site weeklydictation-k-beta
+  --confirm-site weeklydictation-k-beta \
+  --confirm-rollback-site weeklydictation-k-rollback
 ```
 
 The executed preview deploys only to `candidate-<12-character-revision>` for seven days and then verifies that the hosted root displays the artifact's full revision.
@@ -94,7 +95,8 @@ npm run family-beta:promote -- \
   --confirm-revision <full-reviewed-revision> \
   --initial-release \
   --confirm-project weeklydictationapp \
-  --confirm-site weeklydictation-k-beta
+  --confirm-site weeklydictation-k-beta \
+  --confirm-rollback-site weeklydictation-k-rollback
 ```
 
 For later promotions, first provision the revision-scoped `rollback-stable-<previous-revision>` channel through the authenticated Firebase Hosting API without `ttl` or `expireTime`, and confirm that its channel record has no `expireTime`. Then replace `--initial-release` with `--previous-revision <full-current-stable-revision>`. The command now fails before changing live if that retained channel is absent or expiring, verifies the current live revision, clones it to the retained channel, clones the reviewed candidate to `live`, and verifies both channels. It never rebuilds during promotion.
@@ -107,7 +109,8 @@ npm run family-beta:rollback -- \
   --revision <full-rollback-revision> \
   --confirm-revision <full-rollback-revision> \
   --confirm-project weeklydictationapp \
-  --confirm-site weeklydictation-k-beta
+  --confirm-site weeklydictation-k-beta \
+  --confirm-rollback-site weeklydictation-k-rollback
 ```
 
 Append `--execute` only after the dry-run plan, manifest, preview, and adult acceptance record have been reviewed.
@@ -150,6 +153,8 @@ Kindergarten and Grade 5 site creation was completed on 2026-10-03 with the Fire
 npx firebase hosting:sites:create weeklydictation-k-beta --project weeklydictationapp
 npx firebase hosting:sites:create weeklydictation-g2-preview --project weeklydictationapp
 npx firebase hosting:sites:create weeklydictation-g5-beta --project weeklydictationapp
+npx firebase hosting:sites:create weeklydictation-k-rollback --project weeklydictationapp
+npx firebase hosting:sites:create weeklydictation-g5-rollback --project weeklydictationapp
 ```
 
 Site creation alone does not authorize a stable release. Before a Kindergarten or Grade 5 promotion:

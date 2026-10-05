@@ -45,7 +45,7 @@ Combinations must be validated centrally before the planned capability registry 
 | Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
 | Grade 5 Tier 1 writing | `development` | `session-only` | N/A | Independent stable destination is live with explicit experimental and session-only status | `blocked` | Recorded adult activity acceptance, approved behavior contract, importer activation, Warmup policy, and durable two-review-cycle persistence |
 | Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
-| Trusted curriculum importer | `development` | N/A | N/A | Not part of the current child beta delivery path | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
+| Trusted curriculum importer | `development` | N/A | N/A | IAM/managed-secret/Scheduler deployment automation is implemented but not live | `blocked` | Approved region and billing, Google Cloud CLI authentication, OAuth secret versions, live deployment, monitoring, and rollback |
 
 ## Frozen contracts during Program A
 
@@ -78,7 +78,7 @@ Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73
 - Grade 2's live artifact still lacks visible release and persistence identity. Kindergarten and Grade 5 display those fields consistently.
 - Kindergarten and Grade 5 are session-only development experiences; beta availability must not be presented as saved progress or production eligibility.
 - Current activity tests largely characterize the implemented activity models rather than independently proving that every child-facing activity is product-correct. Activity corrections remain grade-specific behavior changes.
-- Program B1 is complete. B2 synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill wait until C0 beta safety controls pass.
+- Program B1 is complete. The real-export restore and local failure injection now pass; B2 synthetic cloud migration and the full rollback drill still wait for C0 adult acceptance.
 - The authorized cross-device Grade 2 pilot with real profile data remains B3 work and cannot begin until B2 passes.
 - The initial JavaScript budget passes with only 470 bytes of headroom. New initial-path UI or dependency work requires measurable bundle reduction first.
 - The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before pilot or production acceptance.

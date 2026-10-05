@@ -1,8 +1,12 @@
 import { createRoot } from 'react-dom/client'
+import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
+import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
+import { playCachedWordAudio, playCachedWordAudioOnce, playReadingTeachingSequence, stopActiveAudio } from './audio/promptAudio.ts'
+import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import {
   answerGrade5AcquisitionLab,
   revealGrade5AcquisitionLab,
@@ -37,7 +41,8 @@ import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
-const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
+const REVIEW_INSTRUCTION = 'Do your own best work. Compare your answer carefully. Every try helps you learn.'
+const grade5AudioProfile = gradeAudioProfileFor('Grade 5')
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -102,28 +107,23 @@ function candidateFor(request: Grade5ActivityLaunchRequest): WeeklyDatasetCandid
 }
 
 function speakWord(word: Word) {
-  if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(word.text)
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.55
-  window.speechSynthesis.speak(utterance)
-  return () => window.speechSynthesis.cancel()
+  return playCachedWordAudio(word, false, {
+    playbackRate: grade5AudioProfile.dictationRate,
+    sentenceRate: grade5AudioProfile.dictationRate,
+    pauseMs: grade5AudioProfile.segmentGapMs,
+  })
 }
 
 function speakReadingReference(word: Word): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!word.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(word.text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.55
-    utterance.onend = () => resolve()
-    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
+  return playCachedWordAudioOnce(word, { playbackRate: grade5AudioProfile.readingRate })
+}
+
+function speakReadingIntroduction(word: Word): Promise<void> {
+  return playReadingTeachingSequence(word, {
+    playbackRate: grade5AudioProfile.readingRate,
+    sentenceRate: grade5AudioProfile.readingRate,
+    instructionRate: grade5AudioProfile.instructionRate,
+    pauseMs: grade5AudioProfile.segmentGapMs,
   })
 }
 
@@ -166,7 +166,7 @@ function initialPracticeSession(
 ): PracticeSession {
   const primaryPhase = request.activityKind === 'test-review' ? 'test-review' : 'acquisition'
   return {
-    id: `grade5-lab-${request.stage}-${request.cohortId}`,
+    id: familyPreview ? crypto.randomUUID() : `grade5-lab-${request.stage}-${request.cohortId}`,
     childId: 'grade5-lab-child',
     grade: 'Grade 5',
     primaryDatasetId: dataset.id,
@@ -232,7 +232,7 @@ function startPrimaryReview() {
 }
 
 function leavePractice(message = 'Returned to the Grade 5 hub. This development-only run was discarded.') {
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+  stopActiveAudio()
   activePractice = null
   activeDataset = null
   activeDatasets = []
@@ -245,6 +245,17 @@ function leavePractice(message = 'Returned to the Grade 5 hub. This development-
   statusElement.hidden = false
   document.body.classList.remove('practice-active')
   setStatus(message)
+}
+
+function recordWritingResult(correct: number, attempted: number) {
+  if (!activeSession || !activeDataset) return false
+  try {
+    savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
+    return true
+  } catch {
+    window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+    return false
+  }
 }
 
 function answerCurrentPrompt(correct: boolean) {
@@ -299,6 +310,7 @@ function answerCurrentPrompt(correct: boolean) {
     return
   }
   const correctCount = answers.filter((answer) => answer.correct).length
+  if (!recordWritingResult(correctCount, answers.length)) return
   leavePractice(`Test Review complete: ${correctCount}/${answers.length} correct. This lab result was not saved.`)
 }
 
@@ -308,6 +320,7 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
     const primaryAnswers = writingSessionAnswers(answer.completion)
     activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
     const correct = primaryAnswers.filter((item) => item.correct).length
+    if (!recordWritingResult(correct, primaryAnswers.length)) return
     leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
   }
   else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
@@ -320,7 +333,11 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
     renderPracticeView()
   }
   else if (answer === 'skip-test-review') leavePractice('Test Review was abandoned. Its temporary answers were discarded and no score was created.')
-  else if (answer === 'done') leavePractice('Acquisition stopped for today. This development lab does not save progress yet.')
+  else if (answer === 'done') {
+    const assessed = activePractice?.assessments.filter(item => item.countsTowardWeeklyScore) || []
+    if (!recordWritingResult(assessed.filter(item => item.correct).length, assessed.length)) return
+    leavePractice(familyPreview ? 'Writing session complete. See family progress for saving status.' : 'Acquisition stopped for today. This development lab does not save progress yet.')
+  }
 }
 
 function renderPracticeView() {
@@ -375,6 +392,12 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
   try {
     if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
     const pathway = grade5LabReadingPathway(sourceExtraction, request)
+    const readingSessionId = crypto.randomUUID()
+    const finishReading = (correct: number, attempted: number) => {
+      try { savePreviewResult({ id: readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted }) }
+      catch { window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin); return }
+      leavePractice(`Reading complete: ${correct}/${attempted}. ${familyPreview ? 'See family progress for saving status.' : 'This lab result was not saved.'}`)
+    }
     activePractice = null
     activeDataset = null
     activeDatasets = []
@@ -395,8 +418,8 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
         activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
         onPlayReference={speakReadingReference}
         onDiscard={() => leavePractice('Reading Test Review was abandoned. Temporary recordings and provisional answers were discarded.')}
-        onComplete={(completion) => leavePractice(`Reading Test Review complete: ${completion.correct}/${completion.total} correct. This lab result was not saved.`)}
-        sessionNote="Grade 5 reading Test Review · collect every response first · recordings and results are not saved"
+        onComplete={(completion) => finishReading(completion.correct, completion.total)}
+        sessionNote={familyPreview ? 'Recordings stay only in this session. Completed scores appear in family progress.' : 'Grade 5 reading Test Review · collect every response first · recordings and results are not saved'}
       />)
       practicePanel.scrollTop = 0
       return
@@ -407,9 +430,11 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       profile={grade5Tier2ReadingProfile}
       pathway={pathway}
       label={label}
+      onPlayReference={speakReadingReference}
+      onPlayTeachingIntroduction={speakReadingIntroduction}
       onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
-      onComplete={(summary) => leavePractice(`Reading complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This lab result was not saved.`)}
-      sessionNote="Grade 5 development reading · recording and results are not saved"
+      onComplete={(summary) => finishReading(summary.correct, summary.attempted)}
+      sessionNote={familyPreview ? 'Recordings stay only in this session. Completed scores appear in family progress.' : 'Grade 5 development reading · recording and results are not saved'}
     />)
     practicePanel.scrollTop = 0
   } catch (error) {
@@ -471,13 +496,14 @@ function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[
 async function loadHub() {
   setStatus('Loading the trusted Grade 5 fixture…')
   try {
-    const response = await fetch(fixtureUrl, { cache: 'no-store' })
+    const response = familyPreview ? new Response(JSON.stringify((await fetchCurriculum('Grade 5')).snapshot.payload)) : await fetch(fixtureUrl, { cache: 'no-store' })
     if (!response.ok) throw new Error(`Fixture request failed with HTTP ${response.status}.`)
     sourceExtraction = extractGrade5Presentation(normalizePayload(await response.json()))
-    learningHubModel = buildGrade5LearningHub(sourceExtraction)
-    hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} />)
+    const date = familyPreview ? new URLSearchParams(window.location.search).get('week') || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined
+    learningHubModel = buildGrade5LearningHub(sourceExtraction, date)
+    hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} hideUnavailable={familyPreview} />)
     hubRootElement.hidden = false
-    setStatus('Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.')
+    setStatus(familyPreview ? 'Teacher curriculum loaded. Choose writing or reading; completed scores appear in family progress.' : 'Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.')
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'The Grade 5 hub could not be loaded.', true)
   }

@@ -42,11 +42,13 @@ export function LocalBackupTools({
   localWorkspace: LocalWorkspacePort
   onStateRestored: (state: AppState) => void
 }) {
-  const [busy, setBusy] = useState<'export' | 'preview' | 'apply' | null>(null)
+  const [busy, setBusy] = useState<'export' | 'preview' | 'safety' | 'apply' | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<LocalApplicationRestorePreview | null>(null)
   const [previewRaw, setPreviewRaw] = useState<string | null>(null)
+  const [safetyBackupChecksum, setSafetyBackupChecksum] = useState<string | null>(null)
+  const [safetyBackupConfirmed, setSafetyBackupConfirmed] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
   const [applied, setApplied] = useState(false)
   const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose)
@@ -107,6 +109,8 @@ export function LocalBackupTools({
     setError(null)
     setPreview(null)
     setPreviewRaw(null)
+    setSafetyBackupChecksum(null)
+    setSafetyBackupConfirmed(false)
     setConfirmed(false)
     setApplied(false)
     try {
@@ -122,21 +126,37 @@ export function LocalBackupTools({
     }
   }
 
+  const prepareSafetyBackup = async () => {
+    setBusy('safety')
+    setMessage(null)
+    setError(null)
+    setSafetyBackupChecksum(null)
+    setSafetyBackupConfirmed(false)
+    try {
+      const safetyBackup = await createBackup()
+      downloadBackup({ ...safetyBackup, fileName: safetyBackup.fileName.replace('backup-', 'pre-restore-backup-') })
+      setSafetyBackupChecksum(safetyBackup.checksum)
+      setMessage(`Pre-restore safety backup downloaded. SHA-256 ${safetyBackup.checksum}`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The pre-restore safety backup could not be created.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const applyRestore = async () => {
-    if (!preview || !previewRaw || !confirmed) return
+    if (!preview || !previewRaw || !safetyBackupChecksum || !safetyBackupConfirmed || !confirmed) return
     setBusy('apply')
     setMessage(null)
     setError(null)
     try {
-      const safetyBackup = await createBackup()
-      downloadBackup({ ...safetyBackup, fileName: safetyBackup.fileName.replace('backup-', 'pre-restore-backup-') })
       const result = await applyBackup(previewRaw, preview.checksum)
       setApplied(true)
       setConfirmed(false)
       setMessage(
         result.status === 'idempotent'
-          ? 'This profile already matched the backup. A pre-restore safety backup was downloaded; no browser data changed.'
-          : 'Restore complete. A pre-restore safety backup was downloaded first, and other profiles were preserved.',
+          ? 'This profile already matched the backup. No browser data changed.'
+          : 'Restore complete. The selected profile was replaced and other profiles were preserved.',
       )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The restore could not be applied.')
@@ -320,19 +340,44 @@ export function LocalBackupTools({
             </div>
             {!applied && (
               <div className="backup-apply-controls">
+                <div>
+                  <p className="eyebrow">Required safety step</p>
+                  <button
+                    className="secondary-button backup-action"
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => void prepareSafetyBackup()}
+                  >
+                    <Download size={16} />{' '}
+                    {busy === 'safety'
+                      ? 'Creating…'
+                      : safetyBackupChecksum
+                        ? 'Download safety backup again'
+                        : 'Download pre-restore backup'}
+                  </button>
+                </div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={safetyBackupConfirmed}
+                    disabled={!safetyBackupChecksum || busy !== null}
+                    onChange={(event) => setSafetyBackupConfirmed(event.target.checked)}
+                  />
+                  I saved the pre-restore backup in a private location.
+                </label>
                 <label>
                   <input
                     type="checkbox"
                     checked={confirmed}
-                    disabled={busy !== null}
+                    disabled={!safetyBackupConfirmed || busy !== null}
                     onChange={(event) => setConfirmed(event.target.checked)}
                   />
-                  Restore only the selected Grade 2 profile. Download a safety backup first.
+                  Restore only the selected Grade 2 profile. Other profiles and shared curriculum must be preserved.
                 </label>
                 <button
                   className="primary-button backup-action"
                   type="button"
-                  disabled={!confirmed || busy !== null}
+                  disabled={!safetyBackupChecksum || !safetyBackupConfirmed || !confirmed || busy !== null}
                   onClick={() => void applyRestore()}
                 >
                   <ShieldCheck size={16} /> {busy === 'apply' ? 'Restoring…' : 'Apply selected-profile restore'}

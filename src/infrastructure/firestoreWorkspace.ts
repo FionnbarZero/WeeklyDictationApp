@@ -73,8 +73,8 @@ export function createFirestoreWorkspaceCapabilities(storage: Storage): {
       acknowledgeWarmup: (transitionId) => removePendingWarmupTransition(storage, transitionId),
     },
     family: {
-      ensureFamily: async (user) => (await ensureParentFamily(user)).family,
-      listChildren,
+      ensureFamily: async (user, signal) => (await ensureParentFamily(user, signal)).family,
+      listChildren: (familyId, signal) => listChildren(familyId, signal),
     },
     child: {
       reads: {
@@ -82,17 +82,18 @@ export function createFirestoreWorkspaceCapabilities(storage: Storage): {
         listDatasetWords: (signal) => listAllDatasetWords(signal),
         listSessions: (scope, signal) => listSessions(...childIds(scope), signal),
         listAttempts: (scope, signal) => listChildAttempts(...childIds(scope), signal),
-        listScores: (scope) => listScores(...childIds(scope)),
-        readAdaptiveState: (scope) => getCloudAdaptiveState(...childIds(scope)),
-        listAcquisitionProgressions: (scope) => listAcquisitionProgressions(...childIds(scope)),
-        listDistractorTargetObservations: (scope) => listDistractorTargetObservations(...childIds(scope)),
-        listWarmupVisits: (scope) => listWarmupVisits(...childIds(scope)),
-        listWarmupQueueEntries: (scope) => listWarmupQueueEntries(...childIds(scope)),
-        listWarmupMastery: (scope) => listWarmupMastery(...childIds(scope)),
-        listWarmupReceipts: (scope) => listWarmupTransitions(...childIds(scope)),
-        listWarmupAttempts: (scope) => listWarmupAttempts(...childIds(scope)),
-        listWarmupGraphPoints: (scope) => listWarmupGraphPoints(...childIds(scope)),
-        listWarmupRotations: (scope) => listWarmupRotations(...childIds(scope)),
+        listScores: (scope, signal) => listScores(...childIds(scope), signal),
+        readAdaptiveState: (scope, signal) => getCloudAdaptiveState(...childIds(scope), signal),
+        listAcquisitionProgressions: (scope, signal) => listAcquisitionProgressions(...childIds(scope), signal),
+        listDistractorTargetObservations: (scope, signal) =>
+          listDistractorTargetObservations(...childIds(scope), signal),
+        listWarmupVisits: (scope, signal) => listWarmupVisits(...childIds(scope), signal),
+        listWarmupQueueEntries: (scope, signal) => listWarmupQueueEntries(...childIds(scope), signal),
+        listWarmupMastery: (scope, signal) => listWarmupMastery(...childIds(scope), signal),
+        listWarmupReceipts: (scope, signal) => listWarmupTransitions(...childIds(scope), signal),
+        listWarmupAttempts: (scope, signal) => listWarmupAttempts(...childIds(scope), signal),
+        listWarmupGraphPoints: (scope, signal) => listWarmupGraphPoints(...childIds(scope), signal),
+        listWarmupRotations: (scope, signal) => listWarmupRotations(...childIds(scope), signal),
       },
       assembly: {
         assembleCloudState: (records, scope) =>

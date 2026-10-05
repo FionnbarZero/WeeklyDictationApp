@@ -28,17 +28,17 @@ function answer(state: Grade5AcquisitionLabState, correct: boolean) {
   return answerGrade5AcquisitionLab(revealGrade5AcquisitionLab(state), correct, 'skip_timer', () => 0)
 }
 
-test('the Grade 5 lab owns a separate profile while sharing the approved Acquisition v3 contract', () => {
+test('the Grade 5 lab owns a separate profile while sharing the approved Acquisition contract', () => {
   const strategy = grade5WritingLabProfile.acquisition
 
   assert.equal(grade5WritingLabProfile.grade, 'Grade 5')
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityMaximum, 6)
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'undecided')
   assert.equal(grade5WritingLabProfile.timers.testReview, 10)
-  assert.equal(strategy.id, 'grade5-acquisition-v1')
-  assert.equal(strategy.version, 1)
+  assert.equal(strategy.id, 'grade5-acquisition-v2')
+  assert.equal(strategy.version, 2)
   assert.deepEqual(strategy.introductionSequence, ['familiar-dt', 'familiar-dt', 'show-copy', 'target'])
-  assert.deepEqual(strategy.expandedSequence, ['target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'])
+  assert.deepEqual(strategy.expandedSequence, ['target', 'target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'])
   assert.deepEqual(strategy.correctionSequence, ['show-copy', 'show-copy', 'show-copy', 'target', 'familiar-dt', 'target'])
 })
 
@@ -73,7 +73,7 @@ test('duplicate source occurrences remain distinct Acquisition targets', () => {
 test('the lab runs the shared engine and separates official scores from Familiar-DT diagnostics', () => {
   let state = startGrade5AcquisitionLab(acquisitionCandidate(), () => 0)
   assert.equal(state.flow.prompt?.kind, 'familiar-dt')
-  assert.equal(state.flow.strategyId, 'grade5-acquisition-v1')
+  assert.equal(state.flow.strategyId, 'grade5-acquisition-v2')
 
   state = answer(state, false)
   assert.equal(state.assessments.length, 1)
@@ -101,6 +101,7 @@ test('a completed Grade 5 target becomes an Earned DT that counts toward the off
   while (state.flow.targetIndex === 0) state = answer(state, true)
   while (state.flow.phase === 'introduction') state = answer(state, true)
 
+  state = answerGrade5AcquisitionLab(revealGrade5AcquisitionLab(state), true, 'skip_timer', () => 0.75)
   state = answerGrade5AcquisitionLab(revealGrade5AcquisitionLab(state), true, 'skip_timer', () => 0.75)
   assert.equal(state.flow.prompt?.kind, 'earned-dt')
   assert.equal(state.flow.prompt?.countsTowardWeeklyScore, true)

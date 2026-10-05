@@ -360,7 +360,7 @@ test('selected-child restore rejects an orphaned versioned receipt before writin
   )
 })
 
-test('selected-child restore deeply validates versioned collections that base hydration accepts shallowly', () => {
+test('selected-child restore rejects malformed versioned collections before writing', () => {
   const backup = stateWithResults()
   backup.acquisitionProgressEnvelopes = [{} as never]
   assert.throws(
@@ -376,7 +376,7 @@ test('selected-child restore deeply validates versioned collections that base hy
         },
         childId: 'rhys',
       }),
-    /versioned Acquisition progression is malformed/i,
+    /backup application state is malformed/i,
   )
 })
 

@@ -17,7 +17,13 @@ import {
   tier2ReadingPathwayTargets,
 } from '../tier2/pathway.ts'
 import { ReadingResponsePanel } from './ReadingResponsePanel.tsx'
-import { readingShowCopyInstruction, type ReadingSpeechSegment } from './contracts.ts'
+import {
+  playCachedWordAudioOnce,
+  playReadingTeachingSequence,
+  stopActiveAudio,
+} from '../audio/promptAudio.ts'
+import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
+import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -49,43 +55,38 @@ export type Tier2ReadingPracticeSummary = {
   readonly diagnostics: number
 }
 
+export type ReadingTeachingIntroductionContext = {
+  readonly firstPresentationOfNewTarget: boolean
+}
+
 export type Tier2ReadingPracticeProps = {
   readonly profile: Tier2ReadingProfile
   readonly pathway: Tier2ReadingPathway
   readonly label: string
   readonly onExit: () => void
   readonly onComplete: (summary: Tier2ReadingPracticeSummary) => void
+  readonly onPlayReference?: (target: Tier2ReadingTarget) => Promise<void>
+  readonly onPlayTeachingIntroduction?: (
+    target: Tier2ReadingTarget,
+    context: ReadingTeachingIntroductionContext,
+  ) => Promise<void>
   readonly random?: () => number
   readonly sessionNote?: string
 }
 
-function speakSegment(segment: ReadingSpeechSegment): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!segment.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    const utterance = new SpeechSynthesisUtterance(segment.text)
-    utterance.lang = segment.language
-    utterance.rate = segment.rate
-    let settled = false
-    const finish = (error?: Error) => {
-      if (settled) return
-      settled = true
-      window.clearTimeout(timeout)
-      if (error) reject(error)
-      else resolve()
-    }
-    const timeout = window.setTimeout(() => finish(new Error('Mandarin speech playback timed out.')), 10_000)
-    utterance.onend = () => finish()
-    utterance.onerror = () => finish(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
-  })
+function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playCachedWordAudioOnce(target, { playbackRate: audio.readingRate })
 }
 
-async function speakSequence(segments: readonly ReadingSpeechSegment[]) {
-  window.speechSynthesis.cancel()
-  for (const segment of segments) await speakSegment(segment)
+function defaultTeachingIntroduction(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playReadingTeachingSequence(target, {
+    playbackRate: audio.readingRate,
+    sentenceRate: audio.readingRate,
+    instructionRate: audio.instructionRate,
+    pauseMs: audio.segmentGapMs,
+  })
 }
 
 function initialRun(
@@ -129,19 +130,45 @@ function summaryFor(run: ReadingRun): Tier2ReadingPracticeSummary {
   }
 }
 
-export function Tier2ReadingPractice({
+export function Tier2ReadingPractice(props: Tier2ReadingPracticeProps) {
+  if (props.pathway.kind === 'test-review') {
+    const targets = tier2ReadingPathwayTargets(props.pathway)
+    return <DeferredTestReview
+      mode="reading"
+      targets={targets}
+      activityLabel={props.label}
+      onPlayReference={(target) => props.onPlayReference
+        ? props.onPlayReference(target)
+        : defaultReadingReference(props.profile, target)}
+      onDiscard={props.onExit}
+      onComplete={(completion) => props.onComplete({
+        kind: 'test-review',
+        attempted: completion.attempted,
+        correct: completion.correct,
+        diagnostics: 0,
+      })}
+      exitLabel="Exit reading"
+      sessionNote={props.sessionNote}
+    />
+  }
+  return <ImmediateTier2ReadingPractice {...props} />
+}
+
+function ImmediateTier2ReadingPractice({
   profile,
   pathway,
   label,
   onExit,
   onComplete,
+  onPlayReference,
+  onPlayTeachingIntroduction,
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
 }: Tier2ReadingPracticeProps) {
   const randomRef = useRef(random)
   const [run, setRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+  useEffect(() => () => stopActiveAudio(), [])
 
   function answerAcquisition(correct: boolean) {
     setRun((current) => {
@@ -182,7 +209,7 @@ export function Tier2ReadingPractice({
   }
 
   function exit() {
-    window.speechSynthesis?.cancel()
+    stopActiveAudio()
     onExit()
   }
 
@@ -199,6 +226,10 @@ export function Tier2ReadingPractice({
   const progressPosition = run.kind === 'acquisition' ? run.flow.targetIndex : run.index
   const progress = complete ? 100 : Math.round((progressPosition / Math.max(total, 1)) * 100)
   const showContinue = run.kind === 'acquisition' && acquisitionPrompt?.kind === 'show-copy'
+  const firstPresentationOfNewTarget = showContinue
+    && run.kind === 'acquisition'
+    && run.flow.phase === 'introduction'
+    && run.flow.correctionRole === undefined
   const promptId = acquisitionPrompt?.id
     || `${pathway.kind}:${run.kind === 'acquisition' ? run.flow.trialNumber : run.index}:${target?.id || 'complete'}`
   const promptPhase = run.kind === 'acquisition'
@@ -213,7 +244,7 @@ export function Tier2ReadingPractice({
       <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>
-    <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+    <div className="practice-progress" role="progressbar" aria-label="Reading practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${complete ? 'complete-card' : ''}`} aria-live="polite">
       {complete ? <>
         <span className="complete-mark"><Check size={27} /></span>
@@ -233,8 +264,13 @@ export function Tier2ReadingPractice({
           targetText={target.text}
           assessed={!showContinue}
           teachingPrompt={showContinue}
-          onPlayReference={() => speakSequence([{ text: target.text, language: 'zh-CN', rate: 0.55 }])}
-          onPlayTeachingIntroduction={() => speakSequence(readingShowCopyInstruction(target.text))}
+          allowSkipTimer={run.kind === 'mastery'}
+          onPlayReference={() => onPlayReference
+            ? onPlayReference(target)
+            : defaultReadingReference(profile, target)}
+          onPlayTeachingIntroduction={() => onPlayTeachingIntroduction
+            ? onPlayTeachingIntroduction(target, { firstPresentationOfNewTarget })
+            : defaultTeachingIntroduction(profile, target)}
           onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
           onContinue={() => answerAcquisition(true)}
         />

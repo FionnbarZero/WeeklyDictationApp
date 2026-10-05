@@ -1,5 +1,7 @@
 # Weekly Dictation
 
+For the October 5 all-grade reconciliation candidate, see the [family beta acceptance report](docs/family-beta-acceptance-2026-10-05.md). Build with `npm run build:reconciliation` and review locally with `npm run preview:reconciliation`. This does not change or deploy production.
+
 React/Vite Mandarin dictation practice application with authenticated family profiles, durable Grade 2 Tier 1 practice, and isolated multi-grade development labs. Current capability and release status are tracked in [`STATUS.md`](./STATUS.md); implementation order and exit gates are tracked in [`ROADMAP.md`](./ROADMAP.md).
 
 ## Run locally
@@ -136,7 +138,7 @@ The deck was inspected read-only through the approved Google Drive/Slides connec
 ## Current limitations
 
 - Firebase project values and Firestore rule deployment are still required.
-- The importer service, local import command, and guarded Cloud Run importer are available, but no Cloud Run service or Monday Cloud Scheduler job is deployed. Automatic Monday imports are not live until the documented credentials, IAM, and deployment steps are completed.
+- The importer service, local import command, and guarded Cloud Run importer are available. `npm run deploy:importer` now produces a fail-closed IAM, least-privilege service-account, managed-secret, concurrency-one, and Monday Scheduler plan, with `--execute` guarded by exact project/region confirmation and cloud preflights. Automatic Monday imports are not live until the owner supplies the approved region, billing state, Google Cloud CLI authentication, and three administrator OAuth secret versions documented in [`docs/backend-import.md`](./docs/backend-import.md).
 - The current Grade 2 dashboard presents overlapping Acquisition and Test Review datasets as separate activities. Each offers its own adaptive Warmup, which Grade 2 may complete or skip during development before the primary activity. Other grades use an explicit profile-controlled requirement and must not inherit Grade 2's optional setting.
 - The Progress screen renders one Adaptive Warmup line-graph point per visit with at least one assessed item, including attempted/correct counts and partial/completed status. Preserved monthly Mastery Rotation totals from the earlier Warmup system appear separately as **Earlier Mastery history**; they are never converted into invented visit points or dates. New monthly Mastery Rotation accuracy remains a derived report from individual attempts and their original source bucket.
 - The source deck contains no explicit writing-workshop marker in the six inspected slides. Ambiguous/incomplete slides are recorded as import errors; they are not silently classified as workshops.

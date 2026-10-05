@@ -31,11 +31,13 @@ The four-slide canonical fixture remains test-only input. Manual verification us
 3. Confirm Introduction presents two different 5-second Familiar DTs, one 10-second show/say/copy target, and one 10-second hidden weekly target.
 4. Mark the Introduction target correct and confirm Expanded Trials use exactly `target, target, DT, target, DT, DT, target, DT, DT, DT, target`.
 5. Confirm the five hidden weekly-target timers are `10, 9, 8, 7, 6` seconds.
-6. Confirm Replay uses the active prompt and Skip Timer opens that prompt's review without skipping its self-assessment.
+6. Confirm prompt audio starts automatically, there is no discretionary Replay control in Acquisition, and Skip Timer opens that prompt's review without skipping its self-assessment.
 7. Complete the first target. Confirm it becomes an Earned DT and later DT positions can draw from both Familiar and Earned pools without immediate repetition when an alternative exists.
-8. Mark a hidden weekly target incorrect. Confirm Correction uses `copy, copy, hidden target, new Familiar DT, final hidden target`, then resumes the next unfinished teaching position after success.
+8. Mark a hidden weekly target incorrect. Confirm Correction uses `show/copy, show/copy, show/copy, hidden target, new Familiar DT, final hidden target`, then resumes the next unfinished teaching position after success.
 9. Confirm an incorrect Earned DT enters Correction and returns to the exact interrupted weekly-target position after success.
 10. Confirm three consecutive assessed errors restart the affected weekly target or Earned DT at Introduction.
+11. In Kindergarten Tier 2 reading, confirm Expanded Trials use five scored target presentations separated by 1, 2, 3, and 3 DTs, with target timers of 10, 9, 8, 7, and 6 seconds.
+12. Mark the final Kindergarten reading target incorrect. Confirm every Correction response stays outside the score, the word does not enter Earned DT, and the same six-second final target returns after Correction.
 11. Select `Done for today`, refresh, and reenter Acquisition. Confirm the exact next prompt, timers, bags, Earned DT pool, and error state resume without duplicating the completed trial.
 12. Refresh during an unanswered prompt. Confirm only that unfinished prompt restarts and previously reviewed work remains saved.
 13. Complete all weekly targets. Confirm a later Acquisition visit becomes open-ended DT-only practice.

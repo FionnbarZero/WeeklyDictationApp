@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 
 export type LearningGameId =
+  | 'stroke-order-kindergarten'
+  | 'stroke-order-grade2'
   | 'speed-match'
   | 'target-blast'
   | 'lily-pad-path'

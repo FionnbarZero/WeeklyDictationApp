@@ -3,6 +3,7 @@ import { grade2AdaptiveWarmupRegistry, recoverWarmupTransitions } from '../warmu
 import { acquisitionTransitionId } from '../../acquisition/persistence/identity.ts'
 import { migrateAcquisitionProgress } from '../../acquisition/persistence/migration.ts'
 import { validateAcquisitionProgressEnvelope } from '../../acquisition/persistence/validation.ts'
+import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
 import { isAppState, type AppState } from '../../domain.ts'
 import type { ApplicationBackup } from '../../persistence/applicationBackup.ts'
 import type { PendingAcquisitionCommit } from '../../persistence/acquisitionPendingJournal.ts'

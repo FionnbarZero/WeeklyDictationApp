@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'sentence-scramble', title: 'Sushi Scramble', description: 'Listen to the Mandarin sentence, then use chopsticks to serve its sushi words in the correct order.', activityLabel: 'Build sentences', channels: ['tier-2-reading'], skills: ['reading', 'receptive'], inputKind: 'sequence', estimatedSeconds: [60, 120] } as const

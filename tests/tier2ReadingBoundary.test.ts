@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { AcquisitionStrategy } from '../src/acquisition/contracts.ts'
+import type {
+  AcquisitionStrategy,
+  AcquisitionTargetSet,
+  EngineAcquisitionFlow,
+} from '../src/acquisition/contracts.ts'
+import { revealAcquisition, startAcquisition } from '../src/acquisition/engine.ts'
+import { transitionAcquisition } from '../src/acquisition/transition.ts'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
 import { grade5AcquisitionStrategy } from '../src/acquisition/strategies/grade5.ts'
 import { kindergartenAcquisitionStrategy } from '../src/acquisition/strategies/kindergarten.ts'
@@ -108,9 +114,8 @@ function assertReadingAcquisitionMatches(
   ))
 }
 
-test('Tier 2 reading mirrors each grade-owned Acquisition pattern without sharing Tier 1 target identity', () => {
+test('Grade 2 and Grade 5 Tier 2 reading mirror their grade-owned Acquisition patterns without sharing Tier 1 target identity', () => {
   const patterns = [
-    [kindergartenTier2ReadingProfile, kindergartenAcquisitionStrategy],
     [grade2Tier2ReadingProfile, grade2AcquisitionStrategy],
     [grade5Tier2ReadingProfile, grade5AcquisitionStrategy],
   ] as const
@@ -125,6 +130,157 @@ test('Tier 2 reading mirrors each grade-owned Acquisition pattern without sharin
     recording: 'prompted-ephemeral',
     comparisonOrder: 'child-then-model',
   })
+})
+
+test('Kindergarten Tier 2 reading owns the approved five-target 1-2-3-3 Expanded sequence', () => {
+  const reading = kindergartenTier2ReadingProfile.acquisitionStrategy
+  assert.equal(kindergartenTier2ReadingProfile.id, 'kindergarten-tier-2-reading-v2')
+  assert.equal(kindergartenTier2ReadingProfile.version, 2)
+  assert.equal(reading.id, 'kindergarten-tier-2-reading-acquisition-v3')
+  assert.equal(reading.version, 3)
+  assert.deepEqual(reading.introductionSequence, kindergartenAcquisitionStrategy.introductionSequence)
+  assert.deepEqual(reading.correctionSequence, kindergartenAcquisitionStrategy.correctionSequence)
+  assert.deepEqual(reading.expandedSequence, [
+    'target',
+    'dt',
+    'target',
+    'dt', 'dt',
+    'target',
+    'dt', 'dt', 'dt',
+    'target',
+    'dt', 'dt', 'dt',
+    'target',
+  ])
+  assert.deepEqual(reading.correctionPolicy, {
+    assessmentMode: 'feedback-only',
+    finalExpandedFailure: 'retry-target-after-correction',
+  })
+  assert.deepEqual(
+    reading.familiarDtTargets.map((target) => target.text),
+    kindergartenAcquisitionStrategy.familiarDtTargets.map((target) => target.text),
+  )
+  assert.ok(reading.familiarDtTargets.every((target) =>
+    target.tier === 'tier-2' && target.activityType === 'reading'))
+})
+
+function kindergartenReadingTargetSet(): AcquisitionTargetSet<(typeof kindergartenTier2ReadingProfile.acquisitionStrategy.familiarDtTargets)[number]> {
+  return {
+    id: 'kindergarten-reading-sequence',
+    targets: [{
+      id: 'kindergarten-reading-target-1',
+      text: '妈妈',
+      sentence: '',
+      datasetId: 'kindergarten-reading-sequence',
+      language: 'mandarin',
+      tier: 'tier-2',
+      activityType: 'reading',
+    }],
+  }
+}
+
+function answerKindergartenReading(
+  flow: EngineAcquisitionFlow<(typeof kindergartenTier2ReadingProfile.acquisitionStrategy.familiarDtTargets)[number]>,
+  targetSet: ReturnType<typeof kindergartenReadingTargetSet>,
+  correct = true,
+) {
+  return transitionAcquisition(
+    revealAcquisition(flow),
+    targetSet,
+    kindergartenTier2ReadingProfile.acquisitionStrategy,
+    { correct, revealMethod: 'recording-comparison' as const },
+    () => 0,
+  )
+}
+
+test('Kindergarten reading completes Introduction once and times five Expanded targets from 10 to 6 seconds', () => {
+  const strategy = kindergartenTier2ReadingProfile.acquisitionStrategy
+  const targetSet = kindergartenReadingTargetSet()
+  let flow = startAcquisition(targetSet, strategy, () => 0)
+  const introduction: Array<[string, boolean]> = []
+  while (flow.phase === 'introduction') {
+    introduction.push([flow.prompt!.kind, flow.prompt!.countsTowardWeeklyScore])
+    flow = answerKindergartenReading(flow, targetSet).nextFlow
+  }
+  assert.deepEqual(introduction, [
+    ['familiar-dt', false],
+    ['familiar-dt', false],
+    ['show-copy', false],
+    ['target', true],
+  ])
+
+  const expanded: Array<[string, number, boolean]> = []
+  while (!flow.complete) {
+    expanded.push([flow.prompt!.kind, flow.prompt!.timerSeconds, flow.prompt!.countsTowardWeeklyScore])
+    flow = answerKindergartenReading(flow, targetSet).nextFlow
+  }
+  assert.deepEqual(expanded.map(([kind]) => kind), strategy.expandedSequence.map((kind) => kind === 'dt' ? 'familiar-dt' : kind))
+  assert.deepEqual(expanded.filter(([kind]) => kind === 'target').map(([, seconds]) => seconds), [10, 9, 8, 7, 6])
+  assert.ok(expanded.filter(([kind]) => kind === 'target').every(([, , scored]) => scored))
+  assert.deepEqual(flow.earnedDtPool.map((target) => target.id), ['kindergarten-reading-target-1'])
+})
+
+test('Kindergarten reading Correction is unscored and cannot promote a failed final Expanded target', () => {
+  const strategy = kindergartenTier2ReadingProfile.acquisitionStrategy
+  const targetSet = kindergartenReadingTargetSet()
+  let flow = startAcquisition(targetSet, strategy, () => 0)
+  while (flow.phase === 'introduction') flow = answerKindergartenReading(flow, targetSet).nextFlow
+  while (flow.phase === 'expanded-trials' && flow.step < strategy.expandedSequence.length - 1) {
+    flow = answerKindergartenReading(flow, targetSet).nextFlow
+  }
+
+  assert.equal(flow.prompt?.kind, 'target')
+  assert.equal(flow.prompt?.timerSeconds, 6)
+  const failedFinal = answerKindergartenReading(flow, targetSet, false)
+  assert.equal(failedFinal.assessment?.countsTowardWeeklyScore, true)
+  flow = failedFinal.nextFlow
+  assert.equal(flow.phase, 'correction')
+  assert.deepEqual(flow.earnedDtPool, [])
+
+  const correctionAssessments: Array<[string, boolean]> = []
+  while (flow.phase === 'correction') {
+    const transition = answerKindergartenReading(flow, targetSet)
+    if (transition.assessment) {
+      correctionAssessments.push([
+        transition.assessment.kind,
+        transition.assessment.countsTowardWeeklyScore,
+      ])
+    }
+    flow = transition.nextFlow
+  }
+  assert.deepEqual(correctionAssessments, [
+    ['target', false],
+    ['familiar-dt', false],
+    ['target', false],
+  ])
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, strategy.expandedSequence.length - 1)
+  assert.equal(flow.prompt?.kind, 'target')
+  assert.equal(flow.prompt?.timerSeconds, 6)
+  assert.deepEqual(flow.earnedDtPool, [])
+
+  flow = answerKindergartenReading(flow, targetSet).nextFlow
+  assert.equal(flow.complete, true)
+  assert.deepEqual(flow.earnedDtPool.map((target) => target.id), ['kindergarten-reading-target-1'])
+})
+
+test('an incorrect Kindergarten reading Introduction target uses feedback-only Correction before Expanded Trials', () => {
+  const strategy = kindergartenTier2ReadingProfile.acquisitionStrategy
+  const targetSet = kindergartenReadingTargetSet()
+  let flow = startAcquisition(targetSet, strategy, () => 0)
+  while (flow.prompt?.kind !== 'target') flow = answerKindergartenReading(flow, targetSet).nextFlow
+  const failedIntroduction = answerKindergartenReading(flow, targetSet, false)
+  assert.equal(failedIntroduction.assessment?.countsTowardWeeklyScore, true)
+  flow = failedIntroduction.nextFlow
+
+  const correctionScores: boolean[] = []
+  while (flow.phase === 'correction') {
+    const transition = answerKindergartenReading(flow, targetSet)
+    if (transition.assessment) correctionScores.push(transition.assessment.countsTowardWeeklyScore)
+    flow = transition.nextFlow
+  }
+  assert.deepEqual(correctionScores, [false, false, false])
+  assert.equal(flow.phase, 'expanded-trials')
+  assert.equal(flow.step, 0)
 })
 
 test('Grade 2 Tier 2 reading follows Acquisition, one Test Review, and Mastery assignments', () => {

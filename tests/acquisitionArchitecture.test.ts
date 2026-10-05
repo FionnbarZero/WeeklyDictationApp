@@ -91,6 +91,7 @@ test('Acquisition persistence activation is limited to the approved application 
   }).filter((file) => /acquisition\/persistence/.test(readFileSync(file, 'utf8')))
   assert.deepEqual(activationFiles.map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort(), [
     'src/application/acquisitionPersistence.ts',
+    'src/application/acquisitionStrategyUpgrades.ts',
     'src/application/backup/selectedChildRestore.ts',
     'src/application/practice/recordPracticeAnswer.ts',
     'src/application/practice/startPractice.ts',

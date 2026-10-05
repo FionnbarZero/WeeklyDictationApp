@@ -132,8 +132,8 @@ export type FamilyWorkspace<TUser> = {
 }
 
 export type FamilyWorkspacePort<TUser> = {
-  ensureFamily: (user: TUser) => Promise<FamilyRecord>
-  listChildren: (familyId: string) => Promise<ChildProfile[]>
+  ensureFamily: (user: TUser, signal: AbortSignal) => Promise<FamilyRecord>
+  listChildren: (familyId: string, signal: AbortSignal) => Promise<ChildProfile[]>
 }
 
 export type LocalWorkspacePort = {

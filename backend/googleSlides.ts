@@ -2,6 +2,15 @@ import type { PresentationLike, SlideLike } from '../src/slidesImporter.ts'
 
 type FetchLike = typeof fetch
 
+function requestInit(init: RequestInit = {}): RequestInit {
+  return {
+    ...init,
+    signal: init.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(20_000)])
+      : AbortSignal.timeout(20_000),
+  }
+}
+
 export type GooglePresentationResource = {
   presentationId?: string
   slides?: Array<{ objectId?: string; pageElements?: unknown[]; speakerNotes?: string }>
@@ -27,18 +36,18 @@ export function presentationLikeFromGoogleResponse(resource: GooglePresentationR
 }
 
 export async function googleAccessToken(config: GoogleOAuthConfig, fetchImpl: FetchLike = fetch) {
-  const response = await fetchImpl('https://oauth2.googleapis.com/token', {
+  const response = await fetchImpl('https://oauth2.googleapis.com/token', requestInit({
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, refresh_token: config.refreshToken, grant_type: 'refresh_token' }),
-  })
+  }))
   const body = await response.json().catch(() => ({})) as { access_token?: string }
   if (!response.ok || !body.access_token) throw new Error(`Google authorization failed: ${jsonError(body, response.statusText)}`)
   return body.access_token
 }
 
 export async function fetchGooglePresentation(presentationId: string, accessToken: string, fetchImpl: FetchLike = fetch): Promise<PresentationLike> {
-  const response = await fetchImpl(`https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presentationId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const response = await fetchImpl(`https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presentationId)}`, requestInit({ headers: { Authorization: `Bearer ${accessToken}` } }))
   const body = await response.json().catch(() => ({})) as GooglePresentationResource
   if (!response.ok) throw new Error(`Google Slides read failed: ${jsonError(body, response.statusText)}`)
   return presentationLikeFromGoogleResponse(body)
