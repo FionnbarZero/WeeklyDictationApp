@@ -10,6 +10,7 @@ import type { KindergartenCumulativePoolLab } from './unitReview.ts'
 
 export type KindergartenHubActivityKind =
   | 'dojo-writing'
+  | 'dojo-stroke-order'
   | 'dojo-reading'
   | 'ninja-listening'
   | 'ninja-memory'
@@ -125,6 +126,7 @@ export function kindergartenLearningHubView(
       cohorts: [week],
       activities: [
         launchActivity('dojo-writing', 'Tier 1 · Writing', 'Writing characters', 'Listen, copy, write, and check each character with supported repetition.', '✍️'),
+        launchActivity('dojo-stroke-order', 'Tier 1 · Writing game', 'Stroke Order', 'Watch each character form, copy its strokes, then write it from memory.', '🥋'),
         launchActivity('dojo-reading', 'Tier 2 · Reading', 'High-frequency words', 'See each word, hear it in Mandarin, and say it aloud.', '🎧'),
       ],
     }, hasCurrentVocabulary, currentWeekUnavailableReason),

@@ -38,7 +38,13 @@ const initialJavaScript = initialChunks.reduce(
 const initialCssFiles = new Set(initialChunks.flatMap((chunk) => chunk.css || []))
 const initialCss = [...initialCssFiles].reduce((total, file) => total + statSync(resolve(dist, file)).size, 0)
 
-const requiredLazyChunks = ['PracticeView', 'HistoryView', 'Tier2ReadingPractice', 'LocalBackupTools']
+const requiredLazyChunks = [
+  'PracticeView',
+  'HistoryView',
+  'Tier2ReadingPractice',
+  'LocalBackupTools',
+  'Grade2StrokeOrderExperience',
+]
 for (const chunkName of requiredLazyChunks) {
   const entry = Object.entries(manifest).find(([, chunk]) => chunk.name === chunkName)
   if (!entry || initialChunkKeys.has(entry[0])) {

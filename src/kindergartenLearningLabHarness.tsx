@@ -35,6 +35,10 @@ import {
 } from './kindergartenLab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import type { LearningHubLaunchContext } from './learningHub/contracts.ts'
+import {
+  kindergartenStrokeOrderConfig,
+  StrokeOrderActivity,
+} from './learningGames/strokeOrder/index.ts'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import type { ReadingTeachingIntroductionContext } from './readingPractice/Tier2ReadingPractice.tsx'
@@ -415,6 +419,16 @@ function KindergartenLearningLab() {
 
   function launchFromHub(launch: KindergartenHubLaunch, context: LearningHubLaunchContext) {
     if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'dojo-stroke-order') {
+      if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
+        setActiveActivity(launch.kind)
+        setStatus('Stroke Order started with the current Kindergarten writing characters.')
+      } else {
+        setStatus('The current Kindergarten writing cohort is unavailable.')
+        setError(true)
+      }
+      return
+    }
     if (launch.kind === 'dojo-reading') {
       if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
         setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
@@ -560,6 +574,21 @@ function KindergartenLearningLab() {
   }
 
   const speak = (text: string) => speakKindergartenTextOnce(text)
+  if (activeActivity === 'dojo-stroke-order' && selectedCandidate) {
+    const config = kindergartenStrokeOrderConfig(selectedCandidate)
+    return <StrokeOrderActivity
+      key={config.sourceId}
+      {...config}
+      playAudio={speak}
+      onExit={() => returnToHub('Stroke Order exited. No score was added.')}
+      onComplete={(summary) => completeStandalone({
+        label: 'Stroke Order',
+        kind: 'Current week',
+        correct: summary.correct,
+        total: summary.attempted,
+      })}
+    />
+  }
   if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={ninjaTier2Words} choicePool={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-memory') return <MemoryLanterns words={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting

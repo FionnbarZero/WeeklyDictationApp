@@ -37,12 +37,17 @@ test('the Kindergarten hub exposes the four requested mastery paths', () => {
   assert.equal(hub.sections[0].detailTitle, 'Welcome to the Dojo')
 })
 
-test('the current-week Dojo contains only writing and reading', () => {
+test('the current-week Dojo contains writing, Stroke Order, and reading', () => {
   assert.deepEqual(hub.sections[0].activities.map((activity) => activity.title), [
     'Writing characters',
+    'Stroke Order',
     'High-frequency words',
   ])
   assert.ok(hub.sections[0].activities.every((activity) => activity.action.kind === 'launch'))
+  const strokeOrder = hub.sections[0].activities[1]
+  if (strokeOrder.action.kind === 'launch') {
+    assert.equal(strokeOrder.action.launch.kind, 'dojo-stroke-order')
+  }
 })
 
 test('Ninja Skills offers three games and keeps every arrived unit in a separate selectable cohort', () => {
