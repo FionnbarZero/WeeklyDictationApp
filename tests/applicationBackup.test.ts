@@ -247,6 +247,54 @@ test('selected-child restore replaces only that profile and preserves current sh
   assert.deepEqual(plan.report.after.practiceRecords, 1)
 })
 
+test('selected-child restore validates generated Familiar-DT observations outside the weekly word list', () => {
+  const backup = stateWithResults(result('target-backup', 'rhys'))
+  backup.distractorTargetObservations = [
+    {
+      id: 'familiar-observation',
+      childId: 'rhys',
+      sessionId: 'session',
+      datasetId: dataset.id,
+      wordId: 'familiar-dt-1',
+      text: '一',
+      poolType: 'familiar',
+      correct: true,
+      revealMethod: 'timer',
+      reviewedAt: '2026-09-29T16:00:00.000Z',
+    },
+  ]
+  assert.doesNotThrow(() =>
+    planSelectedChildRestore({
+      current: { state: backup, pendingAcquisition: [], pendingWarmup: [] },
+      backup: {
+        schema: 'weekly-dictation-backup-v1',
+        createdAt: '2026-10-02T22:00:00.000Z',
+        state: backup,
+        pendingAcquisition: [],
+        pendingWarmup: [],
+      },
+      childId: 'rhys',
+    }),
+  )
+
+  backup.distractorTargetObservations[0].text = 'not-the-canonical-target'
+  assert.throws(
+    () =>
+      planSelectedChildRestore({
+        current: { state: backup, pendingAcquisition: [], pendingWarmup: [] },
+        backup: {
+          schema: 'weekly-dictation-backup-v1',
+          createdAt: '2026-10-02T22:00:00.000Z',
+          state: backup,
+          pendingAcquisition: [],
+          pendingWarmup: [],
+        },
+        childId: 'rhys',
+      }),
+    /unknown familiar target/,
+  )
+})
+
 test('selected-child restore rejects an orphaned versioned receipt before writing', () => {
   const backup = stateWithResults(result('target-backup', 'rhys'))
   backup.acquisitionTransitionReceipts = [
@@ -278,7 +326,7 @@ test('selected-child restore rejects an orphaned versioned receipt before writin
   )
 })
 
-test('selected-child restore deeply validates versioned collections that base hydration accepts shallowly', () => {
+test('selected-child restore rejects malformed versioned collections before writing', () => {
   const backup = stateWithResults()
   backup.acquisitionProgressEnvelopes = [{} as never]
   assert.throws(
@@ -294,7 +342,7 @@ test('selected-child restore deeply validates versioned collections that base hy
         },
         childId: 'rhys',
       }),
-    /versioned Acquisition progression is malformed/i,
+    /backup application state is malformed/i,
   )
 })
 

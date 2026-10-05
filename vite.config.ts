@@ -90,13 +90,15 @@ export default defineConfig(({ command, mode }) => {
         input:
           mode === 'family-beta'
             ? { app: familyBetaInputByGrade[familyBetaGrade as keyof typeof familyBetaInputByGrade] }
-            : {
-                app: page('./index.html'),
-                grade5LearningHub: page('./grade5-learning-hub.html'),
-                kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
-                testing: page('./testing.html'),
-                ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
-              },
+            : mode === 'production' || mode === 'staging'
+              ? { app: page('./index.html') }
+              : {
+                  app: page('./index.html'),
+                  grade5LearningHub: page('./grade5-learning-hub.html'),
+                  kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
+                  testing: page('./testing.html'),
+                  ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
+                },
       },
     },
   }

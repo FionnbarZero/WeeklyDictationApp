@@ -1,5 +1,6 @@
 node_modules
 dist
+public-preview-dist
 prototype-dist
 family-beta-dist
 family-beta-artifacts

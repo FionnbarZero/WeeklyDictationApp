@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Last verified: 2026-10-02; Program B1 staging foundation complete; controlled family beta safety is the current planning priority
+Last verified: 2026-10-04; Program B1 is complete and the technical C0 backup/delivery controls are implemented; adult acceptance remains open
 
 This is the authoritative capability matrix for what exists today. A visible UI is not evidence that a capability is durable or eligible for production. Product direction and sequencing live in [ROADMAP.md](./ROADMAP.md); durable architecture decisions live in [docs/decisions](./docs/decisions/README.md).
 
@@ -14,10 +14,10 @@ The synthetic staging project remains separate from the family beta. Real child 
 
 | Gate | Current result | Notes |
 | --- | --- | --- |
-| Unit tests | 513 passing | Node test runner, including verified-backup, workspace-synchronization, practice-coordinator, and staging safeguards |
+| Unit tests | 583 passing | Node test runner, including real-export rehearsal logic, importer deployment, verified backup, workspace synchronization, practice coordination, and staging safeguards |
 | Production build | Passing | TypeScript/Vite build plus deterministic performance-budget check |
-| Initial asset budgets | Passing | Production: 548,742/550,000 JavaScript bytes and 39,939/60,000 CSS bytes; backup tools load on demand |
-| Browser suite | 40 passing | Includes zero-write backup preview, prototype parity, persistence recovery, keyboard focus, and unexpected console/page-error enforcement |
+| Initial asset budgets | Passing | Production: 525,533/551,000 JavaScript bytes and 42,701/60,000 CSS bytes; home, profile, auth, backup, progress, and activity surfaces load on demand |
+| Browser suite | 56 passing | Includes zero-write backup preview, prototype parity, persistence recovery, keyboard/switch input, focus, and unexpected console/page-error enforcement |
 | Frozen static prototype suite | 23 tests | Includes five selected visual references |
 | Public preview suite | 3 passing | Grade 5 Acquisition and both reentry pathways in the built preview artifact |
 | Firestore Emulator | 8 passing | Includes scoped collection-group reads; expected permission-denied output is produced by rejection tests |
@@ -38,13 +38,13 @@ Combinations must be validated centrally before the planned capability registry 
 
 | Grade / capability | Availability | Results | Recording | Family beta posture | Production eligibility | Principal blocker |
 | --- | --- | --- | --- | --- | --- | --- |
-| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta with browser-local persistence; exact state export and restore plus a known-good release are required | `blocked` | C0 safeguards, migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
+| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta with browser-local persistence; private real export passed production-code restore rehearsal | `blocked` | Adult acceptance, fresh per-release backup, migration/full rollback drill, operations acceptance, and authorized cross-device pilot |
 | Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | Experimental only; must not imply retained progress | `blocked` | Approved behavior contract, versioned Tier 2 persistence, and reference-audio/privacy gates |
 | Kindergarten Tier 1 writing | `development` | `session-only` | N/A | Used in closed beta; stable release and explicit session-only status required | `blocked` | C0 safeguards, trusted importer deployment, source activation review, staging recovery, and release relationship with Tier 2 |
 | Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
 | Grade 5 Tier 1 writing | `development` | `session-only` | N/A | Used in closed beta; stable release and unresolved-policy notice required | `blocked` | C0 safeguards, approved behavior contract, importer activation, Warmup policy, and durable two-review-cycle persistence |
 | Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
-| Trusted curriculum importer | `development` | N/A | N/A | Not part of the current child beta delivery path | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
+| Trusted curriculum importer | `development` | N/A | N/A | IAM/managed-secret/Scheduler deployment automation is implemented but not live | `blocked` | Approved region and billing, Google Cloud CLI authentication, OAuth secret versions, live deployment, monitoring, and rollback |
 
 ## Frozen contracts during Program A
 
@@ -71,14 +71,14 @@ Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73
 
 ## Known active risks
 
-- The verified beta inventory shows that all three child-facing routes share GitHub Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023`, built from source revision `a6df41db07331fd0c8dde190dbf80b10650184df`. A change to the shared `gh-pages` branch can replace every grade at once; independent stable destinations and grade-specific rollback do not exist yet.
-- Grade 2 progress in the public-preview build is retained only in the current browser profile under the GitHub Pages origin. Candidate source now provides SHA-256 export and a zero-write restore preview, but the live artifact does not contain it, no real family-beta backup has been verified, and applying a lossless restore remains unavailable.
-- The apps do not display their build and persistence identities. The previous Pages artifact is recorded only as a rollback candidate and has not passed acceptance or a rollback rehearsal.
+- Grade 2 progress remains tied to the current browser profile under the GitHub Pages origin. The private export passed offline lossless restore rehearsal, but any active-browser apply remains an adult-confirmed destructive operation requiring a fresh pre-restore backup.
+- Kindergarten and Grade 5 have independent stable sites and non-expiring rollback sites with verified full embedded revisions. Adult activity acceptance and per-promotion manifests remain required.
+- The Cloud Run importer is not live because this workstation lacks the Google Cloud CLI and the three administrator OAuth secrets are not provisioned in the repository environment. The no-write deployment plan is ready; no secret value is accepted on the command line.
 - Kindergarten and Grade 5 are session-only development experiences; beta availability must not be presented as saved progress or production eligibility.
 - Current activity tests largely characterize the implemented activity models rather than independently proving that every child-facing activity is product-correct. Activity corrections remain grade-specific behavior changes.
-- Program B1 is complete. B2 synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill wait until C0 beta safety controls pass.
+- Program B1 is complete. The real-export restore and local failure injection now pass; B2 synthetic cloud migration and the full rollback drill still wait for C0 adult acceptance.
 - The authorized cross-device Grade 2 pilot with real profile data remains B3 work and cannot begin until B2 passes.
-- The initial JavaScript budget passes with limited headroom. Dependency updates must run the complete build budget before merge.
+- The initial JavaScript budget has 25,467 raw bytes of headroom after enforced lazy home/profile splitting and the Grade 2 Stroke Order adapter. Dependency updates must still run the complete build budget before merge.
 - The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before pilot or production acceptance.
 - Browser latency is environment-sensitive and remains telemetry rather than a hard gate.
 - Kindergarten and Grade 5 source activation, durable Tier 2 results, and Grade 5 multi-review persistence remain separate Program C decisions and implementations.

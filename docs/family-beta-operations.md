@@ -33,7 +33,7 @@ Every stable deployment retains at least one previous known-good Hosting release
 
 ## Release identity and manifest
 
-The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. The inventory confirms that the three current entry routes share one GitHub Pages artifact; that shared deployment is a temporary baseline, not the required independent grade delivery model.
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. Grade 2 remains on its original GitHub Pages browser-storage origin. Kindergarten and Grade 5 now use independent stable and non-expiring rollback Hosting sites.
 
 The repository-side Kindergarten and Grade 5 artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). They deliberately exclude Grade 2 and the shared GitHub Pages branch.
 
@@ -79,7 +79,7 @@ Every promotion records:
 
 The local Grade 2 beta includes a parent-facing **Protect progress** control in candidate source. **Download backup** exports application state version 2 together with the Acquisition and Warmup recovery journals inside a `weekly-dictation-verified-backup-v1` envelope. The envelope carries a SHA-256 checksum over canonical payload content. Export fails closed if either journal is malformed.
 
-**Preview restore** verifies the checksum, application schema, recovery journals, and record counts without writing any browser key. The preview reports explicitly that no browser data changed. Applying a restore remains unavailable until the write path is idempotent, preserves a newer valid backup, produces a before/after comparison, and passes rollback rehearsal. Therefore, the current control protects extraction and validation but does not by itself close the C0 restore gate.
+**Preview restore** verifies the checksum, application schema, recovery journals, selected-child scope, and record counts without writing any browser key. The preview reports explicitly that no browser data changed. A separate **Download pre-restore backup** action captures the current state; the adult must confirm that file was saved before **Apply restore** becomes available. Applying restore uses a crash-recoverable journal, verifies every write, rolls back all touched keys on failure, preserves unrelated children and shared curriculum, and reports the before/after record counts. The private real-family export passed the offline production-code rehearsal recorded in [Grade 2 real-export restore rehearsal](./grade2-restore-rehearsal-2026-10-04.md). A destructive apply in the active family browser remains adult-controlled and still requires a fresh pre-restore backup.
 
 For each pre-release backup:
 
@@ -87,7 +87,8 @@ For each pre-release backup:
 2. Download the verified JSON file and keep it in private family-controlled storage.
 3. Select that same file under **Preview restore** and require a verified result.
 4. Record the filename, complete SHA-256 value, creation time, application version, and preview result in the release manifest. Do not attach the backup itself to a bug report.
-5. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup has been independently retained.
+5. Before applying a restore, download and retain the separate pre-restore backup, then review the before/after scope shown in the confirmation.
+6. Do not clear site data, change browser profiles, or promote a persistence-affecting build until the backup has been independently retained.
 
 Before any Grade 2 change that can affect persistence, create a child-scoped export containing:
 

@@ -13,6 +13,7 @@ import {
   extendWritingStroke,
   normalizedWritingPoint,
   pauseTapWritingStroke,
+  setWritingPadTypedText,
   undoWritingStroke,
   writingPadHasInk,
 } from '../src/skywriting/model.ts'
@@ -67,6 +68,14 @@ test('interruption, undo, and clear leave no active pencil state behind', () => 
 
   state = undoWritingStroke(state)
   assert.equal(writingPadHasInk(state), false)
+  assert.deepEqual(clearWritingPad(), emptyWritingPadState)
+})
+
+test('a keyboard or switch-input response counts as in-memory writing and clears safely', () => {
+  const typed = setWritingPadTypedText(emptyWritingPadState, '需要')
+  assert.equal(writingPadHasInk(typed), true)
+  assert.equal(typed.typedText, '需要')
+  assert.deepEqual(setWritingPadTypedText(typed, ''), emptyWritingPadState)
   assert.deepEqual(clearWritingPad(), emptyWritingPadState)
 })
 
@@ -139,7 +148,7 @@ test('every shared Tier 1 writing activity uses the Songti Sky Writing response'
   assert.match(finalReview, /<SkyWritingAcquisition/)
   assert.match(finalReview, /phase="review"/)
   assert.doesNotMatch(`${testReviewCollector}\n${finalReview}`, /write the response on paper|check your paper/i)
-  assert.match(productionApp, /<PracticeView session=\{session\}/)
+  assert.match(productionApp, /<PracticeView\s+session=\{session\}/)
   assert.match(kindergarten, /<PracticeView/)
   assert.match(grade5, /<PracticeView/)
 })

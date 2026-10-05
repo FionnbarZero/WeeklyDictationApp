@@ -29,6 +29,7 @@ const identity = {
   grade: 'kindergarten' as const,
   projectId: 'weeklydictationapp',
   siteId: 'weeklydictation-k-beta',
+  rollbackSiteId: 'weeklydictation-k-rollback',
 }
 
 function verifiedArtifact() {
@@ -108,11 +109,11 @@ test('preview, exact promotion, and rollback plans remain grade-specific', () =>
 
   const promotion = promotionDeliveryPlan(identity, revision, previousRevision)
   assert.equal(promotion.commands.length, 2)
-  assert.match(promotion.commands[0].join(' '), /weeklydictation-k-beta:live weeklydictation-k-beta:rollback-/)
+  assert.match(promotion.commands[0].join(' '), /weeklydictation-k-beta:live weeklydictation-k-rollback:live/)
   assert.match(promotion.commands[1].join(' '), /weeklydictation-k-beta:candidate-.* weeklydictation-k-beta:live/)
 
   const rollback = rollbackDeliveryPlan(identity, previousRevision)
-  assert.equal(rollback.source, 'rollback-abcdef123456')
+  assert.equal(rollback.source, 'weeklydictation-k-rollback:live')
   assert.doesNotMatch(rollback.commands.flat().join(' '), /grade5|weeklydictation-g5-beta/)
 })
 

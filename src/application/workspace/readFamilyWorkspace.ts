@@ -7,9 +7,9 @@ export async function readFamilyWorkspace<TUser>(
   signal: AbortSignal,
 ): Promise<FamilyWorkspace<TUser>> {
   throwIfWorkspaceSynchronizationAborted(signal)
-  const family = await port.ensureFamily(user)
+  const family = await port.ensureFamily(user, signal)
   throwIfWorkspaceSynchronizationAborted(signal)
-  const rawChildren = await port.listChildren(family.id)
+  const rawChildren = await port.listChildren(family.id, signal)
   throwIfWorkspaceSynchronizationAborted(signal)
   return {
     family,

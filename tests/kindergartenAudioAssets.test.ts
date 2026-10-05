@@ -11,7 +11,7 @@ import type { SheetsWorkbookPayload } from '../src/curriculum/model.ts'
 import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
 import type { Word } from '../src/domain/contracts.ts'
 
-const manifestPath = new URL('../public/audio/kindergarten/manifest.json', import.meta.url)
+const manifestPath = new URL('../src/audio/kindergarten/manifest.json', import.meta.url)
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
   sourceSpreadsheetId: string
   voice: { provider: string; languageCode: string; productionCandidates: string[] }

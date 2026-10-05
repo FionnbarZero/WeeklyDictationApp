@@ -33,7 +33,7 @@ type ContextCatalog = {
 }
 
 const root = resolve(import.meta.dirname, '..')
-const manifestPath = resolve(root, 'public/audio/kindergarten/manifest.json')
+const manifestPath = resolve(root, 'src/audio/kindergarten/manifest.json')
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Manifest
 const contextCatalogPath = resolve(root, 'src/curriculum/contextCatalogs/kindergarten.json')
 const contextCatalog = JSON.parse(readFileSync(contextCatalogPath, 'utf8')) as ContextCatalog

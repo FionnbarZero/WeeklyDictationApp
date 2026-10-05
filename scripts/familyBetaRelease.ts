@@ -14,6 +14,7 @@ export const familyBetaGradeConfig = {
     status: 'Experimental',
     persistence: 'Session only',
     siteId: 'weeklydictation-k-beta',
+    rollbackSiteId: 'weeklydictation-k-rollback',
   },
   grade5: {
     displayName: 'Grade 5',
@@ -21,6 +22,7 @@ export const familyBetaGradeConfig = {
     status: 'Experimental',
     persistence: 'Session only',
     siteId: 'weeklydictation-g5-beta',
+    rollbackSiteId: 'weeklydictation-g5-rollback',
   },
 } as const
 

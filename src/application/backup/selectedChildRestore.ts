@@ -3,6 +3,7 @@ import { grade2AdaptiveWarmupRegistry, recoverWarmupTransitions } from '../warmu
 import { acquisitionTransitionId } from '../../acquisition/persistence/identity.ts'
 import { migrateAcquisitionProgress } from '../../acquisition/persistence/migration.ts'
 import { validateAcquisitionProgressEnvelope } from '../../acquisition/persistence/validation.ts'
+import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
 import { isAppState, type AppState } from '../../domain.ts'
 import type { ApplicationBackup } from '../../persistence/applicationBackup.ts'
 import type { PendingAcquisitionCommit } from '../../persistence/acquisitionPendingJournal.ts'
@@ -234,8 +235,17 @@ function validateDatasetReferences(state: AppState, childId: string) {
     requireDataset(value.datasetId, `Acquisition progression ${value.id}`)
   for (const value of selected(state.acquisitionProgressQuarantine, childId))
     requireDataset(value.datasetId, `Acquisition quarantine ${value.id}`)
-  for (const value of selected(state.distractorTargetObservations, childId))
-    requireWord(value.datasetId, value.wordId, `Distractor observation ${value.id}`)
+  for (const value of selected(state.distractorTargetObservations, childId)) {
+    requireDataset(value.datasetId, `Distractor observation ${value.id}`)
+    if (value.poolType === 'familiar') {
+      const familiar = grade2AcquisitionStrategy.familiarDtTargets.find((target) => target.id === value.wordId)
+      if (!familiar || familiar.text !== value.text) {
+        throw new Error(`Distractor observation ${value.id} references an unknown familiar target.`)
+      }
+    } else {
+      requireWord(value.datasetId, value.wordId, `Distractor observation ${value.id}`)
+    }
+  }
 }
 
 function validateAcquisition(state: AppState, childId: string, pending: readonly PendingAcquisitionCommit[]) {

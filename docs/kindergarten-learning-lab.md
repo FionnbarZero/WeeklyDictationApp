@@ -37,7 +37,7 @@ The original source candidate remains unchanged. The ephemeral dataset is never 
 - No durable Tier 2 attempt, score, adaptive state, progress record, or retained microphone audio exists.
 - Unit identity, current-week selection, vocabulary, and review markers come from the Weekly Focus workbook. The lab groups targets by each tab's `Unit N: Title` heading and never infers a unit from workbook position alone.
 - The cumulative lifecycle membership is approved, while the lab's Test Review presentation and timer remain unpersisted prototype behavior.
-- The current family-beta audio artifacts use the local female Mainland Mandarin `Tingting` voice and preserve that provenance in `public/audio/kindergarten/manifest.json`. Production generation is restricted to the female Google candidates `cmn-CN-Wavenet-A` and `cmn-CN-Wavenet-D` until the curriculum owner completes the voice audition and supplies `KINDERGARTEN_MANDARIN_VOICE`.
+- The current family-beta audio artifacts use the local female Mainland Mandarin `Tingting` voice and preserve that provenance in `src/audio/kindergarten/manifest.json`. Production generation is restricted to the female Google candidates `cmn-CN-Wavenet-A` and `cmn-CN-Wavenet-D` until the curriculum owner completes the voice audition and supplies `KINDERGARTEN_MANDARIN_VOICE`.
 - Refreshing or leaving discards all lab state.
 - The lab does not import Firebase/Firestore code or use browser storage.
 

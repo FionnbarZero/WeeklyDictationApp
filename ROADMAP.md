@@ -100,9 +100,9 @@ Program C begins by protecting the three grade-level applications already used b
 
 The detailed operating procedure is maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md), with a reusable manifest in [`docs/family-beta-release-manifest-template.md`](./docs/family-beta-release-manifest-template.md).
 
-The initial deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). It confirms that all three current routes share one GitHub Pages artifact. The inventory record is complete, but the workstream exit gate remains open until the exact child bookmarks receive adult confirmation, Grade 2 state is backed up, and each grade has an independently promotable and reversible destination.
+The current deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). Grade 2 remains on its original GitHub Pages origin; Kindergarten and Grade 5 have independently promotable stable sites and non-expiring rollback sites with verified predecessor revisions. The workstream exit gate remains open until the exact child bookmarks and activity behavior receive adult confirmation and each future promotion has its manifest and canary record.
 
-The first Grade 2 safeguard is implemented in candidate source: an application-level browser export with SHA-256 verification and a restore preview that performs no writes. It is not complete operational protection until the exact child browser produces and verifies a backup, the candidate is promoted through preview, and an idempotent lossless apply-restore path passes rehearsal.
+The Grade 2 safeguard now includes application-level SHA-256 export, zero-write preview, selected-child merge, journaled apply, rollback on failure, and idempotent replay. A private real-family export passed the offline production-code rehearsal on 2026-10-04. Every persistence-affecting promotion still requires a fresh export and adult-controlled pre-restore backup; rehearsal evidence is not permission to overwrite the active browser.
 
 ### C1 product behavior contracts
 
@@ -148,13 +148,11 @@ Recommended integration order remains Grade 2 Tier 1 writing, Kindergarten, dura
 
 ## Immediate execution order
 
-1. Inventory the three current child-facing beta deployments and designate one known-good release per grade.
-2. Add visible release identity, persistence status, grade-specific stable destinations, and privacy-safe bug intake.
-3. Implement and rehearse checksum-verifiable Grade 2 backup and restore before any persistence-affecting beta update.
-4. Establish preview, adult approval, one-child canary, observation, and rollback gates for every beta promotion.
-5. Define and approve activity contracts one grade at a time; keep unresolved capabilities hidden or explicitly experimental.
-6. Resume B2 synthetic migration, restore, failure-injection, and full rollback rehearsal after C0 passes.
-7. Deploy the trusted importer through shadow, idempotency, IAM, monitoring, and rollback gates.
-8. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005.
-9. Implement durable Grade 2 Tier 2 independently where useful.
-10. Activate Grade 5 for production only after importer, Warmup-policy, and multi-review persistence gates pass.
+1. Obtain adult confirmation of the three documented bookmarks and complete the grade-by-grade activity acceptance matrices.
+2. Use the implemented exact-artifact preview, manifest, canary, observation, and dedicated rollback workflow for every promotion.
+3. Install/authenticate the Google Cloud CLI, approve importer region and billing, provision the three OAuth secret versions, and execute the tested IAM/Scheduler plan.
+4. Resume B2 synthetic cloud migration and the full rollback rehearsal after C0 adult acceptance.
+5. Define and approve remaining activity contracts one grade at a time; keep unresolved capabilities hidden or explicitly experimental.
+6. Keep Kindergarten writing-only unless a separately reviewed Tier 2 release decision changes ADR 0005.
+7. Implement durable Grade 2 Tier 2 independently where useful.
+8. Activate Grade 5 for production only after importer, Warmup-policy, and multi-review persistence gates pass.

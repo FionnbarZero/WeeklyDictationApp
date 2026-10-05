@@ -244,7 +244,7 @@ function ImmediateTier2ReadingPractice({
       <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>
-    <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+    <div className="practice-progress" role="progressbar" aria-label="Reading practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${complete ? 'complete-card' : ''}`} aria-live="polite">
       {complete ? <>
         <span className="complete-mark"><Check size={27} /></span>

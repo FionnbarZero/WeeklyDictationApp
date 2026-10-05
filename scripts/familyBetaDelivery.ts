@@ -1,10 +1,11 @@
 import type { FamilyBetaGrade } from './familyBetaRelease.ts'
-import { candidateChannelId, requireFullGitRevision, rollbackChannelId } from './familyBetaRelease.ts'
+import { candidateChannelId, requireFullGitRevision } from './familyBetaRelease.ts'
 
 export type FamilyBetaDeliveryIdentity = {
   grade: FamilyBetaGrade
   projectId: string
   siteId: string
+  rollbackSiteId: string
 }
 
 export type FamilyBetaHostingChannel = {
@@ -84,7 +85,7 @@ export function promotionDeliveryPlan(
       'firebase',
       'hosting:clone',
       `${identity.siteId}:live`,
-      `${identity.siteId}:${rollbackChannelId(previousRevision)}`,
+      `${identity.rollbackSiteId}:live`,
       '--project',
       identity.projectId,
       '--json',
@@ -104,7 +105,8 @@ export function promotionDeliveryPlan(
 }
 
 export function rollbackDeliveryPlan(identity: FamilyBetaDeliveryIdentity, revision: string) {
-  const source = rollbackChannelId(requireFullGitRevision(revision))
+  requireFullGitRevision(revision)
+  const source = `${identity.rollbackSiteId}:live`
   return {
     source,
     commands: [
@@ -112,7 +114,7 @@ export function rollbackDeliveryPlan(identity: FamilyBetaDeliveryIdentity, revis
         'npx',
         'firebase',
         'hosting:clone',
-        `${identity.siteId}:${source}`,
+        source,
         `${identity.siteId}:live`,
         '--project',
         identity.projectId,

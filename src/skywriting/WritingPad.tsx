@@ -8,6 +8,7 @@ import {
   endWritingStroke,
   extendWritingStroke,
   normalizedWritingPoint,
+  setWritingPadTypedText,
   undoWritingStroke,
   writingPadHasInk,
   type WritingPadState,
@@ -51,6 +52,7 @@ export function WritingPad({
   const viewBoxWidth = writingLanes * VIEWBOX_CELL_SIZE
   const strokes = pad.activeStroke ? [...pad.strokes, pad.activeStroke] : pad.strokes
   const hasInk = writingPadHasInk(pad)
+  const hasStrokes = pad.strokes.length > 0 || Boolean(pad.activeStroke?.length)
 
   function updatePad(update: WritingPadStateUpdater) {
     if (padState !== undefined && onPadStateChange) {
@@ -91,7 +93,7 @@ export function WritingPad({
     <div className="skywriting-pad-toolbar">
       <p className="skywriting-input-hint"><Pencil size={16} /> Finger or press &amp; drag</p>
       <div className="skywriting-pad-actions">
-        <button type="button" onClick={() => updatePad((current) => undoWritingStroke(current))} disabled={disabled || !hasInk}>
+        <button type="button" onClick={() => updatePad((current) => undoWritingStroke(current))} disabled={disabled || !hasStrokes}>
           <RotateCcw size={16} /> Undo stroke
         </button>
         <button type="button" onClick={() => updatePad(() => clearWritingPad())} disabled={disabled || !hasInk}>
@@ -128,6 +130,19 @@ export function WritingPad({
       </svg>
       {!hasInk && !traceText && <p className="skywriting-pad-placeholder" aria-hidden="true">Write here</p>}
     </div>
+    <label className="skywriting-keyboard-alternative">
+      <span>{disabled ? 'Typed response' : 'Keyboard or switch-input alternative'}</span>
+      <input
+        type="text"
+        lang="zh-Hans"
+        inputMode="text"
+        autoComplete="off"
+        value={pad.typedText || ''}
+        disabled={disabled}
+        aria-label="Type your word instead of drawing it"
+        onChange={(event) => updatePad((current) => setWritingPadTypedText(current, event.target.value))}
+      />
+    </label>
     <div className="skywriting-pad-footer">
       <p className="skywriting-pad-help" aria-live="polite">
         {disabled

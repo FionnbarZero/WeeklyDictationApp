@@ -56,14 +56,35 @@ function skyWritingResponseId(session: PracticeSession, word: Word, promptId?: s
 
 function PromptCountdown({ durationSeconds, active, onComplete }: { durationSeconds: number; active: boolean; onComplete: () => void }) {
   const [seconds, setSeconds] = useState(durationSeconds)
+  const [paused, setPaused] = useState(false)
+  const countdownRef = useRef<ReturnType<typeof createPracticeCountdown> | null>(null)
   const onCompleteRef = useRef(onComplete)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
   useEffect(() => {
-    if (!active) return
+    setPaused(false)
+    if (!active) {
+      setSeconds(durationSeconds)
+      countdownRef.current = null
+      return
+    }
     const countdown = createPracticeCountdown(durationSeconds, setSeconds, () => onCompleteRef.current())
-    return () => countdown.cancel()
+    countdownRef.current = countdown
+    return () => {
+      countdown.cancel()
+      countdownRef.current = null
+    }
   }, [durationSeconds, active])
-  return <>00:{String(seconds).padStart(2, '0')}</>
+  return <span className="countdown-controls">
+    <span role="timer" aria-label={`${seconds} seconds remaining`}>00:{String(seconds).padStart(2, '0')}</span>
+    {active && seconds > 0 && <>
+      <button type="button" className="timer-control" onClick={() => {
+        if (paused) countdownRef.current?.resume()
+        else countdownRef.current?.pause()
+        setPaused(!paused)
+      }}>{paused ? 'Resume' : 'Pause'}</button>
+      <button type="button" className="timer-control" onClick={() => countdownRef.current?.addSeconds(10)}>+10s</button>
+    </>}
+  </span>
 }
 
 function SequentialPracticeView({
@@ -156,7 +177,7 @@ function SequentialPracticeView({
       {session.primaryPhase === 'acquisition' && session.segment === 'primary' && <button className="replay-button" onClick={() => onAnswer('done')}>Done for today</button>}
       {session.primaryPhase === 'test-review' && <button className="replay-button" onClick={() => onAnswer('skip-test-review')}>Exit without saving</button>}
     </div>
-    <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+    <div className="practice-progress" role="progressbar" aria-label="Practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${session.stage === 'warmup-intro' || session.stage === 'interstitial' || session.stage === 'complete' ? 'interstitial-card' : ''}${showingWritingResponse ? ` tier1-writing-card is-${session.stage}` : ''}`}>
       {session.stage === 'warmup-intro' && <><div className="interstitial-mark"><Sparkles size={25} /></div><p className="eyebrow">{warmupRequired ? 'Required before this activity' : 'Optional before this activity'}</p><h1>Warm up</h1><p className="practice-helper">{warmupRequired ? 'Complete these warmup words before continuing.' : 'Warm up first, or continue directly to the activity.'}</p><button className="primary-button" onClick={onBeginWarmup}>Begin Warmup <ArrowLeft size={17} /></button>{!warmupRequired && !session.warmupOnly && <button className="replay-button" onClick={() => onAnswer('skip-warmup')}>Skip Warmup</button>}</>}
       {session.stage === 'interstitial' && <><div className="interstitial-mark"><Volume2 size={25} /></div><p className="eyebrow">{isWarmup ? 'Warm up' : phaseLabel(session.primaryPhase)}</p><h1>{isWarmup ? `Warmup word ${session.index + 1}` : `Word ${session.index + 1}`}</h1><p className="practice-helper">Listen carefully, then write what you hear.</p>{term && allowOptionalReplay && <button className="replay-button" onClick={replayAudio}><Volume2 size={16} /> Play word audio</button>}</>}

@@ -9,7 +9,6 @@ import {
   requireFamilyBetaGrade,
   requireFirebaseResourceId,
   requireFullGitRevision,
-  rollbackChannelId,
   verifyFamilyBetaArtifact,
   type FamilyBetaGrade,
 } from './familyBetaRelease.ts'
@@ -57,9 +56,16 @@ function environmentSite(grade: FamilyBetaGrade) {
     : environment.FAMILY_BETA_GRADE5_SITE_ID
 }
 
+function environmentRollbackSite(grade: FamilyBetaGrade) {
+  return grade === 'kindergarten'
+    ? environment.FAMILY_BETA_KINDERGARTEN_ROLLBACK_SITE_ID
+    : environment.FAMILY_BETA_GRADE5_ROLLBACK_SITE_ID
+}
+
 function deliveryIdentity() {
   const grade = requireFamilyBetaGrade(flag('--grade'))
   const expectedSiteId = familyBetaGradeConfig[grade].siteId
+  const expectedRollbackSiteId = familyBetaGradeConfig[grade].rollbackSiteId
   const projectId = requireFirebaseResourceId(
     flag('--project') || environment.FAMILY_BETA_FIREBASE_PROJECT_ID || FAMILY_BETA_FIREBASE_PROJECT_ID,
     'Family beta project ID',
@@ -68,18 +74,29 @@ function deliveryIdentity() {
     flag('--site') || environmentSite(grade) || expectedSiteId,
     'Family beta site ID',
   )
+  const rollbackSiteId = requireFirebaseResourceId(
+    flag('--rollback-site') || environmentRollbackSite(grade) || expectedRollbackSiteId,
+    'Family beta rollback site ID',
+  )
   if (projectId !== FAMILY_BETA_FIREBASE_PROJECT_ID) {
     throw new Error(`Family beta delivery is locked to Firebase project ${FAMILY_BETA_FIREBASE_PROJECT_ID}.`)
   }
   if (siteId !== expectedSiteId) {
     throw new Error(`${familyBetaGradeConfig[grade].displayName} delivery is locked to Hosting site ${expectedSiteId}.`)
   }
+  if (rollbackSiteId !== expectedRollbackSiteId) {
+    throw new Error(
+      `${familyBetaGradeConfig[grade].displayName} rollback is locked to Hosting site ${expectedRollbackSiteId}.`,
+    )
+  }
   if (/(?:^|-)staging(?:-|$)|(?:^|-)stg(?:-|$)/.test(projectId)) {
     throw new Error('Family beta delivery cannot target the synthetic staging project.')
   }
   if (flag('--confirm-project') !== projectId) throw new Error(`Repeat --confirm-project ${projectId} exactly.`)
   if (flag('--confirm-site') !== siteId) throw new Error(`Repeat --confirm-site ${siteId} exactly.`)
-  return { grade, projectId, siteId } satisfies FamilyBetaDeliveryIdentity
+  if (flag('--confirm-rollback-site') !== rollbackSiteId)
+    throw new Error(`Repeat --confirm-rollback-site ${rollbackSiteId} exactly.`)
+  return { grade, projectId, siteId, rollbackSiteId } satisfies FamilyBetaDeliveryIdentity
 }
 
 function assertCleanWorktree() {
@@ -93,13 +110,13 @@ function renderPlan(commands: readonly (readonly string[])[]) {
   if (!execute) console.log('No Firebase state changed. Repeat with --execute after review.')
 }
 
-function channels(identity: FamilyBetaDeliveryIdentity) {
+function channels(identity: FamilyBetaDeliveryIdentity, siteId = identity.siteId) {
   const raw = run([
     'npx',
     'firebase',
     'hosting:channel:list',
     '--site',
-    identity.siteId,
+    siteId,
     '--project',
     identity.projectId,
     '--json',
@@ -108,9 +125,9 @@ function channels(identity: FamilyBetaDeliveryIdentity) {
   return parsed.result?.channels || []
 }
 
-function channel(identity: FamilyBetaDeliveryIdentity, channelId: string) {
-  const match = channels(identity).find((item) => item.name.endsWith(`/channels/${channelId}`))
-  if (!match) throw new Error(`Hosting channel ${identity.siteId}:${channelId} does not exist.`)
+function channel(identity: FamilyBetaDeliveryIdentity, siteId: string, channelId: string) {
+  const match = channels(identity, siteId).find((item) => item.name.endsWith(`/channels/${channelId}`))
+  if (!match) throw new Error(`Hosting channel ${siteId}:${channelId} does not exist.`)
   return match
 }
 
@@ -123,15 +140,20 @@ function assertNoLiveRelease(identity: FamilyBetaDeliveryIdentity) {
   }
 }
 
-async function verifyHostedRevision(identity: FamilyBetaDeliveryIdentity, channelId: string, revision: string) {
+async function verifyHostedRevision(
+  identity: FamilyBetaDeliveryIdentity,
+  siteId: string,
+  channelId: string,
+  revision: string,
+) {
   const expected = requireFullGitRevision(revision)
-  const hosted = channel(identity, channelId)
+  const hosted = channel(identity, siteId, channelId)
   const response = await fetch(hosted.url, { redirect: 'follow' })
   if (!response.ok) throw new Error(`Hosted revision check failed with HTTP ${response.status}.`)
   if (!(await response.text()).includes(`revision=${expected}`)) {
-    throw new Error(`Hosting channel ${identity.siteId}:${channelId} does not expose revision ${expected}.`)
+    throw new Error(`Hosting channel ${siteId}:${channelId} does not expose revision ${expected}.`)
   }
-  console.log(`Verified ${identity.siteId}:${channelId} at ${hosted.url} as revision ${expected}.`)
+  console.log(`Verified ${siteId}:${channelId} at ${hosted.url} as revision ${expected}.`)
 }
 
 async function preview(identity: FamilyBetaDeliveryIdentity) {
@@ -146,7 +168,7 @@ async function preview(identity: FamilyBetaDeliveryIdentity) {
     renderPlan(plan.commands)
     if (!execute) return
     for (const command of plan.commands) run(command)
-    await verifyHostedRevision(identity, plan.channel, manifest.sourceRevision)
+    await verifyHostedRevision(identity, identity.siteId, plan.channel, manifest.sourceRevision)
   } finally {
     rmSync(configPath, { force: true })
   }
@@ -167,12 +189,12 @@ async function promote(identity: FamilyBetaDeliveryIdentity) {
   renderPlan(plan.commands)
   if (!execute) return
   assertCleanWorktree()
-  await verifyHostedRevision(identity, candidateChannelId(revision), revision)
+  await verifyHostedRevision(identity, identity.siteId, candidateChannelId(revision), revision)
   if (initialRelease) assertNoLiveRelease(identity)
-  if (previousRevision) await verifyHostedRevision(identity, 'live', previousRevision)
+  if (previousRevision) await verifyHostedRevision(identity, identity.siteId, 'live', previousRevision)
   for (const command of plan.commands) run(command)
-  if (previousRevision) await verifyHostedRevision(identity, rollbackChannelId(previousRevision), previousRevision)
-  await verifyHostedRevision(identity, 'live', revision)
+  if (previousRevision) await verifyHostedRevision(identity, identity.rollbackSiteId, 'live', previousRevision)
+  await verifyHostedRevision(identity, identity.siteId, 'live', revision)
 }
 
 async function rollback(identity: FamilyBetaDeliveryIdentity) {
@@ -182,9 +204,9 @@ async function rollback(identity: FamilyBetaDeliveryIdentity) {
   renderPlan(plan.commands)
   if (!execute) return
   assertCleanWorktree()
-  await verifyHostedRevision(identity, plan.source, revision)
+  await verifyHostedRevision(identity, identity.rollbackSiteId, 'live', revision)
   for (const command of plan.commands) run(command)
-  await verifyHostedRevision(identity, 'live', revision)
+  await verifyHostedRevision(identity, identity.siteId, 'live', revision)
 }
 
 if (!['preview', 'promote', 'rollback'].includes(operation)) {

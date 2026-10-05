@@ -268,7 +268,14 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
           </span>
         </span>
       </div>
-      <div className="practice-progress">
+      <div
+        className="practice-progress"
+        role="progressbar"
+        aria-label="Test Review progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
         <span style={{ width: `${progress}%` }} />
       </div>
       <section className="prompt-card deferred-collection-card">

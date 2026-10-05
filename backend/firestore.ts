@@ -1,12 +1,28 @@
-import { importLogIdFor, isDuplicateOnlyBatch, type ExistingDatasetReference, type ImportBatchOutcome } from '../src/slidesImporter.ts'
+import { createHash } from 'node:crypto'
+import {
+  importLogIdFor,
+  isDuplicateOnlyBatch,
+  normalizeImportBatchForComparison,
+  type ExistingDatasetReference,
+  type ImportBatchOutcome,
+} from '../src/slidesImporter.ts'
 
 type FetchLike = typeof fetch
 type FirestoreValue = Record<string, unknown>
 
+function requestInit(init: RequestInit = {}): RequestInit {
+  return {
+    ...init,
+    signal: init.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(20_000)])
+      : AbortSignal.timeout(20_000),
+  }
+}
+
 export async function firestoreAccessToken(fetchImpl: FetchLike = fetch) {
   const configured = process.env.FIRESTORE_ACCESS_TOKEN
   if (configured) return configured
-  const response = await fetchImpl('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', { headers: { 'Metadata-Flavor': 'Google' } })
+  const response = await fetchImpl('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', requestInit({ headers: { 'Metadata-Flavor': 'Google' } }))
   const body = await response.json().catch(() => ({})) as { access_token?: string; error?: string }
   if (!response.ok || !body.access_token) throw new Error(`Cloud Run service-account authorization failed: ${body.error || response.statusText}`)
   return body.access_token
@@ -36,7 +52,7 @@ export async function listDatasetReferences(projectId: string, accessToken: stri
   let pageToken = ''
   do {
     const query = new URLSearchParams({ pageSize: '300' }); if (pageToken) query.set('pageToken', pageToken)
-    const response = await fetchImpl(`${firestoreUrl(projectId, '/datasets')}?${query}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+    const response = await fetchImpl(`${firestoreUrl(projectId, '/datasets')}?${query}`, requestInit({ headers: { Authorization: `Bearer ${accessToken}` } }))
     const body = await responseBody(response)
     if (!response.ok) throw new Error(`Firestore read failed: ${typeof body.error === 'object' && body.error && 'message' in body.error ? body.error.message : response.statusText}`)
     for (const document of Array.isArray(body.documents) ? body.documents : []) {
@@ -90,12 +106,57 @@ function writesForBatch(batch: ImportBatchOutcome, projectId: string, importedAt
 export async function writeImportBatch(projectId: string, accessToken: string, batch: ImportBatchOutcome, fetchImpl: FetchLike = fetch, importedAt = new Date().toISOString()) {
   if (batch.status === 'error' && !isDuplicateOnlyBatch(batch)) throw new Error('Firestore write refused because the deck produced no valid datasets.')
   const writes = writesForBatch(batch, projectId, importedAt)
+  const canonicalBatch = normalizeImportBatchForComparison(batch)
+  const runId = `import-run-${createHash('sha256').update(JSON.stringify(canonicalBatch)).digest('hex').slice(0, 32)}`
+  const chunkSize = 449
+  const chunkCount = Math.max(1, Math.ceil(writes.length / chunkSize))
   let written = 0
-  for (let offset = 0; offset < writes.length; offset += 450) {
-    const response = await fetchImpl(`${firestoreUrl(projectId, '')}:commit`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes: writes.slice(offset, offset + 450) }) })
+  for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+    const offset = chunkIndex * chunkSize
+    const chunk = writes.slice(offset, offset + chunkSize)
+    const committedDocumentCount = offset + chunk.length
+    const status = chunkIndex === chunkCount - 1 ? 'complete' : 'running'
+    const runWrite = {
+      update: {
+        name: documentName(projectId, `importRuns/${runId}`),
+        ...fields({
+          id: runId,
+          status,
+          expectedDocumentCount: writes.length,
+          committedDocumentCount,
+          chunkCount,
+          completedChunkCount: chunkIndex + 1,
+          repairStrategy: 'replay-all-idempotent',
+          importedAt,
+          updatedAt: new Date().toISOString(),
+        }),
+      },
+    }
+    const response = await fetchImpl(`${firestoreUrl(projectId, '')}:commit`, requestInit({ method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes: [runWrite, ...chunk] }) }))
     const body = await responseBody(response)
-    if (!response.ok) throw new Error(`Firestore write failed: ${typeof body.error === 'object' && body.error && 'message' in body.error ? body.error.message : response.statusText}`)
-    written += Math.min(450, writes.length - offset)
+    if (!response.ok) {
+      const failure = `Firestore write failed: ${typeof body.error === 'object' && body.error && 'message' in body.error ? body.error.message : response.statusText}`
+      const failedRunWrite = {
+        update: {
+          name: documentName(projectId, `importRuns/${runId}`),
+          ...fields({
+            id: runId,
+            status: 'failed',
+            expectedDocumentCount: writes.length,
+            committedDocumentCount: written,
+            chunkCount,
+            completedChunkCount: chunkIndex,
+            repairStrategy: 'replay-all-idempotent',
+            importedAt,
+            updatedAt: new Date().toISOString(),
+            error: failure,
+          }),
+        },
+      }
+      await fetchImpl(`${firestoreUrl(projectId, '')}:commit`, requestInit({ method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes: [failedRunWrite] }) })).catch(() => undefined)
+      throw new Error(failure)
+    }
+    written = committedDocumentCount
   }
-  return { written, datasetCount: batch.datasets.length, documentCount: writes.length }
+  return { written, datasetCount: batch.datasets.length, documentCount: writes.length, runId, status: 'complete' as const }
 }

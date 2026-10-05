@@ -4,7 +4,7 @@ import { openGrade2LearningActivity } from './learningHub.ts'
 
 test('profile manager traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
   await page.goto('/')
-  const trigger = page.getByRole('button', { name: 'R Grade 2' })
+  const trigger = page.getByRole('button', { name: 'A Grade 2' })
 
   await trigger.click()
 

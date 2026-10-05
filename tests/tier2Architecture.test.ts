@@ -66,6 +66,7 @@ test('the Tier 2 boundary is imported only by approved reading integration surfa
   const approvedConsumers = new Set([
     'src/App.tsx',
     'src/grade2/learningHub.ts',
+    'src/home/HomeViews.tsx',
     'src/grade5Lab/readingPractice.ts',
     'src/grade5LearningHubHarness.tsx',
     'src/kindergartenLab/readingPractice.ts',

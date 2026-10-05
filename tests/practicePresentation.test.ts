@@ -130,6 +130,21 @@ test('an external replay action does not reset or complete the countdown', () =>
   assert.equal(completions, 1)
 })
 
+test('a countdown can pause, resume, and grant extra response time', () => {
+  const clock = fakeScheduler()
+  const ticks: number[] = []
+  let completions = 0
+  const countdown = createPracticeCountdown(2, (seconds) => ticks.push(seconds), () => { completions += 1 }, clock.scheduler)
+  countdown.pause()
+  assert.equal(clock.pendingCount, 0)
+  countdown.addSeconds(10)
+  assert.deepEqual(ticks, [2, 12])
+  countdown.resume()
+  for (let index = 0; index < 12; index += 1) clock.runNext()
+  assert.equal(completions, 1)
+  assert.equal(ticks.at(-1), 0)
+})
+
 test('only show-and-copy prompts expose a word during the writing frame', () => {
   assert.equal(wordIsVisibleDuringWriting('show-copy'), true)
   assert.equal(wordIsVisibleDuringWriting('familiar-dt'), false)

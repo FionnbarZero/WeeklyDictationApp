@@ -98,7 +98,10 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
 })
 
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
-  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const app = [
+    readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'),
+    readFileSync(new URL('../src/home/HomeViews.tsx', import.meta.url), 'utf8'),
+  ].join('\n')
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /grade2LearningHubView/)
   assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)

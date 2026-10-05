@@ -28,12 +28,15 @@ test('browser source has no shared dataset or import-log writer path', () => {
 })
 
 test('dashboard exposes separate Acquisition and Test Review start controls', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/home/HomeViews.tsx'), 'utf8'),
+  ].join('\n')
   assert.match(source, /'Start Acquisition'/)
   assert.match(source, /'Start Test Review'/)
   assert.match(source, /onClick=\{\(\) => onStart\(target\)\}/)
   assert.match(source, /acquisitionTarget && <PracticeLaneCard/)
-  assert.match(source, /testReviewTarget && <PracticeLaneCard/)
+  assert.match(source, /testReviewTarget && \(\s*<PracticeLaneCard/)
   assert.match(source, /target\.reviewDatasets \|\| \[target\.dataset\]/)
 })
 
@@ -55,14 +58,21 @@ test('cloud state reloads when a child grade changes', () => {
 })
 
 test('an unsupported grade shows an explicit setup state while preserving history access', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
-  assert.match(source, /!practiceProfile && <UnsupportedPracticeView/)
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/home/HomeViews.tsx'), 'utf8'),
+  ].join('\n')
+  assert.match(source, /!practiceProfile && \(\s*<LazyUnsupportedPracticeView/)
   assert.match(source, /Practice for \{child\.grade\} is not configured yet\. Existing datasets and history remain available\./)
-  assert.match(source, /function UnsupportedPracticeView[\s\S]*onClick=\{onHistory\}>View progress/)
+  assert.match(source, /export function UnsupportedPracticeView/)
+  assert.match(source, /action="View progress"[\s\S]*onAction=\{onHistory\}/)
 })
 
 test('lifecycle classification is independent from practice availability and has no date fallback', () => {
-  const source = readFileSync(sourcePath('src/App.tsx'), 'utf8')
+  const source = [
+    readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/home/HomeViews.tsx'), 'utf8'),
+  ].join('\n')
   assert.match(source, /const lifecycleStrategy = lifecycleStrategyForGradeAndSchoolYear/)
   assert.match(source, /lifecycleStrategy \? resolveDatasetLifecycles/)
   assert.doesNotMatch(source, /practiceProfile \? resolveDatasetLifecycles/)
@@ -79,7 +89,7 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
     readFileSync(sourcePath('src/infrastructure/firestoreWorkspace.ts'), 'utf8'),
     readFileSync(sourcePath('src/application/workspace/recoverPendingTransitions.ts'), 'utf8'),
   ].join('\n')
-  assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\), currentRevealMethod: revealMethod, stage: 'review'/)
+  assert.match(source, /acquisition: revealAcquisitionPrompt\(current\.acquisition\),\s*currentRevealMethod: revealMethod,\s*stage: 'review'/)
   assert.match(source, /session\.segment === 'primary' \? session\.acquisition\?\.prompt : undefined/)
   assert.match(source, /wordIsVisibleDuringWriting\(acquisitionPrompt\?\.kind\)/)
   assert.match(source, /<SkyWritingAcquisition key=\{writingResponseId\} word=\{term\.text\} phase="writing" traceTarget=\{showCopy\}/)
@@ -105,6 +115,7 @@ test('Acquisition UI reveals every trial and visibly distinguishes only show-and
 test('practice UI exposes approved exit, resume, and Done for today controls', () => {
   const source = [
     readFileSync(sourcePath('src/App.tsx'), 'utf8'),
+    readFileSync(sourcePath('src/home/HomeViews.tsx'), 'utf8'),
     readFileSync(sourcePath('src/practice/PracticeView.tsx'), 'utf8'),
   ].join('\n')
   assert.match(source, />Skip Warmup</)
@@ -122,7 +133,7 @@ test('header navigation preserves Acquisition as partial and abandons provisiona
   ].join('\n')
   assert.match(source, /const leavePractice = \(nextView: BaseView\) =>/)
   assert.match(source, /const exitPractice = \(\) => leavePractice\('home'\)/)
-  assert.match(source, /if \(view === 'practice'\) \{ leavePractice\(nextView\); return \}/)
+  assert.match(source, /if \(view === 'practice'\) \{\s*leavePractice\(nextView\)\s*return\s*\}/)
   assert.match(source, /current\?\.primaryPhase === 'acquisition'[\s\S]*input\.persistence\.updateCloudSession[\s\S]*status: 'partial'[\s\S]*input\.persistence\.abandonCloudSession/)
 })
 

@@ -39,10 +39,13 @@ const initialCssFiles = new Set(initialChunks.flatMap((chunk) => chunk.css || []
 const initialCss = [...initialCssFiles].reduce((total, file) => total + statSync(resolve(dist, file)).size, 0)
 
 const requiredLazyChunks = [
+  'AuthScreen',
   'PracticeView',
   'HistoryView',
   'Tier2ReadingPractice',
   'LocalBackupTools',
+  'HomeViews',
+  'ProfileModal',
   'Grade2StrokeOrderExperience',
 ]
 for (const chunkName of requiredLazyChunks) {

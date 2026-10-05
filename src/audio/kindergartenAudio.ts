@@ -1,4 +1,4 @@
-import manifest from '../../public/audio/kindergarten/manifest.json' with { type: 'json' }
+import manifest from './kindergarten/manifest.json' with { type: 'json' }
 import type { Word } from '../domain/contracts.ts'
 import { approvedContextTextForGradeTarget } from '../curriculum/contextCatalog.ts'
 import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'

@@ -104,7 +104,14 @@ function DatasetGraph({ dataset, scores }: { dataset: Dataset; scores: DatasetSc
                   {phaseLabel(score.phase)} · {score.correct}/{score.wordCount} correct
                 </span>
               </div>
-              <div className="score-bar">
+              <div
+                className="score-bar"
+                role="progressbar"
+                aria-label={`${score.sessionDate} ${phaseLabel(score.phase)} score`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={score.percent}
+              >
                 <span style={{ width: `${score.percent}%` }} />
               </div>
               <strong className="score-number">{score.percent}%</strong>
