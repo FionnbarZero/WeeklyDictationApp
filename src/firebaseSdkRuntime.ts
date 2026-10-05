@@ -1,6 +1,6 @@
 import type { FirebaseApp } from 'firebase/app'
 import type { AppCheck } from 'firebase/app-check'
-import { deploymentEnvironment, firebaseAppCheckSiteKey, firebaseConfig, firebaseConfigReady } from './config.ts'
+import { deploymentEnvironment, firebaseAppCheckSiteKey, firebaseConfig, firebaseConfigReady } from './runtimeConfig.ts'
 
 let firebaseAppPromise: Promise<FirebaseApp> | null = null
 let appCheckPromise: Promise<AppCheck | null> | null = null

@@ -1,5 +1,6 @@
 {
-  "initialJavaScriptBytes": 550000,
+  "initialJavaScriptBytes": 500000,
+  "initialJavaScriptGzipBytes": 165000,
   "initialCssBytes": 60000,
   "initialWorkspaceReadOperations": 15,
   "initialDatasetWordRecords": 10000,

@@ -97,11 +97,13 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
 
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const grade2Home = readFileSync(new URL('../src/grade2/Grade2HomeView.tsx', import.meta.url), 'utf8')
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
-  assert.match(app, /grade2LearningHubView/)
-  assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
-  assert.match(app, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
-  assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
-  assert.match(app, /else onStartWarmup\(\)/)
+  assert.match(app, /lazy\(\(\) => import\('\.\/grade2\/Grade2HomeView\.tsx'\)\)/)
+  assert.match(grade2Home, /grade2LearningHubView/)
+  assert.match(grade2Home, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
+  assert.match(grade2Home, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
+  assert.match(grade2Home, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
+  assert.match(grade2Home, /else onStartWarmup\(\)/)
   assert.match(main, /learningHub\/learningHub\.css/)
 })
