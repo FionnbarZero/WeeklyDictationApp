@@ -1,5 +1,7 @@
 # Ninja Skills integration plan for all grades
 
+The audited follow-on work for Kindergarten, Grade 2, and Grade 5 authoritative data plus the separate Enter the Dojo Stroke Order experience is recorded in [`source-data-stroke-order-integration-plan.md`](source-data-stroke-order-integration-plan.md). Its branch handoff gate must be satisfied before integrating the active Stroke Order worktree.
+
 Weekly Dictation will expose the same six learning modules inside **Practice your Ninja Skills** for every supported grade from Kindergarten through Grade 5. The modules are transplanted, lazy-loaded React components rather than a separate game application. Grade profiles and authoritative curriculum adapters determine which cohort is used, how source content becomes module rounds, and whether each module has enough reviewed data to launch safely.
 
 The learning modules will not read Google files directly, own curriculum selection, or change Acquisition, Test Review, or Mastery state. Weekly Dictation remains responsible for authoritative content, lifecycle selection, persistence, and learning-outcome language.
