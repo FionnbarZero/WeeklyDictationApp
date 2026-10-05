@@ -8,5 +8,6 @@
 | [0004](./0004-reproducible-dependency-policy.md) | Pin direct dependencies and isolate upgrades | Accepted |
 | [0005](./0005-kindergarten-writing-only-until-tier2-release.md) | Keep Kindergarten writing-only until Tier 2 receives a separate release decision | Accepted |
 | [0006](./0006-isolated-synthetic-staging.md) | Isolate staging and restrict it to synthetic data | Accepted |
+| [0007](./0007-parallel-stroke-order-acquisition-comparison.md) | Run Stroke Order as a parallel, isolated Acquisition comparison | Accepted |
 
 New ADRs use the next four-digit number and state context, decision, and consequences. Superseded ADRs remain in this directory and link to their replacement.
