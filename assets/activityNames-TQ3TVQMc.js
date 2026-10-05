@@ -1,0 +1,1 @@
+var e={dojo:`Enter the Dojo`,ninjaSkills:`Practice your Ninja Skills`,finalBoss:`The Final Boss Test`,spiritRealm:`Enter the Spirit Realm`};export{e as t};

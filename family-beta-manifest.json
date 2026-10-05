@@ -1,80 +1,186 @@
 {
-  "schema": "weekly-dictation-family-beta-artifact-v1",
-  "grade": "grade2",
-  "displayName": "Grade 2",
-  "status": "Family beta",
-  "persistence": "Tier 1 writing and Tier 2 reading metadata are durable",
-  "applicationVersion": "0.2.0-stage2",
-  "sourceRevision": "ff52db8d6a995f6c6707f7944cfcdd031d0543b4",
-  "sourceCommittedAt": "2026-10-04T05:47:03-07:00",
-  "dirty": false,
-  "entry": "index.html",
-  "build": {
-    "command": "npm run package:family-beta -- --grade grade2 --curriculum-snapshot public/curriculum/grade2-presentation.json",
-    "node": "v26.8.1",
-    "npm": "11.19.0",
-    "packageLockSha256": "0e66c1e5c258fef5f523e36ec671d949d64566472f3fbaa2c70a23e90f2daa2d"
-  },
-  "curriculumSource": {
-    "type": "google-slides",
-    "documentId": "10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4",
-    "documentUrl": "https://docs.google.com/presentation/d/10gpdTFqwBhWf9pD9HzF8AkD9Zyg7nBUSeTCGXuS8ky4",
-    "retrievedAt": "2026-10-04T04:08:00.000Z",
-    "contentSha256": "147c2eac63011c79fa83655102939931fc3a1611a6f6e091923800c8be34690c",
-    "artifactPath": "curriculum/grade2-presentation.json",
-    "datasetCount": 6
-  },
-  "fileTreeSha256": "abc130c77cf7c40c386cb61b6fbb3cf7a40996edae873bb6ddd4ab7662fe448a",
+  "schema": 1,
+  "grade": "Grade 2",
+  "sourceRevision": "f4ef04f1e9898a21553ade00db425bcd8d897bc0",
+  "curriculumEndpoint": "https://weekly-dictation-curriculum-am3afdy42a-uc.a.run.app/curriculum/beta",
+  "persistence": "Completed scores and problem reports stay in this browser only; recordings are session-only.",
+  "entry": "family-beta-preview.html?grade=grade2",
+  "fileTreeSha256": "a1a6937cf7740a72150fedd0575d495c09da2109ce742066f884def44d27a006",
   "files": [
     {
       "path": ".nojekyll",
-      "bytes": 1,
-      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "assets/app-DUvxdQJb.css",
-      "bytes": 45992,
-      "sha256": "a5490632df925b2f6f2e294abf7f617ad07c74dc2d92bef604238cabd3f93c80"
+      "path": ".vite/manifest.json",
+      "bytes": 20779,
+      "sha256": "8607696962c3a3e49db1748eaeeb4e5443d5c4276e6bc70243776f925b302bb9"
     },
     {
-      "path": "assets/app-DWoNMjDd.js",
-      "bytes": 517553,
-      "sha256": "e827d90229b49fe72b97f56421dfec2b9c401e603b24d2363fddbaaabf3a3d07"
+      "path": "assets/activityNames-TQ3TVQMc.js",
+      "bytes": 155,
+      "sha256": "abe5647d55ddb576674f841e3aebd4dae8e93df13835196f33a5156d099352bd"
     },
     {
-      "path": "assets/AuthScreen-XIobtnHW.js",
-      "bytes": 2335,
-      "sha256": "716cac4a8d1cb3f2c716b01d0f6644f6688db88ba0a22ade416202c8f4169148"
+      "path": "assets/app-DfymLKt2.js",
+      "bytes": 145609,
+      "sha256": "267c6bcfd64a4c313a9a84d4aa8f25b8bde6d1a27aa9df79d8a1fa9fb70fb8bd"
     },
     {
-      "path": "assets/automaticGrade2Curriculum-B4VpxcPD.js",
-      "bytes": 3570,
-      "sha256": "fc1bceb90adbc5147204e1166b15a062b049917cbcc7cd24c91181407847b191"
+      "path": "assets/AppErrorBoundary-CZ1M6S5v.js",
+      "bytes": 61725,
+      "sha256": "fb7a53108377bf150c3154e06edf58579a580e360c66e80aa7a473344f751b4b"
     },
     {
-      "path": "assets/browserSpeech-DJ_bY9Rq.js",
-      "bytes": 6508,
-      "sha256": "ea5914ea30fbaab6a346d4bff91bcbeb86f34667e31dff5696d285460723e2aa"
+      "path": "assets/audioRecorder-CnQCxI5n.js",
+      "bytes": 3861,
+      "sha256": "7477735f05e9d654decc6ced435203f5a9fcbfce7f59ef4f1671377941f32635"
     },
     {
-      "path": "assets/config-CGcQAF4I.js",
-      "bytes": 6947,
-      "sha256": "177efe977eed7694a7c548a28cdf8941ca9f09db1efed6713f7948d6db8d2a49"
+      "path": "assets/AuthScreen-Dz7FYh2C.js",
+      "bytes": 2472,
+      "sha256": "7f655ba8858fc01d2f814b770d6b009c4b6be4ca7c89798826e44fe4ef2cf748"
     },
     {
-      "path": "assets/EmptyPracticeViews-C7zamE2q.js",
-      "bytes": 4409,
-      "sha256": "07cf93bf3cab2a5a4adc5eced5c1ffa089364ff29ce7ead8fff58465767520b0"
+      "path": "assets/automaticGrade2Curriculum-CGgWpMlR.js",
+      "bytes": 3633,
+      "sha256": "91d9a77f83779292f7c5e603ceef86fd5b66df34e6c787305199e8b46480c4b6"
     },
     {
-      "path": "assets/engine-DHkT6is5.js",
-      "bytes": 8781,
-      "sha256": "4fc1dcf9c96e4f24d27e8dfdcf1ad497b88688a38fdc6754b0f8c763a03cabbc"
+      "path": "assets/clock-3-6TOiCbka.js",
+      "bytes": 200,
+      "sha256": "347eabac12c3b98f136091fac50c68c340b2076593b7a93dc58bc670dae1c675"
     },
     {
-      "path": "assets/HistoryView-DRR2CtRz.js",
-      "bytes": 7887,
-      "sha256": "5ce04cf0ec2397309d26f835d26be65d043515d3ef8af48919c6e2b898d28c6d"
+      "path": "assets/curriculum-BjEC4MI3.js",
+      "bytes": 15816,
+      "sha256": "8518ceb1f8f4b78aaa8666d06d397d7a03cddc330015c84ae0c7700e20ec3aa5"
+    },
+    {
+      "path": "assets/DeferredTestReview-BY5W0ZgX.js",
+      "bytes": 22116,
+      "sha256": "bf1c8d427f46ac22adf35b2ae01b6157fb8abe3fbc2f94b458cbde5620a08f9f"
+    },
+    {
+      "path": "assets/DeferredTestReview-DdxBD_UQ.css",
+      "bytes": 18342,
+      "sha256": "2175b4eb32189e2fb098275594a2f813a7147b8763a05e7a4e0f7e554991a3aa"
+    },
+    {
+      "path": "assets/eraser-C-XXP4W1.js",
+      "bytes": 313,
+      "sha256": "ba55d8573be21d36cf71a8bf1fc647553267e2376b07235bbd6598abe9ff3b0e"
+    },
+    {
+      "path": "assets/familyPreview-1PCxYbE7.js",
+      "bytes": 16696,
+      "sha256": "33fe726864d405803064f811e4dea3f5b9b0f31224cada1d5a0a2436cb1a52dd"
+    },
+    {
+      "path": "assets/flip-Bzh_Qn5N.wav",
+      "bytes": 28268,
+      "sha256": "79eef0c94da2947a0110b8c3c26520ec9b3bbcd7eb1ff56da3663cac4e294a14"
+    },
+    {
+      "path": "assets/Game-B1fOohN3.js",
+      "bytes": 10788,
+      "sha256": "64b52b6cf3699fabe657dbb5a0a83a03b00ec7853d609904997a046a4176e487"
+    },
+    {
+      "path": "assets/Game-BAUJWe1H.css",
+      "bytes": 23284,
+      "sha256": "9c76af77f7bb2dcc61df528d028af0fd16c9ffbe20bf3c59fdf4718be11ead33"
+    },
+    {
+      "path": "assets/Game-C-UIWUzd.css",
+      "bytes": 24233,
+      "sha256": "99ec4e9b5fd28d4b7dd49f943e0ef04be9b2f653c0c19fb26691b1749456f7f2"
+    },
+    {
+      "path": "assets/Game-C9YgSk3n.css",
+      "bytes": 47006,
+      "sha256": "ac390f2e84334caae1b5aeaa112bbbe339c81eea2f9fd2251bc4ad87477447bb"
+    },
+    {
+      "path": "assets/Game-CFAynTOy.js",
+      "bytes": 10169,
+      "sha256": "f32210a6610fa2a2de5d5150e4b1b568cbd30d922b31ab68ddc75b5caed4beb9"
+    },
+    {
+      "path": "assets/Game-CLKk4ftq.js",
+      "bytes": 1402718,
+      "sha256": "c7b41a5ffd7f86b4edc63b548c761dc2fb0df8c6189bc355c98ac010e21518cb"
+    },
+    {
+      "path": "assets/Game-D7LVRV--.js",
+      "bytes": 11905,
+      "sha256": "29a76698a4c91020f737805df2ca9d33fe24baae798d677efb892a43295ee9a4"
+    },
+    {
+      "path": "assets/Game-DHtGEjnR.css",
+      "bytes": 29166,
+      "sha256": "fe6b0975b35e684759d8b2da3d8ec33c2ebdd57c2b5283ae0e9b30da9ab650e8"
+    },
+    {
+      "path": "assets/Game-DkcBqata.js",
+      "bytes": 13597,
+      "sha256": "2adaff5085d3e540330b9c70a9a5efc407b4f34cb23d78bc797d7fdcf3f03a4e"
+    },
+    {
+      "path": "assets/Game-Dt7Dzhm6.js",
+      "bytes": 16120,
+      "sha256": "c27ab91efba393c7e99bd24a0cd1fa45089fe9631e52ebdc53e68b603564ec67"
+    },
+    {
+      "path": "assets/Game-DvEQgiy1.css",
+      "bytes": 17089,
+      "sha256": "f205638dedab9bf831f5540b073c73dcf04b932d3d3d9301c3c69a88bd02af5e"
+    },
+    {
+      "path": "assets/Game-Dvxlnsf_.css",
+      "bytes": 21784,
+      "sha256": "cdd9536421323cce689363171fddf9dd183ea8d893752d253da5cff96ce2e259"
+    },
+    {
+      "path": "assets/games-CZeGA5h7.js",
+      "bytes": 10457,
+      "sha256": "16116330f245ddc229a050a058ad2cd6c941726ad640786fffdde97dfd4a4ac2"
+    },
+    {
+      "path": "assets/grade2Adapter-BpRKnXh4.js",
+      "bytes": 689,
+      "sha256": "c14e0cff23ae3824cf6a0d5c794c748fd41010d058b7e946c3e7a070530af680"
+    },
+    {
+      "path": "assets/Grade2StrokeOrderExperience-DY8oSTiO.js",
+      "bytes": 730,
+      "sha256": "0d2cd0063ac14832cdde36ab531d2bca3b46aeb80cc539eae9fc5242143406e7"
+    },
+    {
+      "path": "assets/grade5-presentation-DsmzqBQg.json",
+      "bytes": 7996,
+      "sha256": "78e8c614814cf34bf711e596ae5cfaaa7799d7d353416f6c1775d3f09648844f"
+    },
+    {
+      "path": "assets/grade5LearningHub-CwxLDzaA.css",
+      "bytes": 3239,
+      "sha256": "94ea2e5e8b6fd87fa011e411bb906c37ef0cb1a2fe322769c719a00d042529a2"
+    },
+    {
+      "path": "assets/grade5LearningHub-uMuNSvOJ.js",
+      "bytes": 25560,
+      "sha256": "82d498f1cd2bbbca1b4a4203815e975b8b24ea5e81a5039b638b4fc08b6d4254"
+    },
+    {
+      "path": "assets/HistoryView-DxGO90-h.js",
+      "bytes": 6386,
+      "sha256": "7a27307d3b8062f47b7f72d74fabc4ef223248ce97df01bd505f3b8391b1c7dc"
+    },
+    {
+      "path": "assets/HomeViews-DEV6bZz8.js",
+      "bytes": 18171,
+      "sha256": "539cf62a179cb681529c41821dd055d9f0b602c822cb4ab037ea8cdcf4bedbf1"
     },
     {
       "path": "assets/index.esm-C0PLPHFW.js",
@@ -97,49 +203,384 @@
       "sha256": "f97a83e0f053c680597491f2934894c5bafaf8f5fcf00659ecfda6ed676d39f6"
     },
     {
-      "path": "assets/jsx-runtime-BN-vZOle.js",
-      "bytes": 11305,
-      "sha256": "9f49ef046fdeb53c76fc39ed3588f408e00d4c76e3a3182ffc6547615dc0198a"
+      "path": "assets/installProblemReporter-D-nl2t7_.js",
+      "bytes": 384,
+      "sha256": "ac000db212519401dd45546307046eacf9d4263b3e30d01e93326382832e8635"
     },
     {
-      "path": "assets/LocalBackupTools-C82dtXAY.js",
-      "bytes": 37247,
-      "sha256": "8075dd8b4bfd12935a57c6b01013ae949e6da08ed9bd11217d1e8fded6f15b23"
+      "path": "assets/kai-celebrate-v1-BbttFDY2.webp",
+      "bytes": 26048,
+      "sha256": "0199c49dbceabb4199d8c2cfee04232757e3829a20c5249340949864dcbbfea1"
     },
     {
-      "path": "assets/LocalRestoreGate-w1wrCjgH.js",
-      "bytes": 920,
-      "sha256": "69f7e90badf3fea57eaf5569b4101c3d4fe3744394ba1f172006a0a8efdd5691"
+      "path": "assets/kai-ready-v1--ehKfOwx.webp",
+      "bytes": 32130,
+      "sha256": "9d2b511d5578f1e6578852dc7a85a570669008f87a2e90d899551c15b77706fc"
     },
     {
-      "path": "assets/localRestoreJournal-ChzeOBoW.js",
-      "bytes": 2294,
-      "sha256": "df55bf7c6a737eddb4b9e255b588c2bed499eaef9e07bfb55c98b98764fccf2f"
+      "path": "assets/kai-sprint-v1-CAWXeyZG.webp",
+      "bytes": 30888,
+      "sha256": "231dc1784dce96e7a143f37e4a9044b3f67474812d368690613c2227c2af2cfa"
     },
     {
-      "path": "assets/PracticeView-D5vfJNGN.js",
-      "bytes": 32307,
-      "sha256": "9c37961e76c8ddf64c1d60346ca6762833373f4e4f94fc02327af887ea720728"
+      "path": "assets/kindergartenAudio-oBqfelBk.js",
+      "bytes": 23727,
+      "sha256": "a2f402173905ef0072ba7ab92988ead08d2b676072f16cee5ada7c1e0a5b4db8"
     },
     {
-      "path": "assets/PracticeView-DRqOKs4R.css",
-      "bytes": 19512,
-      "sha256": "dcbb9502fbd11964d40017920db130a677c55cf498ada180958f2cd2b04f4563"
+      "path": "assets/kindergartenLearningLab-B2a0VFPa.js",
+      "bytes": 31177,
+      "sha256": "4641feb58dfaeebc727715e8d7c6eda31812bc728ea77e83cd22da8425d527c7"
     },
     {
-      "path": "assets/ProfileModal-m9LGbzBI.js",
-      "bytes": 3226,
-      "sha256": "a12edb04b087ac78a679d34b1019eeea5468717b61cc6ec7673fbdf2c4146de6"
+      "path": "assets/kindergartenLearningLab-xDbY-mnp.css",
+      "bytes": 12192,
+      "sha256": "73fb232ff404eecddd67eafc0108bba9ecc93cc76802c1a35efd7d44376e8dba"
     },
     {
-      "path": "assets/Tier2ReadingPractice-BVdPeSvA.js",
-      "bytes": 12979,
-      "sha256": "80c79690e6deec1d57e1632d3603cc66753cd18a62942ef42ff923449f65bc90"
+      "path": "assets/LearningHub-CbxAfptj.js",
+      "bytes": 6596,
+      "sha256": "33b894b5f2b89317270d907d182d265f1afc58a704cfe0a4e5e0478147ee44f8"
     },
     {
-      "path": "assets/useDialogFocus-Cey4LnlC.js",
-      "bytes": 1056,
-      "sha256": "7498346c6ce68a5e02d9ca37db070df38338f19816f7d69a477684eeedfde505"
+      "path": "assets/learningHub-CDNWIg5w.js",
+      "bytes": 21521,
+      "sha256": "20981addeed273313f6d6eabc5a8a23d57e865c7ee17e0fed572d5dd03c38fe0"
+    },
+    {
+      "path": "assets/learningHub-DM-PdKpz.css",
+      "bytes": 9005,
+      "sha256": "157c1f52bd4e0f038f3c5763220c71135633272a08842ff91fefffea286e2f2a"
+    },
+    {
+      "path": "assets/LearningModuleHost-CHORTAqd.js",
+      "bytes": 2220,
+      "sha256": "149700bf6912d20284604311388cb5a9ddad80887f187ac3d72d6c118137043c"
+    },
+    {
+      "path": "assets/LocalBackupTools-B278azrt.js",
+      "bytes": 38179,
+      "sha256": "e10386981c8e692b4797c13a98ddbf3a23fca9c584cb3eb947d4ed22e305f6cc"
+    },
+    {
+      "path": "assets/LocalRestoreGate-BwXdoS6V.js",
+      "bytes": 1393,
+      "sha256": "6b9dc0ada8af90e2e9e4488d7aec7fdfcbdf4c1eb8fb86fd0089187fe9c5932a"
+    },
+    {
+      "path": "assets/localRestoreJournal-CRZAlpfm.js",
+      "bytes": 2333,
+      "sha256": "851d65c4bb6065cc340df5d7fca4f76ab07e834cb1cfa4f0a6d1b6109353c435"
+    },
+    {
+      "path": "assets/match-CnkSdeSS.wav",
+      "bytes": 144692,
+      "sha256": "50ac3c4e19d2592703b8b8c7c184f2f904e2e8c309b1f7add9509305a869812e"
+    },
+    {
+      "path": "assets/miss-DGE-rUyt.wav",
+      "bytes": 120000,
+      "sha256": "80cdae272bba968cbed34629ede3e2fbee540893f09b352817ccb326251ec1e0"
+    },
+    {
+      "path": "assets/pathway-B3P0Dh3d.js",
+      "bytes": 282,
+      "sha256": "00a0c9713968a86abf4e873d2a04572989f458a63aaa2646a3b6947b040da8fb"
+    },
+    {
+      "path": "assets/PracticeView-DHTHZd3z.js",
+      "bytes": 16172,
+      "sha256": "b40f08daa111ee982e80425f0fae69187f3f1f696ee59301b55822d1b54b6667"
+    },
+    {
+      "path": "assets/PreviewLearningHub-7slMLQXq.js",
+      "bytes": 23677,
+      "sha256": "2120d27abc492b1604ece6946416fdcbfcd5f860352c8c48c96060aef9b27fb7"
+    },
+    {
+      "path": "assets/PreviewLearningHub-DbW29mtd.css",
+      "bytes": 21874,
+      "sha256": "69b8a79c4e83c2433f29fdbcbbd91ad6ae7de1668d1833de3aaafe86a7fea9ce"
+    },
+    {
+      "path": "assets/ProblemReporter-BgQvO04h.css",
+      "bytes": 3113,
+      "sha256": "d983ebbfcf2542879f49c1ada6fe4cae70a240c3bd919be8e68d37f15632901d"
+    },
+    {
+      "path": "assets/ProblemReporter-CDNoO99j.js",
+      "bytes": 10323,
+      "sha256": "ccdcfe2a0b85b5d494a1e7ebaccdc577f8a808a026ffe2b2869e0f052c25ad45"
+    },
+    {
+      "path": "assets/ProfileModal-BqOIXGt4.js",
+      "bytes": 3002,
+      "sha256": "7c8189f92b47c602a5376e68d89f03ab4afe5ac8f52a88efb0687d37c2f72b9f"
+    },
+    {
+      "path": "assets/promptAudio-eTteScna.js",
+      "bytes": 5679,
+      "sha256": "3c50654b856db4a0ccd9cc50e5c88defb20d562c15ea6472092ea8b9a53b30b4"
+    },
+    {
+      "path": "assets/rain-skybridge-v1-CNOYdRZL.webp",
+      "bytes": 387520,
+      "sha256": "044b8a85a703e5fe6f536ed321e9b3d307afec335f97250b376feddadbf804ad"
+    },
+    {
+      "path": "assets/ReadingResponsePanel-D5h34H7S.js",
+      "bytes": 6517,
+      "sha256": "9dedd4c18ef511101c01b1c713d8d473986bdf0824b9555fa68fb135cba6bf77"
+    },
+    {
+      "path": "assets/releaseMetadata-DCC6_RnF.js",
+      "bytes": 36,
+      "sha256": "8416d102d5c4997a32a3d27d5051f06e3785e88fa1a4a44d2eb6da3326d2f9e8"
+    },
+    {
+      "path": "assets/riverfront-dawn-v1-DXmM8rJd.webp",
+      "bytes": 332716,
+      "sha256": "32e802be72580e75556856999bafa39bff31f874d655006824e7eb803c21b4c1"
+    },
+    {
+      "path": "assets/sparkles-BcWOu6t0.js",
+      "bytes": 543,
+      "sha256": "602c75f1657caa821a215f8b3ca681137996d19bbcfd74d5efbc24ad8d18f297"
+    },
+    {
+      "path": "assets/StrokeOrderActivity-BUQNqMqj.js",
+      "bytes": 41521,
+      "sha256": "597349d930d37568d36a4f609f5f55a3d73790d90898ca96e357f24cd7525639"
+    },
+    {
+      "path": "assets/StrokeOrderActivity-K66tiXVq.css",
+      "bytes": 12194,
+      "sha256": "70e6f4da38e9d418fcdfbcb2ad1dc62acc51c1613ca441703de3e4d74ea2726d"
+    },
+    {
+      "path": "assets/styles-DtRFGhOg.js",
+      "bytes": 310383,
+      "sha256": "a30de76cd11d5a86fbf549aa53fded13d80a0ef27e4c93d54ab04518408f6506"
+    },
+    {
+      "path": "assets/styles-Q2OB6nSP.css",
+      "bytes": 33741,
+      "sha256": "3939dbc2430db88b71c2bcc8154fe0f46e7a64ea22d0120fb9dd410867076bb5"
+    },
+    {
+      "path": "assets/testReview-DIPIy609.js",
+      "bytes": 372,
+      "sha256": "93a0a03de86182b60a3b9266c447956496f1270b11c988923acd6bfabe1a47e0"
+    },
+    {
+      "path": "assets/Tier2ReadingPractice-BpZoXtND.js",
+      "bytes": 5761,
+      "sha256": "97237514105472b90318dc1440909a4fbad76cf6100a435d1294f28636d3e59d"
+    },
+    {
+      "path": "assets/undo-2-CEBQi6lS.js",
+      "bytes": 239,
+      "sha256": "4bd37d019a5de6f61765041e0323cd883d2e986766d60216059eacbe0668b5e5"
+    },
+    {
+      "path": "assets/useDialogFocus-BjXHiqiZ.js",
+      "bytes": 1052,
+      "sha256": "2cb412413c3cafb12659152ca3a2e2f15078b03285d196d0f339bffeff84c89c"
+    },
+    {
+      "path": "assets/victory-stadium-v1-Is_iGxa7.webp",
+      "bytes": 272882,
+      "sha256": "856aac2ab5633ddd74870d2b7045bfac956197008461012d4041ec6fac4ecc5f"
+    },
+    {
+      "path": "assets/victory-tBOCrwbs.wav",
+      "bytes": 225836,
+      "sha256": "c765e153a867b2cbc1dc2a2103216b335edbc3682661347c60351ba274095925"
+    },
+    {
+      "path": "assets/volume-2-DQuNm1RL.js",
+      "bytes": 593,
+      "sha256": "0acca26e70014330b43567f443488a22bafd2e68c9228cd85527bf5e3a997ca9"
+    },
+    {
+      "path": "assets/x-DC_7wFV4.js",
+      "bytes": 185,
+      "sha256": "de073b1616f47351e4761d7a9c13eb1aa45dd727142d004e62fb864b0565378a"
+    },
+    {
+      "path": "audio/kindergarten/instructions/lets-learn-a-new-word.wav",
+      "bytes": 69582,
+      "sha256": "8e36a881166c2fbc2601f58b2575f2558c58fa741f97fde044b1b2fb0153048e"
+    },
+    {
+      "path": "audio/kindergarten/u4e00.wav",
+      "bytes": 16396,
+      "sha256": "593c8200879a02bd2abb6d28617e5cca479d42b951ef0ac85b2ad7a5db875d09"
+    },
+    {
+      "path": "audio/kindergarten/u4e03.wav",
+      "bytes": 21132,
+      "sha256": "4a20df9cc6df5a0354f5cf5db965ccfee049735d44abb383e8bc5d3d011cd33c"
+    },
+    {
+      "path": "audio/kindergarten/u4e09.wav",
+      "bytes": 23526,
+      "sha256": "4785c437a38339f8f010e9e96dd2f848c5144157e4cb224954e801e7097b0c75"
+    },
+    {
+      "path": "audio/kindergarten/u4e0a.wav",
+      "bytes": 21530,
+      "sha256": "715f8f9c4898fe574a91f7eb5b878262460616e61cabe8e11e3d26853e708c55"
+    },
+    {
+      "path": "audio/kindergarten/u4e0b.wav",
+      "bytes": 19988,
+      "sha256": "06955d3f9a4c1058f0b569c71e1c4ac03b5a65bb1de29a01b7e4e82d414fd679"
+    },
+    {
+      "path": "audio/kindergarten/u4e5d.wav",
+      "bytes": 20108,
+      "sha256": "b7a2fecb31d9ae22335c2ce6e3a749fc19f68b720c6348e514da0ee95443bf3c"
+    },
+    {
+      "path": "audio/kindergarten/u4e8c.wav",
+      "bytes": 18454,
+      "sha256": "05846db87853d98831e080092c56980a4ade47190b5810e389fc9e713881ddaa"
+    },
+    {
+      "path": "audio/kindergarten/u4e94.wav",
+      "bytes": 16980,
+      "sha256": "7475953c99e7c1daf709742714940a430e0e602eb9e3e77886c85881a7832d59"
+    },
+    {
+      "path": "audio/kindergarten/u4eba.wav",
+      "bytes": 20068,
+      "sha256": "3a439d17f04b419ecdf32eacde7c51dd4fc3868374398c05abe0812a8b3a9431"
+    },
+    {
+      "path": "audio/kindergarten/u516b.wav",
+      "bytes": 16218,
+      "sha256": "8f464d2880e58ec56528d432f26f0504517e52549d69b1bec803b3a1a7c1e25b"
+    },
+    {
+      "path": "audio/kindergarten/u516d.wav",
+      "bytes": 21080,
+      "sha256": "a83c541948beed9d076135b9993dbe9e11f654632dd674143fbf196f22fc612f"
+    },
+    {
+      "path": "audio/kindergarten/u5341.wav",
+      "bytes": 23578,
+      "sha256": "3588740d43a9e95c9e233ef35e406f362a6574ade30d613b4ab0c8cbb1021cff"
+    },
+    {
+      "path": "audio/kindergarten/u56db.wav",
+      "bytes": 18918,
+      "sha256": "2eecb18fa212d3ed5d337a80ba02470ec53c6011ccd1c1b6a639e71cebad6c72"
+    },
+    {
+      "path": "audio/kindergarten/u5927.wav",
+      "bytes": 15436,
+      "sha256": "fd903a94917a733d5de497c8f921de29869ae4fa6ca11c87c369cc1d5d44cdf2"
+    },
+    {
+      "path": "audio/kindergarten/u5988-u5988.wav",
+      "bytes": 26190,
+      "sha256": "5767345f1c09104956f5b10cb030c5477423e38d21cbfbc405d1755842c3de10"
+    },
+    {
+      "path": "audio/kindergarten/u5c0f.wav",
+      "bytes": 22548,
+      "sha256": "d5a3749be0cff85e5357dbadbc2ad79fd5c75a37e1b126b0f18d8b39df95962b"
+    },
+    {
+      "path": "audio/kindergarten/u5f00-u5fc3.wav",
+      "bytes": 33886,
+      "sha256": "bf45b3a75536a6e2fdb3d0f4305fee6884928896ce131de8fdc5cb52a0de8e1e"
+    },
+    {
+      "path": "audio/kindergarten/u5fc3.wav",
+      "bytes": 24084,
+      "sha256": "8d87fe0b85bfc7a401ae5110b8326e4e4b3c6eef23d0795b5e4d3613a0f523d2"
+    },
+    {
+      "path": "audio/kindergarten/u6211.wav",
+      "bytes": 18522,
+      "sha256": "481886267bfdb8659b8eff404e9be177a0d9174c56f436339a4f4d16bdb24e78"
+    },
+    {
+      "path": "audio/kindergarten/u6709.wav",
+      "bytes": 18958,
+      "sha256": "48435ddb80924408817737e6f2115e16b6e36f2266d5288b649ef8a5b75c95d8"
+    },
+    {
+      "path": "audio/kindergarten/u6c34.wav",
+      "bytes": 23578,
+      "sha256": "7396b334f59adbec83a7136f2a823342c8a2892fb7361f48bf7316d825b6b3e7"
+    },
+    {
+      "path": "audio/kindergarten/u6ca1-u6709.wav",
+      "bytes": 26720,
+      "sha256": "ab9fca52b806697e4116e54c631a01eadc39d550fe28d4aa056d6bd01e3b4fad"
+    },
+    {
+      "path": "audio/kindergarten/u7238-u7238.wav",
+      "bytes": 25938,
+      "sha256": "c4f7e76a36938c45d770450e97fe1b4454f2009d7cc0196ae08dfde787816c22"
+    },
+    {
+      "path": "audio/kindergarten/u725b.wav",
+      "bytes": 22724,
+      "sha256": "b34b446c6c7aba67f737ad6fd64b982bb1416640e9f711f04313658fb191f823"
+    },
+    {
+      "path": "audio/kindergarten/u72d7.wav",
+      "bytes": 17252,
+      "sha256": "807a3d5f10770a799db9a4cc25812206196a312de698ff7bc8edbbd126af6528"
+    },
+    {
+      "path": "audio/kindergarten/u732b.wav",
+      "bytes": 20060,
+      "sha256": "9884f074f24c8f386af71552ab045e3d27b4d43d9f4f0600dfdecef56d6793b0"
+    },
+    {
+      "path": "audio/kindergarten/u767d.wav",
+      "bytes": 19282,
+      "sha256": "8b416882ccadb3b91ad139a2be0f632f3776bc5a98bcf87aef26cf77427b03f7"
+    },
+    {
+      "path": "audio/kindergarten/u7ea2-u8272.wav",
+      "bytes": 29944,
+      "sha256": "aa6553518544edb3cf5ed6ff907ad82dfb90eaba92dab8c0e9f300a9e51bd69f"
+    },
+    {
+      "path": "audio/kindergarten/u7f8a.wav",
+      "bytes": 19984,
+      "sha256": "a57fb381eac4e0643c9edb6d66e63d08637e028189dd29cec06eda3fbaeb8478"
+    },
+    {
+      "path": "audio/kindergarten/u84dd-u8272.wav",
+      "bytes": 29704,
+      "sha256": "7eebf42bb042f346b46b63d33e535b8d7c91a12c703cfb81c17bf03558d47c6f"
+    },
+    {
+      "path": "audio/kindergarten/u9e1f.wav",
+      "bytes": 21182,
+      "sha256": "c7ef5e86a171eb9413dd09c2fdace60c52967354a04c80f3d406f42ba8c12262"
+    },
+    {
+      "path": "curriculum/beta/grade2.json",
+      "bytes": 5144,
+      "sha256": "63fed362e19209c38fdc405aa65798168a6142b6abee10c48bc8abd811846014"
+    },
+    {
+      "path": "curriculum/beta/grade5.json",
+      "bytes": 51825,
+      "sha256": "6a11eaed6e64f57a5e6fd36c05bd26eb660011fa3213951a9906193c9d4a3e87"
+    },
+    {
+      "path": "curriculum/beta/kindergarten.json",
+      "bytes": 2649,
+      "sha256": "44c585097c36a882dc7928c8eac45fad7f20ee0a02d6c17751e72994418f9346"
     },
     {
       "path": "curriculum/grade2-presentation.json",
@@ -147,9 +588,35 @@
       "sha256": "8823868bac8d3c2494004e9b5db324262cf32d3d10293d77ebb4ecf3946c05b3"
     },
     {
+      "path": "family-beta-preview.html",
+      "bytes": 1423,
+      "sha256": "95a8a4d75fb2cf79eb6d5dea3ce64c5fa22ac272d8d24b2553352acd508f7b05"
+    },
+    {
+      "path": "favicon.svg",
+      "bytes": 524,
+      "sha256": "6cbee1e6d387d781df91201ced0cb586723e1f6712fc8eac579b5614882554a3"
+    },
+    {
+      "path": "grade5-learning-hub.html",
+      "bytes": 5261,
+      "sha256": "23455d02872c340fc98dc0cea655e7d0f7402df95fb483ad904d13308aadb3b8"
+    },
+    {
       "path": "index.html",
-      "bytes": 1589,
-      "sha256": "aef9f63b900dd00923281e1c60e8361da0576620494fb7325259fbc86959acb5"
+      "bytes": 2174,
+      "sha256": "bd6000b104e3c94c0a452371f1da9ddf107d4b025a714f20f089393579b18f63"
+    },
+    {
+      "path": "kindergarten-learning-lab.html",
+      "bytes": 3732,
+      "sha256": "4536eb9db572c29994c38b83d41dfd31260df662fdb558e43fec2e10e03788e7"
+    },
+    {
+      "path": "testing.html",
+      "bytes": 3662,
+      "sha256": "57fbc7dbda78e0027c2d68ebdafba4fa94c10f2acd26026ae62f125e7b305a39"
     }
-  ]
+  ],
+  "packaging": "Reused verified f4ef04f application assets; grade-specific entry and manifest only."
 }

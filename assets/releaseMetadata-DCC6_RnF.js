@@ -1,0 +1,1 @@
+var e=`0.2.0-stage2`;export{e as t};

@@ -1,0 +1,1478 @@
+{
+  "schema": 1,
+  "grade": "Grade 5",
+  "sourceId": "1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI",
+  "retrievedAt": "2026-10-05T18:04:09.216Z",
+  "sourceModifiedAt": "2026-10-04T21:01:14.747Z",
+  "contentSha256": "66dd567f5cbc4f3059fc468cc0d581ad2e72a40049bd5fec3aacbdc604f75500",
+  "payload": {
+    "presentationId": "1-CBvr9gGWsj0yQj1ArmHz3AvtgB0brKFipe90NY_9RI",
+    "title": "G5 Weekly Focus SY 26-27",
+    "slides": [
+      {
+        "objectId": "h17c62c55ca8a618f_0_0",
+        "pageElements": [
+          {
+            "objectId": "h17c62c55ca8a618f_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 8 (9/28-10/2)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "h17c62c55ca8a618f_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review the book here: \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《大象的沟通方式》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students completed a 5-minute partner reading to build reading fluency and finished their retell of How Elephants Communicate. Students also reviewed key vocabulary from the anchor book and used their own words to summarize their understanding of the text.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review vocab here：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：或者、了解、完、兴奋的、告诉\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：提醒、沟通、快速地、有意思、年长的、并且、表达、碰\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：发出、警告、扇动、部位、情绪、睁、打招呼、大象群、抬、连续地、尖叫、人类、围、下巴、传递\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week. "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Preview here:\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《海水为什么是咸的》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Friday，10/9， Mandarin Quiz："
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "students will complete a short writing assignment connected to "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "How Elephants Communicate"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": ". We will then begin our next anchor book, "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Why Is Sea Water Salty?"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Core vocab：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1: 盐、咸、层、用处、神奇的\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2: 河流、躺、留、不断地、美味的、刷牙、洒、沉、浮\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3: 蒸发、消毒、融化（解释：消失/不见了）、溶解（在水里不见了）\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3fb43a5e916_1_1",
+        "pageElements": [
+          {
+            "objectId": "g3fb43a5e916_1_2",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 7 (9/21-25)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3fb43a5e916_1_3",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review the book here: \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《大象的沟通方式》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week, students completed the initial reading and close reading of our anchor book, How Elephants Communicate. Students explored the main ideas and important details in the text. During our third reading, we reviewed Chinese measure words and the phrase structure “adjective + 地 + verb.” We also studied the Tier 1 vocabulary from the anchor book and extended our vocabulary learning by exploring different words and phrases that can be formed with the target characters.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review vocab here：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：或者、了解、完、兴奋的、告诉\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：提醒、沟通、快速地、有意思、年长的、并且、表达、碰\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：发出、警告、扇动、部位、情绪、睁、打招呼、大象群、抬、连续地、尖叫、人类、围、下巴、传递\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week. "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Preview here:\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《海水为什么是咸的》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "students will complete a short writing assignment connected to "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "How Elephants Communicate"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": ". We will then begin our next anchor book, "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Why Is Seawater Salty?"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Core vocab：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1: 盐、咸、层、用处、神奇的\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2: 河流、躺、留、不断地、美味的、刷牙、洒、沉、浮\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3: 蒸发、消毒、融化（解释：消失/不见了）、溶解（在水里不见了）\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "h582f1d63128ff4cf_0_0",
+        "pageElements": [
+          {
+            "objectId": "h582f1d63128ff4cf_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 6 (9/14-18)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "h582f1d63128ff4cf_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review the book here: \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《植物的光合作用》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "  "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students completed the anchor book Plant Photosynthesis and learned three important sentence structures: “…像…” (…is like…), “…通过…” (…through/by…), and “如果没有了……，……” (If there were no…, …).\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Students retold the process of photosynthesis in their own words to demonstrate their understanding.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review vocab here：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：怎样、吸收、通过、像、如果\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：空气、根、帮助、植物、食物、得到、关、打开\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：光合作用、呼吸、排出、氧气、气孔、二氧化碳、能量、合成、肺、人类\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week. "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Preview here:\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《大象的沟通方式》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students will begin the next anchor book, How Elephants Communicate, next week.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Driving Questions: What features of organisms attract attention? What behaviors are instinctive, and what behaviors are learned?\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Core vocab：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：或者、了解、完、兴奋的、告诉\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：提醒、沟通、快速地、有意思、年长的、并且、表达、碰\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：发出、警告、扇动、部位、情绪、睁、打招呼、大象群、抬、连续地、尖叫、人类、围、下巴、传递\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3fbb7d5bcd5_0_0",
+        "pageElements": [
+          {
+            "objectId": "g3fbb7d5bcd5_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 5 (9/8-11)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3fbb7d5bcd5_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review the book here: \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《海洋食物链》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students completed the anchor book Ocean Food Chains and learned two important sentence structures: “… is a natural predator of …” and “Only with … can there be …”\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Students wrote a short passage about a land food chain, using Ocean Food Chains as a model.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：需要、部分、重要、开始、各种各样\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：海洋、阳光、鲨鱼、天敌、生存\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：表面、海藻、浮游生物、磷虾、哺乳动物、虎鲸、顶端、环境、食物链、吞拿鱼、生态环境\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week. "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Preview here:\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《植物的光合作用》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "  \n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students will begin the next anchor book, Plant Photosynthesis，focusing on the driving question is: How do organisms obtain and use the matter and energy they need to live and grow?\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Core vocab：\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 1：怎样、吸收、通过、像、如果\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：空气、根、帮助、植物、食物、得到、关、打开\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：光合作用、呼吸、排出、氧气、气孔、二氧化碳、能量、合成、肺、人类\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3fb43066ba2_0_0",
+        "pageElements": [
+          {
+            "objectId": "g3fb43066ba2_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 4 (8/31-9/4)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3fb43066ba2_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Review the book here: \n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "《野餐活动》"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": " \n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week, 5th graders finished our second anchor book, "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "The Picnic"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": ". Students explored key story elements, used text details to identify the main storyline, and practiced retelling the story in their own words."
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week. "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Core vocab\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Preview here"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": ": "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "we will begin our new anchor book, "
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Marine Food Chains"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": ", with the driving question: How do organisms interact with living and nonliving environments to obtain matter and energy?\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Tier 1：需要、部分、重要、开始、各种各样\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2：海洋、阳光、鲨鱼、天敌、生存\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3：表面、海藻、浮游生物、磷虾、哺乳动物、虎鲸、顶端、环境、食物链、吞拿鱼、生态环境\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3facdc62d75_0_0",
+        "pageElements": [
+          {
+            "objectId": "g3facdc62d75_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 3 (8/24-28)"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3facdc62d75_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week, 5th graders completed Week 1 with our anchor book, 《养宠物》 (Keeping Pets). Students practiced new vocabulary and reading strategies, such as using context and illustrations to understand unfamiliar words and searching for details in the text. On Friday, we completed a shared writing activity and began building our weekly Chinese learning routine."
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Core vocab\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Tier 1: 问、课、猫、经常、说、同学、兔子、蛇、害怕、照顾、打扫\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 2: 宠物、打架、一条（蛇/鱼）、花时间、嘴巴、尾巴、换水\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Tier 3: 仓鼠、乌龟、喂食、鱼缸\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "we will begin our new anchor book, 《野餐活动》 (The Picnic Event), and continue practicing vocabulary and reading comprehension strategies.\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3f8b04c699e_0_0",
+        "pageElements": [
+          {
+            "objectId": "g3f8b04c699e_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 2"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3f8b04c699e_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "This week\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Students worked together to discuss and create our class agreements and shared ideas about rewards they would like to earn. We also talked about possible consequences when classroom expectations are not followed, helping students understand how their choices can affect themselves and our classroom community."
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Coming next week"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "We will begin Chinese Reading Unit 1. As we read, students will review Pinyin and practice previously learned reading skills and reading strategies to strengthen their reading comprehension.\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "Also，the Grade 1–5 i-Ready ELA and Math assessment window begins next week. Students will complete these assessments during the school day.\n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "objectId": "g3f728729da8_0_0",
+        "pageElements": [
+          {
+            "objectId": "g3f728729da8_0_1",
+            "shape": {
+              "text": {
+                "textElements": [
+                  {
+                    "textRun": {
+                      "content": "Week 1"
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "objectId": "g3f728729da8_0_2",
+            "table": {
+              "tableRows": [
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Mandarin \n"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Content\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Vocabulary\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          },
+                          {
+                            "textRun": {
+                              "content": "\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": []
+                      }
+                    }
+                  ]
+                },
+                {
+                  "tableCells": [
+                    {
+                      "text": {
+                        "textElements": [
+                          {
+                            "textRun": {
+                              "content": "Sentence Frame\n"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "text": {
+                        "textElements": []
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "sourceType": "google-slides"
+  }
+}

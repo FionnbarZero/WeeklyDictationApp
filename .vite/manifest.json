@@ -1,0 +1,710 @@
+{
+  "_AppErrorBoundary-CZ1M6S5v.js": {
+    "file": "assets/AppErrorBoundary-CZ1M6S5v.js",
+    "name": "AppErrorBoundary",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_releaseMetadata-DCC6_RnF.js"
+    ],
+    "dynamicImports": [
+      "node_modules/firebase/app/dist/esm/index.esm.js",
+      "node_modules/firebase/app-check/dist/esm/index.esm.js"
+    ]
+  },
+  "_DeferredTestReview-BY5W0ZgX.js": {
+    "file": "assets/DeferredTestReview-BY5W0ZgX.js",
+    "name": "DeferredTestReview",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_clock-3-6TOiCbka.js",
+      "_eraser-C-XXP4W1.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_volume-2-DQuNm1RL.js",
+      "_x-DC_7wFV4.js",
+      "_promptAudio-eTteScna.js",
+      "_useDialogFocus-BjXHiqiZ.js"
+    ],
+    "css": [
+      "assets/DeferredTestReview-DdxBD_UQ.css"
+    ]
+  },
+  "_DeferredTestReview-DdxBD_UQ.css": {
+    "file": "assets/DeferredTestReview-DdxBD_UQ.css",
+    "src": "_DeferredTestReview-DdxBD_UQ.css"
+  },
+  "_LearningHub-CbxAfptj.js": {
+    "file": "assets/LearningHub-CbxAfptj.js",
+    "name": "LearningHub",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_PracticeView-DHTHZd3z.js": {
+    "file": "assets/PracticeView-DHTHZd3z.js",
+    "name": "PracticeView",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_clock-3-6TOiCbka.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_DeferredTestReview-BY5W0ZgX.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js",
+      "_promptAudio-eTteScna.js"
+    ]
+  },
+  "_PreviewLearningHub-7slMLQXq.js": {
+    "file": "assets/PreviewLearningHub-7slMLQXq.js",
+    "name": "PreviewLearningHub",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_StrokeOrderActivity-BUQNqMqj.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_volume-2-DQuNm1RL.js",
+      "_x-DC_7wFV4.js",
+      "_curriculum-BjEC4MI3.js",
+      "_promptAudio-eTteScna.js",
+      "_LearningHub-CbxAfptj.js",
+      "_kindergartenAudio-oBqfelBk.js",
+      "_PracticeView-DHTHZd3z.js",
+      "_ReadingResponsePanel-D5h34H7S.js",
+      "_Tier2ReadingPractice-BpZoXtND.js"
+    ],
+    "dynamicImports": [
+      "src/ninjaSkills/LearningModuleHost.tsx",
+      "_games-CZeGA5h7.js"
+    ],
+    "css": [
+      "assets/PreviewLearningHub-DbW29mtd.css"
+    ]
+  },
+  "_PreviewLearningHub-DbW29mtd.css": {
+    "file": "assets/PreviewLearningHub-DbW29mtd.css",
+    "src": "_PreviewLearningHub-DbW29mtd.css"
+  },
+  "_ProblemReporter-BgQvO04h.css": {
+    "file": "assets/ProblemReporter-BgQvO04h.css",
+    "src": "_ProblemReporter-BgQvO04h.css"
+  },
+  "_ProblemReporter-CDNoO99j.js": {
+    "file": "assets/ProblemReporter-CDNoO99j.js",
+    "name": "ProblemReporter",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_releaseMetadata-DCC6_RnF.js"
+    ],
+    "css": [
+      "assets/ProblemReporter-BgQvO04h.css"
+    ]
+  },
+  "_ReadingResponsePanel-D5h34H7S.js": {
+    "file": "assets/ReadingResponsePanel-D5h34H7S.js",
+    "name": "ReadingResponsePanel",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_volume-2-DQuNm1RL.js",
+      "_promptAudio-eTteScna.js"
+    ]
+  },
+  "_StrokeOrderActivity-BUQNqMqj.js": {
+    "file": "assets/StrokeOrderActivity-BUQNqMqj.js",
+    "name": "StrokeOrderActivity",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_eraser-C-XXP4W1.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_undo-2-CEBQi6lS.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/StrokeOrderActivity-K66tiXVq.css"
+    ]
+  },
+  "_StrokeOrderActivity-K66tiXVq.css": {
+    "file": "assets/StrokeOrderActivity-K66tiXVq.css",
+    "src": "_StrokeOrderActivity-K66tiXVq.css"
+  },
+  "_Tier2ReadingPractice-BpZoXtND.js": {
+    "file": "assets/Tier2ReadingPractice-BpZoXtND.js",
+    "name": "Tier2ReadingPractice",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_clock-3-6TOiCbka.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_DeferredTestReview-BY5W0ZgX.js",
+      "_x-DC_7wFV4.js",
+      "_promptAudio-eTteScna.js",
+      "_pathway-B3P0Dh3d.js",
+      "_ReadingResponsePanel-D5h34H7S.js"
+    ]
+  },
+  "_activityNames-TQ3TVQMc.js": {
+    "file": "assets/activityNames-TQ3TVQMc.js",
+    "name": "activityNames"
+  },
+  "_audioRecorder-CnQCxI5n.js": {
+    "file": "assets/audioRecorder-CnQCxI5n.js",
+    "name": "audioRecorder",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_x-DC_7wFV4.js",
+      "_promptAudio-eTteScna.js"
+    ]
+  },
+  "_clock-3-6TOiCbka.js": {
+    "file": "assets/clock-3-6TOiCbka.js",
+    "name": "clock-3",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_curriculum-BjEC4MI3.js": {
+    "file": "assets/curriculum-BjEC4MI3.js",
+    "name": "curriculum",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_eraser-C-XXP4W1.js": {
+    "file": "assets/eraser-C-XXP4W1.js",
+    "name": "eraser",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_games-CZeGA5h7.js": {
+    "file": "assets/games-CZeGA5h7.js",
+    "name": "games",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js",
+      "_promptAudio-eTteScna.js"
+    ]
+  },
+  "_grade2Adapter-BpRKnXh4.js": {
+    "file": "assets/grade2Adapter-BpRKnXh4.js",
+    "name": "grade2Adapter",
+    "imports": [
+      "_StrokeOrderActivity-BUQNqMqj.js"
+    ]
+  },
+  "_index.esm-iUTnMxZc.js": {
+    "file": "assets/index.esm-iUTnMxZc.js",
+    "name": "index.esm"
+  },
+  "_kindergartenAudio-oBqfelBk.js": {
+    "file": "assets/kindergartenAudio-oBqfelBk.js",
+    "name": "kindergartenAudio",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_learningHub-CDNWIg5w.js": {
+    "file": "assets/learningHub-CDNWIg5w.js",
+    "name": "learningHub",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ],
+    "css": [
+      "assets/learningHub-DM-PdKpz.css"
+    ]
+  },
+  "_learningHub-DM-PdKpz.css": {
+    "file": "assets/learningHub-DM-PdKpz.css",
+    "src": "_learningHub-DM-PdKpz.css"
+  },
+  "_localRestoreJournal-CRZAlpfm.js": {
+    "file": "assets/localRestoreJournal-CRZAlpfm.js",
+    "name": "localRestoreJournal",
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "index.html"
+    ]
+  },
+  "_pathway-B3P0Dh3d.js": {
+    "file": "assets/pathway-B3P0Dh3d.js",
+    "name": "pathway"
+  },
+  "_promptAudio-eTteScna.js": {
+    "file": "assets/promptAudio-eTteScna.js",
+    "name": "promptAudio",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_releaseMetadata-DCC6_RnF.js": {
+    "file": "assets/releaseMetadata-DCC6_RnF.js",
+    "name": "releaseMetadata"
+  },
+  "_sparkles-BcWOu6t0.js": {
+    "file": "assets/sparkles-BcWOu6t0.js",
+    "name": "sparkles",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_styles-DtRFGhOg.js": {
+    "file": "assets/styles-DtRFGhOg.js",
+    "name": "styles",
+    "css": [
+      "assets/styles-Q2OB6nSP.css"
+    ]
+  },
+  "_styles-Q2OB6nSP.css": {
+    "file": "assets/styles-Q2OB6nSP.css",
+    "src": "_styles-Q2OB6nSP.css"
+  },
+  "_testReview-DIPIy609.js": {
+    "file": "assets/testReview-DIPIy609.js",
+    "name": "testReview"
+  },
+  "_undo-2-CEBQi6lS.js": {
+    "file": "assets/undo-2-CEBQi6lS.js",
+    "name": "undo-2",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_useDialogFocus-BjXHiqiZ.js": {
+    "file": "assets/useDialogFocus-BjXHiqiZ.js",
+    "name": "useDialogFocus",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_volume-2-DQuNm1RL.js": {
+    "file": "assets/volume-2-DQuNm1RL.js",
+    "name": "volume-2",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "_x-DC_7wFV4.js": {
+    "file": "assets/x-DC_7wFV4.js",
+    "name": "x",
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ]
+  },
+  "family-beta-preview.html": {
+    "file": "assets/familyPreview-1PCxYbE7.js",
+    "name": "familyPreview",
+    "src": "family-beta-preview.html",
+    "isEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_AppErrorBoundary-CZ1M6S5v.js",
+      "_curriculum-BjEC4MI3.js",
+      "_promptAudio-eTteScna.js",
+      "_kindergartenAudio-oBqfelBk.js",
+      "_ReadingResponsePanel-D5h34H7S.js",
+      "_ProblemReporter-CDNoO99j.js"
+    ],
+    "dynamicImports": [
+      "src/auth/AuthScreen.tsx",
+      "src/ninjaSkills/LearningModuleHost.tsx"
+    ]
+  },
+  "grade5-learning-hub.html": {
+    "file": "assets/grade5LearningHub-uMuNSvOJ.js",
+    "name": "grade5LearningHub",
+    "src": "grade5-learning-hub.html",
+    "isEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_DeferredTestReview-BY5W0ZgX.js",
+      "_testReview-DIPIy609.js",
+      "_curriculum-BjEC4MI3.js",
+      "_promptAudio-eTteScna.js",
+      "_activityNames-TQ3TVQMc.js",
+      "_PracticeView-DHTHZd3z.js",
+      "_pathway-B3P0Dh3d.js",
+      "_Tier2ReadingPractice-BpZoXtND.js",
+      "_PreviewLearningHub-7slMLQXq.js"
+    ],
+    "dynamicImports": [
+      "src/familyBeta/installProblemReporter.tsx"
+    ],
+    "css": [
+      "assets/grade5LearningHub-CwxLDzaA.css"
+    ],
+    "assets": [
+      "assets/grade5-presentation-DsmzqBQg.json"
+    ]
+  },
+  "index.html": {
+    "file": "assets/app-DfymLKt2.js",
+    "name": "app",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_sparkles-BcWOu6t0.js",
+      "_testReview-DIPIy609.js",
+      "_AppErrorBoundary-CZ1M6S5v.js"
+    ],
+    "dynamicImports": [
+      "_promptAudio-eTteScna.js",
+      "_Tier2ReadingPractice-BpZoXtND.js",
+      "src/auth/AuthScreen.tsx",
+      "_PracticeView-DHTHZd3z.js",
+      "src/learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx",
+      "src/progress/HistoryView.tsx",
+      "src/backup/LocalBackupTools.tsx",
+      "src/backup/LocalRestoreGate.tsx",
+      "src/profiles/ProfileModal.tsx",
+      "src/home/HomeViews.tsx",
+      "src/automaticGrade2Curriculum.ts",
+      "node_modules/firebase/performance/dist/esm/index.esm.js",
+      "src/familyBeta/installProblemReporter.tsx"
+    ]
+  },
+  "kindergarten-learning-lab.html": {
+    "file": "assets/kindergartenLearningLab-B2a0VFPa.js",
+    "name": "kindergartenLearningLab",
+    "src": "kindergarten-learning-lab.html",
+    "isEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_StrokeOrderActivity-BUQNqMqj.js",
+      "_DeferredTestReview-BY5W0ZgX.js",
+      "_curriculum-BjEC4MI3.js",
+      "_promptAudio-eTteScna.js",
+      "_activityNames-TQ3TVQMc.js",
+      "_kindergartenAudio-oBqfelBk.js",
+      "_PracticeView-DHTHZd3z.js",
+      "_pathway-B3P0Dh3d.js",
+      "_Tier2ReadingPractice-BpZoXtND.js",
+      "_PreviewLearningHub-7slMLQXq.js",
+      "_games-CZeGA5h7.js",
+      "_grade2Adapter-BpRKnXh4.js"
+    ],
+    "dynamicImports": [
+      "src/familyBeta/installProblemReporter.tsx"
+    ],
+    "css": [
+      "assets/kindergartenLearningLab-xDbY-mnp.css"
+    ]
+  },
+  "node_modules/firebase/app-check/dist/esm/index.esm.js": {
+    "file": "assets/index.esm-C0PLPHFW.js",
+    "name": "index.esm",
+    "src": "node_modules/firebase/app-check/dist/esm/index.esm.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index.esm-iUTnMxZc.js"
+    ]
+  },
+  "node_modules/firebase/app/dist/esm/index.esm.js": {
+    "file": "assets/index.esm-DzMgseAH.js",
+    "name": "index.esm",
+    "src": "node_modules/firebase/app/dist/esm/index.esm.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index.esm-iUTnMxZc.js"
+    ]
+  },
+  "node_modules/firebase/performance/dist/esm/index.esm.js": {
+    "file": "assets/index.esm-DeBlggXL.js",
+    "name": "index.esm",
+    "src": "node_modules/firebase/performance/dist/esm/index.esm.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_index.esm-iUTnMxZc.js"
+    ]
+  },
+  "src/auth/AuthScreen.tsx": {
+    "file": "assets/AuthScreen-Dz7FYh2C.js",
+    "name": "AuthScreen",
+    "src": "src/auth/AuthScreen.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_sparkles-BcWOu6t0.js",
+      "_AppErrorBoundary-CZ1M6S5v.js"
+    ]
+  },
+  "src/automaticGrade2Curriculum.ts": {
+    "file": "assets/automaticGrade2Curriculum-CGgWpMlR.js",
+    "name": "automaticGrade2Curriculum",
+    "src": "src/automaticGrade2Curriculum.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "index.html"
+    ],
+    "dynamicImports": [
+      "_curriculum-BjEC4MI3.js"
+    ]
+  },
+  "src/backup/LocalBackupTools.tsx": {
+    "file": "assets/LocalBackupTools-B278azrt.js",
+    "name": "LocalBackupTools",
+    "src": "src/backup/LocalBackupTools.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_x-DC_7wFV4.js",
+      "_releaseMetadata-DCC6_RnF.js",
+      "_AppErrorBoundary-CZ1M6S5v.js",
+      "index.html",
+      "_useDialogFocus-BjXHiqiZ.js",
+      "_localRestoreJournal-CRZAlpfm.js"
+    ]
+  },
+  "src/backup/LocalRestoreGate.tsx": {
+    "file": "assets/LocalRestoreGate-BwXdoS6V.js",
+    "name": "LocalRestoreGate",
+    "src": "src/backup/LocalRestoreGate.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "index.html",
+      "_localRestoreJournal-CRZAlpfm.js"
+    ]
+  },
+  "src/familyBeta/installProblemReporter.tsx": {
+    "file": "assets/installProblemReporter-D-nl2t7_.js",
+    "name": "installProblemReporter",
+    "src": "src/familyBeta/installProblemReporter.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_ProblemReporter-CDNoO99j.js"
+    ]
+  },
+  "src/home/HomeViews.tsx": {
+    "file": "assets/HomeViews-DEV6bZz8.js",
+    "name": "HomeViews",
+    "src": "src/home/HomeViews.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_clock-3-6TOiCbka.js",
+      "index.html",
+      "_activityNames-TQ3TVQMc.js",
+      "_pathway-B3P0Dh3d.js"
+    ],
+    "dynamicImports": [
+      "_PreviewLearningHub-7slMLQXq.js",
+      "_LearningHub-CbxAfptj.js"
+    ]
+  },
+  "src/learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx": {
+    "file": "assets/Grade2StrokeOrderExperience-DY8oSTiO.js",
+    "name": "Grade2StrokeOrderExperience",
+    "src": "src/learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "_StrokeOrderActivity-BUQNqMqj.js",
+      "index.html",
+      "_grade2Adapter-BpRKnXh4.js"
+    ]
+  },
+  "src/learningModules/context-gap-dash/Game.tsx": {
+    "file": "assets/Game-CLKk4ftq.js",
+    "name": "Game",
+    "src": "src/learningModules/context-gap-dash/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-DvEQgiy1.css"
+    ],
+    "assets": [
+      "assets/riverfront-dawn-v1-DXmM8rJd.webp",
+      "assets/rain-skybridge-v1-CNOYdRZL.webp",
+      "assets/victory-stadium-v1-Is_iGxa7.webp",
+      "assets/kai-ready-v1--ehKfOwx.webp",
+      "assets/kai-sprint-v1-CAWXeyZG.webp",
+      "assets/kai-celebrate-v1-BbttFDY2.webp"
+    ]
+  },
+  "src/learningModules/context-gap-dash/assets/kai-celebrate-v1.webp": {
+    "file": "assets/kai-celebrate-v1-BbttFDY2.webp",
+    "src": "src/learningModules/context-gap-dash/assets/kai-celebrate-v1.webp"
+  },
+  "src/learningModules/context-gap-dash/assets/kai-ready-v1.webp": {
+    "file": "assets/kai-ready-v1--ehKfOwx.webp",
+    "src": "src/learningModules/context-gap-dash/assets/kai-ready-v1.webp"
+  },
+  "src/learningModules/context-gap-dash/assets/kai-sprint-v1.webp": {
+    "file": "assets/kai-sprint-v1-CAWXeyZG.webp",
+    "src": "src/learningModules/context-gap-dash/assets/kai-sprint-v1.webp"
+  },
+  "src/learningModules/context-gap-dash/assets/rain-skybridge-v1.webp": {
+    "file": "assets/rain-skybridge-v1-CNOYdRZL.webp",
+    "src": "src/learningModules/context-gap-dash/assets/rain-skybridge-v1.webp"
+  },
+  "src/learningModules/context-gap-dash/assets/riverfront-dawn-v1.webp": {
+    "file": "assets/riverfront-dawn-v1-DXmM8rJd.webp",
+    "src": "src/learningModules/context-gap-dash/assets/riverfront-dawn-v1.webp"
+  },
+  "src/learningModules/context-gap-dash/assets/victory-stadium-v1.webp": {
+    "file": "assets/victory-stadium-v1-Is_iGxa7.webp",
+    "src": "src/learningModules/context-gap-dash/assets/victory-stadium-v1.webp"
+  },
+  "src/learningModules/dictation-streak/Game.tsx": {
+    "file": "assets/Game-Dt7Dzhm6.js",
+    "name": "Game",
+    "src": "src/learningModules/dictation-streak/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_audioRecorder-CnQCxI5n.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-BAUJWe1H.css"
+    ]
+  },
+  "src/learningModules/memory-lanterns/Game.tsx": {
+    "file": "assets/Game-CFAynTOy.js",
+    "name": "Game",
+    "src": "src/learningModules/memory-lanterns/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-Dvxlnsf_.css"
+    ],
+    "assets": [
+      "assets/flip-Bzh_Qn5N.wav",
+      "assets/match-CnkSdeSS.wav",
+      "assets/miss-DGE-rUyt.wav",
+      "assets/victory-tBOCrwbs.wav"
+    ]
+  },
+  "src/learningModules/memory-lanterns/assets/flip.wav": {
+    "file": "assets/flip-Bzh_Qn5N.wav",
+    "src": "src/learningModules/memory-lanterns/assets/flip.wav"
+  },
+  "src/learningModules/memory-lanterns/assets/match.wav": {
+    "file": "assets/match-CnkSdeSS.wav",
+    "src": "src/learningModules/memory-lanterns/assets/match.wav"
+  },
+  "src/learningModules/memory-lanterns/assets/miss.wav": {
+    "file": "assets/miss-DGE-rUyt.wav",
+    "src": "src/learningModules/memory-lanterns/assets/miss.wav"
+  },
+  "src/learningModules/memory-lanterns/assets/victory.wav": {
+    "file": "assets/victory-tBOCrwbs.wav",
+    "src": "src/learningModules/memory-lanterns/assets/victory.wav"
+  },
+  "src/learningModules/speed-match/Game.tsx": {
+    "file": "assets/Game-D7LVRV--.js",
+    "name": "Game",
+    "src": "src/learningModules/speed-match/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_clock-3-6TOiCbka.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-DHtGEjnR.css"
+    ]
+  },
+  "src/learningModules/sushi-scramble/Game.tsx": {
+    "file": "assets/Game-B1fOohN3.js",
+    "name": "Game",
+    "src": "src/learningModules/sushi-scramble/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_undo-2-CEBQi6lS.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-C-UIWUzd.css"
+    ]
+  },
+  "src/learningModules/target-blast/Game.tsx": {
+    "file": "assets/Game-DkcBqata.js",
+    "name": "Game",
+    "src": "src/learningModules/target-blast/Game.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_volume-2-DQuNm1RL.js",
+      "_sparkles-BcWOu6t0.js",
+      "_x-DC_7wFV4.js"
+    ],
+    "css": [
+      "assets/Game-C9YgSk3n.css"
+    ]
+  },
+  "src/ninjaSkills/LearningModuleHost.tsx": {
+    "file": "assets/LearningModuleHost-CHORTAqd.js",
+    "name": "LearningModuleHost",
+    "src": "src/ninjaSkills/LearningModuleHost.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js"
+    ],
+    "dynamicImports": [
+      "src/learningModules/dictation-streak/Game.tsx",
+      "src/learningModules/speed-match/Game.tsx",
+      "src/learningModules/target-blast/Game.tsx",
+      "src/learningModules/memory-lanterns/Game.tsx",
+      "src/learningModules/context-gap-dash/Game.tsx",
+      "src/learningModules/sushi-scramble/Game.tsx"
+    ]
+  },
+  "src/profiles/ProfileModal.tsx": {
+    "file": "assets/ProfileModal-BqOIXGt4.js",
+    "name": "ProfileModal",
+    "src": "src/profiles/ProfileModal.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_x-DC_7wFV4.js",
+      "_AppErrorBoundary-CZ1M6S5v.js",
+      "_useDialogFocus-BjXHiqiZ.js"
+    ]
+  },
+  "src/progress/HistoryView.tsx": {
+    "file": "assets/HistoryView-DxGO90-h.js",
+    "name": "HistoryView",
+    "src": "src/progress/HistoryView.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_styles-DtRFGhOg.js",
+      "_learningHub-CDNWIg5w.js",
+      "index.html"
+    ]
+  },
+  "tests/fixtures/grade5-presentation.json": {
+    "file": "assets/grade5-presentation-DsmzqBQg.json",
+    "src": "tests/fixtures/grade5-presentation.json"
+  }
+}

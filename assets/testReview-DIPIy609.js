@@ -1,0 +1,1 @@
+function e(e){if(e.mode!==`writing`)throw Error(`A reading Test Review cannot become Tier 1 writing answers.`);return e.assessments.map(e=>{if(e.collectionMethod!==`timer`&&e.collectionMethod!==`skip_timer`)throw Error(`A writing Test Review contains an invalid collection method.`);return{word:e.target,correct:e.correct,revealMethod:e.collectionMethod}})}export{e as t};

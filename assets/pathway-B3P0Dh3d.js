@@ -1,0 +1,1 @@
+function e(e){return e.cohorts.flatMap(e=>e.targets)}function t(e){if(e.kind!==`acquisition`||e.cohorts.length!==1||!e.available)throw Error(`Tier 2 Acquisition requires one available curriculum cohort.`);let t=e.cohorts[0];return{id:t.datasetId,targets:t.targets}}export{e as n,t};
