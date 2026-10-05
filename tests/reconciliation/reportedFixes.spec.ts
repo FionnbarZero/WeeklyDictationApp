@@ -1,4 +1,34 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+
+test('Grade 5 cannot launch legacy activities while its validated activity rules are loading', async ({ page }) => {
+  const snapshot = JSON.parse(
+    await readFile(new URL('../../public/curriculum/beta/grade5.json', import.meta.url), 'utf8'),
+  )
+  let requests = 0
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/curriculum/beta/grade5.json', async (route) => {
+    requests++
+    if (requests === 3) await held
+    await route.fulfill({ json: snapshot })
+  })
+  try {
+    await page.goto('/family-beta-preview.html?grade=grade5')
+    const frame = page.frameLocator('iframe')
+    await expect(frame.getByText('Loading teacher activities…', { exact: true })).toBeVisible()
+    await expect(frame.getByRole('button', { name: /Enter the Spirit Realm/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Report a problem', exact: true })).toBeVisible()
+    release()
+    await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
+    await expect(frame.getByRole('button', { name: 'Reading mastery warmup', exact: true })).toBeVisible()
+    await expect(frame.getByRole('button', { name: 'Reading mastered-word games', exact: true })).toBeVisible()
+  } finally {
+    release()
+  }
+})
 
 test('Grade 2 historical September 21 Dojo retains all seven reading targets', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=grade2')
@@ -72,10 +102,10 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
     await page.reload()
     expect(await records()).toEqual(before)
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
-      await frame.getByRole('button', { name: 'Reading mastered-word games', exact: true }).click()
-      await expect(frame.locator('.family-spirit-menu')).toHaveCSS('background-color', 'rgb(27, 32, 52)')
-      if (grade === 'grade5') await page.screenshot({ path: test.info().outputPath('spirit-menu.png') })
-      await expect(frame.getByRole('button', { name: 'Start Memory Lanterns' })).toBeEnabled()
+    await frame.getByRole('button', { name: 'Reading mastered-word games', exact: true }).click()
+    await expect(frame.locator('.family-spirit-menu')).toHaveCSS('background-color', 'rgb(27, 32, 52)')
+    if (grade === 'grade5') await page.screenshot({ path: test.info().outputPath('spirit-menu.png') })
+    await expect(frame.getByRole('button', { name: 'Start Memory Lanterns' })).toBeEnabled()
     await frame.getByRole('button', { name: 'Start Memory Lanterns' }).click()
     await expect(frame.locator('.lg-memory-card').first()).toBeVisible()
   })

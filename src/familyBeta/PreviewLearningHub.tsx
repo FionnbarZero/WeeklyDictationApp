@@ -45,6 +45,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   const [source, setSource] = useState<Awaited<ReturnType<typeof fetchCurriculum>> | null>(null)
   const [active, setActive] = useState<ExtraLaunch | null>(null)
   const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
   const [sessionId, setSessionId] = useState('')
   useEffect(() => {
     if (active) window.scrollTo(0, 0)
@@ -58,7 +59,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
       controller.abort()
       stopActiveAudio()
     }
-  }, [grade])
+  }, [grade, retry])
   function exit() {
     stopActiveAudio()
     setActive(null)
@@ -94,6 +95,28 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
       ]),
     )
   const date = new URLSearchParams(location.search).get('week') || localDateKey(new Date())
+  // The legacy model uses different warmup/scoring rules. Never expose its launch
+  // buttons while the authoritative curriculum request is still pending or failed.
+  if (!source)
+    return (
+      <section className="lg-shell" data-report-activity="Loading teacher activities">
+        <p role={error ? 'alert' : 'status'}>
+          {error
+            ? 'Teacher activities could not load. No substitute activities have been started.'
+            : 'Loading teacher activities…'}
+        </p>
+        {error && (
+          <button
+            onClick={() => {
+              setError('')
+              setRetry((value) => value + 1)
+            }}
+          >
+            Retry activities
+          </button>
+        )}
+      </section>
+    )
   const model: LearningHubViewModel<Launch | ExtraLaunch> = {
     ...props.model,
     sections: props.model.sections.map((section) => {

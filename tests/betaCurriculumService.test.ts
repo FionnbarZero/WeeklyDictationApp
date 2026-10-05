@@ -36,6 +36,7 @@ test('automatic Google refresh publishes all three grades and preserves last goo
   )
   const calls: string[] = []
   let failed = false
+  let teacherChanged = false
   globalThis.fetch = async (input) => {
     const url = String(input)
     calls.push(url)
@@ -56,7 +57,7 @@ test('automatic Google refresh publishes all three grades and preserves last goo
     const source = snapshots.find((snapshot) => url.includes(snapshot.sourceId))
     assert.ok(source, `Unexpected request: ${url}`)
     if (source.payload.sourceType !== 'google-slides') throw new Error('Expected slides')
-    return Response.json({
+    const response = {
       ...source.payload,
       slides: source.payload.slides!.map((slide) => ({
         ...slide,
@@ -64,7 +65,10 @@ test('automatic Google refresh publishes all three grades and preserves last goo
           { shape: { text: { textElements: [{ textRun: { content: slide.text } }] } } },
         ],
       })),
-    })
+    }
+    return Response.json(source.grade === 'Grade 5' && teacherChanged
+      ? JSON.parse(JSON.stringify(response).replaceAll('用处', '用途'))
+      : response)
   }
   try {
     const service = createCurriculumService({
@@ -74,6 +78,12 @@ test('automatic Google refresh publishes all three grades and preserves last goo
     await service.refresh()
     assert.ok(calls.some((url) => url.includes('values:batchGet')))
     assert.equal(service.statuses.size, 3)
+    const originalGrade5 = JSON.parse(await readFile(join(directory, 'grade5.json'), 'utf8')) as CurriculumSnapshot
+    teacherChanged = true
+    await service.refresh()
+    const changedGrade5 = JSON.parse(await readFile(join(directory, 'grade5.json'), 'utf8')) as CurriculumSnapshot
+    assert.notEqual(changedGrade5.contentSha256, originalGrade5.contentSha256)
+    assert.ok(inspectSnapshot(changedGrade5).datasets.some(d => d.words.some(w => w.text === '用途')))
     const previous = await Promise.all(
       BETA_GRADES.map(async (grade) => {
         assert.ok(service.statuses.get(grade)?.lastSuccess, `${grade}: ${JSON.stringify(service.statuses.get(grade))}`)
