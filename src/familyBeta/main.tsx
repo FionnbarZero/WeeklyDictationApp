@@ -252,9 +252,11 @@ function FamilyPreview() {
       data-report-curriculum={curriculum?.snapshot.contentSha256}
       data-report-game={tab === 'games' ? pack?.title : undefined}
       data-report-mode={familyId ? 'account' : 'device-preview'}
+      data-report-revision={import.meta.env.VITE_GIT_REVISION || 'local'}
     >
       <header className="beta-toolbar">
         <strong>Weekly Dictation · Family preview</strong>
+        <small>Review build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
         <label>
           Practicing as{' '}
           <select

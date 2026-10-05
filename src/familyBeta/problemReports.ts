@@ -22,7 +22,7 @@ export type ProblemReport = {
 export function captureScreenContext(doc: Document): ReportContext {
   const context: ReportContext = { route: doc.location.pathname }
   const workspace = doc.querySelector('[data-report-grade]')
-  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode']) {
+  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision']) {
     const value = workspace?.getAttribute(`data-report-${key}`)
     if (value) context[key] = value.slice(0, 300)
   }

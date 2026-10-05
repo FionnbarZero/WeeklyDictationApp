@@ -5,7 +5,7 @@ test.use({
   launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
 })
 
-test('sound check decodes recorded audio and records, compares, then releases a real browser media stream', async ({
+test('Grade 5 sound check decodes recorded audio and records, compares, then releases a real browser media stream', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -28,7 +28,7 @@ test('sound check decodes recorded audio and records, compares, then releases a 
       return play.call(this)
     }
   })
-  await page.goto('/family-beta-preview.html?grade=kindergarten')
+  await page.goto('/family-beta-preview.html?grade=grade5')
   await page.getByRole('button', { name: 'Check sound & microphone' }).click()
   const dialog = page.getByRole('dialog', { name: 'Check sound and microphone' })
   await dialog.getByRole('button', { name: 'Play test word' }).click()
