@@ -72,3 +72,69 @@ test('denied microphone access offers permission guidance and a retry', async ({
   await expect(dialog.getByRole('alert')).toContainText('allow Microphone')
   await expect(dialog.getByRole('button', { name: 'Try microphone again' })).toBeEnabled()
 })
+
+for (const [round, section] of [
+  [1, 'Practice your Ninja Skills'],
+  [2, 'The Final Boss'],
+] as const) {
+  test(`Grade 5 reading Boss round ${round} records every response and saves the exact score after reload`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'speechSynthesis', {
+        configurable: true,
+        value: {
+          cancel() {},
+          resume() {},
+          getVoices() {
+            return []
+          },
+          speak(utterance: SpeechSynthesisUtterance) {
+            setTimeout(() => {
+              utterance.onstart?.({} as SpeechSynthesisEvent)
+              utterance.onend?.({} as SpeechSynthesisEvent)
+            }, 0)
+          },
+        },
+      })
+    })
+    await page.goto('/family-beta-preview.html?grade=grade5')
+    const frame = page.frameLocator('iframe')
+    await frame.getByRole('button', { name: new RegExp(section) }).click()
+    await frame.getByRole('button', { name: 'Reading Test', exact: true }).click()
+    const record = frame.getByRole('button', { name: 'Record my reading', exact: true })
+    const submit = frame.getByRole('button', { name: 'Submit final review', exact: true })
+    let collected = 0
+    for (; collected < 40; collected++) {
+      await expect(record.or(submit)).toBeVisible()
+      if (await submit.isVisible()) break
+      await record.click()
+      await expect(frame.locator('.recording-live')).toBeVisible()
+      await page.waitForTimeout(400)
+      await frame.getByRole('button', { name: 'Stop recording', exact: true }).click()
+      await frame.getByRole('button', { name: 'Save response and continue' }).click()
+    }
+    expect(collected).toBeGreaterThan(0)
+    expect(collected).toBeLessThan(40)
+    const rows = frame.locator('.deferred-review-row')
+    await expect(rows).toHaveCount(collected)
+    for (let i = 0; i < collected; i++) {
+      const row = rows.nth(i)
+      await expect(row.getByRole('button', { name: 'Yes', exact: true })).toBeDisabled()
+      await row.getByRole('button', { name: /Play my reading, then the correct pronunciation/ }).click()
+      await row.getByRole('button', { name: i === 0 ? 'Not yet' : 'Yes', exact: true }).click()
+    }
+    await submit.click()
+    await page.reload()
+    await page.getByRole('button', { name: 'Progress', exact: true }).click()
+    await expect(page.getByRole('cell', { name: `${collected - 1} / ${collected}`, exact: true })).toBeVisible()
+    const records = await page.evaluate(() =>
+      Object.entries(localStorage)
+        .filter(([key]) => key.startsWith('family-beta-preview-results-v1:'))
+        .map(([, raw]) => JSON.parse(raw)),
+    )
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({ channel: 'reading', correct: collected - 1, attempted: collected })
+    expect(await page.evaluate(() => Object.values(localStorage).join(''))).not.toMatch(/blob:|audio\/webm|data:audio/)
+  })
+}

@@ -1,5 +1,7 @@
 # Family beta reconciliation and acceptance report
 
+The later [Grade 5 release review](./grade5-review-2026-10-05.md) records the approved hosted curriculum service and the current hosted candidate. It supersedes this earlier report's statements that curriculum hosting is still pending. Stable grade apps remain unchanged until separately approved.
+
 ## Decision
 
 Review the three local family previews before any grade deployment. This is a review candidate, not a declaration that the entire app is production ready. Child data, child sign-in settings, Firestore security rules, and grade deployments have not been changed. The separately approved Google Sheets API and server-side read-only source authorization are now enabled and verified.
