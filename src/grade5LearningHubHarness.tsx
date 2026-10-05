@@ -23,21 +23,21 @@ import {
   grade5LabWritingRequestIsConnected,
 } from './grade5Lab/writingPractice.ts'
 import { grade5WritingLabProfile } from './grade5Lab/practiceProfile.ts'
-import {
-  grade5LabReadingPathway,
-  grade5LabReadingRequestIsConnected,
-} from './grade5Lab/readingPractice.ts'
+import { grade5LabReadingPathway, grade5LabReadingRequestIsConnected } from './grade5Lab/readingPractice.ts'
 import { LearningHub } from './learningHub/LearningHub.tsx'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
 import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
+import { LearningModuleHost } from './ninjaSkills/LearningModuleHost.tsx'
+import type { LearningModulePack } from './ninjaSkills/contracts.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
-const REVIEW_INSTRUCTION = 'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
+const REVIEW_INSTRUCTION =
+  'If you cheat, you are just cheating yourself. Answer whether you got it right or wrong honestly, to improve your score.'
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -95,8 +95,9 @@ function normalizePayload(value: unknown): SlidesPresentationPayload {
 }
 
 function candidateFor(request: Grade5ActivityLaunchRequest): WeeklyDatasetCandidate {
-  const candidate = sourceExtraction?.classification.selectedCandidates.find((item) =>
-    item.datasetId === request.cohortId)
+  const candidate = sourceExtraction?.classification.selectedCandidates.find(
+    (item) => item.datasetId === request.cohortId,
+  )
   if (!candidate) throw new Error('The requested Grade 5 cohort is not available in the validated fixture.')
   return candidate
 }
@@ -109,6 +110,15 @@ function speakWord(word: Word) {
   utterance.rate = 0.55
   window.speechSynthesis.speak(utterance)
   return () => window.speechSynthesis.cancel()
+}
+
+function speakLearningModuleText(text: string, language = 'zh-CN', rate = 0.55) {
+  if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = language
+  utterance.rate = rate
+  window.speechSynthesis.speak(utterance)
 }
 
 function speakReadingReference(word: Word): Promise<void> {
@@ -133,8 +143,10 @@ function speakCurrentWord() {
 }
 
 function latestProgressionDate(extraction: Grade5SourceExtraction) {
-  return extraction.progressionEvidence.reduce((latest, evidence) =>
-    evidence.effectiveDate > latest ? evidence.effectiveDate : latest, '0000-00-00')
+  return extraction.progressionEvidence.reduce(
+    (latest, evidence) => (evidence.effectiveDate > latest ? evidence.effectiveDate : latest),
+    '0000-00-00',
+  )
 }
 
 function renderAssessmentSummary() {
@@ -151,7 +163,8 @@ function renderAssessmentSummary() {
     return
   }
   if (activeSession.segment === 'primary' && activeSession.primaryPhase === 'test-review') {
-    practiceSummary.innerHTML = '<strong>Lab observations:</strong> Writing responses remain provisional until the final review page. Nothing from this lab run is saved.'
+    practiceSummary.innerHTML =
+      '<strong>Lab observations:</strong> Writing responses remain provisional until the final review page. Nothing from this lab run is saved.'
     return
   }
   const correct = activeSession.primaryAnswers.filter((answer) => answer.correct).length
@@ -189,16 +202,19 @@ function initialPracticeSession(
 }
 
 function primaryStartState(session: PracticeSession): PracticeSession {
-  if (session.primaryQueue.length === 0) return { ...session, segment: 'primary', stage: 'complete', queue: [], index: 0 }
-  if (session.acquisition?.prompt) return { ...session, segment: 'primary', stage: 'dictation', queue: [session.acquisition.prompt.word], index: 0 }
+  if (session.primaryQueue.length === 0)
+    return { ...session, segment: 'primary', stage: 'complete', queue: [], index: 0 }
+  if (session.acquisition?.prompt)
+    return { ...session, segment: 'primary', stage: 'dictation', queue: [session.acquisition.prompt.word], index: 0 }
   return { ...session, segment: 'primary', stage: 'interstitial', queue: session.primaryQueue, index: 0 }
 }
 
 function beginWarmup() {
   if (!activeSession || activeSession.stage !== 'warmup-intro') return
-  activeSession = activeSession.queue.length > 0
-    ? { ...activeSession, stage: 'interstitial', index: 0 }
-    : primaryStartState(activeSession)
+  activeSession =
+    activeSession.queue.length > 0
+      ? { ...activeSession, stage: 'interstitial', index: 0 }
+      : primaryStartState(activeSession)
   renderPracticeView()
 }
 
@@ -253,18 +269,21 @@ function answerCurrentPrompt(correct: boolean) {
     if (!activePractice.flow.prompt?.revealed) return
     const assessmentCount = activePractice.assessments.length
     activePractice = answerGrade5AcquisitionLab(activePractice, correct, currentRevealMethod)
-    const assessment = activePractice.assessments.length > assessmentCount
-      ? activePractice.assessments[activePractice.assessments.length - 1]
+    const assessment =
+      activePractice.assessments.length > assessmentCount
+        ? activePractice.assessments[activePractice.assessments.length - 1]
+        : undefined
+    const response: SessionAnswer | undefined = assessment
+      ? {
+          word: assessment.target as Word,
+          correct: assessment.correct,
+          revealMethod: assessment.revealMethod,
+          acquisitionKind: assessment.kind,
+          promptId: assessment.promptId,
+          countsTowardWeeklyScore: assessment.countsTowardWeeklyScore,
+          dtPoolType: assessment.dtPoolType,
+        }
       : undefined
-    const response: SessionAnswer | undefined = assessment ? {
-      word: assessment.target as Word,
-      correct: assessment.correct,
-      revealMethod: assessment.revealMethod,
-      acquisitionKind: assessment.kind,
-      promptId: assessment.promptId,
-      countsTowardWeeklyScore: assessment.countsTowardWeeklyScore,
-      dtPoolType: assessment.dtPoolType,
-    } : undefined
     activeSession = {
       ...activeSession,
       acquisition: activePractice.flow,
@@ -283,9 +302,7 @@ function answerCurrentPrompt(correct: boolean) {
   if (!word) return
   const response: SessionAnswer = { word, correct, revealMethod: currentRevealMethod }
   const isWarmup = activeSession.segment === 'warmup'
-  const answers = isWarmup
-    ? [...activeSession.warmupAnswers, response]
-    : [...activeSession.primaryAnswers, response]
+  const answers = isWarmup ? [...activeSession.warmupAnswers, response] : [...activeSession.primaryAnswers, response]
   if (activeSession.index < activeSession.queue.length - 1) {
     activeSession = isWarmup
       ? { ...activeSession, warmupAnswers: answers, index: activeSession.index + 1 }
@@ -309,18 +326,17 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
     activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
     const correct = primaryAnswers.filter((item) => item.correct).length
     leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
-  }
-  else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
+  } else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
   else if (answer === 'skip-warmup' && activeSession?.stage === 'warmup-intro') {
     activeSession = primaryStartState(activeSession)
     renderPracticeView()
-  }
-  else if (answer === 'continue-primary' && activeSession?.segment === 'warmup') {
+  } else if (answer === 'continue-primary' && activeSession?.segment === 'warmup') {
     activeSession = primaryStartState(activeSession)
     renderPracticeView()
-  }
-  else if (answer === 'skip-test-review') leavePractice('Test Review was abandoned. Its temporary answers were discarded and no score was created.')
-  else if (answer === 'done') leavePractice('Acquisition stopped for today. This development lab does not save progress yet.')
+  } else if (answer === 'skip-test-review')
+    leavePractice('Test Review was abandoned. Its temporary answers were discarded and no score was created.')
+  else if (answer === 'done')
+    leavePractice('Acquisition stopped for today. This development lab does not save progress yet.')
 }
 
 function renderPracticeView() {
@@ -352,9 +368,10 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     activeDatasets = grade5LabDatasets(sourceExtraction)
     activeDataset = activeDatasets.find((dataset) => dataset.id === candidate.datasetId) || grade5LabDataset(candidate)
     const warmup = grade5LabWarmupSelection(sourceExtraction, latestProgressionDate(sourceExtraction))
-    activePractice = request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
-      ? startGrade5AcquisitionLab(candidate)
-      : null
+    activePractice =
+      request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
+        ? startGrade5AcquisitionLab(candidate)
+        : null
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
@@ -363,7 +380,9 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     statusElement.hidden = true
     practicePanel.hidden = false
     document.body.classList.add('practice-active')
-    setStatus(`Running ${label} with an up-to-six-item mastery Warmup preview and the shared Grade 5 Tier 1 writing flow. The production Warmup requirement is still undecided, and this lab run is not persisted.`)
+    setStatus(
+      `Running ${label} with an up-to-six-item mastery Warmup preview and the shared Grade 5 Tier 1 writing flow. The production Warmup requirement is still undecided, and this lab run is not persisted.`,
+    )
     renderPracticeView()
     practicePanel.scrollTop = 0
   } catch (error) {
@@ -387,30 +406,48 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     document.body.classList.add('practice-active')
     if (pathway.kind === 'test-review') {
       const targets = tier2ReadingPathwayTargets(pathway)
-      practiceSummary.textContent = 'Tier 2 reading Test Review collects every temporary recording before one final self-assessment page. Nothing from this lab run is saved.'
-      practiceRoot.render(<DeferredTestReview
-        key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
-        mode="reading"
-        targets={targets}
-        activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
-        onPlayReference={speakReadingReference}
-        onDiscard={() => leavePractice('Reading Test Review was abandoned. Temporary recordings and provisional answers were discarded.')}
-        onComplete={(completion) => leavePractice(`Reading Test Review complete: ${completion.correct}/${completion.total} correct. This lab result was not saved.`)}
-        sessionNote="Grade 5 reading Test Review · collect every response first · recordings and results are not saved"
-      />)
+      practiceSummary.textContent =
+        'Tier 2 reading Test Review collects every temporary recording before one final self-assessment page. Nothing from this lab run is saved.'
+      practiceRoot.render(
+        <DeferredTestReview
+          key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
+          mode="reading"
+          targets={targets}
+          activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
+          onPlayReference={speakReadingReference}
+          onDiscard={() =>
+            leavePractice(
+              'Reading Test Review was abandoned. Temporary recordings and provisional answers were discarded.',
+            )
+          }
+          onComplete={(completion) =>
+            leavePractice(
+              `Reading Test Review complete: ${completion.correct}/${completion.total} correct. This lab result was not saved.`,
+            )
+          }
+          sessionNote="Grade 5 reading Test Review · collect every response first · recordings and results are not saved"
+        />,
+      )
       practicePanel.scrollTop = 0
       return
     }
-    practiceSummary.textContent = 'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
-    practiceRoot.render(<Tier2ReadingPractice
-      key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
-      profile={grade5Tier2ReadingProfile}
-      pathway={pathway}
-      label={label}
-      onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
-      onComplete={(summary) => leavePractice(`Reading complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This lab result was not saved.`)}
-      sessionNote="Grade 5 development reading · recording and results are not saved"
-    />)
+    practiceSummary.textContent =
+      'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
+    practiceRoot.render(
+      <Tier2ReadingPractice
+        key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
+        profile={grade5Tier2ReadingProfile}
+        pathway={pathway}
+        label={label}
+        onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
+        onComplete={(summary) =>
+          leavePractice(
+            `Reading complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. This lab result was not saved.`,
+          )
+        }
+        sessionNote="Grade 5 development reading · recording and results are not saved"
+      />,
+    )
     practicePanel.scrollTop = 0
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'Grade 5 reading practice could not start.', true)
@@ -426,7 +463,38 @@ function startConnectedRequest(request: Grade5ActivityLaunchRequest, label: stri
   else startWritingPractice(request, label)
 }
 
+function startLearningModule(pack: LearningModulePack) {
+  activePractice = null
+  activeDataset = null
+  activeDatasets = []
+  activeSession = null
+  requestPanel.hidden = true
+  hubRootElement.hidden = true
+  labDetails.hidden = true
+  statusElement.hidden = true
+  practicePanel.hidden = false
+  document.body.classList.add('practice-active')
+  practiceSummary.textContent = `${pack.title} uses the validated Test Review 1 cohort. Its attempts do not change curriculum lifecycle or mastery.`
+  practiceRoot.render(
+    <LearningModuleHost
+      pack={pack}
+      playAudio={speakLearningModuleText}
+      onExit={() => leavePractice(`${pack.title} exited. This development-only run was not saved.`)}
+      onComplete={(summary) =>
+        leavePractice(
+          `${pack.title} complete: ${summary.correct}/${summary.attempted} correct attempts. This result did not change mastery.`,
+        )
+      }
+    />,
+  )
+  practicePanel.scrollTop = 0
+}
+
 function launchFromLearningHub(launch: Grade5HubLaunch) {
+  if (launch.kind === 'learning-module') {
+    startLearningModule(launch.pack)
+    return
+  }
   const connected = launch.requests.filter(connectedRequest)
   if (connected.length === 1) {
     startConnectedRequest(connected[0], launch.label)
@@ -437,13 +505,14 @@ function launchFromLearningHub(launch: Grade5HubLaunch) {
 
 function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[]) {
   requestTitle.textContent = label
-  const includesGuidedAndReview = requests.some((request) => request.activityKind === 'acquisition' || request.activityKind === 'reacquisition')
-    && requests.some((request) => request.activityKind === 'test-review')
+  const includesGuidedAndReview =
+    requests.some((request) => request.activityKind === 'acquisition' || request.activityKind === 'reacquisition') &&
+    requests.some((request) => request.activityKind === 'test-review')
   requestMessage.textContent = includesGuidedAndReview
     ? 'Choose guided practice or the collect-first Test Review format for Tier 1 writing or Tier 2 reading.'
     : requests.length > 1
       ? 'Choose the connected Tier 1 writing or Tier 2 reading pathway.'
-    : 'This activity is not connected yet. The portable request below is preserved for its future practice engine.'
+      : 'This activity is not connected yet. The portable request below is preserved for its future practice engine.'
   requestOutput.textContent = JSON.stringify(requests.length === 1 ? requests[0] : requests, null, 2)
   requestActions.replaceChildren()
   for (const request of requests) {
@@ -451,15 +520,29 @@ function showLaunchRequest(label: string, requests: Grade5ActivityLaunchRequest[
     button.type = 'button'
     if (connectedRequest(request)) {
       const cohortLabel = request.cohortId
-        ? sourceExtraction?.classification.selectedCandidates.find((candidate) => candidate.datasetId === request.cohortId)?.dateRangeLabel
+        ? sourceExtraction?.classification.selectedCandidates.find(
+            (candidate) => candidate.datasetId === request.cohortId,
+          )?.dateRangeLabel
         : undefined
-      const actionLabel = request.learningChannel === 'tier-2-reading'
-        ? request.activityKind === 'test-review' ? 'Start Reading Test' : request.activityKind === 'warmup' ? 'Start Reading Mastery' : request.activityKind === 'reacquisition' ? 'Relearn Reading' : 'Start Reading Dojo'
-        : request.activityKind === 'test-review' ? 'Start Writing Test' : request.activityKind === 'reacquisition' ? 'Relearn Writing' : 'Start Writing Dojo'
+      const actionLabel =
+        request.learningChannel === 'tier-2-reading'
+          ? request.activityKind === 'test-review'
+            ? 'Start Reading Test'
+            : request.activityKind === 'warmup'
+              ? 'Start Reading Mastery'
+              : request.activityKind === 'reacquisition'
+                ? 'Relearn Reading'
+                : 'Start Reading Dojo'
+          : request.activityKind === 'test-review'
+            ? 'Start Writing Test'
+            : request.activityKind === 'reacquisition'
+              ? 'Relearn Writing'
+              : 'Start Writing Dojo'
       button.textContent = `${actionLabel}${cohortLabel ? ` · ${cohortLabel}` : ''}`
       button.addEventListener('click', () => startConnectedRequest(request, label))
     } else {
-      button.textContent = request.activityKind === 'reacquisition' ? 'Re-teaching Not Connected Yet' : 'Not Connected Yet'
+      button.textContent =
+        request.activityKind === 'reacquisition' ? 'Re-teaching Not Connected Yet' : 'Not Connected Yet'
       button.disabled = true
     }
     requestActions.append(button)
@@ -477,7 +560,9 @@ async function loadHub() {
     learningHubModel = buildGrade5LearningHub(sourceExtraction)
     hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} />)
     hubRootElement.hidden = false
-    setStatus('Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.')
+    setStatus(
+      'Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.',
+    )
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'The Grade 5 hub could not be loaded.', true)
   }

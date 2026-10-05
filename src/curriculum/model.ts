@@ -20,6 +20,7 @@ export type VocabularyOccurrenceCandidate = {
   text: string
   sourcePosition: number
   targetOccurrenceId: string | null
+  learningModule?: import('../domain/contracts.ts').AuthoritativeLearningModuleMetadata
 }
 
 export type WeeklyDatasetCandidate = {

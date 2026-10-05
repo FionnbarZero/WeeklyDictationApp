@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { ArrowLeft, Check, Clock3 } from 'lucide-react'
 import {
   latestScore,
@@ -13,6 +14,7 @@ import {
 } from '../domain.ts'
 import { LearningHub } from '../learningHub/LearningHub.tsx'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
+import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { grade2LearningHubView, type Grade2LearningHubLaunch } from './learningHub.ts'
 
 type Grade2HomeChild = {
@@ -34,6 +36,9 @@ type Grade2HomeViewProps = {
   onStart: (target: PracticeTarget) => void
   onStartWarmup: () => void
   onStartReading: (pathway: Tier2ReadingPathway) => void
+  onStartLearningModule: (pack: LearningModulePack) => void
+  initialLearningHubSectionId?: string | null
+  onInitialLearningHubSectionConsumed?: () => void
   onHistory: () => void
 }
 
@@ -98,8 +103,14 @@ export function Grade2HomeView({
   onStart,
   onStartWarmup,
   onStartReading,
+  onStartLearningModule,
+  initialLearningHubSectionId,
+  onInitialLearningHubSectionConsumed,
   onHistory,
 }: Grade2HomeViewProps) {
+  useEffect(() => {
+    if (initialLearningHubSectionId) onInitialLearningHubSectionConsumed?.()
+  }, [initialLearningHubSectionId, onInitialLearningHubSectionConsumed])
   const today = scores.filter(
     (score) => score.childId === child.id && score.sessionDate === localDateKey(currentDate),
   ).length
@@ -116,6 +127,7 @@ export function Grade2HomeView({
   const launch = (request: Grade2LearningHubLaunch) => {
     if (request.kind === 'writing') onStart(request.target)
     else if (request.kind === 'reading') onStartReading(request.pathway)
+    else if (request.kind === 'learning-module') onStartLearningModule(request.pack)
     else onStartWarmup()
   }
 
@@ -134,7 +146,12 @@ export function Grade2HomeView({
           </button>
         </div>
       )}
-      <LearningHub model={model} onLaunch={launch} showTopbar={false} />
+      <LearningHub
+        model={model}
+        onLaunch={launch}
+        showTopbar={false}
+        initialSelectedSectionId={initialLearningHubSectionId}
+      />
       <section className="section-heading grade2-record-heading">
         <div>
           <p className="eyebrow">Ninja Record</p>

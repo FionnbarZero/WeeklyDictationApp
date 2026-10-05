@@ -10,6 +10,7 @@ export type LearningHubProps<Launch> = {
   model: LearningHubViewModel<Launch>
   onLaunch: (launch: Launch) => void
   showTopbar?: boolean
+  initialSelectedSectionId?: string | null
 }
 
 function WordGroup({ group }: { group: LearningHubWordGroup }) {
@@ -100,8 +101,13 @@ function SectionDetail<Launch>({
   </section>
 }
 
-export function LearningHub<Launch>({ model, onLaunch, showTopbar = true }: LearningHubProps<Launch>) {
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+export function LearningHub<Launch>({
+  model,
+  onLaunch,
+  showTopbar = true,
+  initialSelectedSectionId = null,
+}: LearningHubProps<Launch>) {
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(initialSelectedSectionId)
   const selected = model.sections.find((section) => section.id === selectedSectionId)
 
   useEffect(() => {

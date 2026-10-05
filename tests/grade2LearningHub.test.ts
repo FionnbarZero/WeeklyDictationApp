@@ -31,6 +31,13 @@ function dataset(id: string, dateRange: string, writing: string[], reading: stri
     description: dateRange,
     words: tier1,
     vocabulary: { tier1, tier2, tier3: [] },
+    source: {
+      sourceType: 'google-slides',
+      sourceDocumentId: 'grade-2-source',
+      sourceUnitId: id,
+      adapterId: 'grade-2-test-adapter',
+    },
+    contentFingerprint: `fingerprint-${id}`,
   }
 }
 
@@ -70,19 +77,31 @@ const hub = grade2LearningHubView({
 })
 
 test('Grade 2 uses the same four child-facing path names as Kindergarten and Grade 5', () => {
-  assert.deepEqual(hub.sections.map((section) => section.title), [
-    'Enter the Dojo',
-    'Practice your Ninja Skills',
-    'The Final Boss Test',
-    'Enter the Spirit Realm',
-  ])
+  assert.deepEqual(
+    hub.sections.map((section) => section.title),
+    ['Enter the Dojo', 'Practice your Ninja Skills', 'The Final Boss Test', 'Enter the Spirit Realm'],
+  )
 })
 
 test('the shared names preserve the Grade 2 lifecycle mapping', () => {
   const [dojo, ninjaSkills, finalBoss, spiritRealm] = hub.sections
   assert.equal(dojo.activities[0].action.kind, 'launch')
   assert.equal(dojo.activities[1].action.kind, 'launch')
-  assert.ok(ninjaSkills.activities.every((activity) => activity.action.kind === 'disabled'))
+  assert.deepEqual(
+    ninjaSkills.activities.map((activity) => activity.title),
+    [
+      'Dictation Streak',
+      'Shuriken Match',
+      'Shadow Strike Dojo',
+      'Memory Lanterns',
+      'Context Gap Dash',
+      'Sushi Scramble',
+    ],
+  )
+  assert.deepEqual(
+    ninjaSkills.activities.map((activity) => activity.action.kind),
+    ['disabled', 'disabled', 'launch', 'launch', 'disabled', 'disabled'],
+  )
   assert.equal(finalBoss.activities[0].action.kind, 'launch')
   assert.equal(finalBoss.activities[1].action.kind, 'launch')
   assert.equal(spiritRealm.activities[0].action.kind, 'launch')
@@ -90,9 +109,11 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
   if (dojo.activities[0].action.kind === 'launch') assert.equal(dojo.activities[0].action.launch.kind, 'writing')
   if (finalBoss.activities[0].action.kind === 'launch') {
     assert.equal(finalBoss.activities[0].action.launch.kind, 'writing')
-    if (finalBoss.activities[0].action.launch.kind === 'writing') assert.equal(finalBoss.activities[0].action.launch.target.phase, 'test-review')
+    if (finalBoss.activities[0].action.launch.kind === 'writing')
+      assert.equal(finalBoss.activities[0].action.launch.target.phase, 'test-review')
   }
-  if (spiritRealm.activities[0].action.kind === 'launch') assert.equal(spiritRealm.activities[0].action.launch.kind, 'warmup')
+  if (spiritRealm.activities[0].action.kind === 'launch')
+    assert.equal(spiritRealm.activities[0].action.launch.kind, 'warmup')
 })
 
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
@@ -101,9 +122,10 @@ test('the Grade 2 production home uses the shared Learning Hub without replacing
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /lazy\(\(\) => import\('\.\/grade2\/Grade2HomeView\.tsx'\)\)/)
   assert.match(grade2Home, /grade2LearningHubView/)
-  assert.match(grade2Home, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
+  assert.match(grade2Home, /<LearningHub[\s\S]*model=\{model\}[\s\S]*onLaunch=\{launch\}[\s\S]*showTopbar=\{false\}/)
   assert.match(grade2Home, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
   assert.match(grade2Home, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
+  assert.match(grade2Home, /else if \(request\.kind === 'learning-module'\) onStartLearningModule\(request\.pack\)/)
   assert.match(grade2Home, /else onStartWarmup\(\)/)
   assert.match(main, /learningHub\/learningHub\.css/)
 })

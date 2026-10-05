@@ -52,11 +52,27 @@ const requiredLazyChunks = [
   'HistoryView',
   'Tier2ReadingPractice',
   'LocalBackupTools',
+  'LearningModuleHost',
 ]
 for (const chunkName of requiredLazyChunks) {
   const entry = Object.entries(manifest).find(([, chunk]) => chunk.name === chunkName)
   if (!entry || initialChunkKeys.has(entry[0])) {
     throw new Error(`${chunkName} must remain outside the initial application bundle.`)
+  }
+}
+
+const requiredLazySources = [
+  'src/learningModules/dictation-streak/Game.tsx',
+  'src/learningModules/speed-match/Game.tsx',
+  'src/learningModules/target-blast/Game.tsx',
+  'src/learningModules/memory-lanterns/Game.tsx',
+  'src/learningModules/context-gap-dash/Game.tsx',
+  'src/learningModules/sushi-scramble/Game.tsx',
+]
+for (const source of requiredLazySources) {
+  const entry = Object.entries(manifest).find(([, chunk]) => chunk.src === source)
+  if (!entry || initialChunkKeys.has(entry[0])) {
+    throw new Error(`${source} must remain outside the initial application bundle.`)
   }
 }
 

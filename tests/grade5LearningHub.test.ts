@@ -3,15 +3,13 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { extractGrade5Presentation } from '../src/curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload } from '../src/curriculum/model.ts'
-import {
-  buildGrade5LearningHub,
-  type Grade5HubActivity,
-  type Grade5HubSection,
-} from '../src/grade5Lab/learningHub.ts'
+import { buildGrade5LearningHub, type Grade5HubActivity, type Grade5HubSection } from '../src/grade5Lab/learningHub.ts'
 import { grade5LearningHubView } from '../src/grade5Lab/learningHubView.ts'
 
 function loadFixture(): SlidesPresentationPayload {
-  return JSON.parse(readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8')) as SlidesPresentationPayload
+  return JSON.parse(
+    readFileSync(new URL('./fixtures/grade5-presentation.json', import.meta.url), 'utf8'),
+  ) as SlidesPresentationPayload
 }
 
 function model() {
@@ -33,43 +31,47 @@ function activity(sectionValue: Grade5HubSection, id: string): Grade5HubActivity
 test('the Grade 5 hub assigns accepted cohorts to Acquisition, Test 1, Test 2, and Mastery', () => {
   const hub = model()
 
-  assert.deepEqual(hub.sections.map((item) => item.title), [
-    'Enter the Dojo',
-    'Practice your Ninja Skills',
-    'The Final Boss Test',
-    'Enter the Spirit Realm',
-  ])
+  assert.deepEqual(
+    hub.sections.map((item) => item.title),
+    ['Enter the Dojo', 'Practice your Ninja Skills', 'The Final Boss Test', 'Enter the Spirit Realm'],
+  )
   assert.equal(section('homework').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-21__2026-09-25')
   assert.equal(section('test-review-1').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-14__2026-09-18')
   assert.equal(section('test-review-2').cohorts[0]?.cohortId, 'grade-5__2026-27__2026-09-08__2026-09-11')
-  assert.deepEqual(section('review').cohorts.map((cohort) => cohort.cohortId), [
-    'grade-5__2026-27__2026-08-31__2026-09-04',
-  ])
+  assert.deepEqual(
+    section('review').cohorts.map((cohort) => cohort.cohortId),
+    ['grade-5__2026-27__2026-08-31__2026-09-04'],
+  )
 })
 
 test('each weekly area exposes the approved activity labels', () => {
-  assert.deepEqual(section('homework').activities.map((item) => item.label), [
-    'Read the Book',
-    'Learn to Write',
-    'Read the Words',
-  ])
-  assert.deepEqual(section('test-review-1').activities.map((item) => item.label), [
-    'Read the Book',
-    'Writing Test',
-    'Reading Test',
-    'Reenter the Training Dojo',
-  ])
-  assert.deepEqual(section('test-review-2').activities.map((item) => item.label), [
-    'Read the Book',
-    'Writing Test',
-    'Reading Test',
-    'Reenter the Training Dojo',
-  ])
-  assert.deepEqual(section('review').activities.map((item) => item.label), [
-    'Tier 1 Writing Warmup',
-    'Tier 2 Reading Warmup',
-    'Reenter the Training Dojo',
-  ])
+  assert.deepEqual(
+    section('homework').activities.map((item) => item.label),
+    ['Read the Book', 'Learn to Write', 'Read the Words'],
+  )
+  assert.deepEqual(
+    section('test-review-1').activities.map((item) => item.label),
+    [
+      'Read the Book',
+      'Writing Test',
+      'Reading Test',
+      'Reenter the Training Dojo',
+      'Dictation Streak',
+      'Shuriken Match',
+      'Shadow Strike Dojo',
+      'Memory Lanterns',
+      'Context Gap Dash',
+      'Sushi Scramble',
+    ],
+  )
+  assert.deepEqual(
+    section('test-review-2').activities.map((item) => item.label),
+    ['Read the Book', 'Writing Test', 'Reading Test', 'Reenter the Training Dojo'],
+  )
+  assert.deepEqual(
+    section('review').activities.map((item) => item.label),
+    ['Tier 1 Writing Warmup', 'Tier 2 Reading Warmup', 'Reenter the Training Dojo'],
+  )
 })
 
 test('book buttons use the resource from the cohort current-stage source section', () => {
@@ -127,19 +129,15 @@ test('both Test Review stages offer guided Acquisition and collect-first Test Re
   for (const stage of ['test-review-1', 'test-review-2'] as const) {
     const requests = activity(section(stage), `${stage}-reenter-training-dojo`).launchRequests
 
-    assert.deepEqual(requests.map((request) => request.learningChannel), [
-      'tier-1-writing',
-      'tier-2-reading',
-      'tier-1-writing',
-      'tier-2-reading',
-    ])
+    assert.deepEqual(
+      requests.map((request) => request.learningChannel),
+      ['tier-1-writing', 'tier-2-reading', 'tier-1-writing', 'tier-2-reading'],
+    )
     assert.ok(requests.every((request) => request.stage === stage))
-    assert.deepEqual(requests.map((request) => request.activityKind), [
-      'acquisition',
-      'acquisition',
-      'test-review',
-      'test-review',
-    ])
+    assert.deepEqual(
+      requests.map((request) => request.activityKind),
+      ['acquisition', 'acquisition', 'test-review', 'test-review'],
+    )
     assert.ok(requests.every((request) => request.warmupMaximum === 6))
     assert.ok(requests.every((request) => request.preActivityWarmupRequirement === 'undecided'))
     assert.equal(new Set(requests.map((request) => request.cohortId)).size, 1)
@@ -158,18 +156,14 @@ test('mastery requests preserve separate writing and reading queues and offer bo
   assert.equal(readingWarmup.warmupMaximum, null)
   assert.equal(writingWarmup.preActivityWarmupRequirement, 'not-applicable')
   assert.equal(readingWarmup.preActivityWarmupRequirement, 'not-applicable')
-  assert.deepEqual(reteach.map((request) => request.learningChannel), [
-    'tier-1-writing',
-    'tier-2-reading',
-    'tier-1-writing',
-    'tier-2-reading',
-  ])
-  assert.deepEqual(reteach.map((request) => request.activityKind), [
-    'reacquisition',
-    'reacquisition',
-    'test-review',
-    'test-review',
-  ])
+  assert.deepEqual(
+    reteach.map((request) => request.learningChannel),
+    ['tier-1-writing', 'tier-2-reading', 'tier-1-writing', 'tier-2-reading'],
+  )
+  assert.deepEqual(
+    reteach.map((request) => request.activityKind),
+    ['reacquisition', 'reacquisition', 'test-review', 'test-review'],
+  )
   assert.ok(reteach.every((request) => request.stage === 'mastery'))
   assert.ok(reteach.every((request) => request.cohortId === 'grade-5__2026-27__2026-08-31__2026-09-04'))
   assert.ok(reteach.every((request) => request.warmupMaximum === 6))
@@ -180,8 +174,9 @@ test('mastery requests preserve separate writing and reading queues and offer bo
 test('unavailable cohorts remain visible with disabled activities and explanations', () => {
   const extraction = extractGrade5Presentation(loadFixture())
   extraction.progressionEvidence = extraction.progressionEvidence.slice(0, 1)
-  extraction.resources = extraction.resources.filter((resource) =>
-    resource.datasetId === extraction.progressionEvidence[0]?.introducedDatasetId)
+  extraction.resources = extraction.resources.filter(
+    (resource) => resource.datasetId === extraction.progressionEvidence[0]?.introducedDatasetId,
+  )
   const hub = buildGrade5LearningHub(extraction)
 
   assert.equal(hub.sections.length, 4)
@@ -200,23 +195,27 @@ test('the Grade 5 adapter preserves content and launch requests in the shared Le
   const view = grade5LearningHubView(model())
 
   assert.equal(view.profileLabel, 'Grade 5')
-  assert.deepEqual(view.sections.map((item) => item.id), [
-    'homework',
-    'test-review-1',
-    'test-review-2',
-    'review',
-  ])
+  assert.deepEqual(
+    view.sections.map((item) => item.id),
+    ['homework', 'test-review-1', 'test-review-2', 'review'],
+  )
   const homework = view.sections[0]
   assert.equal(homework?.cohorts[0]?.groups[0]?.label, 'Tier 1 · Writing')
   assert.equal(homework?.cohorts[0]?.groups[1]?.label, 'Tier 2 · Reading')
   const writing = homework?.activities.find((item) => item.id === 'acquisition-writing')
   assert.equal(writing?.action.kind, 'launch')
   if (writing?.action.kind === 'launch') {
-    assert.equal(writing.action.launch.requests[0]?.learningChannel, 'tier-1-writing')
+    assert.equal(writing.action.launch.kind, 'activity')
+    if (writing.action.launch.kind === 'activity') {
+      assert.equal(writing.action.launch.requests[0]?.learningChannel, 'tier-1-writing')
+    }
   }
   const reading = homework?.activities.find((item) => item.id === 'acquisition-reading')
   assert.equal(reading?.action.kind, 'launch')
   if (reading?.action.kind === 'launch') {
-    assert.equal(reading.action.launch.requests[0]?.learningChannel, 'tier-2-reading')
+    assert.equal(reading.action.launch.kind, 'activity')
+    if (reading.action.launch.kind === 'activity') {
+      assert.equal(reading.action.launch.requests[0]?.learningChannel, 'tier-2-reading')
+    }
   }
 })

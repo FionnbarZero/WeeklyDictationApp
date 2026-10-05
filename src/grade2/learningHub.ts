@@ -6,6 +6,9 @@ import type {
   LearningHubViewModel,
 } from '../learningHub/contracts.ts'
 import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
+import { learningModuleActivities, learningModuleCohortFromDatasets } from '../ninjaSkills/content.ts'
+import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
 import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
 
@@ -13,6 +16,7 @@ export type Grade2LearningHubLaunch =
   | { kind: 'writing'; target: PracticeTarget }
   | { kind: 'reading'; pathway: Tier2ReadingPathway }
   | { kind: 'warmup' }
+  | { kind: 'learning-module'; pack: LearningModulePack }
 
 export type Grade2LearningHubInput = {
   childName: string
@@ -76,18 +80,6 @@ function launchActivity(
   }
 }
 
-function gamePreview(id: string, eyebrow: string, title: string, description: string, icon: string) {
-  return launchActivity(
-    id,
-    eyebrow,
-    title,
-    description,
-    icon,
-    null,
-    'The shared game UI is ready, but Grade 2 game scoring is not connected yet.',
-  )
-}
-
 function section(
   values: Omit<LearningHubSection<Grade2LearningHubLaunch>, 'cohorts'> & { cohort: LearningHubCohort | null },
 ): LearningHubSection<Grade2LearningHubLaunch> {
@@ -116,6 +108,12 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
   const reviewCohort = cohort('grade-2-final-boss', reviewDatasets)
   const masteryCohort = cohort('grade-2-spirit-realm', input.masteredDatasets)
   const gamesCohort = dojoCohort || masteryCohort
+  const gamesDatasets = acquisitionDatasets.length ? acquisitionDatasets : input.masteredDatasets
+  const learningModuleCohort = learningModuleCohortFromDatasets(
+    'grade-2-ninja-skills',
+    gamesCohort?.label || 'Grade 2 Ninja Skills',
+    gamesDatasets,
+  )
   const dojoAvailable = Boolean(input.acquisitionTarget || readingAcquisition)
   const finalBossAvailable = Boolean(input.testReviewTarget || readingReview)
   const spiritRealmAvailable = input.warmupWordCount > 0 || Boolean(readingMastery)
@@ -127,10 +125,12 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
     eyebrow: 'Grade 2 adventures',
     title: 'Ready for your next challenge,',
     titleAccent: `${input.childName}?`,
-    introduction: 'Choose one path. Writing and reading use the same weekly words while keeping their own practice records.',
+    introduction:
+      'Choose one path. Writing and reading use the same weekly words while keeping their own practice records.',
     heroTitle: 'Learn. Practice.',
     heroAccent: 'Grow stronger.',
-    heroDescription: 'Visit this week’s Dojo, build Ninja Skills, prepare for the Final Boss, or strengthen mastery words in the Spirit Realm.',
+    heroDescription:
+      'Visit this week’s Dojo, build Ninja Skills, prepare for the Final Boss, or strengthen mastery words in the Spirit Realm.',
     heroMark: '字',
     sectionEyebrow: 'Choose your path',
     sectionTitle: 'Where do you want to go?',
@@ -150,8 +150,24 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         ...(!dojoAvailable ? { unavailableReason: 'This week’s Acquisition words are not available.' } : {}),
         cohort: dojoCohort,
         activities: [
-          launchActivity('dojo-writing', 'Tier 1 · Writing', 'Learn to Write', 'Complete the established Grade 2 Acquisition sequence.', '✍️', input.acquisitionTarget ? { kind: 'writing', target: input.acquisitionTarget } : null, 'No writing Acquisition cohort is active.'),
-          launchActivity('dojo-reading', 'Tier 2 · Reading', 'Read the Words', 'Look, listen, record, compare, and self-assess each reading word.', '🎧', readingAcquisition ? { kind: 'reading', pathway: readingAcquisition } : null, 'No reading Acquisition cohort is active.'),
+          launchActivity(
+            'dojo-writing',
+            'Tier 1 · Writing',
+            'Learn to Write',
+            'Complete the established Grade 2 Acquisition sequence.',
+            '✍️',
+            input.acquisitionTarget ? { kind: 'writing', target: input.acquisitionTarget } : null,
+            'No writing Acquisition cohort is active.',
+          ),
+          launchActivity(
+            'dojo-reading',
+            'Tier 2 · Reading',
+            'Read the Words',
+            'Look, listen, record, compare, and self-assess each reading word.',
+            '🎧',
+            readingAcquisition ? { kind: 'reading', pathway: readingAcquisition } : null,
+            'No reading Acquisition cohort is active.',
+          ),
         ],
       }),
       section({
@@ -159,17 +175,16 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         number: '2',
         kicker: 'Play and practice',
         title: SHARED_LEARNING_PATH_TITLES.ninjaSkills,
-        subtitle: 'Build writing and reading power through short games.',
-        actionLabel: 'Choose a game',
+        subtitle: 'Build writing and reading power through six focused learning modules.',
+        actionLabel: 'Choose a learning module',
         theme: 'blue',
         available: Boolean(gamesCohort),
         ...(!gamesCohort ? { unavailableReason: 'Ninja Skills will open when curriculum words are available.' } : {}),
         cohort: gamesCohort,
-        activities: [
-          gamePreview('ninja-listening', 'Listening game', 'Listening Lily Pads', 'Hear a word and choose its matching character.', '🐸'),
-          gamePreview('ninja-memory', 'Reading game', 'Memory Lanterns', 'Turn over cards and match the same word.', '🏮'),
-          gamePreview('ninja-sky-writing', 'Writing game', 'Sky Writing', 'Practice forming a character on the screen.', '☁️'),
-        ],
+        activities: learningModuleActivities(learningModuleCohort, NINJA_SKILLS_PROFILES['Grade 2'], (pack) => ({
+          kind: 'learning-module',
+          pack,
+        })),
       }),
       section({
         id: 'final-boss',
@@ -180,11 +195,29 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         actionLabel: 'Face the Final Boss',
         theme: 'violet',
         available: finalBossAvailable,
-        ...(!finalBossAvailable ? { unavailableReason: 'The Final Boss opens when a word set reaches Test Review.' } : {}),
+        ...(!finalBossAvailable
+          ? { unavailableReason: 'The Final Boss opens when a word set reaches Test Review.' }
+          : {}),
         cohort: reviewCohort,
         activities: [
-          launchActivity('final-boss-writing', 'Tier 1 · Writing', 'Writing Test', 'Complete the existing Grade 2 writing Test Review.', '🐉', input.testReviewTarget ? { kind: 'writing', target: input.testReviewTarget } : null, 'No writing Test Review cohort is active.'),
-          launchActivity('final-boss-reading', 'Tier 2 · Reading', 'Reading Test', 'Record and compare every visible reading target.', '🎧', readingReview ? { kind: 'reading', pathway: readingReview } : null, 'No reading Test Review cohort is active.'),
+          launchActivity(
+            'final-boss-writing',
+            'Tier 1 · Writing',
+            'Writing Test',
+            'Complete the existing Grade 2 writing Test Review.',
+            '🐉',
+            input.testReviewTarget ? { kind: 'writing', target: input.testReviewTarget } : null,
+            'No writing Test Review cohort is active.',
+          ),
+          launchActivity(
+            'final-boss-reading',
+            'Tier 2 · Reading',
+            'Reading Test',
+            'Record and compare every visible reading target.',
+            '🎧',
+            readingReview ? { kind: 'reading', pathway: readingReview } : null,
+            'No reading Test Review cohort is active.',
+          ),
         ],
       }),
       section({
@@ -199,8 +232,24 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         ...(!spiritRealmAvailable ? { unavailableReason: 'The Spirit Realm opens after words reach mastery.' } : {}),
         cohort: masteryCohort,
         activities: [
-          launchActivity('spirit-realm-writing', 'Tier 1 · Writing mastery', 'Writing mastery warmup', `${input.warmupWordCount} unique mastery target${input.warmupWordCount === 1 ? '' : 's'} available.`, '🌙', input.warmupWordCount > 0 ? { kind: 'warmup' } : null, 'No writing mastery targets are available.'),
-          launchActivity('spirit-realm-reading', 'Tier 2 · Reading mastery', 'Reading mastery', `${readingMastery ? tier2ReadingPathwayTargets(readingMastery).length : 0} reading mastery targets available.`, '🎧', readingMastery ? { kind: 'reading', pathway: readingMastery } : null, 'No reading mastery targets are available.'),
+          launchActivity(
+            'spirit-realm-writing',
+            'Tier 1 · Writing mastery',
+            'Writing mastery warmup',
+            `${input.warmupWordCount} unique mastery target${input.warmupWordCount === 1 ? '' : 's'} available.`,
+            '🌙',
+            input.warmupWordCount > 0 ? { kind: 'warmup' } : null,
+            'No writing mastery targets are available.',
+          ),
+          launchActivity(
+            'spirit-realm-reading',
+            'Tier 2 · Reading mastery',
+            'Reading mastery',
+            `${readingMastery ? tier2ReadingPathwayTargets(readingMastery).length : 0} reading mastery targets available.`,
+            '🎧',
+            readingMastery ? { kind: 'reading', pathway: readingMastery } : null,
+            'No reading mastery targets are available.',
+          ),
         ],
       }),
     ],
