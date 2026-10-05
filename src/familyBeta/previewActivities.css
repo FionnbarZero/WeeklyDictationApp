@@ -1,0 +1,11 @@
+/* Scope the menu theme so it stays readable inside any grade's light hub. */
+.family-spirit-menu {
+  padding: 24px;
+  border-radius: 24px;
+  color: #f4f1ff;
+  background: #1b2034;
+}
+.family-spirit-menu .lg-card { margin-top: 20px; }
+.family-spirit-menu .lg-heading h1 { color: #f4f1ff; }
+.family-spirit-menu > div > p { color: #ddd8ec; line-height: 1.6; }
+.family-spirit-menu .lg-primary:disabled { color: #d6d0ea; background: #45405d; }

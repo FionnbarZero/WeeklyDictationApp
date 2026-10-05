@@ -27,7 +27,7 @@ import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile
 import {
   kindergartenCompletedUnitPoolForLab,
   kindergartenNinjaUnitPoolsForLab,
-  kindergartenUnitPoolForLab,
+  kindergartenFinalBossPoolForLab,
   type KindergartenCumulativePoolLab,
 } from './kindergartenLab/unitReview.ts'
 import {
@@ -35,7 +35,7 @@ import {
   kindergartenReadingMasteryPathway,
   kindergartenReadingReviewPathway,
 } from './kindergartenLab/readingPractice.ts'
-import { LearningHub } from './learningHub/LearningHub.tsx'
+import { PreviewLearningHub as LearningHub } from './familyBeta/PreviewLearningHub.tsx'
 import type { LearningHubLaunchContext } from './learningHub/contracts.ts'
 import {
   kindergartenStrokeOrderConfig,
@@ -254,7 +254,7 @@ function KindergartenLearningLab() {
     || kindergartenCurrentSourceWeek(candidates)
   const finalBossPool = useMemo<KindergartenCumulativePoolLab | null>(() => {
     if (!selectedCandidate) return null
-    try { return kindergartenUnitPoolForLab(candidates, selectedCandidate) } catch { return null }
+    try { return kindergartenFinalBossPoolForLab(candidates, selectedCandidate) } catch { return null }
   }, [candidates, selectedCandidate])
   const ninjaPools = useMemo<KindergartenCumulativePoolLab[]>(() => {
     if (!selectedCandidate) return []
@@ -522,7 +522,7 @@ function KindergartenLearningLab() {
   if (testReviewSession && testReviewDataset) {
     const activeWord = activePracticeWord(testReviewSession)
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss cumulative active-unit review · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
+      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss reviewed-unit test · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
       <PracticeView
         session={testReviewSession}
         datasets={[testReviewDataset]}
@@ -544,7 +544,7 @@ function KindergartenLearningLab() {
   if (readingPathway?.kind === 'test-review') {
     const targets = tier2ReadingPathwayTargets(readingPathway)
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss cumulative active-unit reading review · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
+      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss reviewed-unit reading test · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
       <DeferredTestReview
         key={`kindergarten-reading-review-${readingPathway.cycle || 1}`}
         mode="reading"
@@ -638,5 +638,8 @@ function KindergartenLearningLab() {
 }
 
 const rootElement = document.getElementById('kindergarten-lab-root')
+if (window.parent === window) {
+  void import('./familyBeta/installProblemReporter.tsx').then((m) => m.installProblemReporter('Kindergarten'))
+}
 if (!rootElement) throw new Error('Missing Kindergarten learning lab root.')
 createRoot(rootElement).render(<KindergartenLearningLab />)

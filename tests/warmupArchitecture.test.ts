@@ -104,7 +104,11 @@ test('production uses the Adaptive Warmup model only through the approved applic
     'src/application/warmup/modelAdapter.ts',
     'src/application/warmup/state.ts',
     'src/domain.ts',
+    'src/familyBeta/previewMastery.ts',
   ])
+  const previewAdapter = source('../src/familyBeta/previewMastery.ts')
+  assert.doesNotMatch(previewAdapter, /firebase|firestore|fetch\(/)
+  assert.match(previewAdapter, /family-beta-mastery-v1/)
   assert.doesNotMatch(source('../src/App.tsx'), /warmup\/adaptive/)
   assert.doesNotMatch(source('../src/firestoreClient.ts'), /warmup\/adaptive/)
   assert.match(source('../src/domain.ts'), /version: 2/)

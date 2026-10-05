@@ -20,11 +20,11 @@ import type { ProfileChild } from '../profiles/ProfileModal.tsx'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
 import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
 
-const LearningHub = lazy(() =>
-  import('../learningHub/LearningHub.tsx').then((module) => ({
-    default: (props: LearningHubProps<Grade2LearningHubLaunch>) => module.LearningHub(props),
-  })),
-)
+// Keep each import in its own lazy callback so the built preview preloads the
+// correct CSS dependency set as well as JavaScript for the selected branch.
+const LearningHub = familyPreview
+  ? lazy(() => import('../familyBeta/PreviewLearningHub.tsx').then(module => ({ default: module.PreviewLearningHub<Grade2LearningHubLaunch> })))
+  : lazy(() => import('../learningHub/LearningHub.tsx').then(module => ({ default: module.LearningHub<Grade2LearningHubLaunch> })))
 
 function lifecycleLabel(lifecycle: DatasetLifecycle) {
   return lifecycle === 'acquisition'

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, Check, Sparkles, Volume2, X } from 'lucide-react'
 import { SkyWritingAcquisition } from './skywritingacquisition.tsx'
 import './skywriting.css'
@@ -21,6 +21,7 @@ export type SkyWritingProps = {
   onExit: () => void
   onComplete: (result: SkyWritingResult) => void
   speak: (text: string) => void | Promise<void>
+  onAssess?: (word: string, index: number, correct: boolean) => void
 }
 
 function distinctWords(words: string[]) {
@@ -32,7 +33,7 @@ function SkyWritingShell({ score, onExit, children }: {
   onExit: () => void
   children: ReactNode
 }) {
-  return <main className="skywriting-shell">
+  return <main className="skywriting-shell" data-report-activity="Sky Writing">
     <div className="skywriting-topbar">
       <button className="skywriting-exit" type="button" onClick={onExit}><X size={17} /> Exit game</button>
       <header className="skywriting-heading">
@@ -45,7 +46,7 @@ function SkyWritingShell({ score, onExit, children }: {
   </main>
 }
 
-export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: SkyWritingProps) {
+export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak, onAssess }: SkyWritingProps) {
   const roundLimit = Number.isFinite(maxRounds) ? Math.max(0, Math.floor(maxRounds)) : 5
   const rounds = distinctWords(words).slice(0, roundLimit)
   const [index, setIndex] = useState(0)
@@ -55,6 +56,15 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
   const [complete, setComplete] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
   const word = rounds[index]
+  const speakRef = useRef(speak)
+  speakRef.current = speak
+  useEffect(() => {
+    if (!word || complete) return
+    let cancelled = false
+    setAudioError(null)
+    void Promise.resolve(speakRef.current(word)).catch(() => !cancelled && setAudioError('The word could not play. Tap Hear it again to retry.'))
+    return () => { cancelled = true }
+  }, [word, index, complete])
 
   async function playWord() {
     setAudioError(null)
@@ -66,6 +76,7 @@ export function SkyWriting({ words, maxRounds = 5, onExit, onComplete, speak }: 
   }
 
   function answer(value: boolean) {
+    onAssess?.(word, index, value)
     setAudioError(null)
     const nextCorrect = correct + (value ? 1 : 0)
     setCorrect(nextCorrect)

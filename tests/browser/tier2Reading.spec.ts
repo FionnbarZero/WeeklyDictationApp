@@ -92,7 +92,8 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
     if (await page.getByRole('heading', { name: 'Reading path complete' }).isVisible()) break
     await page.getByRole('button', { name: 'Record my reading' }).click()
     const fallback = page.getByRole('alert').filter({ hasText: 'Recording is unavailable.' })
-    await expect(fallback).toContainText('Microphone permission was not granted.')
+    await expect(fallback).toContainText('Microphone access is blocked.')
+    await expect(fallback).toContainText('allow Microphone')
     await page.getByRole('button', { name: 'Continue without recording' }).click()
     await expect(page.getByText('Did your reading match the example?')).toBeVisible()
     await page.getByRole('button', { name: 'Yes' }).click()

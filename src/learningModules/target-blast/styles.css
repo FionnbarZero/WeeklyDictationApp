@@ -256,7 +256,7 @@
 .lg-strike-ninja::after { right: 47px; rotate: -57deg; }
 .lg-ninja-sash { position: absolute; z-index: 5; top: 184px; left: 43px; width: 137px; height: 23px; border: 3px solid #5d2431; border-radius: 8px; background: linear-gradient(90deg,#7d2638,#c24257 48%,#721e31); box-shadow: 0 4px 7px rgb(0 0 0 / 28%); rotate: -2deg; }
 .lg-ninja-arm-wrap { position: absolute; z-index: 6; top: 172px; right: 22px; width: 51px; height: 18px; border-top: 4px solid #9aa2b5; border-bottom: 4px solid #6c748a; opacity: .7; rotate: -56deg; text-decoration: none; }
-.lg-shuriken-shot { --throw-x: 250px; --throw-y: -90px; position: absolute; z-index: 9; bottom: 165px; left: 189px; width: 48px; aspect-ratio: 1; opacity: 0; color: #e7ebff; filter: drop-shadow(0 0 9px #dce4ff); pointer-events: none; }
+.lg-shuriken-shot { position: absolute; z-index: 9; bottom: 165px; left: 189px; width: 48px; aspect-ratio: 1; opacity: 0; color: #e7ebff; pointer-events: none; will-change: transform, opacity; }
 .lg-shuriken-shot::before,.lg-shuriken-shot::after,.lg-shuriken-shot > i::before,.lg-shuriken-shot > i::after { position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 0,62% 39%,100% 50%,62% 61%,50% 100%,38% 61%,0 50%,38% 39%); content: ""; }
 .lg-shuriken-shot::after { rotate: 45deg; scale: .77; }
 .lg-shuriken-shot > i { position: absolute; inset: 17px; z-index: 2; border-radius: 50%; background: #49536d; box-shadow: inset 0 0 0 3px #dce5ff; }
@@ -317,7 +317,7 @@
   .lg-target-blast-playfield .lg-world-choice { animation: dojo-dummy-sway 1.8s ease-in-out infinite alternate; }
   .lg-target-blast-playfield .lg-world-choice:nth-child(2) { animation-delay: -.7s; }
   .lg-target-blast-playfield .lg-world-choice:nth-child(3) { animation-delay: -1.2s; }
-  .lg-target-blast-playfield:not(.phase-idle) .lg-world-choice { animation: none; }
+  .lg-target-blast-playfield:not(.phase-idle) .lg-world-choice { animation-play-state: paused; }
   .lg-target-blast-playfield .lg-world-choice > i { animation: art-spin 9s linear infinite; }
   .lg-target-blast-playfield.phase-impact .lg-world-choice.is-correct > .lg-dojo-target-face { animation: dojo-target-hit 600ms ease-out both; }
   .lg-target-blast-playfield.phase-impact .lg-world-choice.is-correct > .lg-dojo-burst { animation: dojo-burst-flash 620ms ease-out both; }
@@ -486,7 +486,7 @@
 @keyframes dojo-debris-fly { from { opacity: 0; transform: rotate(var(--debris-angle)) translateY(0) scale(.45); } 16% { opacity: 1; } to { opacity: 0; transform: rotate(var(--debris-angle)) translateY(-82px) rotate(160deg) scale(.8); } }
 @keyframes dojo-ninja-advance { 32% { opacity: 1; transform: translate(32px,-14px) rotate(-6deg) scale(1.06); } 68% { opacity: 1; transform: translate(92px,-8px) rotate(5deg) scale(.98); } to { opacity: 0; transform: translate(145px,0) scale(.96); } }
 @keyframes dojo-ninja-bonk { 28% { transform: translateY(8px) rotate(4deg); } 52% { transform: translateY(15px) rotate(-8deg) scaleY(.92); } to { transform: translateY(6px) rotate(-3deg); } }
-@keyframes dojo-shuriken-throw { 0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.6); } 12% { opacity: 1; } 85% { opacity: 1; } to { opacity: 0; transform: translate(var(--throw-x),var(--throw-y)) rotate(810deg) scale(1.18); } }
+@keyframes dojo-shuriken-throw { 0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.6); } 12% { opacity: 1; } 85% { opacity: 1; } to { opacity: 0; transform: translate(var(--throw-x, 250px),var(--throw-y, -90px)) rotate(810deg) scale(1.18); } }
 @keyframes dojo-teacher-enter { from { opacity: 0; transform: translateX(-125px) scale(.78); } to { opacity: 1; transform: translateX(0) scale(1); } }
 @keyframes dojo-teacher-whack { from { rotate: -58deg; } 58%,68% { rotate: -7deg; } to { rotate: -20deg; } }
 @keyframes dojo-sensei-sleeve { from { rotate: -28deg; } 58%,68% { rotate: 3deg; } to { rotate: -14deg; } }

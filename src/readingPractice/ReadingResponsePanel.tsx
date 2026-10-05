@@ -143,6 +143,12 @@ export function ReadingResponsePanel({
 
     {teachingPrompt && teachingAudio === 'playing' && <div className="recording-status" role="status">
       <Volume2 size={18} /> Listen: let’s learn how to say this word.
+      <button className="record-reading-button" type="button" onClick={() => {
+        teachingPlaybackRef.current += 1
+        stopActiveAudio()
+        setTeachingAudio('idle')
+        void recorder.start()
+      }}>Stop audio and record my reading</button>
     </div>}
 
     {teachingAudioError && <div className="recording-fallback" role="alert">

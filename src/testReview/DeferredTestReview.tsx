@@ -222,7 +222,11 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   if (targets.length === 0 || (!activeTarget && phase === 'collect')) {
     return (
-      <div className="deferred-test-review deferred-empty-review">
+      <div
+        className="deferred-test-review deferred-empty-review"
+        data-report-activity={`${mode} final test`}
+        data-report-phase="no-targets"
+      >
         <p className="error-banner">This Test Review has no available targets.</p>
         <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}>
           <X size={18} /> {exitLabel}
@@ -234,7 +238,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   if (phase === 'review')
     return (
-      <div className="deferred-test-review">
+      <div className="deferred-test-review" data-report-activity={`${mode} final test`} data-report-phase="review">
         <FinalReviewPage
           mode={mode}
           targets={targets}
@@ -255,7 +259,13 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   const progress = Math.round((index / targets.length) * 100)
   return (
-    <div className="deferred-test-review deferred-collection-review">
+    <div
+      className="deferred-test-review deferred-collection-review"
+      data-report-activity={`${mode} final test`}
+      data-report-phase="collect"
+      data-report-target={activeTarget?.id}
+      data-report-position={index + 1}
+    >
       <div className="practice-top">
         <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}>
           <X size={18} /> {exitLabel}

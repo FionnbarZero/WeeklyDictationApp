@@ -167,6 +167,23 @@ function reviewTabs(candidates: WeeklyDatasetCandidate[]) {
     && Boolean(candidate.normalizedEndDate))
 }
 
+// Final Boss assesses a unit once its source-defined review week has arrived.
+// New teaching weeks must never leak into the test, including in later units.
+export function kindergartenFinalBossPoolForLab(
+  candidates: WeeklyDatasetCandidate[],
+  current: WeeklyDatasetCandidate,
+  contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
+): KindergartenCumulativePoolLab | null {
+  if (!current.normalizedStartDate) return null
+  const review = reviewTabs(candidates)
+    .filter((candidate) => candidate.normalizedStartDate! <= current.normalizedStartDate!)
+    .sort((left, right) => right.normalizedStartDate!.localeCompare(left.normalizedStartDate!))[0]
+  if (!review) return null
+  const earlierTargets = candidates.filter((candidate) =>
+    candidate.normalizedStartDate && candidate.normalizedStartDate < current.normalizedStartDate!)
+  return kindergartenUnitPoolForLab(earlierTargets, review, contextCatalog)
+}
+
 export function kindergartenCompletedUnitPoolForLab(
   candidates: WeeklyDatasetCandidate[],
   current: WeeklyDatasetCandidate,

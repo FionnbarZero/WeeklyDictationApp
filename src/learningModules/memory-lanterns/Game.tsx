@@ -24,6 +24,7 @@ export function MemoryFlip({
   const [flippedIds, setFlippedIds] = useState<readonly string[]>([])
   const [matchedPairIds, setMatchedPairIds] = useState<readonly string[]>([])
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
+  const [audioError, setAudioError] = useState(false)
   const twoFlipped = flippedIds.length === 2
   const flippedCards = flippedIds.map((id) => deck.find((card) => card.id === id)).filter((card) => Boolean(card))
   const pairMatch = twoFlipped && flippedCards[0]?.pairId === flippedCards[1]?.pairId
@@ -60,7 +61,7 @@ export function MemoryFlip({
     const next = [...flippedIds, cardId]
     setFlippedIds(next)
     const spoken = new Promise<void>((resolve) => window.requestAnimationFrame(() => {
-      void Promise.resolve(playAudio?.(card.face.label, 'zh-CN')).then(() => resolve(), () => resolve())
+      void Promise.resolve(playAudio?.(card.face.label, 'zh-CN')).then(() => { setAudioError(false); resolve() }, () => { setAudioError(true); resolve() })
     }))
     if (next.length !== 2) return
     const first = deck.find((candidate) => candidate.id === next[0])
@@ -91,6 +92,7 @@ export function MemoryFlip({
     /> : <section className="lg-card lg-memory-game">
       <div className="lg-mission-banner"><span>Lantern festival</span><strong>Find each character’s exact twin</strong></div>
       <p className="lg-instruction">Tap a lantern to reveal and hear its character, then find the identical character.</p>
+      {audioError && <p role="alert">The word could not play. Check the browser’s sound permission, then tap another lantern to try again.</p>}
       <div className="lg-stat-row">
         <span><strong>{matchedPairIds.length}/{characterPairs.length}</strong> pairs glowing</span>
         <span><strong>{attempts.length}</strong> turns</span>

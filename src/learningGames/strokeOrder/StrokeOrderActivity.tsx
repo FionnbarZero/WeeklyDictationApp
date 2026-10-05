@@ -337,6 +337,7 @@ function ActivityShell({
     <section
       className={`so-shell is-${grade === 'Kindergarten' ? 'kindergarten' : 'grade2'}`}
       data-activity-id={activityId}
+      data-report-activity={title}
     >
       <div className="so-atmosphere" aria-hidden="true">
         <i />

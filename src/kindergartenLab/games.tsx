@@ -37,7 +37,7 @@ function GameShell({ title, eyebrow, score, onExit, children }: {
   onExit: () => void
   children: ReactNode
 }) {
-  return <main className="k-game-shell">
+  return <main className="k-game-shell" data-report-activity={title}>
     <div className="k-game-topbar">
       <button className="k-back" type="button" onClick={() => onExit()}><X size={17} /> Exit game</button>
       <span className="k-game-live-score">{score}</span>

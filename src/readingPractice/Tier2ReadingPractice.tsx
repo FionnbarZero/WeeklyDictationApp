@@ -239,7 +239,7 @@ function ImmediateTier2ReadingPractice({
       : 'Mastery reading'
   const summary = summaryFor(run)
 
-  return <div className="reading-practice-page practice-page">
+  return <div className="reading-practice-page practice-page" data-report-activity="Reading practice" data-report-phase={complete ? 'complete' : promptPhase} data-report-target={complete ? undefined : target?.id} data-report-position={position}>
     <div className="practice-top">
       <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>

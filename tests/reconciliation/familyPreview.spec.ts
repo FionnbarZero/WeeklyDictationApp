@@ -90,22 +90,30 @@ for (const [slug, grade, childId] of [
   })
 }
 
-test('Kindergarten: real two-word writing final review saves and survives reload', async ({ page }) => {
+test('Kindergarten: all 14 Unit 1 writing targets save and survive reload without current-week targets', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   const frame = page.frameLocator('iframe')
   await frame.getByRole('button', { name: /The Final Boss Test/ }).click()
   await frame.getByRole('button', { name: 'Writing Test', exact: true }).click()
-  for (let i = 0; i < 2; i++) await frame.getByRole('button', { name: 'Skip Timer' }).click()
+  const targets: string[] = []
+  for (let i = 0; i < 14; i++) {
+    targets.push((await frame.locator('[data-report-target]').getAttribute('data-report-target'))!)
+    await frame.getByRole('button', { name: 'Skip Timer' }).click()
+  }
+  expect(targets.sort()).toEqual(Array.from({ length: 14 }, (_, i) => `__kindergarten-unit-1-review-lab__:tier-1:${i + 1}`).sort())
   const rows = frame.locator('.deferred-review-row')
-  await expect(rows).toHaveCount(2)
+  await expect(rows).toHaveCount(14)
+  for (const word of ['一', '二', '三', '人', '四', '五', '六', '心', '七', '八', '水', '九', '十', '白']) {
+    await expect(rows.getByText(word, { exact: true })).toBeVisible()
+  }
   await rows.nth(0).getByRole('button', { name: 'Yes', exact: true }).click()
-  await rows.nth(1).getByRole('button', { name: 'Not yet', exact: true }).click()
+  for (let i = 1; i < 14; i++) await rows.nth(i).getByRole('button', { name: 'Not yet', exact: true }).click()
   await frame.getByRole('button', { name: 'Submit final review' }).click()
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
-  await expect(page.getByRole('cell', { name: '1 / 2', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: '1 / 14', exact: true })).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
-  await expect(page.getByRole('cell', { name: '1 / 2', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: '1 / 14', exact: true })).toBeVisible()
 })
 
 for (const [slug, grade, count] of [
@@ -156,13 +164,13 @@ for (const [slug, grade] of [
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
     await frame.getByRole('button', { name: /Reading (mastery|warmup)/i }).click()
     for (let i = 0; i < 30; i++) {
-      if (await frame.getByRole('heading', { name: 'Reading path complete', exact: true }).isVisible()) break
+      if (await frame.getByRole('button', { name: 'Finish', exact: true }).isVisible()) break
       await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
       await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
       await frame.getByRole('button', { name: 'Yes', exact: true }).click()
     }
-    await expect(frame.getByRole('heading', { name: 'Reading path complete', exact: true })).toBeVisible()
-    await frame.getByRole('button', { name: 'Done', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Finish', exact: true })).toBeVisible()
+    await frame.getByRole('button', { name: 'Finish', exact: true }).click()
     await page.getByRole('button', { name: 'Progress', exact: true }).click()
     await expect(page.getByRole('table')).toBeVisible()
     const records = await page.evaluate(() =>
@@ -173,6 +181,10 @@ for (const [slug, grade] of [
     expect(records).toHaveLength(1)
     expect(records[0].channel).toBe('reading')
     expect(records[0].attempted).toBeGreaterThan(0)
+    const mastery = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('family-beta-mastery-v1:')).map(k => JSON.parse(localStorage.getItem(k)!)))
+    expect(mastery).toHaveLength(1)
+    expect(mastery[0].channel).toBe('reading')
+    expect(mastery[0].applied).toHaveLength(records[0].attempted)
     expect(Object.keys(records[0]).sort()).toEqual(
       [
         'schema',

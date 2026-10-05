@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 export type LearningGameId =
   | 'stroke-order-kindergarten'
   | 'stroke-order-grade2'
+  | 'stroke-order-grade5'
   | 'speed-match'
   | 'target-blast'
   | 'lily-pad-path'

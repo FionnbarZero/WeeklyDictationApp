@@ -113,6 +113,7 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
     {(!supported || status === 'error') && <div className="recording-fallback" role="alert">
       <strong>Microphone recording is unavailable.</strong>
       <p>{error || 'This browser cannot record microphone audio.'}</p>
+      {supported && <button className="record-reading-button" type="button" onClick={() => void startRecording()}>Try microphone again</button>}
       <button className="replay-button" type="button" onClick={continueWithoutRecording}>Continue without a recording</button>
     </div>}
     <p className="deferred-collection-rule">The model pronunciation and correctness buttons stay hidden until every response is collected.</p>

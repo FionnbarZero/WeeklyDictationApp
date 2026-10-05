@@ -3,11 +3,12 @@ import type { LearningGameAttempt, LearningGameSummary } from '../contracts.ts'
 export const STROKE_ORDER_ACTIVITY_IDS = {
   kindergarten: 'stroke-order-kindergarten',
   grade2: 'stroke-order-grade2',
+  grade5: 'stroke-order-grade5',
 } as const
 
 export type StrokeOrderActivityId = (typeof STROKE_ORDER_ACTIVITY_IDS)[keyof typeof STROKE_ORDER_ACTIVITY_IDS]
 
-export type StrokeOrderGrade = 'Kindergarten' | 'Grade 2'
+export type StrokeOrderGrade = 'Kindergarten' | 'Grade 2' | 'Grade 5'
 export type StrokePoint = readonly [x: number, y: number]
 export type StrokeDrawing = readonly (readonly StrokePoint[])[]
 

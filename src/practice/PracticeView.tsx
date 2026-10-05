@@ -169,7 +169,7 @@ function SequentialPracticeView({
       : session.acquisition ? 50 + Math.round((session.acquisition.targetIndex / Math.max(session.primaryQueue.length, 1)) * 50)
         : 50 + Math.round((session.index / Math.max(session.queue.length, 1)) * 50)
   const promptLabel = acquisitionPrompt?.kind === 'familiar-dt' ? 'Familiar DT' : acquisitionPrompt?.kind === 'earned-dt' || acquisitionPrompt?.dtPoolType === 'earned' ? 'Earned DT' : phaseLabel(session.primaryPhase)
-  return <div className={`practice-page${showingWritingResponse ? ' has-skywriting-response' : ''}`}>
+  return <div className={`practice-page${showingWritingResponse ? ' has-skywriting-response' : ''}`} data-report-activity="Writing practice" data-report-phase={`${session.segment}:${session.primaryPhase}:${session.stage}`} data-report-target={term?.id} data-report-position={session.index + 1} data-report-audio={audioStatus}>
     <div className="practice-top">
       <button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button>
       <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>

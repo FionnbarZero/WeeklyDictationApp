@@ -91,7 +91,7 @@ function SectionDetail<Launch>({
     setSelectedCohortId(defaultCohortId)
   }, [defaultCohortId])
 
-  return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`}>
+  return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`} data-report-activity={`Learning hub: ${section.id}`}>
     <button className="learning-hub-back" type="button" onClick={onBack}>← Back to all challenges</button>
     <header className="learning-hub-detail-heading">
       <div>
@@ -155,7 +155,7 @@ export function LearningHub<Launch>({ model: originalModel, onLaunch, showTopbar
       <div className="learning-hub-brand"><span>{model.brandMark}</span>{model.brandLabel}</div>
       <span className="learning-hub-profile">{model.profileLabel}</span>
     </header>}
-    <section className="learning-hub-welcome">
+    <section className="learning-hub-welcome" data-report-activity="Learning hub">
       <div>
         <p className="learning-hub-eyebrow">{model.eyebrow}</p>
         <h1>{model.title}<br /><em>{model.titleAccent}</em></h1>

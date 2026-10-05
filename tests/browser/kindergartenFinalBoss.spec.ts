@@ -232,7 +232,7 @@ test('Kindergarten reading Final Boss plays the child recording before the corre
   })
 
   await openFinalBoss(page, 'Reading Test', '1759563195')
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 9; index += 1) {
     await page.getByRole('button', { name: 'Record my reading' }).click()
     await page.getByRole('button', { name: 'Stop recording' }).click()
     await expect(page.getByText('Recording captured. It will be compared on the final page.')).toBeVisible()
@@ -243,7 +243,7 @@ test('Kindergarten reading Final Boss plays the child recording before the corre
   const assessment = firstRow.getByRole('button', { name: 'Yes' })
   await expect(assessment).toBeDisabled()
 
-  await firstRow.getByRole('button', { name: 'Play my reading, then the correct pronunciation for 猫' }).click()
+  await firstRow.getByRole('button', { name: 'Play my reading, then the correct pronunciation for 爸爸' }).click()
 
   await expect(firstRow.getByText('Comparison complete. Choose Yes or Not yet.')).toBeVisible()
   await expect(assessment).toBeEnabled()
@@ -256,5 +256,5 @@ test('Kindergarten reading Final Boss plays the child recording before the corre
     (window as Window & { __readingPlaybackOrder: string[] }).__readingPlaybackOrder.slice(0, 2),
   )
   expect(playbackOrder[0]).toBe('child:blob:child-1')
-  expect(playbackOrder[1]).toMatch(/^model:http:\/\/127\.0\.0\.1:\d+\/audio\/kindergarten\/u732b\.wav$/)
+  expect(playbackOrder[1]).toMatch(/^model:http:\/\/127\.0\.0\.1:\d+\/audio\/kindergarten\/u7238-u7238\.wav$/)
 })

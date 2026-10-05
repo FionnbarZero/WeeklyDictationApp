@@ -35,3 +35,15 @@ test('the importer authorization request is read-only, offline, consented, and s
   assert.equal(url.searchParams.get('state'), 'fixture-state')
   assert.equal(url.searchParams.get('redirect_uri'), 'http://127.0.0.1:4321/oauth2callback')
 })
+
+test('curriculum consent adds only read-only Sheets and preserves read-only Slides', () => {
+  const url = new URL(importerAuthorizationUrl('fixture.apps.googleusercontent.com',
+    'http://127.0.0.1:4321/oauth2callback', 'curriculum-state', 'curriculum'))
+  assert.deepEqual(url.searchParams.get('scope')?.split(' '), [
+    'https://www.googleapis.com/auth/presentations.readonly',
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+  ])
+  assert.equal(url.searchParams.get('include_granted_scopes'), 'true')
+  assert.equal(url.searchParams.get('state'), 'curriculum-state')
+  assert.equal(url.searchParams.get('access_type'), 'offline')
+})

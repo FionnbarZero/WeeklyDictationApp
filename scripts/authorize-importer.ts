@@ -27,13 +27,16 @@ export function parseInstalledOAuthClient(raw: string): InstalledOAuthClient {
   }
 }
 
-export function importerAuthorizationUrl(clientId: string, redirectUri: string, state: string) {
+export function importerAuthorizationUrl(clientId: string, redirectUri: string, state: string, mode: 'slides' | 'curriculum' = 'slides') {
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
   url.search = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/presentations.readonly',
+    scope: [
+      'https://www.googleapis.com/auth/presentations.readonly',
+      ...(mode === 'curriculum' ? ['https://www.googleapis.com/auth/spreadsheets.readonly'] : []),
+    ].join(' '),
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',
@@ -47,7 +50,7 @@ function flag(name: string) {
   return index >= 0 ? process.argv[index + 1] : undefined
 }
 
-async function requestAuthorizationCode(clientId: string) {
+export async function requestAuthorizationCode(clientId: string, mode: 'slides' | 'curriculum' = 'slides') {
   const state = randomBytes(32).toString('hex')
   let resolveCode!: (code: string) => void
   let rejectCode!: (error: Error) => void
@@ -65,14 +68,19 @@ async function requestAuthorizationCode(clientId: string) {
     const error = url.searchParams.get('error')
     const returnedState = url.searchParams.get('state')
     const authorizationCode = url.searchParams.get('code')
-    if (error || returnedState !== state || !authorizationCode) {
+    if (returnedState !== state) {
+      response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
+      response.end('This request does not match the pending authorization.')
+      return
+    }
+    if (error || !authorizationCode) {
       response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
       response.end('Authorization failed. You may close this tab.')
       rejectCode(new Error(error ? `Google authorization failed: ${error}` : 'OAuth callback validation failed.'))
       return
     }
     response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
-    response.end('Weekly Dictation importer authorization succeeded. You may close this tab.')
+    response.end('Google consent received. You may close this tab. Return to Codex while source access is verified and the connection is saved.')
     resolveCode(authorizationCode)
   })
 
@@ -82,13 +90,13 @@ async function requestAuthorizationCode(clientId: string) {
   })
   const port = (server.address() as AddressInfo).port
   const redirectUri = `http://127.0.0.1:${port}/oauth2callback`
-  const authorizationUrl = importerAuthorizationUrl(clientId, redirectUri, state)
+  const authorizationUrl = importerAuthorizationUrl(clientId, redirectUri, state, mode)
   const opened = spawnSync('open', [authorizationUrl], { stdio: 'ignore' })
   if (opened.error || opened.status !== 0) {
     server.close()
     throw new Error(`Open this Google authorization URL in a browser: ${authorizationUrl}`)
   }
-  console.log('Google authorization opened in the browser. Complete the read-only Slides consent there.')
+  console.log(`Google authorization opened in the browser. Complete the read-only ${mode === 'curriculum' ? 'Slides and Sheets' : 'Slides'} consent there.`)
 
   const timeout = setTimeout(() => rejectCode(new Error('Google authorization timed out.')), 5 * 60_000)
   try {
@@ -99,7 +107,7 @@ async function requestAuthorizationCode(clientId: string) {
   }
 }
 
-async function exchangeAuthorizationCode(client: InstalledOAuthClient, code: string, redirectUri: string) {
+export async function exchangeAuthorizationCode(client: InstalledOAuthClient, code: string, redirectUri: string) {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

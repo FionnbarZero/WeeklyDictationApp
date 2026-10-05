@@ -80,7 +80,7 @@ function recorderError(error: unknown): ReadingRecorderError {
   if (error instanceof ReadingRecorderError) return error
   if (error instanceof DOMException) {
     if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
-      return new ReadingRecorderError('permission-denied', 'Microphone permission was not granted.')
+      return new ReadingRecorderError('permission-denied', 'Microphone access is blocked. Open this site’s browser permissions, allow Microphone, and try again. Also check your computer’s microphone permission for this browser.')
     }
     if (error.name === 'NotFoundError' || error.name === 'NotReadableError') {
       return new ReadingRecorderError('device-unavailable', 'A working microphone could not be found.')
@@ -153,6 +153,7 @@ export async function startEphemeralAudioRecording(
     try {
       const mimeType = recorder.mimeType || chunks[0]?.type || 'audio/webm'
       const blob = new Blob(chunks, { type: mimeType })
+      if (blob.size === 0) throw new ReadingRecorderError('recording-failed', 'No audio was captured. Check your microphone and record again.')
       const url = dependencies.createObjectURL(blob)
       let disposed = false
       settled = true

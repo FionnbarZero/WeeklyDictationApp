@@ -295,6 +295,7 @@ export function playAudioPlan(
       let settled = false
       let voiceTimer: ReturnType<typeof setTimeout> | undefined
       let waitingForVoices = false
+      let segmentStarted = false
       const watchdog = globalThis.setTimeout(() => finish(playbackError()), 15_000)
       const stopWaitingForVoices = () => {
         if (voiceTimer !== undefined) globalThis.clearTimeout(voiceTimer)
@@ -313,8 +314,8 @@ export function playAudioPlan(
         else resolve()
       }
       const cancel = () => finish(new Error('Audio playback was cancelled.'))
-      spokenUtterance.onstart = markStarted
-      spokenUtterance.onend = () => finish()
+      spokenUtterance.onstart = () => { segmentStarted = true; markStarted() }
+      spokenUtterance.onend = () => finish(segmentStarted ? undefined : playbackError())
       spokenUtterance.onerror = () => finish(playbackError())
       cancelActiveSegment = cancel
 
@@ -335,7 +336,7 @@ export function playAudioPlan(
         if (preferred) begin(preferred)
       }
 
-      const preferred = preferredVoiceFor(activeSpeech, segment.language)
+      const preferred = voiceFor(activeSpeech, segment.language)
       const waitMs = options.voiceLoadTimeoutMs ?? 350
       if (preferred || waitMs <= 0) begin(preferred)
       else {

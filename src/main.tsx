@@ -7,6 +7,10 @@ import { initializeStagingObservability } from './stagingObservability'
 import './styles.css'
 import './learningHub/learningHub.css'
 
+if (window.parent === window) {
+  void import('./familyBeta/installProblemReporter.tsx').then((m) => m.installProblemReporter('Grade 2'))
+}
+
 const manualTestClock = resolveManualTestClock(window.location.search, import.meta.env.DEV)
 const previewDate =
   import.meta.env.VITE_RECONCILIATION_PREVIEW === 'true'

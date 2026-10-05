@@ -151,17 +151,17 @@ export function kindergartenLearningHubView(
     section({
       id: 'final-boss',
       number: '3',
-      kicker: 'Cumulative active-unit test pool',
+      kicker: 'Complete reviewed-unit test pool',
       title: SHARED_LEARNING_PATH_TITLES.finalBoss,
-      subtitle: 'Practice every writing and reading word learned so far in this unit.',
+      subtitle: 'Test every writing and reading target in the latest unit ready for review. This week’s new targets stay in the Dojo.',
       actionLabel: 'Face the Final Boss',
       theme: 'violet',
       cohorts: finalBossUnit ? [finalBossUnit] : [],
       activities: [
-        launchActivity('final-boss', 'Tier 1 · Writing', 'Writing Test', 'Complete the cumulative active-unit writing review, then check every answer.', '🐉'),
-        launchActivity('final-boss-reading', 'Tier 2 · Reading', 'Reading Test', 'Record and compare every high-frequency word learned so far in the active unit.', '🎧'),
+        launchActivity('final-boss', 'Tier 1 · Writing', 'Writing Test', 'Test all writing characters in the reviewed unit, then check every answer.', '🐉'),
+        launchActivity('final-boss-reading', 'Tier 2 · Reading', 'Reading Test', 'Record and compare every high-frequency word in the reviewed unit.', '🎧'),
       ],
-    }, Boolean(finalBossUnit), 'The active spreadsheet unit does not contain a usable cumulative test pool yet.'),
+    }, Boolean(finalBossUnit), 'The Final Boss opens when the spreadsheet’s first unit-review week arrives.'),
     section({
       id: 'spirit-realm',
       number: '4',

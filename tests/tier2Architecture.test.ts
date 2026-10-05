@@ -65,6 +65,7 @@ test('Tier 2 reading cannot depend on UI, persistence, configuration, or the dom
 test('the Tier 2 boundary is imported only by approved reading integration surfaces', () => {
   const approvedConsumers = new Set([
     'src/App.tsx',
+    'src/familyBeta/ReentryPractice.tsx',
     'src/grade2/learningHub.ts',
     'src/home/HomeViews.tsx',
     'src/grade5Lab/readingPractice.ts',

@@ -74,7 +74,7 @@ test('Kindergarten separates Ninja Skills by selectable unit', async ({ page }) 
   const finalBoss = page.getByRole('button', { name: /The Final Boss Test/ })
   const spiritRealm = page.getByRole('button', { name: /Enter the Spirit Realm/ })
   await expect(ninja).toContainText('2 units available')
-  await expect(finalBoss).toContainText('Unit 2 · 1 week')
+  await expect(finalBoss).toContainText('Unit 1 · 4 weeks')
   await expect(finalBoss).toBeEnabled()
   await expect(spiritRealm).toContainText('Unit 1 · 4 weeks')
 
@@ -91,9 +91,11 @@ test('Kindergarten separates Ninja Skills by selectable unit', async ({ page }) 
   await expect(page.getByText('Word 1 of 3')).toBeVisible()
   await page.getByRole('button', { name: 'Exit game' }).click()
   await finalBoss.click()
-  await expect(page.getByText('2 writing · 3 reading')).toBeVisible()
-  await expect(page.getByText('牛', { exact: true })).toBeVisible()
-  await expect(page.getByText('猫', { exact: true })).toBeVisible()
+  await expect(page.getByText('14 writing · 9 reading')).toBeVisible()
+  await expect(page.getByText('白', { exact: true })).toBeVisible()
+  await expect(page.getByText('爸爸', { exact: true })).toBeVisible()
+  await expect(page.getByText('牛', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('猫', { exact: true })).toHaveCount(0)
 })
 
 for (const exitCase of exitCases) {
@@ -215,7 +217,7 @@ test('Kindergarten announces the first teaching presentation of a new reading ta
   await expect.poll(() => page.evaluate(() => (
     window as Window & { __playedReadingInstructionAudio: string[] }
   ).__playedReadingInstructionAudio.filter((source) => source.includes('/instructions/lets-learn-a-new-word.wav')).length)).toBe(1)
-  await expect(page.getByRole('button', { name: 'Record my reading' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record my reading', exact: true })).toBeVisible()
   const finalTeachingSources = await page.evaluate(() => (
     window as Window & { __playedReadingInstructionAudio: string[] }
   ).__playedReadingInstructionAudio.slice(-4))

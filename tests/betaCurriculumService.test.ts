@@ -8,6 +8,21 @@ import { buildCurriculumSnapshot, publishCurriculumSnapshot } from '../backend/b
 import { BETA_GRADES } from '../src/familyBeta/model.ts'
 import { gradeSlugs, inspectSnapshot, type CurriculumSnapshot } from '../src/familyBeta/curriculum.ts'
 
+test('Grade 5 live Slides formatting metadata never becomes curriculum text', async () => {
+  const snapshot = JSON.parse(await readFile(new URL('../public/curriculum/beta/grade5.json', import.meta.url), 'utf8')) as CurriculumSnapshot
+  const decorated = JSON.parse(JSON.stringify(snapshot.payload), (key, value) => {
+    if (key === 'tableCells' && Array.isArray(value)) return value.map(cell => ({
+      tableCellProperties: { contentAlignment: 'TOP' },
+      ...cell,
+    }))
+    if (key === 'textRun') return { style: { fontFamily: 'Arial', foregroundColor: { themeColor: 'DARK1' } }, ...value }
+    return value
+  })
+  const refreshed = buildCurriculumSnapshot('Grade 5', decorated, '')
+  const expected = inspectSnapshot(snapshot).datasets.map(d => d.words.map(w => w.text))
+  assert.deepEqual(inspectSnapshot(refreshed).datasets.map(d => d.words.map(w => w.text)), expected)
+})
+
 test('automatic Google refresh publishes all three grades and preserves last good data after failure', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dictation-curriculum-test-'))
   const originalFetch = globalThis.fetch

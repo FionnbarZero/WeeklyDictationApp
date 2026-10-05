@@ -31,7 +31,7 @@ import {
   grade5LabReadingPathway,
   grade5LabReadingRequestIsConnected,
 } from './grade5Lab/readingPractice.ts'
-import { LearningHub } from './learningHub/LearningHub.tsx'
+import { PreviewLearningHub as LearningHub } from './familyBeta/PreviewLearningHub.tsx'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
@@ -514,6 +514,10 @@ dismissButton.addEventListener('click', () => {
   requestOutput.textContent = ''
   requestActions.replaceChildren()
 })
+
+if (window.parent === window) {
+  void import('./familyBeta/installProblemReporter.tsx').then((m) => m.installProblemReporter('Grade 5'))
+}
 
 if (!import.meta.env.DEV && !publicPreviewEnabled && !prototypeBaselineEnabled) {
   setStatus('This Grade 5 learning hub is available only in local development or an approved public preview.', true)

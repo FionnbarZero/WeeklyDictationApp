@@ -101,7 +101,9 @@ export type Grade5SourceExtraction = {
 } & CurriculumImportResult<Grade5SourceIssue, CurriculumProgressionEvidence, Grade5BookResource>
 
 function textFromUnknown(value: unknown): string {
-  if (typeof value === 'string') return value
+  // Slides responses also contain style strings (font families, alignment,
+  // units, URLs). Only actual text/content fields belong in the vocabulary.
+  if (typeof value === 'string') return ''
   if (!value || typeof value !== 'object') return ''
   if (Array.isArray(value)) return value.map(textFromUnknown).filter(Boolean).join('')
   const record = value as Record<string, unknown>

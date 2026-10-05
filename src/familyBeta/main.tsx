@@ -1,4 +1,6 @@
 import { createRoot } from 'react-dom/client'
+import { ProblemReporter } from './ProblemReporter.tsx'
+import { AudioCheck } from './AudioCheck.tsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppErrorBoundary } from '../AppErrorBoundary.tsx'
 import { firebaseConfigReady, DEFAULT_SCHOOL_YEAR } from '../config.ts'
@@ -8,11 +10,14 @@ import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
 import { BETA_GRADES, dailyTotals, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import { PROFILE_KEY, acknowledgeResult, pendingResults, previewResults, savePreviewResult } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
-import { learningModuleCapabilities, learningModuleCohortFromDatasets } from '../ninjaSkills/content.ts'
+import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
+import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
+import { channelCohort, latestEarlierTargets } from './gamePools.ts'
 import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { localDateKey } from '../domain.ts'
-import { playAudioPlan } from '../audio/lazyPromptAudio.ts'
+import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
+import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import '../styles.css'
 import './preview.css'
 
@@ -77,6 +82,7 @@ function FamilyPreview() {
   const syncing = useRef(false)
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
+  useEffect(() => () => stopActiveAudio(), [pack, tab, child?.id])
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
@@ -213,10 +219,21 @@ function FamilyPreview() {
     curriculum?.datasets.filter((d) => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) ||
     []
   const dataset = available.find((d) => d.startDate === week) || available[0]
-  const capabilities = learningModuleCapabilities(
-    dataset ? learningModuleCohortFromDatasets(dataset.id, dataset.dateRange, [dataset]) : null,
+  const earlierWriting = latestEarlierTargets(available, dataset?.startDate || today, 'writing')
+  const earlierReading = latestEarlierTargets(available, dataset?.startDate || today, 'reading')
+  const writingCapabilities = learningModuleCapabilities(
+    channelCohort(earlierWriting, 'writing', 'Earlier writing targets'),
     NINJA_SKILLS_PROFILES[currentGrade],
   )
+  const capabilities = learningModuleCapabilities(
+    channelCohort(earlierReading, 'reading', 'Earlier reading targets'),
+    NINJA_SKILLS_PROFILES[currentGrade],
+  ).map((capability) => {
+    const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
+    return id === 'dictation-streak'
+      ? writingCapabilities.find((c) => (c.status === 'ready' ? c.pack.moduleId : c.moduleId) === id)!
+      : capability
+  })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
 
   if (auth.status === 'loading') return <p role="status">Loading family access…</p>
@@ -227,7 +244,15 @@ function FamilyPreview() {
       </Suspense>
     )
   return (
-    <div className="beta-workspace">
+    <div
+      className="beta-workspace"
+      data-report-grade={currentGrade}
+      data-report-screen={tab}
+      data-report-week={dataset?.startDate || week || 'unavailable'}
+      data-report-curriculum={curriculum?.snapshot.contentSha256}
+      data-report-game={tab === 'games' ? pack?.title : undefined}
+      data-report-mode={familyId ? 'account' : 'device-preview'}
+    >
       <header className="beta-toolbar">
         <strong>Weekly Dictation · Family preview</strong>
         <label>
@@ -252,6 +277,7 @@ function FamilyPreview() {
           </select>
         </label>
         <button onClick={() => setTab('parent')}>Parent controls</button>
+        <AudioCheck />
       </header>
       <div className="beta-status" role="status">
         {status}
@@ -315,7 +341,7 @@ function FamilyPreview() {
           className="beta-grade-frame"
           title={`${currentGrade} activities`}
           src={frameUrl}
-          allow="microphone 'self'"
+          allow="microphone 'self'; autoplay 'self'"
         />
       )}
       {child &&
@@ -325,7 +351,16 @@ function FamilyPreview() {
             <ModuleHost
               pack={pack}
               playAudio={(text, language = 'zh-CN', rate = 0.65) => {
-                void playAudioPlan([{ text, language: language as 'zh-CN', rate }])
+                return promptAudioCompleted(
+                  playAudioPlan([
+                    {
+                      text,
+                      language: language as 'zh-CN',
+                      rate,
+                      storagePath: kindergartenAudioForText(text)?.storagePath,
+                    },
+                  ]),
+                )
               }}
               onExit={() => setPack(null)}
               onComplete={(summary) => {
@@ -350,20 +385,24 @@ function FamilyPreview() {
           <section className="beta-panel">
             <h1>Practice your Ninja Skills</h1>
             <p>
-              {dataset?.dateRange} · Games use the teacher’s words. Each completed round contributes to your daily
-              total.
+              Games use the most recent earlier week with relevant targets, separately for writing and reading. Writing:{' '}
+              {earlierWriting[0]?.dateRange || 'No earlier targets'}. Reading:{' '}
+              {earlierReading[0]?.dateRange || 'No earlier targets'}.
             </p>
             <div className="beta-game-grid">
-              {capabilities
-                .filter((c) => c.status === 'ready')
-                .map(
-                  (c) =>
-                    c.status === 'ready' && (
-                      <button className="primary-button" key={c.pack.moduleId} onClick={() => setPack(c.pack)}>
-                        {c.pack.title}
-                      </button>
-                    ),
-                )}
+              {capabilities.map((c) =>
+                c.status === 'ready' ? (
+                  <button className="primary-button" key={c.pack.moduleId} onClick={() => setPack(c.pack)}>
+                    {c.pack.title}
+                  </button>
+                ) : (
+                  <article key={c.moduleId}>
+                    <h2>{learningModuleCatalogEntry(c.moduleId).title}</h2>
+                    <p>{c.reason}</p>
+                    <button disabled>Needs teacher-approved content</button>
+                  </article>
+                ),
+              )}
             </div>
             <p>Additional games will appear when their required teacher-approved content is available.</p>
           </section>
@@ -541,19 +580,6 @@ function FamilyPreview() {
               </ul>
             </details>
           )}
-          <button
-            onClick={async () => {
-              const report = `Weekly Dictation family preview | grade=${currentGrade} | curriculum=${curriculum?.snapshot.contentSha256 || 'unavailable'} | mode=${familyId ? 'account' : 'device-preview'} | timezone=America/Los_Angeles`
-              try {
-                await navigator.clipboard.writeText(report)
-                setStatus('Diagnostic report copied. It contains no names, answers, audio, or account identifiers.')
-              } catch {
-                setStatus(report)
-              }
-            }}
-          >
-            Copy problem report
-          </button>
           {auth.user && (
             <button
               onClick={() => {
@@ -574,7 +600,10 @@ function FamilyPreview() {
 }
 
 createRoot(document.getElementById('beta-root')!).render(
-  <AppErrorBoundary>
-    <FamilyPreview />
-  </AppErrorBoundary>,
+  <>
+    <AppErrorBoundary>
+      <FamilyPreview />
+    </AppErrorBoundary>
+    <ProblemReporter />
+  </>,
 )

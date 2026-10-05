@@ -7,7 +7,7 @@ import { kindergartenLearningHubView } from '../src/kindergartenLab/learningHub.
 import {
   kindergartenCompletedUnitPoolForLab,
   kindergartenNinjaUnitPoolsForLab,
-  kindergartenUnitPoolForLab,
+  kindergartenFinalBossPoolForLab,
 } from '../src/kindergartenLab/unitReview.ts'
 import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
 
@@ -19,7 +19,7 @@ const nextUnit = candidates.find((candidate) => candidate.rawDate === 'Week 8 10
 function hubFor(candidate: typeof nextUnit) {
   return kindergartenLearningHubView(
     candidate,
-    kindergartenUnitPoolForLab(candidates, candidate),
+    kindergartenFinalBossPoolForLab(candidates, candidate),
     kindergartenNinjaUnitPoolsForLab(candidates, candidate),
     kindergartenCompletedUnitPoolForLab(candidates, candidate),
   )
@@ -69,12 +69,12 @@ test('Ninja Skills offers three games and keeps every arrived unit in a separate
   assert.deepEqual(hub.sections[1].cohorts[1].groups[1].words, ['猫', '狗', '鸟'])
 })
 
-test('Final Boss owns the growing active-unit pool and Spirit Realm owns the completed-unit pool', () => {
+test('Final Boss keeps the complete reviewed unit instead of the current teaching week', () => {
   assert.deepEqual(hub.sections[2].activities.map((activity) => activity.title), ['Writing Test', 'Reading Test'])
   assert.deepEqual(hub.sections[3].activities.map((activity) => activity.title), ['Writing mastery warmup', 'Reading mastery'])
-  assert.equal(hub.sections[2].cohorts[0].label, 'Unit 2 · 1 week')
-  assert.equal(hub.sections[2].cohorts[0].groups[0].words.length, 2)
-  assert.equal(hub.sections[2].cohorts[0].groups[1].words.length, 3)
+  assert.equal(hub.sections[2].cohorts[0].label, 'Unit 1 · 4 weeks')
+  assert.equal(hub.sections[2].cohorts[0].groups[0].words.length, 14)
+  assert.equal(hub.sections[2].cohorts[0].groups[1].words.length, 9)
   assert.equal(hub.sections[3].cohorts[0].label, 'Unit 1 · 4 weeks')
   assert.equal(hub.sections[3].cohorts[0].groups[0].words.length, 14)
   assert.equal(hub.sections[3].cohorts[0].groups[1].words.length, 9)
@@ -109,6 +109,24 @@ test('the week after review opens Unit 2 everywhere it belongs and moves Unit 1 
   ])
   assert.equal(hub.sections[0].cohorts[0].label, 'Week 8 10/05')
   assert.equal(hub.sections[1].cohortSummaryLabel, '2 units available')
-  assert.equal(hub.sections[2].cohorts[0].label, 'Unit 2 · 1 week')
+  assert.equal(hub.sections[2].cohorts[0].label, 'Unit 1 · 4 weeks')
   assert.equal(hub.sections[3].cohorts[0].label, 'Unit 1 · 4 weeks')
+})
+
+test('Final Boss includes every Unit 1 target and excludes every current-week target', () => {
+  const pool = kindergartenFinalBossPoolForLab(candidates, nextUnit)!
+  assert.deepEqual(pool.tier1Words, ['一', '二', '三', '人', '四', '五', '六', '心', '七', '八', '水', '九', '十', '白'])
+  assert.deepEqual(pool.tier2Words, ['爸爸', '妈妈', '小', '我', '开心', '有', '没有', '红色', '蓝色'])
+  for (const word of [...nextUnit.tier1, ...nextUnit.tier2]) {
+    assert.ok(![...pool.tier1Words, ...pool.tier2Words].includes(word.text))
+  }
+  const beforeReview = candidates.find((candidate) => candidate.rawDate === 'Week 6 09/21')!
+  assert.equal(kindergartenFinalBossPoolForLab(candidates, beforeReview), null)
+})
+
+test('future reviews do not leak backwards and later review weeks unlock their own entire unit', () => {
+  const laterReview = { ...reviewWeek, curriculumUnit: nextUnit.curriculumUnit, normalizedStartDate: '2026-11-02', normalizedEndDate: '2026-11-08' }
+  const all = [...candidates, laterReview]
+  assert.equal(kindergartenFinalBossPoolForLab(all, nextUnit)?.unitId, 'unit-1')
+  assert.deepEqual(kindergartenFinalBossPoolForLab(all, laterReview)?.tier1Words, ['牛', '羊'])
 })
