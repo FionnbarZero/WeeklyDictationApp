@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 6, 2026 with architecture-audit findings, [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md), and the focused [A1 saving repair](./docs/a1-confirmed-game-saving.md). A1 is implemented and locally verified, awaiting Astra review and CI; it is not published. Published artifact evidence remains the [October 5 family-sync release](./docs/family-sync-release-2026-10-05.md).
+Updated October 6, 2026 with architecture-audit findings, [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md), and the [A1 saving repair](./docs/a1-confirmed-game-saving.md). A1 passed Astra review and all five CI jobs, merged as `6686279`, and is published and live-verified on all three canonical grades. Current artifact and rollback evidence are in the [A1 release record](./docs/a1-release-2026-10-06.md); the October 5 record remains historical evidence for the unchanged backend and older aliases.
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -8,18 +8,18 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 | Grade | Permanent app | Verified release |
 | --- | --- | --- |
-| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `ef9d1f75df7046152c4829e8f7cfca635f303461` |
+| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `668627922bd95200c748601d7dba371a69a53b37` |
 | Grade 2 | [Open Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same application source |
 | Grade 5 | [Open Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same application source |
 
-These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` serves all three. Existing Firebase and Pages grade addresses were also updated to the same application assets, preserving their local data; see the release inventory for their exact versions. [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53) reconciles this published source into main without another deployment.
+These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `2e0cb204-5e1f-4483-bafa-4f28911718d7` serves all three, with `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` retained for rollback. Existing Firebase and Pages aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`, preserving their local records; they were not updated by A1. [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53) reconciled the earlier source, and [PR 54](https://github.com/FionnbarZero/WeeklyDictationApp/pull/54) merged A1 into main. The separately recorded deployment now matches merge `6686279`.
 
 ## Current capability matrix
 
 | Capability | Verified state | Remaining work or limit |
 | --- | --- | --- |
 | Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
-| Game results | Earlier hosted Memory Lanterns checks passed for the exercised paths; A1 repairs canonical routing and confirmed, idempotent completion in source, with 28 exact-package browser checks passed | The live release still has the canonical-route defect until reviewed publication. Astra review and CI remain required. Per-target results and game coverage remain incomplete |
+| Game results | A1 is live: 28 exact-package checks passed; Memory Lanterns completed on each canonical grade URL, confirmed its upload, survived reload, and recovered the same attempt once in a second independent browser | Per-target results, all-game coverage, and A2 interruption/continuity remain incomplete; device save confirmation alone is not cloud confirmation |
 | Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
 | Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
 | Problem reports | Reports save locally and survive reload; end-of-session batch sharing and cancellation checks passed | Email/share needs a user action; pause-and-preserve behavior across every game is required and still needs verification |
@@ -41,6 +41,8 @@ Recordings are temporary comparison data, not stored audio. Synthetic tests do n
 Rollback releases are retained for both Firebase sites and in Grade 2 deployment history. Restoring code is not a substitute for data recovery. Legacy Grade 2 backup/restore evidence does not establish coverage of every new ledger, report, or mastery key; verify that before a storage migration.
 
 ## Verification evidence
+
+October 6 A1 release: all five final-head CI jobs passed; the tree-identical merge separately passed 28 exact-package checks on Node 24.21.0. All 120 public canonical files matched the tested artifact. Live three-grade game saving/reload/cross-browser recovery, Grade 5 reviewed-practice recovery, anonymous denial, and six desktop/tablet-touch public-route/report checks passed. Disposable accounts and records were removed; real records and security settings were untouched. See the [release evidence](./docs/a1-release-2026-10-06.md). Physical-device audio, Safari, and broader roadmap work remain outstanding.
 
 October 5 family-sync release checks:
 
@@ -73,7 +75,7 @@ Audit source: Main at `6832900e5638cefc1264adddc7d83df85ae3ddba`. All 635 unit t
 
 Reproduce these findings against the current revision before repairing them. The roadmap tracks implementation; this table preserves audit evidence and does not turn architectural risks into claims of observed data loss or compromise.
 
-The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations. The focused A1 task explicitly stops at a tested pull request for GPT-6 Astra High review: it does not merge or publish this repair.
+The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations. A1 originally stopped at a tested PR for Astra review; review and CI subsequently passed, and the owner separately authorized its merge and the verified canonical deployment recorded here. A2 remains pending; prompt for GPT-6 Astra Extra High before starting its code.
 
 Main was not merged by the October 5 release operation. The owner authorized source reconciliation on October 6 through [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53). Live artifacts retain their exact published source identity even after source integration; a merge is not a deployment. Documentation, tests and development-only dependency fixes do not by themselves update the live application.
 

@@ -1,6 +1,6 @@
 # A1: confirmed family game saving
 
-October 6, 2026. Implemented and locally verified on `codex/a1-confirmed-game-saving`; ready for GPT-6 Astra High review, with CI still required. Not merged or published. No production accounts, records, authentication configuration, security rules, or hosting were changed.
+October 6, 2026. Implemented on `codex/a1-confirmed-game-saving`, reviewed with GPT-6 Astra High, and merged through [PR 54](https://github.com/FionnbarZero/WeeklyDictationApp/pull/54) as `668627922bd95200c748601d7dba371a69a53b37`. All five Node 24 CI jobs passed on the tree-identical final PR head. The exact merge package is now published and verified on all three canonical grades; see the [release record](./a1-release-2026-10-06.md). Production authentication/security configuration and real family records were unchanged. Disposable acceptance records and accounts were cleaned up.
 
 ## Reproduced defects
 
@@ -25,7 +25,7 @@ No stored schema, storage key, curriculum, scoring rule, or game-tier policy cha
 
 ## Verification
 
-Application repair: `abb6ebc`. Browser-tested package source: `61ca9c652646acc991aa41e3530c2bbe097abd2c`. Its 122 recorded files were independently hash-verified against manifest tree SHA-256 `bed24cb8d4295340aff1258ddcd887328b777826afd8230ab06bcce7759b5fb4`. The subsequent acceptance-record commit changes only documentation; CI must rebuild and test the final PR head.
+Initial implementation evidence: application repair `abb6ebc`, browser-tested package source `61ca9c652646acc991aa41e3530c2bbe097abd2c`, 122-file tree SHA-256 `bed24cb8d4295340aff1258ddcd887328b777826afd8230ab06bcce7759b5fb4`. CI subsequently rebuilt and tested final PR head `26be999d49e30e78f93337cdb95e639cc69317a7`. The release operation separately built merge `6686279` on Node 24.21.0, passed all 28 package checks, and published that exact artifact without rebuilding.
 
 | Check | Result |
 | --- | --- |
@@ -53,6 +53,6 @@ The packager requires a clean committed source tree. Do not run another Playwrig
 
 ## Review and remaining work
 
-GPT-6 Astra High review and the declared Node 24 CI gates are required before merge/publication. Local checks ran on Node 26.8.1; this is not a Node 24 CI pass. Publication requires a separately recorded final artifact, rollback identity, and canonical live verification. No publication was performed; this task has not changed the recorded October 5 production release.
+GPT-6 Astra High review, Node 24 CI, merge, and canonical publication are complete. The initial local implementation checks used Node 26.8.1; the release-package checks used Node 24.21.0. The [release record](./a1-release-2026-10-06.md) identifies the final artifact, retained rollback, synthetic cloud acceptance, and byte-for-byte live verification. Older alias sites remain on the October 5 source; this increment updates the canonical site only.
 
 This increment does not complete A2 activity/navigation/reporting pause safety, A3 offline/curriculum/conflict handling, per-target game results, acquisition-game integration, or hosting retirement. The known sync-failure unmount behavior remains A2 work; device save confirmation must not be mistaken for completing that boundary. No claim is made about physical iMac/iPad audio, microphone quality, Safari behavior, or game performance.
