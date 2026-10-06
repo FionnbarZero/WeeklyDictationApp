@@ -212,6 +212,43 @@ test('partial save retries the same attempt without a duplicate or closing early
   expect(saved[0]).toEqual(pending[0])
 })
 
+test('a ledger write must be read back before presenting completion', async ({ page }) => {
+  await page.goto('/family-beta-preview?grade=grade5')
+  await completeLanterns(page)
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem
+    let ignored = false
+    Storage.prototype.setItem = function (key, data) {
+      if (!ignored && key.startsWith('family-beta-preview-results-v1:')) {
+        ignored = true
+        return
+      }
+      return original.call(this, key, data)
+    }
+  })
+  const done = page.getByRole('button', { name: 'Back to Ninja Skills', exact: true })
+  await done.click()
+  await expect(done).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('could not be confirmed on this device')
+  expect(await results(page)).toHaveLength(0)
+  await done.click()
+  await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
+  expect(await results(page)).toHaveLength(1)
+})
+
+for (const [entry, slug, childId] of [
+  ['/kindergarten-learning-lab.html', 'kindergarten', 'synthetic-k'],
+  ['/index.html?grade=grade2', 'grade2', 'synthetic-g2'],
+  ['/grade5-learning-hub.html', 'grade5', 'synthetic-g5'],
+]) {
+  test(`${slug}: packaged grade entry redirects into the selected family context`, async ({ page }) => {
+    await page.goto(entry)
+    await expect(page).toHaveURL(new RegExp(`/family-beta-preview\\?grade=${slug}$`))
+    await expect(page.getByLabel('Child profile')).toHaveValue(childId)
+    await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  })
+}
+
 for (const [slug, grade, childId] of grades) {
   test(`${grade}: embedded writing retains selected child and saves reviewed work`, async ({ page }) => {
     await page.goto(`/family-beta-preview?grade=${slug}`)
