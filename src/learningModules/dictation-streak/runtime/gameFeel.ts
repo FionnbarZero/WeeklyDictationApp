@@ -1,6 +1,12 @@
+import { activityClock } from '../../../activity/activityLifecycle.ts'
 export type GameSound = 'select' | 'flip' | 'correct' | 'incorrect' | 'progress' | 'victory'
 
 let audioContext: AudioContext | null = null
+activityClock.subscribe(paused => {
+  if (!paused) return
+  if (audioContext) { void audioContext.close().catch(() => undefined); audioContext = null }
+  if (typeof navigator !== 'undefined') navigator.vibrate?.(0)
+})
 
 function tone(context: AudioContext, frequency: number, startsAt: number, duration: number, gainValue: number, type: OscillatorType = 'sine') {
   const oscillator = context.createOscillator()
@@ -21,7 +27,7 @@ function tone(context: AudioContext, frequency: number, startsAt: number, durati
 }
 
 export function playGameSound(sound: GameSound) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || activityClock.paused) return
   const AudioContextClass = window.AudioContext
   if (!AudioContextClass) return
 

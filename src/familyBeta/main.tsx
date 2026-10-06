@@ -8,7 +8,7 @@ import { subscribeAuth, signIn, signOut, type AuthState } from '../firebaseClien
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
 import { BETA_GRADES, dailyTotals, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
-import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults, savePreviewResult } from './runtime.ts'
+import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
 import { familyDeviceSyncRepository } from './deviceSync.ts'
@@ -17,16 +17,13 @@ import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import { channelCohort, latestEarlierTargets } from './gamePools.ts'
 import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
+import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { localDateKey } from '../domain.ts'
-import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
-import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import '../styles.css'
 import './preview.css'
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
-const ModuleHost = lazy(() =>
-  import('../ninjaSkills/LearningModuleHost.tsx').then((m) => ({ default: m.LearningModuleHost })),
-)
 const routes: Record<BetaGrade, string> = {
   Kindergarten: 'kindergarten-learning-lab.html',
   'Grade 2': 'index.html',
@@ -79,26 +76,38 @@ function FamilyPreview() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
-  const [pack, setPack] = useState<LearningModulePack | null>(null)
-  const gameAttemptId = useRef('')
-  const frame = useRef<HTMLIFrameElement>(null)
+  const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
+  const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
   const syncing = useRef(false)
   const syncAgain = useRef(false)
   const refreshRef = useRef<() => Promise<void>>(async () => {})
-  const [readyChild, setReadyChild] = useState('')
+  const [readyChildren, setReadyChildren] = useState<ReadonlySet<string>>(new Set())
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
-  const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChild === child.id)
-  useEffect(() => () => stopActiveAudio(), [pack, tab, child?.id])
+  const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChildren.has(child.id))
+  const today = localDateKey(new Date())
+  const available = curriculum?.datasets.filter(d => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) || []
+  const dataset = available.find(d => d.startDate === week) || available[0]
+  const workspace = child ? activityWorkspace(child, dataset?.startDate || week) : ''
+  const selectedSlot = selectedSlots[`${workspace}:${tab}`]
+  const pack = slots.find(slot => slot.id === selectedSlot)?.game?.pack
+  const scope = `${auth.user?.uid || ''}:${familyId || ''}`
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
+  const childRef = useRef(child?.id)
+  childRef.current = child?.id
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
-    if (!auth.user) return
     let cancelled = false
-    setReadyChild('')
+    setReadyChildren(new Set())
+    setSlots([])
+    setSelectedSlots({})
+    if (!firebaseConfigReady) return
     setFamilyId(null)
     setProfiles([])
     setResults([])
+    if (!auth.user) return
     void ensureParentFamily(auth.user)
       .then(async ({ family }) => {
         const children = (await listChildren(family.id)).filter((c) =>
@@ -125,7 +134,6 @@ function FamilyPreview() {
   useEffect(() => {
     const controller = new AbortController()
     setCurriculum((current) => (current?.snapshot.grade === currentGrade ? current : null))
-    setWeek('')
     const refresh = () => {
       void fetchCurriculum(currentGrade, controller.signal)
         .then((loaded) => {
@@ -155,15 +163,18 @@ function FamilyPreview() {
     syncing.current = true
     try {
       if (familyId && auth.user) {
-        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id, !frame.current && !pack)
+        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id, !slots.some(slot => slot.profile.id === child.id))
+        if (scopeRef.current !== scope) return
         const repository = familyResultRepository(familyId)
         const pending = pendingResults()
         for (const item of pending) {
           if (!isBetaResult(item) || !profiles.some((p) => p.id === item.childId)) continue
           await repository.save(item)
+          if (scopeRef.current !== scope) return
           acknowledgeResult(item.id)
         }
         const saved = await repository.list(child.id)
+        if (scopeRef.current !== scope) return
         for (const result of saved) {
           const key = `${RESULT_KEY}:${result.id}`
           const previous = localStorage.getItem(key)
@@ -174,18 +185,19 @@ function FamilyPreview() {
           }
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
+        setReadyChildren(current => new Set([...current, child.id]))
+        if (childRef.current !== child.id) return
         setResults(saved)
         setStatus('Scores and saved practice confirmed in your private family account. Use the same parent account on your other device.')
-        setReadyChild(child.id)
       } else {
         setResults(previewResults())
         setStatus('Saved in this browser on this device. Online syncing is not enabled; use the same grade link and browser next time.')
       }
       setError('')
     } catch (e) {
+      if (scopeRef.current !== scope || childRef.current !== child.id) return
       setError(message(e))
-      if (familyId) setReadyChild('')
-      setStatus('Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus('Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.')
       try {
         setResults(previewResults())
       } catch {
@@ -198,13 +210,28 @@ function FamilyPreview() {
         void refreshRef.current()
       }
     }
-  }, [child?.id, familyId, auth.user?.uid, profiles, pack])
+  }, [child?.id, familyId, auth.user?.uid, profiles, slots, scope])
   refreshRef.current = refreshProgress
 
   useEffect(() => {
     void refreshProgress()
     const receive = (event: MessageEvent) => {
-      if (event.origin !== location.origin || event.source !== frame.current?.contentWindow) return
+      if (event.origin !== location.origin) return
+      const source = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(frame => frame.contentWindow === event.source)
+      const slot = slots.find(item => item.id === source?.dataset.familySlot)
+      if (!slot) return
+      if (event.data?.type === 'family-beta-activity-paused') {
+        const key = `${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`
+        setSelectedSlots(current => ({ ...current, [key]: undefined }))
+      }
+      if (event.data?.type === 'family-beta-game-completed' && slot.game?.attemptId === event.data.attemptId) {
+        let confirmed = false
+        try { confirmed = previewResults().some(result => result.id === slot.game?.attemptId && result.childId === slot.profile.id && result.grade === slot.profile.grade) } catch { /* Keep this game open when its ledger cannot be read. */ }
+        if (!confirmed) { setActivityError('The game result is not confirmed. Keep it open and retry.'); return }
+        setSlots(current => current.filter(item => item.id !== slot.id))
+        setSelectedSlots(current => ({ ...current, [`${slot.workspace}:games`]: undefined }))
+        void refreshProgress()
+      }
       if (event.data?.type === 'family-beta-result-ready') {
         setActivityError('')
         void refreshProgress()
@@ -230,7 +257,7 @@ function FamilyPreview() {
       removeEventListener('storage', storageChanged)
       clearInterval(interval)
     }
-  }, [refreshProgress])
+  }, [refreshProgress, slots])
 
   async function editProfile(profile: BetaProfile, patch: Partial<BetaProfile>) {
     if (!adultUnlocked) return
@@ -251,11 +278,6 @@ function FamilyPreview() {
     }
   }
 
-  const today = localDateKey(new Date())
-  const available =
-    curriculum?.datasets.filter((d) => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) ||
-    []
-  const dataset = available.find((d) => d.startDate === week) || available[0]
   const earlierWriting = latestEarlierTargets(available, dataset?.startDate || today, 'writing')
   const earlierReading = latestEarlierTargets(available, dataset?.startDate || today, 'reading')
   const writingCapabilities = learningModuleCapabilities(
@@ -272,6 +294,30 @@ function FamilyPreview() {
       : capability
   })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
+
+  function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack) {
+    if (!child || !curriculum || curriculum.snapshot.grade !== currentGrade || !dataset || !practiceReady) return
+    const id = crypto.randomUUID()
+    const slot: FamilyActivitySlot = {
+      id, workspace, profile: { ...child }, week: dataset?.startDate || week,
+      curriculumVersion: curriculum.snapshot.contentSha256,
+      teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
+      kind, src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
+      ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
+    }
+    setSlots(current => [...current, slot])
+    setSelectedSlots(current => ({ ...current, [`${workspace}:${kind === 'game' ? 'games' : 'activities'}`]: id }))
+  }
+
+  useEffect(() => {
+    if (tab === 'activities' && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
+  }, [tab, child, curriculum, practiceReady, workspace, slots])
+
+  function discardSlot(slot: FamilyActivitySlot) {
+    if (!confirmActivityDiscard()) return
+    setSlots(current => current.filter(item => item.id !== slot.id))
+    setSelectedSlots(current => ({ ...current, [`${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`]: undefined }))
+  }
 
   if (auth.status === 'loading') return <p role="status">Loading family access…</p>
   if (firebaseConfigReady && !auth.user)
@@ -299,12 +345,7 @@ function FamilyPreview() {
           <select
             aria-label="Child profile"
             value={child?.id || ''}
-            onChange={(e) => {
-              if (window.confirm('Switch child? Any unfinished activity will be discarded.')) {
-                setSelectedId(e.target.value)
-                setPack(null)
-              }
-            }}
+            onChange={(e) => { setSelectedId(e.target.value); setWeek('') }}
           >
             {profiles
               .filter((p) => p.active)
@@ -350,7 +391,7 @@ function FamilyPreview() {
           </button>
         ))}
       </nav>
-      {familyId && child && readyChild !== child.id && <section className="beta-panel" role="status">
+      {familyId && child && !readyChildren.has(child.id) && <section className="beta-panel" role="status">
         <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
         <button type="button" onClick={() => void refreshProgress()}>Retry family sync</button>
       </section>}
@@ -360,12 +401,7 @@ function FamilyPreview() {
           <select
             aria-label="Practice week"
             value={week}
-            onChange={(e) => {
-              if (window.confirm('Change week? Any unfinished activity will be discarded.')) {
-                setWeek(e.target.value)
-                setPack(null)
-              }
-            }}
+            onChange={(e) => setWeek(e.target.value)}
           >
             <option value="">Current teacher lesson</option>
             {available.map((d) => (
@@ -377,57 +413,26 @@ function FamilyPreview() {
         </label>
       )}
       {!child && <p>Add a child in Parent controls to begin.</p>}
-      {child && practiceReady && tab === 'activities' && curriculum && (
-        <iframe
-          ref={frame}
-          key={`${child.id}-${currentGrade}-${week}`}
-          className="beta-grade-frame"
-          title={`${currentGrade} activities`}
-          src={frameUrl}
-          allow="microphone 'self'; autoplay 'self'"
-        />
-      )}
+      {slots.map(slot => {
+        const active = practiceReady && slot.id === selectedSlot && slot.workspace === workspace && (tab === 'activities' || tab === 'games')
+        return <iframe key={slot.id} className="beta-grade-frame" title={slot.game?.pack.title || `${slot.profile.grade} activities`}
+          data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
+          data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
+          data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
+          hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
+      })}
+      {practiceReady && (tab === 'activities' || tab === 'games') && !selectedSlot && slots.some(slot => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities')) && <section className="beta-panel">
+        <h2>Your paused work</h2>
+        <p>Your work stays here during this visit. After a reload, reviewed saved practice resumes; temporary writing and recordings must be repeated.</p>
+        {slots.filter(slot => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities')).map(slot => <div key={slot.id}>
+          <button onClick={() => setSelectedSlots(current => ({ ...current, [`${workspace}:${tab}`]: slot.id }))}>Resume {slot.game?.pack.title || `${slot.profile.grade} activity`}</button>
+          <button onClick={() => discardSlot(slot)}>Discard unfinished {slot.game?.pack.title || 'activity'}</button>
+        </div>)}
+      </section>}
       {child &&
         practiceReady &&
         tab === 'games' &&
-        (pack ? (
-          <Suspense fallback={<p>Loading game…</p>}>
-            <ModuleHost
-              pack={pack}
-              playAudio={(text, language = 'zh-CN', rate = 0.65) => {
-                return promptAudioCompleted(
-                  playAudioPlan([
-                    {
-                      text,
-                      language: language as 'zh-CN',
-                      rate,
-                      storagePath: kindergartenAudioForText(text)?.storagePath,
-                    },
-                  ]),
-                )
-              }}
-              onExit={() => setPack(null)}
-              onComplete={(summary) => {
-                try {
-                  const saved = savePreviewResult({
-                    id: gameAttemptId.current,
-                    activity: pack.title,
-                    channel: 'game',
-                    datasetIds: pack.cohort.provenance.map((p) => p.datasetId),
-                    correct: summary.correct,
-                    attempted: summary.attempted,
-                  })
-                  if (!saved) throw new Error('The completed game could not be saved for this child.')
-                  setPack(null)
-                  setActivityError('')
-                  void refreshProgress()
-                } catch (e) {
-                  setActivityError(`${message(e)} Keep the game open and retry its completion.`)
-                }
-              }}
-            />
-          </Suspense>
-        ) : (
+        !pack && (
           <section className="beta-panel">
             <h1>Practice your Ninja Skills</h1>
             <p>
@@ -439,9 +444,10 @@ function FamilyPreview() {
               {capabilities.map((c) =>
                 c.status === 'ready' ? (
                   <button className="primary-button" key={c.pack.moduleId} onClick={() => {
-                    gameAttemptId.current = crypto.randomUUID()
                     setActivityError('')
-                    setPack(c.pack)
+                    const paused = slots.find(slot => slot.workspace === workspace && slot.game?.pack.moduleId === c.pack.moduleId)
+                    if (paused) setSelectedSlots(current => ({ ...current, [`${workspace}:games`]: paused.id }))
+                    else newSlot('game', c.pack)
                   }}>
                     {c.pack.title}
                   </button>
@@ -456,7 +462,7 @@ function FamilyPreview() {
             </div>
             <p>Additional games will appear when their required teacher-approved content is available.</p>
           </section>
-        ))}
+        )}
       {child && tab === 'progress' && (
         <section className="beta-panel">
           <h1>{child.nickname}’s progress</h1>

@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Clock3, RotateCcw, Volume2, Zap } from 'lucide-react'
 import type { LearningGameAttempt } from './runtime/contracts'
@@ -109,8 +110,8 @@ export function SpeedMatch({
 
   useEffect(() => {
     if (!missionStarted || timedOut || missionFinished) return
-    const timer = window.setInterval(() => setTimeLeft((current) => Math.max(0, current - 1)), 1000)
-    return () => window.clearInterval(timer)
+    const timer = activityClock.setInterval(() => setTimeLeft((current) => Math.max(0, current - 1)), 1000)
+    return () => activityClock.clearInterval(timer)
   }, [missionFinished, missionStarted, timedOut])
 
   useEffect(() => {
@@ -125,13 +126,13 @@ export function SpeedMatch({
 
   useEffect(() => {
     if (!feedback) return
-    const timer = window.setTimeout(() => {
+    const timer = activityClock.setTimeout(() => {
       if (feedback === 'incorrect') setCards((current) => reshuffleUnmatched(current, matchedPairIds))
       setSelectedCardIds([])
       setFeedback(null)
       setStrikeQuality(null)
     }, feedback === 'correct' ? 520 : 650)
-    return () => window.clearTimeout(timer)
+    return () => activityClock.clearTimeout(timer)
   }, [feedback, matchedPairIds])
 
   function resetMission() {
@@ -153,7 +154,7 @@ export function SpeedMatch({
     const pair = pairs.find((candidate) => candidate.id === first.pairId)
     if (!pair) return
     const correct = first.pairId === second.pairId
-    const responseSeconds = Math.max(0, (performance.now() - selectionStartedAt.current) / 1000)
+    const responseSeconds = Math.max(0, (activityClock.now() - selectionStartedAt.current) / 1000)
     const lightning = correct && responseSeconds <= LIGHTNING_SECONDS
     const attempt: LearningGameAttempt = {
       gameId: 'speed-match',
@@ -191,7 +192,7 @@ export function SpeedMatch({
     const next = [...selectedCardIds, card.id]
     setSelectedCardIds(next)
     if (next.length === 1) {
-      selectionStartedAt.current = performance.now()
+      selectionStartedAt.current = activityClock.now()
       setLastMessage('Seal armed. Find its matching shadow before the lightning bonus fades.')
       return
     }

@@ -1,5 +1,6 @@
 import { BETA_GRADES, isBetaResult, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
 import { isFamilyActivityContext } from './context.ts'
+import '../activity/activityLifecycle.ts'
 
 function parentRole() {
   try { return window.parent.document.body.dataset.familyContext }
@@ -20,7 +21,8 @@ if (familyPreview && window.parent !== window) document.documentElement.classLis
 export function previewProfile(): BetaProfile | null {
   if (!familyPreview) return null
   try {
-    const p = JSON.parse(sessionStorage.getItem(PROFILE_KEY) || 'null') as BetaProfile | null
+    const ownerProfile = window.parent !== window ? window.frameElement?.getAttribute('data-family-profile') : null
+    const p = JSON.parse(ownerProfile || sessionStorage.getItem(PROFILE_KEY) || 'null') as BetaProfile | null
     return p && /^[\w-]{1,160}$/.test(p.id) && BETA_GRADES.includes(p.grade) && p.active ? p : null
   } catch {
     return null

@@ -1,3 +1,4 @@
+import { activityClock } from '../../../activity/activityLifecycle.ts'
 export type GameSound = 'select' | 'flip' | 'correct' | 'incorrect' | 'progress' | 'victory' | 'lantern-flip' | 'lantern-match' | 'lantern-miss' | 'lantern-victory'
 
 let audioContext: AudioContext | null = null
@@ -11,6 +12,13 @@ const lanternSoundUrls: Readonly<Record<LanternSound, string>> = {
 }
 const lanternAudio = new Map<LanternSound, HTMLAudioElement>()
 let activeLanternAudio: HTMLAudioElement | null = null
+activityClock.subscribe(paused => {
+  if (!paused) return
+  if (audioContext) { void audioContext.close().catch(() => undefined); audioContext = null }
+  activeLanternAudio?.pause()
+  activeLanternAudio = null
+  if (typeof navigator !== 'undefined') navigator.vibrate?.(0)
+})
 
 function getLanternAudio(sound: LanternSound) {
   const cached = lanternAudio.get(sound)
@@ -62,7 +70,7 @@ function tone(context: AudioContext, frequency: number, startsAt: number, durati
 }
 
 export function playGameSound(sound: GameSound) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || activityClock.paused) return
   if (sound in lanternSoundUrls) {
     playLanternRecording(sound as LanternSound)
     return

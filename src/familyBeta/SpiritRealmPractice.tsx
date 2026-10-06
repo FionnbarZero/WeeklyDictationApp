@@ -1,3 +1,4 @@
+import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { lazy, Suspense, useRef, useState } from 'react'
 import type { Dataset } from '../domain/contracts.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
@@ -142,7 +143,7 @@ export function SpiritRealmPractice({
         {!game && (
           <>
             <div className="lg-topbar">
-              <button className="lg-exit" onClick={onExit}>
+              <button className="lg-exit" onClick={() => { if (!pauseToFamilyHub()) onExit() }}>
                 Back to Spirit Realm
               </button>
             </div>

@@ -114,6 +114,21 @@ test('microphone permission denial is exposed as a child-recoverable recorder er
   )
 })
 
+test('permission arriving after interruption closes tracks without constructing a recorder or retaining a clip', async () => {
+  const harness = recorderHarness()
+  const controller = new AbortController()
+  let resolvePermission!: (stream: Awaited<ReturnType<AudioRecorderDependencies['getUserMedia']>>) => void
+  const stream = await harness.dependencies.getUserMedia()
+  harness.dependencies.getUserMedia = () => new Promise(resolve => { resolvePermission = resolve })
+  harness.dependencies.createRecorder = () => { assert.fail('An interrupted permission request must not start recording') }
+  harness.dependencies.createObjectURL = () => { assert.fail('An interrupted clip must not be retained') }
+  const request = startEphemeralAudioRecording(harness.dependencies, undefined, controller.signal)
+  controller.abort()
+  resolvePermission(stream)
+  await assert.rejects(request, /interrupted/)
+  assert.equal(harness.stopCount(), 1)
+})
+
 test('recorder construction failure releases an already-open microphone stream', async () => {
   const harness = recorderHarness()
   harness.dependencies.createRecorder = () => { throw new Error('construction failed') }

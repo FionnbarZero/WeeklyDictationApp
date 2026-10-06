@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { LearningGameAttempt } from './runtime/contracts'
@@ -37,7 +38,7 @@ export function MemoryFlip({
 
   useEffect(() => {
     if (!twoFlipped) return
-    const timer = window.setTimeout(() => {
+    const timer = activityClock.setTimeout(() => {
       const first = deck.find((card) => card.id === flippedIds[0])
       const second = deck.find((card) => card.id === flippedIds[1])
       if (first && second && first.pairId === second.pairId) {
@@ -45,13 +46,13 @@ export function MemoryFlip({
       }
       setFlippedIds([])
     }, pairMatch ? 1050 : 1450)
-    return () => window.clearTimeout(timer)
+    return () => activityClock.clearTimeout(timer)
   }, [deck, flippedIds, pairMatch, twoFlipped])
 
   useEffect(() => {
     if (!complete) return
-    const timer = window.setTimeout(() => playGameSound('lantern-victory'), 360)
-    return () => window.clearTimeout(timer)
+    const timer = activityClock.setTimeout(() => playGameSound('lantern-victory'), 360)
+    return () => activityClock.clearTimeout(timer)
   }, [complete])
 
   function flip(cardId: string) {
@@ -60,7 +61,7 @@ export function MemoryFlip({
     if (!card || matchedPairIds.includes(card.pairId)) return
     const next = [...flippedIds, cardId]
     setFlippedIds(next)
-    const spoken = new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+    const spoken = new Promise<void>((resolve) => activityClock.requestAnimationFrame(() => {
       void Promise.resolve(playAudio?.(card.face.label, 'zh-CN')).then(() => { setAudioError(false); resolve() }, () => { setAudioError(true); resolve() })
     }))
     if (next.length !== 2) return

@@ -27,7 +27,7 @@ export function captureScreenContext(doc: Document): ReportContext {
     if (value) context[key] = value.slice(0, 300)
   }
   let surface = doc
-  const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame')
+  const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame:not([hidden])')
   try {
     if (frame?.contentDocument) {
       surface = frame.contentDocument

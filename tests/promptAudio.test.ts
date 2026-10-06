@@ -9,6 +9,7 @@ import {
   stopPromptAudio,
 } from '../src/audio/promptAudio.ts'
 import type { Word } from '../src/domain/contracts.ts'
+import { activityClock } from '../src/activity/activityLifecycle.ts'
 
 type Listener = () => void
 
@@ -59,6 +60,30 @@ const word: Word = {
   datasetId: 'kindergarten-week-3',
   audio: { storagePath: 'audio/kindergarten/u4e09.wav', voice: 'test' },
 }
+
+test('report interruption pauses playback, retains the prompt and retries its interrupted cue on resume', async () => {
+  const audios: FakeAudio[] = []
+  const completion = playCachedWordAudioOnce(word, {
+    createAudio: () => { const audio = new FakeAudio(); audios.push(audio); return audio },
+    resolveUrl: path => path,
+  })
+  let completed = false
+  void completion.then(() => { completed = true })
+  try {
+    assert.equal(audios.length, 1)
+    activityClock.setPaused('unit-report', true)
+    for (let i = 0; i < 6; i++) await Promise.resolve()
+    assert.ok(audios[0].pauseCount > 0)
+    assert.equal(completed, false)
+    assert.equal(audios.length, 1)
+    activityClock.setPaused('unit-report', false)
+    for (let i = 0; i < 6; i++) await Promise.resolve()
+    assert.equal(audios.length, 2)
+    audios[1].emit('ended')
+    await completion
+    assert.equal(completed, true)
+  } finally { activityClock.setPaused('unit-report', false) }
+})
 
 test('reading teaching plays a cached English announcement before the Mandarin sequence without browser voices', async () => {
   const audios: FakeAudio[] = []

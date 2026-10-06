@@ -6,6 +6,7 @@ import {
   type AudioRecorderDependencies,
 } from './audioRecorder.ts'
 import { ReadingRecorderError, type EphemeralAudioClip, type ReadingRecordingStatus } from './contracts.ts'
+import { activityClock } from '../activity/activityLifecycle.ts'
 
 export type AudioRecorderState = {
   readonly status: ReadingRecordingStatus
@@ -24,10 +25,15 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
   const activeRef = useRef<ActiveAudioRecording | null>(null)
   const clipRef = useRef<EphemeralAudioClip | null>(null)
   const generationRef = useRef(0)
+  const permissionRef = useRef<AbortController | null>(null)
+  const statusRef = useRef(status)
+  statusRef.current = status
   const supported = dependencies !== undefined || browserSupportsAudioRecording()
 
   const releaseCurrent = useCallback(() => {
     generationRef.current += 1
+    permissionRef.current?.abort()
+    permissionRef.current = null
     activeRef.current?.cancel()
     activeRef.current = null
     clipRef.current?.dispose()
@@ -36,6 +42,7 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
 
   const reset = useCallback(() => {
     releaseCurrent()
+    statusRef.current = 'idle'
     setClip(null)
     setError(null)
     setStatus('idle')
@@ -46,20 +53,30 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
     return releaseCurrent
   }, [promptId, reset, releaseCurrent])
 
+  useEffect(() => activityClock.subscribe(paused => {
+    if (paused && (statusRef.current === 'requesting' || statusRef.current === 'recording')) reset()
+  }), [reset])
+
   const start = useCallback(async () => {
+    if (activityClock.paused) return
     releaseCurrent()
     setClip(null)
     setError(null)
     setStatus('requesting')
+    statusRef.current = 'requesting'
     const generation = generationRef.current
+    const permission = new AbortController()
+    permissionRef.current = permission
 
     try {
-      const active = await startEphemeralAudioRecording(dependencies)
+      const active = await startEphemeralAudioRecording(dependencies, undefined, permission.signal)
       if (generation !== generationRef.current) {
         active.cancel()
         return
       }
       activeRef.current = active
+      permissionRef.current = null
+      statusRef.current = 'recording'
       setStatus('recording')
       void active.finished.then((nextClip) => {
         if (generation !== generationRef.current) {
@@ -67,12 +84,14 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
           return
         }
         activeRef.current = null
+        statusRef.current = 'recorded'
         clipRef.current = nextClip
         setClip(nextClip)
         setStatus('recorded')
       }).catch((nextError: unknown) => {
         if (generation !== generationRef.current) return
         activeRef.current = null
+        statusRef.current = 'error'
         const normalized = nextError instanceof ReadingRecorderError
           ? nextError
           : new ReadingRecorderError('recording-failed', 'The recording could not be completed.')
@@ -81,6 +100,8 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
       })
     } catch (nextError) {
       if (generation !== generationRef.current) return
+      permissionRef.current = null
+      statusRef.current = 'error'
       const normalized = nextError instanceof ReadingRecorderError
         ? nextError
         : new ReadingRecorderError('recording-failed', 'The recording could not be started.')

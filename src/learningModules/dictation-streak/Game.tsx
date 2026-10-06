@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Headphones, PencilLine } from 'lucide-react'
 import type { LearningGameBaseProps, PlayLearningAudio, ProductionGameRound } from './runtime/contracts'
@@ -86,8 +87,8 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }, [playAudio, round.audioText, round.id, round.targetText])
 
   useEffect(() => () => {
-    if (messageTimerRef.current !== undefined) window.clearTimeout(messageTimerRef.current)
-    if (restartTimerRef.current !== undefined) window.clearTimeout(restartTimerRef.current)
+    if (messageTimerRef.current !== undefined) activityClock.clearTimeout(messageTimerRef.current)
+    if (restartTimerRef.current !== undefined) activityClock.clearTimeout(restartTimerRef.current)
   }, [])
 
   function speakFeedback(message: string) {
@@ -99,7 +100,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }
 
   function focusAtEnd() {
-    window.requestAnimationFrame(() => {
+    activityClock.requestAnimationFrame(() => {
       const input = inputRef.current
       input?.focus()
       input?.setSelectionRange(input.value.length, input.value.length)
@@ -123,12 +124,12 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   function handleSpellingError(stepPinyin: string) {
     spellingErrorsRef.current += 1
     setAnswer(selectedCharacters)
-    if (messageTimerRef.current !== undefined) window.clearTimeout(messageTimerRef.current)
+    if (messageTimerRef.current !== undefined) activityClock.clearTimeout(messageTimerRef.current)
 
     if (spellingErrorsRef.current === 1) {
       setSpellingMessage('Uh oh! Check your spelling!')
       speakFeedback('Uh oh! Check your spelling!')
-      messageTimerRef.current = window.setTimeout(() => setSpellingMessage(''), 1800)
+      messageTimerRef.current = activityClock.setTimeout(() => setSpellingMessage(''), 1800)
       focusAtEnd()
       return
     }
@@ -136,7 +137,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     setSpellingMessage('')
     setCorrectionPinyin(stepPinyin)
     speakFeedback('Try again!')
-    restartTimerRef.current = window.setTimeout(restartTrial, 2300)
+    restartTimerRef.current = activityClock.setTimeout(restartTrial, 2300)
   }
 
   function updateAnswer(nextAnswer: string) {
@@ -165,7 +166,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
       setSpellingMessage('')
       setCharacterCorrection({ chosen: candidate, correct: correctCharacter })
       speakFeedback('Wrong character. Try again!')
-      restartTimerRef.current = window.setTimeout(restartTrial, 2300)
+      restartTimerRef.current = activityClock.setTimeout(restartTrial, 2300)
       return
     }
     setAnswer(selectedCharacters + candidate)

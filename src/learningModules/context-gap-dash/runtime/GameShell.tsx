@@ -1,3 +1,4 @@
+import { pauseToFamilyHub } from '../../../activity/activityLifecycle.ts'
 import { Check, Sparkles, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { LearningGameId, LearningGameSummary } from './contracts'
@@ -19,7 +20,7 @@ export function LearningGameShell({ gameId, title, eyebrow, progress, onExit, ch
   return <main className={`lg-shell${gameId ? ` lg-world-${gameId}` : ''}`}>
     <div className="lg-world-atmosphere" aria-hidden="true"><i /><i /><i /></div>
     <div className="lg-topbar">
-      <button className="lg-exit" type="button" onClick={onExit}><X size={18} /> Exit learning module</button>
+      <button className="lg-exit" type="button" onClick={() => { if (!pauseToFamilyHub()) onExit() }}><X size={18} /> Exit learning module</button>
       <div className="lg-progress" aria-label={`Learning module progress: ${progress}`}>
         <span><Sparkles size={13} aria-hidden="true" /> Progress <strong>{progress}</strong></span>
         <i aria-hidden="true"><b style={{ width: `${percentage}%` }} /></i>

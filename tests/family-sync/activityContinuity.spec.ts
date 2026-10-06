@@ -31,12 +31,24 @@ for (const [slug, grade] of grades) {
 
   test(`${grade}: navigation preserves the same activity and temporary handwriting`, async ({ page }) => {
     const frame = await writing(page, slug)
+    await frame.getByRole('button', { name: 'Pause', exact: true }).click()
+    const pad = frame.locator('svg.skywriting-pad')
+    const box = await pad.boundingBox()
+    if (!box) throw new Error('Missing writing pad')
+    await page.mouse.move(box.x + 40, box.y + 40)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 90, box.y + 90, { steps: 5 })
+    await page.mouse.up()
+    const ink = await frame.locator('.skywriting-stroke').getAttribute('points')
+    expect(ink).toBeTruthy()
     await frame.locator('body').evaluate(body => { body.dataset.continuityProbe = 'same-document' })
     await page.getByRole('button', { name: 'Progress', exact: true }).click()
     await page.waitForTimeout(1200)
     await page.getByRole('button', { name: 'Activities', exact: true }).click()
     await expect(frame.locator('body')).toHaveAttribute('data-continuity-probe', 'same-document')
     await expect(frame.getByRole('timer')).toBeVisible()
+    await expect(frame.locator('.skywriting-stroke')).toHaveAttribute('points', ink!)
+    await expect(frame.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
   })
 
   test(`${grade}: a sync failure keeps the activity available and reviewed work queued`, async ({ page }) => {
@@ -48,7 +60,16 @@ for (const [slug, grade] of grades) {
     await expect(frame.locator('body')).toHaveAttribute('data-continuity-probe', 'same-document')
     await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
     await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-    const checkpoints = await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('family-beta-acquisition-v1:')))
-    expect(checkpoints.length).toBeGreaterThan(0)
+    for (let i = 0; i < 3; i++) {
+      await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+      await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+    }
+    await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+    const pending = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('family-beta-preview-pending-v1:')).map(key => JSON.parse(localStorage.getItem(key)!)))
+    expect(await pending()).toHaveLength(1)
+    expect((await pending())[0]).toMatchObject({ grade, channel: 'writing', correct: 1, attempted: 1 })
+    await page.unroute('**/firestore.googleapis.com/**')
+    await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+    await expect.poll(pending).toEqual([])
   })
 }
