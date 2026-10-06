@@ -4,25 +4,25 @@ Verified October 5, 2026. This inventory describes the current live family wrapp
 
 ## Current stable destinations
 
-All three use application source `f4ef04f1e9898a21553ade00db425bcd8d897bc0`, automatic read-only Google curriculum refresh, and browser-local completed scores and problem reports.
+All three use application source `ef9d1f75df7046152c4829e8f7cfca635f303461`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies the three canonical grade links on `ninjadojo.meghangames.com`. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` replaces `a525a8e6-943c-49eb-adc0-1e6eac029ff5`. The existing grade origins below remain updated aliases that preserve their device records.
 
 | Grade | Permanent link | Live artifact | Previous release retained |
 | --- | --- | --- | --- |
-| Kindergarten | [Open Kindergarten](https://weeklydictation-k-beta.web.app/) | Firebase `08c2e412a3095227` | Non-expiring `rollback-reviewed-323704ccbb5e`, version `323704ccbb5edfc8` |
-| Grade 2 | [Open Grade 2](https://fionnbarzero.github.io/WeeklyDictationApp/) | Pages commit `0b499f86676dcffe4a62fcf4173a8a32402d039a` | Parent deployment `65c862aec5a78beed2221bca2d034e2c5582a151` |
-| Grade 5 | [Open Grade 5](https://weeklydictation-g5-beta.web.app/) | Firebase `424b6a63322ed355` | Non-expiring `rollback-reviewed-ff52db8d6a99`, version `fb4ad193e58ccf28` |
+| Kindergarten | [Existing Kindergarten address](https://weeklydictation-k-beta.web.app/) | Firebase `1cdad369b59f20cd` | `rollback-before-family-sync`, version `08c2e412a3095227` |
+| Grade 2 | [Existing Grade 2 address](https://fionnbarzero.github.io/WeeklyDictationApp/) | Pages commit `7a3278ca26725702dbc7ce4204b0d1318db17e74` | Parent deployment `0b499f86676dcffe4a62fcf4173a8a32402d039a` |
+| Grade 5 | [Existing Grade 5 address](https://weeklydictation-g5-beta.web.app/) | Firebase `5487998f698eb099` | `rollback-before-family-sync`, version `424b6a63322ed355` |
 
-The roots open the correct grade in `family-beta-preview.html`. The family build still displays “Review build f4ef04f,” but these are permanent live links. All declared files were checksum-verified and fresh-browser score/report reload checks passed. Complete hashes, verification limits, and publication details are in the [live release record](./family-beta-live-2026-10-05.md).
+The roots open the correct grade in `family-beta-preview.html`. All 120 public application files were checksum-verified at each of the four origins. Complete hashes, verification limits, and publication details are in the [family-sync release record](./family-sync-release-2026-10-05.md).
 
 ## Persistence and update boundaries
 
-- Completed writing, reading, and supported game results are stored in the same browser and origin. Reports are also local and are shared as an end-of-session batch.
-- No cross-device synchronization is promised. Preview scores do not transfer automatically to live. Never clear browser data to resolve an old-version complaint.
+- Completed writing, reading, and supported game results sync under the parent account. Reports stay local and are shared as an end-of-session batch.
+- Sequential cross-device synchronization passed live acceptance. Older device-only profiles and preview scores do not transfer automatically. Never clear browser data to resolve an old-version complaint.
 - Legacy Grade 2 state and recovery keys are separate from the family ledger and activity namespaces. The October 5 release did not reset or migrate real child data. Do not assume legacy restore tools cover every new record.
 - Recordings remain temporary comparison data, with no uploads or retained audio.
 - Dojo, Boss, and Spirit Realm behavior and unfinished-session persistence still need activity-level acceptance; a saved aggregate score is not proof of exact resume.
 - Ordinary tested updates have standing owner approval. Data resets, production authentication/security changes, and unreviewed migrations remain separately restricted.
-- Root links may be added to the existing homepage without moving the grade apps or changing their storage origins.
+- The homepage uses three links on the canonical Ninja Dojo origin, sharing one parent sign-in. Old grade origins remain available with the updated build and their local records intact.
 
 ## Remaining acceptance work
 

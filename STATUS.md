@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 5, 2026 against the [verified live release](./docs/family-beta-live-2026-10-05.md) and the owner's [clarified product policy](./docs/decisions/0008-family-beta-product-and-release-policy.md).
+Updated October 5, 2026 against the [verified family-sync release](./docs/family-sync-release-2026-10-05.md) and the owner's [clarified product policy](./docs/decisions/0008-family-beta-product-and-release-policy.md).
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -8,19 +8,19 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 | Grade | Permanent app | Verified release |
 | --- | --- | --- |
-| Kindergarten | [Open Kindergarten](https://weeklydictation-k-beta.web.app/) | Source `f4ef04f1e9898a21553ade00db425bcd8d897bc0`; Firebase `08c2e412a3095227` |
-| Grade 2 | [Open Grade 2](https://fionnbarzero.github.io/WeeklyDictationApp/) | Same application source; Pages deployment `0b499f86676dcffe4a62fcf4173a8a32402d039a` |
-| Grade 5 | [Open Grade 5](https://weeklydictation-g5-beta.web.app/) | Same application source; Firebase `424b6a63322ed355` |
+| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `ef9d1f75df7046152c4829e8f7cfca635f303461` |
+| Grade 2 | [Open Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same application source |
+| Grade 5 | [Open Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same application source |
 
-These are live one-device family beta apps, not expiring review links. The existing header says “Review build f4ef04f”; that label does not mean an older live release is intended. All three use the family wrapper. Local addresses and historical standalone routes are not the canonical beta entry points.
+These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` serves all three. Existing Firebase and Pages grade addresses were also updated to the same application assets, preserving their local data; see the release inventory for their exact versions. Main remains unmerged.
 
 ## Current capability matrix
 
 | Capability | Verified state | Remaining work or limit |
 | --- | --- | --- |
-| Completed writing and reading scores | Browser-local completed-result ledger in all three grades; hosted writing/reading and reload checks passed | No cross-device synchronization; full continuity with older standalone mastery histories is not promised |
+| Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
 | Game results | Hosted Memory Lanterns completion and score/reload checks passed for each grade | Per-game weekly progress and detailed coverage for every game are requirements, not verified complete |
-| Exact acquisition resume | Required after each completed trial for each separately tracked activity | Audit and repair the live family integration; legacy persistence tests alone do not prove every new path resumes correctly |
+| Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
 | Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
 | Problem reports | Reports save locally and survive reload; end-of-session batch sharing and cancellation checks passed | Email/share needs a user action; pause-and-preserve behavior across every game is required and still needs verification |
 | Audio and microphone | Hosted tests cover browser playback, synthetic recording/comparison, denial handling, and cleanup | Physical iMac/iPad sound and microphone testing remains necessary; no retained recordings |
@@ -28,13 +28,13 @@ These are live one-device family beta apps, not expiring review links. The exist
 | Reading and Whispering Scrolls | Both retained with separate acquisition progress; Whispering Scrolls must follow reading acquisition rules, including comparison before self-assessment | Verify complete integration against those rules; no automatic pronunciation grading |
 | Other EduGames | Grade-specific game library and some integrated activities exist | Apply the owner's exact tier, sentence, pinyin, and reinforcement rules; do not assume generic game availability means integration is finished |
 | Generated supplemental content | Owner authorizes generated meanings, contexts, and pinyin without manual preapproval | Existing approval-only catalog implementation must be changed and validated before claiming automatic content generation is live |
-| Cross-device accounts and storage | Deferred for the approved one-device beta | Production sign-in, security, migration, and actual multi-device acceptance remain separate work |
+| Cross-device accounts and storage | Owner-authorized parent sign-in and family syncing live; two independent browser contexts recovered the score and next prompt | Use the same parent account sequentially across devices; children never sign in; historical data migration remains separate |
 
 The teacher documents remain authoritative for target vocabulary, tiers, dates, and units. Generated supporting content must be distinguished from teacher-authored material. Future Kindergarten unit boundaries come from those materials, not an inferred calendar.
 
 ## Data and privacy
 
-Completed scores and reports persist only in the same browser profile and origin. Clearing site data removes local records. Preview and live origins do not share storage. Existing legacy Grade 2 keys remain separate from the family wrapper's records; do not erase, silently migrate, or assume complete historical continuity.
+Confirmed scores and saved practice sync through the parent's private family account. Reports, pending/offline writes and older device-only histories still depend on their browser and origin. Do not clear site data to fix a version problem. Parent controls can export scoped device records without authentication tokens. Existing legacy Grade 2 keys remain separate; do not silently migrate or assume complete historical continuity.
 
 Recordings are temporary comparison data, not stored audio. Synthetic tests do not access real child records. The separate synthetic staging environment remains prohibited from receiving real child data, recordings, credentials, or copied family state.
 
@@ -42,13 +42,14 @@ Rollback releases are retained for both Firebase sites and in Grade 2 deployment
 
 ## Verification evidence
 
-These are recorded October 5 release results, not a new test run for this documentation update:
+October 5 family-sync release checks:
 
-- 625 unit tests plus type checking, lint, and repository formatting passed for the reviewed release.
-- 39 hosted acceptance checks passed against the exact candidate, including curriculum, Boss scoring, persistence, report batching, recording lifecycle, and failure handling.
-- Every declared live file matched its checksum: Kindergarten 121, Grade 2 122, Grade 5 121.
-- Fresh browser checks passed on all three permanent roots for grade selection, curriculum, game completion, score/reload, report/reload, and batch dialog, with zero page errors.
-- The [release review](./docs/grade5-review-2026-10-05.md) records physical-device and source-history limitations. No claim is made that all screens or activities are bug-free.
+- 635 unit tests plus type checking, lint, and repository formatting passed.
+- All 44 grade browser regressions passed, including both Grade 5 Boss rounds, Kindergarten's 14 Unit 1 targets, saved acquisition, curriculum, scores, reporting and recording cleanup.
+- The exact additive production policy passed five scoped emulator checks, including interrupted uploads, conflicts and family isolation. Stricter legacy root-policy tests are not represented as production passes.
+- Two independent browser contexts passed parent sign-up/sign-in, score and next-prompt recovery, all three grade hubs and denied anonymous access on the packaged build and again on the published canonical origin. Synthetic accounts/records were cleaned up without touching real records.
+- All 120 public application files matched their recorded hashes at all four live origins. Desktop and iPad-style entry/report controls and homepage links passed.
+- Physical iMac/iPad sound and microphone quality and remaining activity integration still need family testing; no claim is made that all screens or activities are bug-free.
 
 ## Next work and release policy
 
@@ -64,7 +65,7 @@ Program A cleanup was merged through PR 39 at `10d44ccd7c006d02c73e7accb11fb29bf
 
 Program B1 established isolated synthetic staging. Its recorded deployment `29e0f972f7ec` passed synthetic Grade 2 acquisition resume, atomic completion, reload, second-browser visibility, App Check observation, and cleanup. See [staging evidence](./docs/staging-foundation.md). This is not evidence of real-family cross-device synchronization in the live beta.
 
-Broader B2 migration/restore rehearsal, B3 cross-device pilot, and B4 operations acceptance remain deferred. Dependency advisories, declared Node 24 versus local runtime differences, bundle budgets, and physical-device performance remain engineering risks; retain their checks without using obsolete prototype activation gates to block compatible beta bug fixes.
+The family-sync release now supplies its own live two-browser acceptance; broader legacy B2 migration/restore and B4 operations acceptance remain unfinished. Dependency advisories, declared Node 24 versus local runtime differences, bundle budgets, and physical-device performance remain engineering risks. Production's unchanged legacy rules also differ from the stricter root repository policy; this release adds only the separately tested family collections.
 
 ## Documentation authority
 

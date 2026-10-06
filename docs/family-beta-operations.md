@@ -11,7 +11,7 @@ The objective is to deliver tested fixes promptly to permanent live links while 
 - Synthetic staging never receives real child data, email addresses, recordings, authentication state, or copied family documents.
 - Real beta data stays in its authorized family scope and is minimized to what the active capability requires.
 - Microphone audio remains prompt-local and is released when the prompt or visit ends.
-- All three October 5 family apps retain completed scores and reports in the current browser. Exact acquisition resume and complete per-game weekly history still require activity-level verification.
+- All three apps sync completed scores and saved practice under the parent account. Reports stay local. Ordinary Dojo checkpoint recovery is verified; alternative acquisition games and complete per-game weekly history still require activity-level work.
 - Browser-local records in every grade require compatibility and rollback protection; migrations additionally require verified backup and restore coverage.
 - Closed beta availability does not mean production eligibility.
 
@@ -19,9 +19,9 @@ The objective is to deliver tested fixes promptly to permanent live links while 
 
 | Grade | Current beta posture | Required release protection |
 | --- | --- | --- |
-| Kindergarten | Live writing/reading family beta with local completed scores and reports | Truthful one-device notice, no retained audio, storage compatibility, independent rollback |
-| Grade 2 | Live writing/reading family beta on the existing GitHub Pages origin | Preserve legacy and family records, verify migration coverage before changes to storage, independent rollback |
-| Grade 5 | Live writing/reading family beta; first priority for bug fixes | Truthful one-device notice, no retained audio, grade-owned acquisition rules, storage compatibility, independent rollback |
+| Kindergarten | Live writing/reading family beta with parent-owned syncing | Confirmed-save status, no retained audio, storage compatibility, rollback |
+| Grade 2 | Shared family origin plus updated existing GitHub Pages alias | Preserve legacy and family records, verify migration coverage before changes to storage, rollback |
+| Grade 5 | Live writing/reading family beta with parent-owned syncing; first priority for bug fixes | Confirmed-save status, no retained audio, grade-owned acquisition rules, storage compatibility, rollback |
 
 ## Stable and preview deployments
 
@@ -31,13 +31,13 @@ Use a temporary preview when required to verify a hosted change, but do not requ
 
 Every stable deployment retains at least one previous known-good Hosting release or Git deployment tree. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
-Current release verified on October 5, 2026:
+Current release verified on October 5, 2026; all use source `ef9d1f75df7046152c4829e8f7cfca635f303461`. Exact canonical and alias versions are in the [release inventory](./family-beta-release-inventory.md).
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
-| Kindergarten | `https://weeklydictation-k-beta.web.app` | `f4ef04f1e9898a21553ade00db425bcd8d897bc0` | Published and checksum/browser verified; iMac/iPad activity testing continues |
-| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Same application source; Pages `0b499f86676dcffe4a62fcf4173a8a32402d039a` | Published and checksum/browser verified; preserve legacy storage and audit new storage coverage |
-| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `f4ef04f1e9898a21553ade00db425bcd8d897bc0` | Published and checksum/browser verified; first priority for daily-learning/Boss fixes |
+| Kindergarten | `https://ninjadojo.meghangames.com/?grade=kindergarten` | Shared family source | iMac/iPad activity testing continues |
+| Grade 2 | `https://ninjadojo.meghangames.com/?grade=grade2` | Shared family source | Historical identity mapping and migration remain separate |
+| Grade 5 | `https://ninjadojo.meghangames.com/?grade=grade5` | Shared family source | First priority for remaining daily-learning/Boss fixes |
 
 ## Release identity and manifest
 
@@ -168,9 +168,9 @@ C0 is complete when:
 - every promotion has a release manifest and rollback target;
 - critical and high-severity containment and rollback have been rehearsed and recorded;
 - bug intake avoids child-identifying response content;
-- persistence labels accurately distinguish saved results, unfinished-session resume, and absent cross-device synchronization; and
+- persistence labels distinguish confirmed online results/practice, pending device writes, local reports, and activities without exact resume; and
 - synthetic staging remains free of real child data.
 
 ## Work after C0
 
-Activity corrections proceed Grade 5 first against the owner-approved behavior contract and standing release approval. Program B2 synthetic migration and full rollback rehearsal remain later work and do not require children to leave the live one-device beta while compatible bugs are fixed.
+Activity corrections proceed Grade 5 first against the owner-approved behavior contract and standing release approval. Program B2 historical migration and full rollback rehearsal remain later work. The separately authorized family syncing release is live; its approval does not authorize resetting or silently reassigning historical records.

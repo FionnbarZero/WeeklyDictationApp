@@ -28,7 +28,7 @@ The owner confirmed Dictation Streak's pinyin-to-Chinese-candidate input and dir
 
 ## Consequences and supersession
 
-ADR 0007 remains the acquisition-rule and isolation reference, but its experimental labels, one-off rollout scope, and repeated stable-promotion approval requirement are superseded here. ADR 0005's writing-only default does not describe the approved October 5 one-device Kindergarten beta, which includes local completed reading results; its broader authenticated-production capability gate remains intact.
+ADR 0007 remains the acquisition-rule and isolation reference, but its experimental labels, one-off rollout scope, and repeated stable-promotion approval requirement are superseded here. ADR 0005's writing-only default does not describe the October 5 Kindergarten family beta, which includes completed reading results. The subsequent explicit family-sync authorization permits those beta results and ordinary reading checkpoints in the authenticated family collection; it does not activate unrelated legacy production capabilities or authorize historical migration.
 
 Manual approval of every supplemental sentence and every ordinary beta deployment is no longer a gate. Existing importers may still enforce their earlier approval schema until deliberately changed and tested; documentation alone does not enable generated content or implement missing game behavior.
 

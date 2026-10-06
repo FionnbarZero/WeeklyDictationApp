@@ -8,7 +8,7 @@ This roadmap separates three programs with independent finish lines:
 
 Program A must not stay open because a curriculum or release decision in Program C is unresolved. The frozen references protect approved behavior while the integrated application is assembled one vertical slice at a time.
 
-As of October 5, 2026, all three live family apps use the reviewed family build with browser-local completed scores and reports and automatic Google curriculum refresh. The [live release record](./docs/family-beta-live-2026-10-05.md) identifies the exact artifacts and rollback targets. Program A and B1 remain complete; cross-device production migration is deferred. The immediate priority is Grade 5 bug fixes and reliable daily lessons/Boss tests, followed by game integration, then UI improvement.
+As of October 5, 2026, all three live family apps use the parent-authenticated family build at `ninjadojo.meghangames.com`, with synced completed scores and saved practice, local batched reports, and automatic Google curriculum refresh. The [family-sync release record](./docs/family-sync-release-2026-10-05.md) identifies the exact artifacts and rollback targets. Program A and B1 remain complete; migration of older device-only histories is still deferred. The immediate priority remains Grade 5 bug fixes and reliable daily lessons/Boss tests, followed by game integration, then UI improvement.
 
 The owner has authorized publishing tested fixes directly to the affected live grade without another per-release approval question. Verification and rollback remain required; production data resets, authentication/security changes, and unreviewed migrations remain outside that authorization. The [October 5 product decision](./docs/decisions/0008-family-beta-product-and-release-policy.md) resolves the older conflicting behavior and release gates.
 
@@ -16,7 +16,7 @@ The owner has authorized publishing tested fixes directly to the affected live g
 
 ### Approved family sync release
 
-The owner has now approved parent-only sign-in and secure family syncing. The release in preparation consolidates the family entry point at `ninjadojo.meghangames.com`, preserves old records, checkpoints reviewed acquisition trials, and verifies sequential two-device continuity. Publish only the additive rules needed for the family collections; preserve the current production policy and retain its rollback ruleset. Do not interpret the earlier one-device limit as a blocker to this approved work. Historical device-only profiles still require an explicit identity mapping before migration.
+The owner approved parent-only sign-in and secure family syncing. The published release consolidates the family entry point at `ninjadojo.meghangames.com`, preserves old records, checkpoints reviewed ordinary acquisition trials, and passed sequential two-browser continuity against the live backend. Only additive family-collection rules were published; the rest of the production policy and its rollback ruleset were preserved. Do not interpret the earlier one-device limit as a blocker. Historical device-only profiles still require an explicit identity mapping before migration. Stroke Order, Whispering Scrolls, and explicit reentry checkpoint integration remain separate unfinished work.
 
 ```text
 frozen tag + archived build ───────────────┐
@@ -91,7 +91,7 @@ Program B begins with synthetic, production-shaped data. Real child data require
 
 ## Program C — controlled family beta and product rollout
 
-Program C protects the three grade-level applications used in the family beta. All three now retain completed scores and problem reports in the current browser. This does not prove exact acquisition resume, complete per-game weekly history, or cross-device continuity. Protect existing state in every grade; never clear browser data to resolve an update mismatch.
+Program C protects the three grade-level applications used in the family beta. All three now sync completed scores and saved practice under a parent account while retaining reports locally. Ordinary Dojo checkpoint recovery and sequential two-browser continuity passed the family-sync release checks; alternative acquisition game paths and complete per-game weekly history are not thereby complete. Protect existing state in every grade; never clear browser data to resolve an update mismatch.
 
 ### C0 controlled family beta safety
 
@@ -159,7 +159,7 @@ Kindergarten activation ────────► importer + Kindergarten/Tier
 Grade 5 activation ─────────────► importer + Warmup policy + multi-review persistence
 ```
 
-These longer-term production dependencies do not reopen completed family-beta deployments or the live curriculum service. The approved one-device beta includes writing and reading with local completed results in all three grades. Cross-device production accounts, security, migrations, and broad public rollout retain their separate gates.
+These longer-term production dependencies do not reopen completed family-beta deployments or the live curriculum service. The subsequently approved family-sync beta includes parent accounts, additive family security rules and tested score/practice recovery. Historical migrations, unrelated security-policy upgrades, and broad public rollout retain separate gates.
 
 The owner's current priority is Grade 5 first: bugs, then games, then UI. Other grade work follows verified shared fixes without rewriting each grade's rules.
 
@@ -188,4 +188,4 @@ The owner's current priority is Grade 5 first: bugs, then games, then UI. Other 
 5. Make problem reporting pause and preserve every supported activity, retaining end-of-session report batching.
 6. Add three direct grade links to the existing Meghan Games homepage without changing the apps' storage origins. Keep the permanent links and visible live build identity consistent.
 7. Improve the UI after behavior and games; retain free activity choice and Done for today.
-8. Finish containment/restore coverage for the new family storage before migrations. Cross-device synchronization, account/security changes, and public production rollout remain later work, not prerequisites for the approved one-device beta.
+8. Finish containment/restore coverage for the new family storage before historical migrations. Parent accounts and sequential cross-device syncing are now released under separate owner approval; unrelated security changes and broader public rollout remain later work.

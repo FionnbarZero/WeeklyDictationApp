@@ -1,12 +1,21 @@
 # Family syncing and canonical app release
 
-The owner approved secure family syncing on October 5, 2026, while preserving existing records and keeping sign-in parent-only. This release is being validated and is not yet the live grade release. The homepage link correction is live; application and database publication will be recorded here after verification.
+The owner approved secure family syncing on October 5, 2026, while preserving existing records and keeping sign-in parent-only. This release is now live. Application source is `ef9d1f75df7046152c4829e8f7cfca635f303461`, committed and pushed on `codex/family-beta-reconciliation`. Main was not merged. Deployments use the exact tested artifact, not an assumed latest-main build.
 
 ## Destination and preservation
 
-The maintained family entry point will be `https://ninjadojo.meghangames.com/`. Its three grade links use one origin and one parent session. Firebase project `weeklydictationapp` stores family-owned scores and practice; Cloudflare serves the app. The old Cloudflare Worker has no database bindings. Its rollback version is `a525a8e6-943c-49eb-adc0-1e6eac029ff5`.
+The maintained family entry point is `https://ninjadojo.meghangames.com/`. Its three grade links use one origin and one parent session. Firebase project `weeklydictationapp` stores family-owned scores and practice; Cloudflare serves the app. The Cloudflare Worker has no database bindings. Live version is `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64`; rollback is `a525a8e6-943c-49eb-adc0-1e6eac029ff5`. No DNS or binding changes were needed.
 
-The homepage initially received direct links to the existing grade apps in Worker version `3d9cf3eb-5e9a-4421-a8f6-d0c951d0a54b`; its prior version is `5d1f2f52-b5c2-46e5-a33c-132bfffbf83c`. Those links will point to the consolidated family app only after the new app is verified.
+The homepage initially received direct links to the existing grade apps in Worker version `3d9cf3eb-5e9a-4421-a8f6-d0c951d0a54b`; its prior version is `5d1f2f52-b5c2-46e5-a33c-132bfffbf83c`. After live family acceptance, homepage version `4c2fc8c6-50a1-42db-aae8-71d9d86fc9e9` published three canonical links: `/?grade=kindergarten`, `/?grade=grade2`, and `/?grade=grade5` on the Ninja Dojo origin. Other projects, artwork and layout remain intact.
+
+Existing grade addresses were updated using the same tested JavaScript/CSS assets, without redirecting away from their local storage:
+
+| Origin | Live release | Retained previous release | Artifact tree SHA-256 |
+| --- | --- | --- | --- |
+| Ninja Dojo | Cloudflare `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` | `a525a8e6-943c-49eb-adc0-1e6eac029ff5` | `43dcb966c7f257428ddb3424f5f51eb91c65c6a5070011b6058ec042d3d2d7cc` |
+| Kindergarten Firebase | `1cdad369b59f20cd` | `08c2e412a3095227` in `rollback-before-family-sync` | `b77c3220415384d8451df9533cb33d477f71151f8caf2c7c393ebd21c7ba6577` |
+| Grade 2 Pages | `7a3278ca26725702dbc7ce4204b0d1318db17e74` | Parent commit `0b499f86676dcffe4a62fcf4173a8a32402d039a` | `c6111eaa67958c57d92c6c9b53d4a948aa8f87fca93e1010981b42fce067c640` |
+| Grade 5 Firebase | `5487998f698eb099` | `424b6a63322ed355` in `rollback-before-family-sync` | `a01f7ef40dc87e6436a6cc3b1ff93faac0f2f6460fba8951680c392519752a7b` |
 
 No child data is reset or automatically reassigned. Device-only histories remain at their original origins. Parent controls provide a private export of explicitly scoped app records, excluding authentication storage. Importing those histories into an online child requires a deliberate identity mapping. Problem reports remain local and can still be emailed in a batch. Voice recordings are never included in saved checkpoints or syncing.
 
@@ -30,11 +39,14 @@ Two stricter legacy acquisition/Warmup validation tests from the repository do n
 
 ## Validation
 
-- 634 unit tests passed before release packaging, with an additional completed-teaching resume test also passing; final full-suite count will be recorded below.
+- All 635 unit tests, type checking, lint and repository format checks passed before release.
 - All five new acquisition reload browser scenarios passed, including a Grade 2 teacher week containing reading targets.
 - The repository database emulator suite passed 10 tests. The exact additive production policy separately passed five family/isolation tests, including sequential two-device recovery and conflict preservation.
-- Full browser regression, authenticated browser acceptance, exact artifact publication, and live verification remain release gates.
+- All 44 grade browser regressions passed, including both Grade 5 Boss rounds after fixing overlapping review controls and nested scrolling.
+- The family-sync build now explicitly includes the family entry page; previously the new build mode omitted it and an unknown URL could fall back to the old Grade 2 screen. Packaged standalone routes now enter the parent-authenticated wrapper while embedded activity routes remain intact.
+- Desktop and iPad-style entry navigation and homepage link layouts passed. The public files (120 per origin) matched their exact manifest hashes across canonical Cloudflare, both Firebase aliases and Grade 2 Pages.
+- Fresh-browser navigation from the published homepage passed for every grade, and each old grade root opened the updated parent sign-in screen. Report and end-of-session batching controls remained available. No browser page errors occurred on these public-route checks.
 
-Authenticated acceptance against the production backend passed using a new synthetic parent and three synthetic children: sign-up, second-browser sign-in, completed score recovery, exact unfinished acquisition recovery, all three grade hubs, and denied anonymous access. All synthetic records and the synthetic account were removed afterward; no real family records were accessed or changed.
+Authenticated acceptance against the production backend passed on the exact packaged build and again on `https://ninjadojo.meghangames.com`, using a new synthetic parent and three synthetic children: sign-up, second-browser sign-in, completed score recovery, exact unfinished acquisition recovery, all three grade hubs, and denied anonymous access. All synthetic records and accounts were removed afterward; no real family records were accessed or changed.
 
 Physical iMac/iPad sound and microphone quality still needs family testing. A parent must sign in and identify their children; the release process does not use or invent the parent's password.
