@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
       text: string
       lang = ''
       rate = 1
+      onstart: null | (() => void) = null
       onend: null | (() => void) = null
       onerror: null | (() => void) = null
 
@@ -28,8 +29,12 @@ test.beforeEach(async ({ page }) => {
       value: {
         cancel() {},
         resume() {},
+        getVoices() { return [] },
         speak(utterance: FakeSpeechSynthesisUtterance) {
-          window.setTimeout(() => utterance.onend?.(), 0)
+          window.setTimeout(() => {
+            utterance.onstart?.()
+            utterance.onend?.()
+          }, 0)
         },
       },
     })
