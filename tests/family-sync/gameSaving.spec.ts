@@ -77,6 +77,8 @@ test('missing child context keeps completed game open for retry', async ({ page 
 test('partial save retries the same attempt without a duplicate or closing early', async ({ page }) => {
   await page.goto('/alias/family-beta-preview.html?grade=grade5')
   await completeLanterns(page)
+  // Hold the online acknowledgement so this test inspects the interrupted local write.
+  await page.route('**/firestore.googleapis.com/**', route => route.abort('internetdisconnected'))
   await page.frameLocator('iframe:visible').locator('body').evaluate(() => {
     const original = Storage.prototype.setItem
     let failed = false
@@ -108,6 +110,7 @@ test('partial save retries the same attempt without a duplicate or closing early
 test('a ledger write must be read back before presenting completion', async ({ page }) => {
   await page.goto('/family-beta-preview?grade=grade5')
   await completeLanterns(page)
+  await page.route('**/firestore.googleapis.com/**', route => route.abort('internetdisconnected'))
   await page.frameLocator('iframe:visible').locator('body').evaluate(() => {
     const original = Storage.prototype.setItem
     let ignored = false

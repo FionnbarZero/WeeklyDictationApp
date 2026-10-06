@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { activityClock } from '../activity/activityLifecycle.ts'
 import { ArrowLeft, Check, Mic, Square } from 'lucide-react'
 import {
   browserSupportsAudioRecording,
@@ -25,6 +26,7 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
   const transferredRef = useRef(false)
   const collectedRef = useRef(false)
   const generationRef = useRef(0)
+  const permissionRef = useRef<AbortController | null>(null)
   const supported = browserSupportsAudioRecording()
 
   function releaseLocalClip() {
@@ -34,6 +36,7 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
   }
 
   async function startRecording() {
+    if (activityClock.paused) return
     generationRef.current += 1
     const generation = generationRef.current
     activeRef.current?.cancel()
@@ -42,13 +45,17 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
     transferredRef.current = false
     setError(null)
     setStatus('requesting')
+    permissionRef.current?.abort()
+    const permission = new AbortController()
+    permissionRef.current = permission
     try {
-      const active = await startEphemeralAudioRecording()
+      const active = await startEphemeralAudioRecording(undefined, undefined, permission.signal)
       if (generation !== generationRef.current) {
         active.cancel()
         return
       }
       activeRef.current = active
+      permissionRef.current = null
       setStatus('recording')
       void active.finished.then((nextClip) => {
         if (generation !== generationRef.current) {
@@ -69,6 +76,7 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
       })
     } catch (nextError) {
       if (generation !== generationRef.current) return
+      permissionRef.current = null
       setStatus('error')
       setError(nextError instanceof ReadingRecorderError
         ? nextError.message
@@ -91,9 +99,21 @@ export function ReadingResponseCollector({ target, onCollected }: ReadingRespons
 
   useEffect(() => () => {
     generationRef.current += 1
+    permissionRef.current?.abort()
     activeRef.current?.cancel()
     if (clipRef.current && !transferredRef.current) clipRef.current.dispose()
   }, [])
+
+  useEffect(() => activityClock.subscribe(paused => {
+    if (!paused || (!permissionRef.current && !activeRef.current)) return
+    generationRef.current += 1
+    permissionRef.current?.abort()
+    permissionRef.current = null
+    activeRef.current?.cancel()
+    activeRef.current = null
+    setError(null)
+    setStatus('idle')
+  }), [])
 
   return <div className="deferred-reading-collector">
     <p className="answer-label">Read this word aloud</p>

@@ -299,6 +299,7 @@ class ContextDashScene extends Phaser.Scene {
   }
 
   private chooseGate(choiceIndex: number) {
+    if (activityClock.paused) return
     const gate = this.gates[choiceIndex]
     const round = this.options.rounds[this.roundIndex]
     if (!this.acceptingInput || !gate || !round) return

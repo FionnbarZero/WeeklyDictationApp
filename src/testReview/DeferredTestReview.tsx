@@ -59,8 +59,14 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     error: null,
   })
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  useEffect(() => { if (confirmingDiscard) return pauseForReport() }, [confirmingDiscard])
-  const pauseButton = hasFamilyActivityOwner() && <button className="back-button" type="button" onClick={pauseToFamilyHub}>Pause and return</button>
+  useEffect(() => {
+    if (confirmingDiscard) return pauseForReport()
+  }, [confirmingDiscard])
+  const pauseButton = hasFamilyActivityOwner() && (
+    <button className="back-button" type="button" onClick={pauseToFamilyHub}>
+      Pause and return
+    </button>
+  )
   const capturesRef = useRef<RetainedReadingCapture[]>([])
   const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
   const submittedRef = useRef(false)

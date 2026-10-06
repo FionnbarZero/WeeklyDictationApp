@@ -418,6 +418,7 @@ function FamilyPreview() {
         return <iframe key={slot.id} className="beta-grade-frame" title={slot.game?.pack.title || `${slot.profile.grade} activities`}
           data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
+          data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
           data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
           hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
       })}
@@ -651,6 +652,7 @@ function FamilyPreview() {
           {auth.user && (
             <button
               onClick={() => {
+                if (slots.length && !confirmActivityDiscard()) return
                 sessionStorage.removeItem(PROFILE_KEY)
                 signOut()
                 setProfiles([])

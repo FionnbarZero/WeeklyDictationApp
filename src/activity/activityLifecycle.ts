@@ -34,6 +34,8 @@ function installDocumentBoundary() {
   if (owner) new MutationObserver(refreshOwner).observe(owner, { attributes: true, attributeFilter: ['data-family-paused', 'data-family-owner-paused'] })
   const visibility = () => activityClock.setPaused('visibility', document.hidden)
   document.addEventListener('visibilitychange', visibility)
+  window.addEventListener('pagehide', () => activityClock.setPaused('pagehide', true))
+  window.addEventListener('pageshow', () => activityClock.setPaused('pagehide', false))
   new MutationObserver(() => {
     if (activityClock.paused) apply(true)
   }).observe(document.documentElement, { childList: true, subtree: true })
