@@ -1,5 +1,7 @@
 # Weekly Dictation roadmap
 
+Updated October 6, 2026. Start with the [immediate execution order](#immediate-execution-order). [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) records the approved architecture repair decisions and overrides conflicting older sequencing below. [STATUS.md](./STATUS.md) states what is implemented, tested, and published. Programs A–C retain their historical evidence and outstanding dependencies; completed Program A work does not establish reliability of the newer family wrapper.
+
 This roadmap separates three programs with independent finish lines:
 
 - **Program A — codebase cleanup and refactoring**
@@ -8,7 +10,7 @@ This roadmap separates three programs with independent finish lines:
 
 Program A must not stay open because a curriculum or release decision in Program C is unresolved. The frozen references protect approved behavior while the integrated application is assembled one vertical slice at a time.
 
-As of October 5, 2026, all three live family apps use the parent-authenticated family build at `ninjadojo.meghangames.com`, with synced completed scores and saved practice, local batched reports, and automatic Google curriculum refresh. The [family-sync release record](./docs/family-sync-release-2026-10-05.md) identifies the exact artifacts and rollback targets. Program A and B1 remain complete; migration of older device-only histories is still deferred. The immediate priority remains Grade 5 bug fixes and reliable daily lessons/Boss tests, followed by game integration, then UI improvement.
+As of October 5, 2026, all three live family apps use the parent-authenticated family build at `ninjadojo.meghangames.com`, with synced completed scores and saved practice, local batched reports, and automatic Google curriculum refresh. The [family-sync release record](./docs/family-sync-release-2026-10-05.md) identifies the exact artifacts and rollback targets. Program A and B1 remain complete; migration of older device-only histories is still deferred. The October 6 priority is shared reliability repairs first, followed by Grade 5-specific learning/Boss fixes and incremental game integration, then UI improvement.
 
 The owner has authorized publishing tested fixes directly to the affected live grade without another per-release approval question. Verification and rollback remain required; production data resets, authentication/security changes, and unreviewed migrations remain outside that authorization. The [October 5 product decision](./docs/decisions/0008-family-beta-product-and-release-policy.md) resolves the older conflicting behavior and release gates.
 
@@ -106,7 +108,7 @@ Program C protects the three grade-level applications used in the family beta. A
 
 The detailed operating procedure is maintained in [`docs/family-beta-operations.md`](./docs/family-beta-operations.md), with a reusable manifest in [`docs/family-beta-release-manifest-template.md`](./docs/family-beta-release-manifest-template.md).
 
-The current deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). Kindergarten and Grade 5 have independently promotable Firebase destinations and non-expiring rollback channels. Grade 2 deliberately remains on its GitHub Pages origin. All three October 5 releases passed fresh-browser launch, curriculum, score/reload, and report/reload checks. Physical iMac/iPad acceptance, detailed activity correctness, and migration/restore coverage remain distinct work.
+The deployment inventory is recorded in [`docs/family-beta-release-inventory.md`](./docs/family-beta-release-inventory.md). The canonical family app is now ninjadojo.meghangames.com. Firebase and GitHub Pages addresses remain historical aliases pending the dependency and retirement work in ADR 0009. Earlier October 5 release checks are historical evidence, not proof of every current entry path; the October 6 audit found a canonical-route game-saving gap. Physical iMac/iPad acceptance, detailed activity correctness, and migration/restore coverage remain distinct work.
 
 The earlier Grade 2 safeguard and disposable restore rehearsal on `8355522` remain evidence for the legacy storage model, not proof that the newer family ledger, reports, and mastery keys are fully covered. Verify coverage and rehearse any actual migration against its exact candidate; ordinary compatible bug fixes do not need to repeat an unrelated legacy migration program.
 
@@ -116,7 +118,7 @@ The current prototypes and tests are evidence of implementation, not independent
 
 For Kindergarten, the Weekly Focus spreadsheet is the curriculum and lifecycle authority. Unit 1 teaching ends September 27, 2026; the explicit `Week 7 09/28` source tab defines September 28 through October 4 as a cumulative review period ending in the unit assessment. Unit 1 enters Mastery on October 5, after that review week, not immediately after teaching ends. Future unit and review boundaries must be grounded in the same authoritative workbook before they are added to the lifecycle plan.
 
-C1 proceeds Grade 5 first. Its finish line is reliable daily lessons and Boss tests against the owner-approved rules, followed by game integration and UI improvement. Both existing acquisition activities and their game-based alternatives remain available without an experimental label; they keep separate progress. Unsupported or unsafe individual activities may be unavailable with a clear reason. Availability is not a claim that all bugs are fixed.
+C1's grade-specific work proceeds Grade 5 first after shared reliability repairs. Its finish line is reliable daily lessons and Boss tests against the owner-approved rules, followed by game integration and UI improvement. Both ordinary acquisition activities and their game-based alternatives are retained in the product with separate progress. Activities without a usable validated subset show “Coming soon” until ready. Availability is not a claim that all bugs are fixed.
 
 ### EduGames rules within Ninja Dojo
 
@@ -161,7 +163,7 @@ Grade 5 activation ─────────────► importer + Warmup 
 
 These longer-term production dependencies do not reopen completed family-beta deployments or the live curriculum service. The subsequently approved family-sync beta includes parent accounts, additive family security rules and tested score/practice recovery. Historical migrations, unrelated security-policy upgrades, and broad public rollout retain separate gates.
 
-The owner's current priority is Grade 5 first: bugs, then games, then UI. Other grade work follows verified shared fixes without rewriting each grade's rules.
+The owner's current priority is shared reliability first, followed by Grade 5-specific bugs, Kindergarten, and Grade 2. Game releases follow the staged queue below; UI redesign follows reliable behavior. Preserve each grade's approved teaching rules.
 
 ## Working rules
 
@@ -181,11 +183,32 @@ The owner's current priority is Grade 5 first: bugs, then games, then UI. Other 
 
 ## Immediate execution order
 
-1. Keep status, roadmap, operating rules, and release inventory aligned with the October 5 live release and the owner's clarified requirements. Save and push completed source/document work; report any remaining integration gap explicitly.
-2. Fix Grade 5 daily-learning and Boss defects first. Verify curriculum, audio, recording/comparison, scoring, reload, and past-week behavior on iMac/iPad-compatible browsers. Publish tested fixes to the permanent Grade 5 link under standing approval.
-3. Verify and repair exact next-trial resume for each acquisition activity. Keep writing/Stroke Order and reading/Whispering Scrolls separately selectable with separate progress.
-4. Integrate the games according to the table, generate validated supporting content without a manual review queue, and prove separate per-game weekly progress. Carry shared fixes to the other grades after their grade-specific checks.
-5. Make problem reporting pause and preserve every supported activity, retaining end-of-session report batching.
-6. Add three direct grade links to the existing Meghan Games homepage without changing the apps' storage origins. Keep the permanent links and visible live build identity consistent.
-7. Improve the UI after behavior and games; retain free activity choice and Done for today.
-8. Finish containment/restore coverage for the new family storage before historical migrations. Parent accounts and sequential cross-device syncing are now released under separate owner approval; unrelated security changes and broader public rollout remain later work.
+Use one focused PR per coherent change. Release A can ship in smaller verified increments; game and hosting work must not delay its urgent saving fix. Reproduce audit findings on current source before implementation. Record source revision, tests, artifact identity, publication status, and rollback for each published increment.
+
+### Model routing
+
+Choose the model at the start of each focused task or handoff. Use **GPT-6 Astra** for architecture, persistence, acquisition rules, security-sensitive review, and final cross-grade release review. Use **GPT-6.1 Sol** for bounded implementation after the governing contract is clear. Use **GPT-6 Luna** for documentation and mechanical inventory work. Model choice does not replace regression coverage or exact-artifact verification.
+
+An Astra review means reviewing the completed diff, tests, packaged behavior, data compatibility, and rollback evidence before publication. It is not a second implementation running concurrently against the same files.
+
+| Order | Status | Primary model | Required review | Scope | Acceptance gate |
+| --- | --- | --- | --- | --- | --- |
+| 0. Decisions and baseline | Documentation recorded; runtime repairs pending | GPT-6 Astra · Extra High | — | ADR 0009 and this queue; reproduce audit findings against current source | Approved rules have one reference; existing defects are reproduced before edits |
+| A1. Confirmed saving and live-build checks | Pending | GPT-6.1 Sol · High | GPT-6 Astra · High before publication | Explicit family context; no silent completion; align automation with canonical routing, actual packaging, and production-intended rules | A game completed through the canonical extensionless URL survives reload; a retry produces no duplicate; family isolation passes |
+| A2. Preserve active work | Pending | GPT-6 Astra · Extra High | GPT-6 Astra · High release review | Shared activity contract; sync failures do not unmount activities; navigation and reporting pause/resume | Internet loss, navigation, and report dialogs preserve reviewed progress and phase/timer; interrupted recordings repeat safely |
+| A3. Reliable resume and results | Pending | GPT-6 Astra · Extra High | GPT-6 Astra · Extra High release review | Curriculum pinning/transitions; newest unfinished checkpoint selection; distinct completed-attempt points; bounded storage and reads | Teacher edits do not break unfinished work; two devices resolve unfinished conflicts without parent action; two completed attempts remain two graph points; duplicate retries remain one |
+| B. First student-ready games | Pending | GPT-6.1 Sol · High | GPT-6 Astra · High for central policy and release review | Central game policy; Lanterns, Shuriken, Context Gap Dash, Sushi Scramble, each independently releasable | Correct tiers, validated rotating subsets, honest coverage, reviewed per-target results, and Release A interruption/saving behavior |
+| C1. Shadow Strike | Pending | GPT-6.1 Sol · High | GPT-6 Astra · High release review | Movement performance plus mouse and touch interaction | Measured movement improvement and shared persistence, interruption, and coverage checks |
+| C2. Dictation Streak | Pending | GPT-6 Astra · High | GPT-6 Astra · High release review | Both-tier Pinyin candidates and four-part audio | Correct audio/input contract and shared persistence and coverage checks |
+| D1. Whispering Scrolls | Pending | GPT-6 Astra · Extra High | GPT-6 Astra · Extra High release review | Separate Tier 2 reading acquisition progress and temporary comparison recordings | Source-cited phase/timer parity for expanded trials, correction, earned DT, resume, and recording cleanup |
+| D2. Stroke Order Slay | Pending | GPT-6 Astra · Extra High | GPT-6 Astra · Extra High release review | Separate Tier 1 writing acquisition progress, stroke guides, and thinner marker | Source-cited phase/timer parity for expanded trials, correction, earned DT, resume, and validated guides |
+| E1. Release-path cleanup | Pending; separate from urgent learning releases | GPT-6.1 Sol · High | GPT-6 Astra · High before publication or retirement | One release path; archived guarded scripts; obsolete-host dependency inventory and retirement | Supported release and rollback verified; exact retired targets recorded; no shared dependency removed |
+| E2. Retention and security | Pending; separately authorized production changes | GPT-6 Astra · Extra High | GPT-6 Astra · Extra High | Retention metadata and cleanup preview; hosting protections and any production policy proposal | Destructive cleanup and additional authentication/database-security changes remain unexecuted until separately authorized |
+
+Routine documentation and status-only updates use **GPT-6 Luna · Medium**. Straightforward regression-test repairs and small UI defects with an established contract use **GPT-6.1 Sol · Medium**. The final release review across all affected grades uses **GPT-6 Astra · Extra High**.
+
+Before game implementation, produce a code-grounded readiness assessment for each game: existing capabilities, missing content/behavior, dependencies, and shortest student-ready path. Effort estimates are provisional.
+
+For each confirmed failure, add a meaningful regression, implement the repair, and verify the exact package. Cover all three affected grades and desktop/iPad layouts with synthetic records. Report physical audio/performance checks automation cannot establish. Passing unrelated tests does not complete an acceptance gate.
+
+The detailed behavior is maintained in [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md), not duplicated here. In particular, validated game subsets are allowed; distinct completed attempts remain separate; offline continuation and curriculum pinning are required; obsolete hosting is slated for retirement after dependency checks. These are approved requirements, not claims about the current release.

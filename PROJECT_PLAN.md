@@ -1,5 +1,7 @@
 # Weekly Dictation App — Project Plan
 
+Current execution starts in [ROADMAP.md](./ROADMAP.md#immediate-execution-order). The October 6 architecture and reliability decisions are in [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md); [STATUS.md](./STATUS.md) records implementation and publication evidence. This historical document is not a second implementation checklist.
+
 > **Archived on 2026-10-01.** This document is preserved for its privacy, migration, grade-policy, and design history. It is no longer the authority for current status or execution order. See [`STATUS.md`](./STATUS.md), [`ROADMAP.md`](./ROADMAP.md), and the [`docs/decisions`](./docs/decisions/README.md) index. Do not delete this archive when migrating durable decisions into ADRs.
 
 The October 5, 2026 owner-approved game rules are saved in the active plan under [EduGames rules within Ninja Dojo](./ROADMAP.md#edugames-rules-within-ninja-dojo), including tier selection, contextual prompts, and acquisition placement.

@@ -10,5 +10,6 @@
 | [0006](./0006-isolated-synthetic-staging.md) | Isolate staging and restrict it to synthetic data | Accepted |
 | [0007](./0007-parallel-stroke-order-acquisition-comparison.md) | Run Stroke Order as a parallel, isolated Acquisition comparison | Labels and release gates superseded by 0008; teaching/isolation rules retained |
 | [0008](./0008-family-beta-product-and-release-policy.md) | Align live beta priorities, separate acquisition activities, generated content, and standing release approval | Accepted; implementation tracked in STATUS and ROADMAP |
+| [0009](./0009-activity-reliability-and-staged-delivery.md) | Shared activity reliability, automatic unfinished conflict resolution, attempt graphs, subset coverage, retention, and staged delivery | Accepted; supersedes conflicting 0008 provisions; implementation pending |
 
 New ADRs use the next four-digit number and state context, decision, and consequences. Superseded ADRs remain in this directory and link to their replacement.

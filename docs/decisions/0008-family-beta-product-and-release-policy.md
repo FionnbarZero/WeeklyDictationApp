@@ -2,6 +2,8 @@
 
 Status: Accepted — October 5, 2026. Implementation is partial; see [current status](../../STATUS.md).
 
+October 6 follow-up: [ADR 0009](./0009-activity-reliability-and-staged-delivery.md) supersedes conflicting execution order, interruption, conflict resolution, game coverage, retention, and preservation of obsolete hosted copies. This record remains the source for unaffected teaching and release decisions.
+
 ## Context
 
 The three family apps are live with automatic curriculum refresh and browser-local completed scores/reports. Older documents still describe undeployed, session-only prototypes and repeated per-grade approval gates. The owner clarified the next priorities and the embedded EduGames behavior after auditing those conflicts.

@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 5, 2026 against the [verified family-sync release](./docs/family-sync-release-2026-10-05.md) and the owner's [clarified product policy](./docs/decisions/0008-family-beta-product-and-release-policy.md).
+Updated October 6, 2026 with architecture-audit findings and [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md). Published artifact evidence remains the [October 5 family-sync release](./docs/family-sync-release-2026-10-05.md). This documentation update does not implement or publish the approved repairs.
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -19,7 +19,7 @@ These are permanent, parent-authenticated family beta links on one origin, not e
 | Capability | Verified state | Remaining work or limit |
 | --- | --- | --- |
 | Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
-| Game results | Hosted Memory Lanterns completion and score/reload checks passed for each grade | Per-game weekly progress and detailed coverage for every game are requirements, not verified complete |
+| Game results | Earlier hosted Memory Lanterns checks passed for the exercised paths | October 6 audit confirmed canonical extensionless routing disables family mode for outer Ninja Skills saving; earlier checks do not cover that path. Per-target results and game coverage remain incomplete |
 | Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
 | Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
 | Problem reports | Reports save locally and survive reload; end-of-session batch sharing and cancellation checks passed | Email/share needs a user action; pause-and-preserve behavior across every game is required and still needs verification |
@@ -53,7 +53,25 @@ October 5 family-sync release checks:
 
 ## Next work and release policy
 
-Work Grade 5 first: fix daily-learning and Boss bugs, then integrate the games, then improve the UI. Target iMac and iPad. Keep activity choice free and Done for today as the session endpoint. Do not introduce a required daily path.
+Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. ADR 0009's offline continuation, pinned curriculum, automatic unfinished conflict resolution, distinct attempt graphs, subset coverage, and retention policy are approved but not yet established by the published release.
+
+### October 6 architecture audit baseline
+
+Audit source: Main at `6832900e5638cefc1264adddc7d83df85ae3ddba`. All 635 unit tests passed during the read-only audit; this did not establish browser or physical-device coverage for the findings below. No production records were changed.
+
+| Finding | Evidence / current limitation | Queue |
+| --- | --- | --- |
+| Canonical game saving | Public `.html` URL redirects to extensionless path; `src/familyBeta/runtime.ts` uses the suffix to enable family mode, and outer game completion ignores a null saved result | A1 |
+| Active work can disappear | `src/familyBeta/main.tsx` clears readiness after sync failure and conditionally unmounts the activity; outer tabs bypass activity exit confirmation | A2 |
+| Reporting lacks lifecycle pause | `src/familyBeta/ProblemReporter.tsx` opens the dialog without a shared activity pause operation | A2 |
+| Curriculum edits block acquisition | `src/familyBeta/acquisitionStore.ts` rejects mismatched target fingerprints; the changed-curriculum unit test confirms preservation plus blocking, without recovery | A3 |
+| Sync conflicts and growth | `src/familyBeta/deviceSync.ts` blocks conflicting whole records; practice/result histories are reread and accumulated checkpoints grow | A3 |
+| Curriculum refresh latency | `backend/curriculumServer.ts` waits for refresh across grades before serving retained data; health returns 200 even when refresh fails | A3 |
+| Game policy drift | `src/ninjaSkills/content.ts` and `src/familyBeta/PreviewLearningHub.tsx` contain tier/routing rules that conflict with approved game policy | B–D |
+| Release/test drift | Main quality workflow does not exercise the exact family-sync packaging path; emulator defaults to root policy rather than the deployed additive policy | A1, E |
+| Hosting and legacy tools | Historical fixed-artifact packagers remain; canonical public response lacks CSP/framing restrictions while root hosting configuration has them | E |
+
+Reproduce these findings against the current revision before repairing them. The roadmap tracks implementation; this table preserves audit evidence and does not turn architectural risks into claims of observed data loss or compromise.
 
 The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations.
 
@@ -71,7 +89,7 @@ The family-sync release now supplies its own live two-browser acceptance; broade
 
 1. This file states verified current capability and explicit gaps.
 2. [ROADMAP.md](./ROADMAP.md) states approved priorities and product requirements.
-3. [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md) records the latest owner decisions and superseded restrictions.
+3. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) records the latest reliability and staged-delivery decisions; [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md) retains unaffected teaching and release policy.
 4. [Release inventory](./docs/family-beta-release-inventory.md) and [live release record](./docs/family-beta-live-2026-10-05.md) identify permanent URLs and rollback artifacts.
 5. [Family beta operations](./docs/family-beta-operations.md) defines testing, publication, containment, and data protection.
 6. [PROJECT_PLAN.md](./PROJECT_PLAN.md) and dated earlier reports preserve history; their superseded implementation status is not an execution instruction.
