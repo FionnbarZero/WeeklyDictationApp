@@ -32,12 +32,23 @@ The legacy Grade 2 storage wrapper detects a stale checkpoint write rather than 
 
 The regression suite covers timer pauses, actual handwriting retention, offline reviewed work and successful retry, nested/manual pause, explicit discard, fixed child ownership, game feedback delays, and recording interruption in all three grades' acquisition and Boss activities. It also checks that completed temporary recording data remains playable without entering browser storage.
 
-Local checks completed so far: 645 unit tests, type checking, lint, repository formatting, the additional family reliability formatting gate, two production-intended family-policy emulator tests, and 32 prototype/visual checks. The production build stays within its JavaScript and CSS budgets. Exact-package desktop/tablet and full reconciliation results are recorded below when complete.
+Local acceptance passed on October 6, 2026:
+
+- 645 unit tests; type checking, lint, repository formatting, and the additional family reliability formatting gate.
+- 78 exact-package checks: 39 each on Chromium desktop and touch-tablet profiles, running in isolation.
+- All 44 reconciliation regressions, including both Grade 5 reading Boss rounds and reviewed acquisition recovery after reload.
+- All 32 prototype/visual checks; standalone navigation and the existing visual references remain intact.
+- Two production-intended family-policy emulator tests covering confirmed result retries, practice sync, conflicts, and denied cross-family/anonymous access.
+- Production performance budgets: 540,990 of 550,000 initial JavaScript bytes and 42,745 of 60,000 initial CSS bytes.
+
+The tested package is source `e5efedb858a66eb458b821edd581c46d568c17a5`, containing the application changes through `961c35c` plus documentation and CI configuration. Its 131-file tree digest is `7b66387e4d959aabc86953f86474a1b1aff3ded2b66f1e384e899ce4e0b3e539`. The local package is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-4gvDUH`; its `family-beta-manifest.json` records individual file hashes. This evidence update changes documentation only.
+
+An earlier concurrent prototype run removed the package runner's temporary trace files and interrupted one tablet test. The final isolated package run passed all 78 checks; the interrupted run is not counted as a pass. The initial reconciliation run also caught a missing Kindergarten Exit integration and an outdated Grade 5 navigation expectation; both were corrected before the final 44-check pass.
 
 All family-package network requests use synthetic fixtures. Emulator checks use disposable local records. Physical iMac/iPad microphone and sound quality, Safari, long-session memory pressure from retained documents, and game-specific movement quality remain release-review/device-testing concerns.
 
 ## Compatibility and release handoff
 
-No storage schema, grade engine, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. There is no migration or destructive cleanup. Review retained-document ownership, duplicate unfinished checkpoint handling, audio interruption races, and navigation/recording tests before publication.
+No storage schema, grade engine, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. There is no migration or destructive cleanup. Review retained-document ownership, duplicate unfinished checkpoint handling, audio interruption races, and navigation/recording tests before publication. GitHub push and PR creation await explicit permission after the publishing permission check blocked the remote write; no branch push, PR, merge, deployment, or GitHub CI result is claimed.
 
 After Astra review and CI pass, merge through repository protections, package the merge commit, rerun the exact-package checks, and publish that exact artifact using the established canonical release process. Retain the currently published A1 Cloudflare version `2e0cb204-5e1f-4483-bafa-4f28911718d7` and its [release record](./a1-release-2026-10-06.md) as the immediate rollback target. Verify all three canonical grade links and synthetic saving after release; do not label this branch or its merge as live before that happens.
