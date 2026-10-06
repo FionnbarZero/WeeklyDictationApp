@@ -90,7 +90,7 @@ export default defineConfig(({ command, mode }) => {
         name: 'release-identity',
         transformIndexHtml(html, context) {
           const identity = releaseIdentityHtml(basename(context.filename), gitRevision, mode === 'family-sync')
-          return identity ? html.replace('<body>', `<body>\n    ${identity}`) : html
+          return identity ? html.replace(/<body\b[^>]*>/, (body) => `${body}\n    ${identity}`) : html
         },
       },
     ],

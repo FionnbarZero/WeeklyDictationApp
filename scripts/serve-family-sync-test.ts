@@ -11,8 +11,14 @@ const output = execFileSync(process.execPath, ['--experimental-strip-types', 'sc
 const artifact = JSON.parse(output.slice(output.lastIndexOf('\n{') + 1)) as { directory: string; revision: string }
 const directory = resolve(artifact.directory)
 const types: Record<string, string> = {
-  html: 'text/html', js: 'text/javascript', css: 'text/css', json: 'application/json',
-  svg: 'image/svg+xml', png: 'image/png', mp3: 'audio/mpeg', woff2: 'font/woff2',
+  html: 'text/html',
+  js: 'text/javascript',
+  css: 'text/css',
+  json: 'application/json',
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  mp3: 'audio/mpeg',
+  woff2: 'font/woff2',
 }
 createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost')
@@ -27,10 +33,20 @@ createServer(async (req, res) => {
   if (pathname === '/') pathname = '/index.html'
   else if (!pathname.split('/').pop()!.includes('.')) pathname += '.html'
   const file = resolve(directory, `.${decodeURIComponent(pathname)}`)
-  if (!file.startsWith(`${directory}${sep}`)) { res.writeHead(403); res.end(); return }
+  if (!file.startsWith(`${directory}${sep}`)) {
+    res.writeHead(403)
+    res.end()
+    return
+  }
   try {
     const body = await readFile(file)
-    res.writeHead(200, { 'Content-Type': types[file.split('.').pop()!] || 'application/octet-stream', 'Cache-Control': 'no-store' })
+    res.writeHead(200, {
+      'Content-Type': types[file.split('.').pop()!] || 'application/octet-stream',
+      'Cache-Control': 'no-store',
+    })
     res.end(body)
-  } catch { res.writeHead(404); res.end() }
+  } catch {
+    res.writeHead(404)
+    res.end()
+  }
 }).listen(5193, '127.0.0.1', () => console.log(JSON.stringify({ ...artifact, testOrigin: 'http://127.0.0.1:5193' })))

@@ -21,30 +21,46 @@ function fields(input: Record<string, unknown>): Record<string, unknown> {
 test.beforeEach(async ({ page }) => {
   // This is the production-configured artifact. All external requests are
   // intercepted: synthetic account/storage fixtures never reach production.
-  const documents = new Map<string, { name: string; fields: Record<string, unknown> }>()
+  const documents = new Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>()
   await page.context().route('**/*', async (route) => {
     const url = new URL(route.request().url())
     if (url.origin === 'http://127.0.0.1:5193') return route.continue()
     const curriculum = url.pathname.match(/\/curriculum\/beta\/(kindergarten|grade2|grade5)\.json$/)
-    if (curriculum) return route.fulfill({ contentType: 'application/json', body: await readFile(`public/curriculum/beta/${curriculum[1]}.json`, 'utf8') })
+    if (curriculum)
+      return route.fulfill({
+        contentType: 'application/json',
+        body: await readFile(`public/curriculum/beta/${curriculum[1]}.json`, 'utf8'),
+      })
     if (url.hostname !== 'firestore.googleapis.com') return route.abort('blockedbyclient')
     const request = route.request()
     const base = 'projects/weeklydictationapp/databases/(default)/documents/'
     const name = url.pathname.split('/v1/')[1]
     const respond = (body: unknown) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
+    if (url.pathname.endsWith('/documents:commit')) {
+      for (const write of request.postDataJSON().writes) {
+        const update = write.update
+        documents.set(update.name, { ...update, updateTime: new Date().toISOString() })
+      }
+      return respond({})
+    }
     if (url.pathname.endsWith('/documents:batchGet')) {
       const names = request.postDataJSON().documents as string[]
-      return respond(names.map((id) => {
-        const data = id.endsWith('/users/synthetic-parent')
-          ? { familyId: 'family-synthetic-parent', role: 'parent' }
-          : { id: 'family-synthetic-parent', ownerParentId: 'synthetic-parent' }
-        return { found: { name: id, fields: fields(data) } }
-      }))
+      return respond(
+        names.map((id) => {
+          const data = id.endsWith('/users/synthetic-parent')
+            ? { familyId: 'family-synthetic-parent', role: 'parent' }
+            : { id: 'family-synthetic-parent', ownerParentId: 'synthetic-parent' }
+          return { found: { name: id, fields: fields(data) } }
+        }),
+      )
     }
     if (name === `${base}families/family-synthetic-parent/children`) {
-      return respond({ documents: grades.map(([, grade, id]) => ({
-        name: `${name}/${id}`, fields: fields({ id, nickname: grade, grade, active: true, schoolYear: '2026–2027' }),
-      })) })
+      return respond({
+        documents: grades.map(([, grade, id]) => ({
+          name: `${name}/${id}`,
+          fields: fields({ id, nickname: grade, grade, active: true, schoolYear: '2026–2027' }),
+        })),
+      })
     }
     if (request.method() === 'PATCH') {
       const doc = { name, fields: request.postDataJSON().fields }
@@ -53,20 +69,46 @@ test.beforeEach(async ({ page }) => {
       documents.set(name, doc)
       return respond(doc)
     }
-    if (/\/betaResults$/.test(name)) return respond({ documents: [...documents.values()].filter((doc) => doc.name.startsWith(`${name}/`)) })
-    if (/\/betaPractice$/.test(name)) return respond({ documents: [] })
+    if (/\/betaResults$/.test(name))
+      return respond({ documents: [...documents.values()].filter((doc) => doc.name.startsWith(`${name}/`)) })
+    if (/\/betaPractice$/.test(name))
+      return respond({ documents: [...documents.values()].filter((doc) => doc.name.startsWith(`${name}/`)) })
     if (documents.has(name)) return respond(documents.get(name))
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
   })
   await page.addInitScript(() => {
-    localStorage.setItem('weekly-dictation-auth-v1', JSON.stringify({
-      idToken: 'synthetic-intercepted-token', expiresAt: Date.now() + 3600_000,
-      user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
-    }))
-    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
-      cancel() {}, resume() {}, getVoices() { return [] },
-      speak(u: SpeechSynthesisUtterance) { setTimeout(() => { u.onstart?.({} as SpeechSynthesisEvent); u.onend?.({} as SpeechSynthesisEvent) }, 0) },
-    } })
+    localStorage.setItem(
+      'weekly-dictation-auth-v1',
+      JSON.stringify({
+        idToken: 'synthetic-intercepted-token',
+        expiresAt: Date.now() + 3600_000,
+        user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
+      }),
+    )
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        resume() {},
+        getVoices() {
+          return []
+        },
+        speak(u: SpeechSynthesisUtterance) {
+          setTimeout(() => {
+            u.onstart?.({} as SpeechSynthesisEvent)
+            u.onend?.({} as SpeechSynthesisEvent)
+          }, 0)
+        },
+      },
+    })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          throw new DOMException('Synthetic denied microphone', 'NotAllowedError')
+        },
+      },
+    })
   })
 })
 
@@ -78,7 +120,7 @@ async function completeLanterns(page: Page) {
   const faces = await cards.locator('.lg-card-face b').allTextContents()
   const unique = [...new Set(faces)]
   for (const face of unique) {
-    const indices = faces.flatMap((text, i) => text === face ? [i] : [])
+    const indices = faces.flatMap((text, i) => (text === face ? [i] : []))
     expect(indices).toHaveLength(2)
     await expect(cards.nth(indices[0])).toBeEnabled()
     await cards.nth(indices[0]).click()
@@ -89,7 +131,11 @@ async function completeLanterns(page: Page) {
   return new Set(faces).size
 }
 async function results(page: Page) {
-  return page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('family-beta-preview-results-v1:')).map(key => JSON.parse(localStorage.getItem(key)!)))
+  return page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
+      .map((key) => JSON.parse(localStorage.getItem(key)!)),
+  )
 }
 
 for (const [slug, grade, childId] of grades) {
@@ -130,7 +176,7 @@ test('missing child context keeps completed game open for retry', async ({ page 
   await expect(page.getByRole('button', { name: 'Back to Ninja Skills', exact: true })).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('Keep the game open')
   expect(await results(page)).toHaveLength(0)
-  await page.evaluate(profile => sessionStorage.setItem('family-beta-preview-selected-v1', profile!), profile)
+  await page.evaluate((profile) => sessionStorage.setItem('family-beta-preview-selected-v1', profile!), profile)
   await page.getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
   expect(await results(page)).toHaveLength(1)
 })
@@ -142,7 +188,10 @@ test('partial save retries the same attempt without a duplicate or closing early
     const original = Storage.prototype.setItem
     let failed = false
     Storage.prototype.setItem = function (key, data) {
-      if (!failed && key.startsWith('family-beta-preview-results-v1:')) { failed = true; throw new Error('Synthetic interrupted ledger write') }
+      if (!failed && key.startsWith('family-beta-preview-results-v1:')) {
+        failed = true
+        throw new Error('Synthetic interrupted ledger write')
+      }
       return original.call(this, key, data)
     }
   })
@@ -150,11 +199,52 @@ test('partial save retries the same attempt without a duplicate or closing early
   await done.click()
   await expect(done).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('Keep the game open')
-  const pending = await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('family-beta-preview-pending-v1:')).map(key => JSON.parse(localStorage.getItem(key)!)))
+  const pending = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('family-beta-preview-pending-v1:'))
+      .map((key) => JSON.parse(localStorage.getItem(key)!)),
+  )
   expect(pending).toHaveLength(1)
   await done.click()
   await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
   const saved = await results(page)
   expect(saved).toHaveLength(1)
   expect(saved[0]).toEqual(pending[0])
+})
+
+for (const [slug, grade, childId] of grades) {
+  test(`${grade}: embedded writing retains selected child and saves reviewed work`, async ({ page }) => {
+    await page.goto(`/family-beta-preview?grade=${slug}`)
+    await expect(page.getByLabel('Child profile')).toHaveValue(childId)
+    if (slug === 'grade2') {
+      page.once('dialog', (dialog) => dialog.accept())
+      await page.getByLabel('Practice week').selectOption('2026-09-21')
+    }
+    const frame = page.frameLocator('iframe')
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame
+      .getByRole('button', { name: slug === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true })
+      .click()
+    if (slug !== 'kindergarten') await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+    for (let i = 0; i < 4; i++) {
+      await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+      await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+    }
+    await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+    await expect.poll(async () => (await results(page)).length).toBe(1)
+    expect((await results(page))[0]).toMatchObject({ childId, grade, channel: 'writing', correct: 1, attempted: 1 })
+  })
+}
+
+test('query flags in an unrelated host do not activate family behavior', async ({ page }) => {
+  await page.goto('/testing.html')
+  await page.evaluate(() => {
+    const frame = document.createElement('iframe')
+    frame.title = 'Standalone Grade 5'
+    frame.src = '/grade5-learning-hub.html?family-preview=1'
+    document.body.append(frame)
+  })
+  const frame = page.frameLocator('iframe[title="Standalone Grade 5"]')
+  await expect(frame.getByText('Grade 5 development lab', { exact: true })).toBeVisible()
+  expect(await frame.locator('html').getAttribute('class')).not.toContain('family-beta-frame')
 })

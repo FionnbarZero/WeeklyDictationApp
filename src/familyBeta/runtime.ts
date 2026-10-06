@@ -1,9 +1,17 @@
 import { BETA_GRADES, isBetaResult, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
+import { isFamilyActivityContext } from './context.ts'
 
-export const familyPreview =
-  import.meta.env.VITE_RECONCILIATION_PREVIEW === 'true' &&
-  (new URLSearchParams(window.location.search).get('family-preview') === '1' ||
-    window.location.pathname.endsWith('/family-beta-preview.html'))
+function parentRole() {
+  try { return window.parent.document.body.dataset.familyContext }
+  catch { return undefined }
+}
+export const familyPreview = isFamilyActivityContext({
+  enabled: import.meta.env.VITE_RECONCILIATION_PREVIEW === 'true',
+  pageRole: document.body.dataset.familyContext,
+  embedded: window.parent !== window,
+  requested: new URLSearchParams(window.location.search).get('family-preview') === '1',
+  parentRole: parentRole(),
+})
 export const PROFILE_KEY = 'family-beta-preview-selected-v1'
 export const RESULT_KEY = 'family-beta-preview-results-v1'
 export const PENDING_KEY = 'family-beta-preview-pending-v1'
@@ -42,18 +50,26 @@ export function acknowledgeResult(id: string) {
 }
 export function savePreviewResult(input: ResultInput): BetaResult | null {
   const profile = previewProfile()
-  if (!profile || input.attempted === 0) return null
+  if (!profile) {
+    if (familyPreview) throw new Error('Choose an active child profile before saving this result.')
+    return null
+  }
+  if (input.attempted === 0) return null
   const results = previewResults()
   const existing = input.id ? [...results, ...pendingResults()].find((r) => r.id === input.id) : undefined
   if (existing) {
     if (
       existing.childId !== profile.id ||
       existing.grade !== profile.grade ||
+      existing.activity !== input.activity ||
+      existing.channel !== input.channel ||
+      JSON.stringify(existing.datasetIds) !== JSON.stringify([...new Set(input.datasetIds)]) ||
       existing.correct !== input.correct ||
       existing.attempted !== input.attempted
     )
       throw new Error('This attempt conflicts with an existing result. Nothing was overwritten.')
     localStorage.setItem(`${RESULT_KEY}:${existing.id}`, JSON.stringify(existing))
+    confirmResult(existing)
     return existing
   }
   const result = makeResult(profile, input)
@@ -61,10 +77,15 @@ export function savePreviewResult(input: ResultInput): BetaResult | null {
   // One key per immutable result prevents simultaneous tabs from losing each other's writes.
   localStorage.setItem(`${PENDING_KEY}:${result.id}`, JSON.stringify(result))
   localStorage.setItem(`${RESULT_KEY}:${result.id}`, JSON.stringify(result))
-  if (!previewResults().some((r) => r.id === result.id))
+  confirmResult(result)
+  return result
+}
+
+function confirmResult(result: BetaResult) {
+  const saved = previewResults().find((r) => r.id === result.id)
+  if (!saved || JSON.stringify(saved) !== JSON.stringify(result))
     throw new Error('The result could not be confirmed on this device.')
   window.parent.postMessage({ type: 'family-beta-result-ready' }, window.location.origin)
-  return result
 }
 
 export function activityStorage(): Storage {

@@ -80,6 +80,7 @@ function FamilyPreview() {
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
   const [pack, setPack] = useState<LearningModulePack | null>(null)
+  const gameAttemptId = useRef('')
   const frame = useRef<HTMLIFrameElement>(null)
   const syncing = useRef(false)
   const syncAgain = useRef(false)
@@ -408,13 +409,15 @@ function FamilyPreview() {
               onExit={() => setPack(null)}
               onComplete={(summary) => {
                 try {
-                  savePreviewResult({
+                  const saved = savePreviewResult({
+                    id: gameAttemptId.current,
                     activity: pack.title,
                     channel: 'game',
                     datasetIds: pack.cohort.provenance.map((p) => p.datasetId),
                     correct: summary.correct,
                     attempted: summary.attempted,
                   })
+                  if (!saved) throw new Error('The completed game could not be saved for this child.')
                   setPack(null)
                   setActivityError('')
                   void refreshProgress()
@@ -435,7 +438,11 @@ function FamilyPreview() {
             <div className="beta-game-grid">
               {capabilities.map((c) =>
                 c.status === 'ready' ? (
-                  <button className="primary-button" key={c.pack.moduleId} onClick={() => setPack(c.pack)}>
+                  <button className="primary-button" key={c.pack.moduleId} onClick={() => {
+                    gameAttemptId.current = crypto.randomUUID()
+                    setActivityError('')
+                    setPack(c.pack)
+                  }}>
                     {c.pack.title}
                   </button>
                 ) : (
