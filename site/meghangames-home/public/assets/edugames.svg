@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 580" role="img" aria-labelledby="title desc">
+  <title id="title">EduGames learning arcade</title>
+  <desc id="desc">A bright arcade cabinet surrounded by books, stars, letter tiles, and game controls.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#dff1ff" />
+      <stop offset="1" stop-color="#f4e8ff" />
+    </linearGradient>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="2.5" fill="#6d8dc7" opacity=".18" />
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#46678a" flood-opacity=".18" />
+    </filter>
+  </defs>
+  <rect width="800" height="580" fill="url(#bg)" />
+  <rect width="800" height="580" fill="url(#dots)" />
+  <path d="M0 454c148-46 259 11 402 5 167-7 257-72 398-34v155H0z" fill="#c3dfd3" />
+  <path d="M0 489c147-20 287 27 430 12 142-15 264-68 370-35v114H0z" fill="#acd2c3" />
+
+  <g fill="none" stroke="#2c3f49" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+    <path d="M97 152c26 0 26-30 52-30s26 30 52 30" opacity=".25" />
+    <path d="M629 176c22-17 44-17 66 0" opacity=".25" />
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M264 126h270l37 305H229z" fill="#526fd2" stroke="#293b58" stroke-linejoin="round" stroke-width="8" />
+    <path d="M279 91h240l15 64H264z" fill="#f47a6b" stroke="#293b58" stroke-linejoin="round" stroke-width="8" />
+    <path d="M310 117h178" stroke="#293b58" stroke-linecap="round" stroke-width="7" />
+    <path d="M291 174h215l19 152H272z" fill="#273f66" stroke="#293b58" stroke-linejoin="round" stroke-width="8" />
+    <rect x="305" y="197" width="187" height="104" rx="12" fill="#fbefac" stroke="#293b58" stroke-width="7" />
+    <path d="M333 268c19-42 42-55 68-40 19 11 31 1 55-23" fill="none" stroke="#58a58b" stroke-dasharray="10 13" stroke-linecap="round" stroke-width="8" />
+    <circle cx="333" cy="268" r="10" fill="#f47a6b" stroke="#293b58" stroke-width="5" />
+    <path d="m459 198 8 18 19 2-14 13 4 19-17-9-17 9 4-19-14-13 19-2z" fill="#ffd45f" stroke="#293b58" stroke-linejoin="round" stroke-width="5" />
+    <path d="M280 345h233l22 86H259z" fill="#7799e8" stroke="#293b58" stroke-linejoin="round" stroke-width="8" />
+    <circle cx="437" cy="383" r="17" fill="#f47a6b" stroke="#293b58" stroke-width="6" />
+    <circle cx="483" cy="383" r="17" fill="#ffd45f" stroke="#293b58" stroke-width="6" />
+    <path d="M329 387h57M357.5 358v58" stroke="#293b58" stroke-linecap="round" stroke-width="13" />
+    <path d="M260 431h276v59H260z" fill="#3f56b5" stroke="#293b58" stroke-width="8" />
+    <path d="M306 490v33M492 490v33" stroke="#293b58" stroke-width="13" />
+  </g>
+
+  <g filter="url(#shadow)" stroke="#293b58" stroke-width="6">
+    <path d="M87 378h112v130H87z" fill="#ffd45f" />
+    <path d="M104 356h112v152H104z" fill="#f47a6b" />
+    <path d="M124 336h112v172H124z" fill="#fff5d9" />
+    <path d="M150 336v172" fill="none" />
+    <path d="M182 365h28M182 388h22" stroke-linecap="round" />
+  </g>
+
+  <g filter="url(#shadow)" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="38" font-weight="700" text-anchor="middle">
+    <rect x="602" y="336" width="76" height="76" rx="12" fill="#f8f0ff" stroke="#293b58" stroke-width="6" transform="rotate(-8 640 374)" />
+    <text x="640" y="388" fill="#526fd2" transform="rotate(-8 640 374)">A</text>
+    <rect x="674" y="383" width="76" height="76" rx="12" fill="#fff4bd" stroke="#293b58" stroke-width="6" transform="rotate(7 712 421)" />
+    <text x="712" y="434" fill="#d56f54" transform="rotate(7 712 421)">好</text>
+  </g>
+
+  <g fill="#ffd45f" stroke="#293b58" stroke-linejoin="round" stroke-width="5">
+    <path d="m165 203 10 23 25 2-19 17 6 25-22-13-22 13 6-25-19-17 25-2z" />
+    <path d="m629 99 7 16 18 2-14 12 4 17-15-9-15 9 4-17-14-12 18-2z" />
+  </g>
+  <g fill="#fffaf0" stroke="#293b58" stroke-width="6">
+    <circle cx="698" cy="250" r="30" />
+    <path d="M686 250h24M698 238v24" stroke-linecap="round" />
+  </g>
+</svg>

@@ -1,12 +1,10 @@
 import { ArrowLeft, Headphones, Volume2, X } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { SelfAssessmentActions } from '../practice/SelfAssessmentActions.tsx'
-import { SkyWritingAcquisition } from '../skywriting/skywritingacquisition.tsx'
 import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
+import { SkyWritingAcquisition } from '../skywriting/skywritingacquisition.tsx'
 import type { TestReviewMode, TestReviewState, TestReviewTarget } from './contracts.ts'
-import {
-  playRetainedReadingClip,
-  type RetainedReadingCapture,
-} from './retainedReadingClips.ts'
+import { playRetainedReadingClip, type RetainedReadingCapture } from './retainedReadingClips.ts'
 import { testReviewIsComplete, testReviewScore } from './state.ts'
 
 export type FinalReviewPageProps<TTarget extends TestReviewTarget> = {
@@ -22,13 +20,14 @@ export type FinalReviewPageProps<TTarget extends TestReviewTarget> = {
   readonly exitLabel?: string
 }
 
-async function playReadingComparison<TTarget extends TestReviewTarget>(
-  clip: NonNullable<RetainedReadingCapture['clip']>,
-  target: TTarget,
-  onPlayReference: (target: TTarget) => Promise<void>,
-) {
-  await playRetainedReadingClip(clip)
-  await onPlayReference(target)
+type ReadingComparisonStatus = 'idle' | 'playing-child' | 'playing-model' | 'complete' | 'error'
+
+function comparisonStatusText(status: ReadingComparisonStatus) {
+  if (status === 'playing-child') return 'Playing the child’s reading…'
+  if (status === 'playing-model') return 'Playing the correct pronunciation…'
+  if (status === 'complete') return 'Comparison complete. Choose Yes or Not yet.'
+  if (status === 'error') return 'Playback did not finish. Tap the headphones to try again.'
+  return 'Listen before scoring'
 }
 
 export function FinalReviewPage<TTarget extends TestReviewTarget>({
@@ -43,9 +42,33 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
   onSubmit,
   exitLabel = 'Exit without saving',
 }: FinalReviewPageProps<TTarget>) {
+  const [comparisonByTargetId, setComparisonByTargetId] = useState<Readonly<Record<string, ReadingComparisonStatus>>>(
+    {},
+  )
+  const comparisonActiveRef = useRef(false)
   const complete = testReviewIsComplete(review)
   const score = testReviewScore(review)
   const capturesByTargetId = new Map(captures.map((capture) => [capture.targetId, capture]))
+
+  function setComparisonStatus(targetId: string, status: ReadingComparisonStatus) {
+    setComparisonByTargetId((current) => ({ ...current, [targetId]: status }))
+  }
+
+  async function playReadingComparison(clip: NonNullable<RetainedReadingCapture['clip']>, target: TTarget) {
+    if (comparisonActiveRef.current) return
+    comparisonActiveRef.current = true
+    try {
+      setComparisonStatus(target.id, 'playing-child')
+      await playRetainedReadingClip(clip)
+      setComparisonStatus(target.id, 'playing-model')
+      await onPlayReference(target)
+      setComparisonStatus(target.id, 'complete')
+    } catch {
+      setComparisonStatus(target.id, 'error')
+    } finally {
+      comparisonActiveRef.current = false
+    }
+  }
 
   return <div className="deferred-final-review">
     <div className="practice-top">
@@ -63,6 +86,9 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
       {targets.map((target, index) => {
         const assessment = review.assessments[target.id] || null
         const capture = capturesByTargetId.get(target.id)
+        const comparisonStatus = comparisonByTargetId[target.id] || 'idle'
+        const comparisonIsPlaying = comparisonStatus === 'playing-child' || comparisonStatus === 'playing-model'
+        const mustCompareBeforeScoring = mode === 'reading' && Boolean(capture?.clip)
         return <article key={target.id} className={`deferred-review-row deferred-${mode}-review-row ${assessment ? `is-${assessment}` : ''}`}>
           <div className="deferred-review-number">{index + 1}</div>
           <div className="deferred-review-content">
@@ -84,10 +110,11 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
                     <button
                       className="deferred-compare-button"
                       type="button"
-                      aria-label="Check Yourself"
-                      onClick={() => void playReadingComparison(capture.clip!, target, onPlayReference).catch(() => undefined)}
+                      aria-label={`Play my reading, then the correct pronunciation for ${target.text}`}
+                      disabled={comparisonIsPlaying}
+                      onClick={() => void playReadingComparison(capture.clip!, target)}
                     ><Headphones size={28} /></button>
-                    <span>Check Yourself</span>
+                    <span aria-live="polite">{comparisonStatusText(comparisonStatus)}</span>
                   </div>}
                 </div>
                 {!capture?.clip && <div className="deferred-inline-actions">
@@ -101,6 +128,7 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
             onCorrect={() => onAssess(target.id, true)}
             incorrectLabel="Not yet"
             correctLabel="Yes"
+            disabled={mustCompareBeforeScoring && comparisonStatus !== 'complete'}
           />
         </article>
       })}

@@ -78,6 +78,15 @@ test('Firebase Hosting serves only the production dist and deploys restrictive b
       entry.headers.some((header) => header.key === 'Permissions-Policy'),
     ),
   )
+  for (const requiredHeader of ['Content-Security-Policy', 'Cross-Origin-Opener-Policy', 'X-Frame-Options']) {
+    assert.ok(
+      config.hosting.headers.some((entry: { headers: Array<{ key: string }> }) =>
+        entry.headers.some((header) => header.key === requiredHeader),
+      ),
+      `${requiredHeader} must be deployed on every Hosting response.`,
+    )
+  }
+  assert.match(JSON.stringify(config.hosting.headers), /frame-ancestors 'none'/)
 })
 
 test('staging requests carry App Check and staging telemetry stays outside the initial Firebase SDK graph', () => {
@@ -87,6 +96,9 @@ test('staging requests carry App Check and staging telemetry stays outside the i
   const observability = readFileSync(resolve(root, 'src/stagingObservability.ts'), 'utf8')
 
   assert.match(authClient, /firebaseAppCheckHeaders/)
+  assert.match(authClient, /accountSignupEnabled/)
+  assert.match(authClient, /AbortSignal\.timeout\(15_000\)/)
+  assert.match(authClient, /Your session expired/)
   assert.match(firestoreClient, /firebaseAppCheckHeaders/)
   assert.match(firestoreClient, /documents:batchGet/)
   assert.match(firestoreClient, /function cloudSessionCompletionWrites/)

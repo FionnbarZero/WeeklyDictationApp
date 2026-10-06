@@ -38,7 +38,7 @@
 .skywriting-workspace.is-review .skywriting-pad-toolbar, .skywriting-workspace.is-review .skywriting-pad-footer { display: none; }
 .skywriting-workspace.is-review .skywriting-pad-frame { height: auto; aspect-ratio: 2.05 / 1; }
 .skywriting-workspace.is-review .skywriting-pad { filter: none; }
-.skywriting-workspace.is-review .skywriting-stroke { stroke-width: 10; }
+.skywriting-workspace.is-review .skywriting-stroke { stroke-width: 5; }
 .skywriting-model-example { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; place-items: center; }
 .skywriting-model-example .skywriting-comparison-label { justify-self: start; }
 .skywriting-pad-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; width: 100%; height: 100%; min-height: 0; margin: 0; }
@@ -51,7 +51,7 @@
 .skywriting-pad-shell.trace-font-kaiti .skywriting-trace-character { font-family: "Kaiti SC", STKaiti, KaiTi, serif; font-weight: 400; }
 .skywriting-guide { fill: none; stroke: #dfd5eb; stroke-width: 2; stroke-dasharray: 10 10; vector-effect: non-scaling-stroke; }
 .skywriting-lane-divider { fill: none; stroke: #cabadd; stroke-width: 3; stroke-dasharray: 14 10; vector-effect: non-scaling-stroke; }
-.skywriting-stroke { fill: none; stroke: #56379a; stroke-width: 18; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.skywriting-stroke { fill: none; stroke: #56379a; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .skywriting-pad-placeholder { position: absolute; inset: 0; display: grid; margin: 0; place-items: center; pointer-events: none; color: #aa9aba; font-family: Georgia, serif; font-size: 1.55rem; }
 .skywriting-pad-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 22px; padding: 0 6px; }
 .skywriting-lane-note { margin: 0; color: #766a80; font-size: .67rem; font-weight: 800; letter-spacing: .03em; white-space: nowrap; }
@@ -60,6 +60,9 @@
 .skywriting-pad-actions button { min-height: 36px; padding: 7px 11px; border: 1px solid #d7cbe7; color: #5f4c7e; background: #fff; font-size: .7rem; }
 .skywriting-pad-footer small { color: #887e90; font-size: .6rem; line-height: 1.2; white-space: nowrap; }
 .skywriting-pad-shell.is-disabled .skywriting-pad { cursor: default; }
+.skywriting-keyboard-alternative { display: flex; align-items: center; gap: 10px; padding: 4px 6px; color: #675d72; font-size: .68rem; font-weight: 700; }
+.skywriting-keyboard-alternative input { min-width: 0; flex: 1; min-height: 36px; padding: 6px 10px; border: 1px solid #d7cbe7; border-radius: 9px; background: #fff; color: #2f2737; font-size: 1rem; }
+.skywriting-keyboard-alternative input:disabled { background: #f6f2fa; opacity: 1; }
 .skywriting-reveal-word { display: grid; max-width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 4px 12px; place-items: center; color: #3f3458; font-family: "Songti SC", STSong, SimSun, serif; font-size: clamp(6rem, 9vw, 9rem); font-weight: 300; line-height: .82; }
 .skywriting-reveal-word[data-character-count="1"] { font-size: clamp(18rem, 25vw, 22rem); line-height: .72; }
 .skywriting-reveal-word[data-character-count="2"] { font-size: clamp(10rem, 15vw, 14rem); }

@@ -58,10 +58,12 @@ test('audio MIME selection uses the first browser-supported candidate without as
 })
 
 test('every reading show-copy trial owns the same bilingual teaching instruction', () => {
-  assert.deepEqual(readingShowCopyInstruction('妈妈'), [
-    { text: "Let's learn a new one. This word is…", language: 'en-GB', rate: 0.9 },
+  assert.deepEqual(readingShowCopyInstruction({ text: '妈妈', sentence: '这是妈妈' }), [
+    { text: 'Read and record', language: 'en-GB', rate: 0.9 },
     { text: '妈妈', language: 'zh-CN', rate: 0.55 },
-    { text: 'Now you say it and record it.', language: 'en-GB', rate: 0.9 },
+    { text: '这是妈妈', language: 'zh-CN', rate: 0.55 },
+    { text: '妈妈', language: 'zh-CN', rate: 0.55 },
+    { text: '妈妈', language: 'zh-CN', rate: 0.55 },
   ])
 })
 

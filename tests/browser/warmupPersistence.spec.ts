@@ -4,6 +4,8 @@ import { openGrade2LearningActivity } from './learningHub.ts'
 
 const APP_STATE_KEY = 'weekly-dictation-state-v2'
 
+test.beforeEach(async ({ page }) => { await installGrade2CurriculumFixture(page) })
+
 async function warmupSnapshot(page: import('@playwright/test').Page) {
   return page.evaluate((stateKey) => {
     const raw = window.localStorage.getItem(stateKey)
@@ -29,7 +31,6 @@ async function warmupSnapshot(page: import('@playwright/test').Page) {
 test('a reviewed standalone Warmup answer resumes the same queue position and graph point after reload', async ({
   page,
 }) => {
-  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
   await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
 
@@ -60,7 +61,6 @@ test('a reviewed standalone Warmup answer resumes the same queue position and gr
 test('a started pre-activity Warmup can finalize one partial graph point and continue to the selected activity', async ({
   page,
 }) => {
-  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
   await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
@@ -82,13 +82,12 @@ test('a started pre-activity Warmup can finalize one partial graph point and con
 test('restored monthly Mastery totals remain visible without becoming invented visit graph points', async ({
   page,
 }) => {
-  await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
   await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
 
   const legacyMonthlyScore = {
-    id: 'rhys-random-rotation-2026-09',
-    childId: 'rhys',
+    id: 'learner-a-random-rotation-2026-09',
+    childId: 'learner-a',
     month: '2026-09',
     correct: 7,
     total: 10,

@@ -1,0 +1,513 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T00:00:00Z",
+  "candidates": [
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-1",
+      "targetText": "一",
+      "contextTokens": [
+        "我",
+        "有",
+        "一",
+        "本",
+        "书"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-2",
+      "targetText": "二",
+      "contextTokens": [
+        "我",
+        "有",
+        "二",
+        "个",
+        "苹果"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-3",
+      "targetText": "三",
+      "contextTokens": [
+        "我",
+        "有",
+        "三",
+        "只",
+        "猫"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-4",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-4",
+      "targetText": "人",
+      "contextTokens": [
+        "这里",
+        "有",
+        "三",
+        "个",
+        "人"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-1",
+      "targetText": "爸爸",
+      "contextTokens": [
+        "爸爸",
+        "和",
+        "我",
+        "看",
+        "书"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-2",
+      "targetText": "妈妈",
+      "contextTokens": [
+        "妈妈",
+        "陪",
+        "我",
+        "去",
+        "学校"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1468078364",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-08-31__2026-09-06-tier-2-3",
+      "targetText": "小",
+      "contextTokens": [
+        "这",
+        "只",
+        "猫",
+        "很",
+        "小"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-1",
+      "targetText": "四",
+      "contextTokens": [
+        "我",
+        "看见",
+        "四",
+        "只",
+        "鸟"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-2",
+      "targetText": "五",
+      "contextTokens": [
+        "我",
+        "有",
+        "五",
+        "支",
+        "笔"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-3",
+      "targetText": "六",
+      "contextTokens": [
+        "六",
+        "只",
+        "小狗",
+        "在",
+        "跑"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-4",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-4",
+      "targetText": "心",
+      "contextTokens": [
+        "我",
+        "的",
+        "心",
+        "很",
+        "开心"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-tier-2-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-tier-2-1",
+      "targetText": "我",
+      "contextTokens": [
+        "我",
+        "喜欢",
+        "这",
+        "只",
+        "小狗"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-07__2026-09-13-tier-2-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1737284969",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-07__2026-09-13-tier-2-2",
+      "targetText": "开心",
+      "contextTokens": [
+        "我",
+        "今天",
+        "真的",
+        "很",
+        "开心"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-14__2026-09-20-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "104196055",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-14__2026-09-20-1",
+      "targetText": "七",
+      "contextTokens": [
+        "我",
+        "数",
+        "到",
+        "七",
+        "了"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-14__2026-09-20-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "104196055",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-14__2026-09-20-2",
+      "targetText": "八",
+      "contextTokens": [
+        "八",
+        "只",
+        "小鸟",
+        "在",
+        "飞"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-14__2026-09-20-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "104196055",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-14__2026-09-20-3",
+      "targetText": "水",
+      "contextTokens": [
+        "我",
+        "想",
+        "喝",
+        "一点",
+        "水"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-14__2026-09-20-tier-2-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "104196055",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-14__2026-09-20-tier-2-1",
+      "targetText": "有",
+      "contextTokens": [
+        "我",
+        "家",
+        "有",
+        "一",
+        "只",
+        "猫"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-14__2026-09-20-tier-2-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "104196055",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-14__2026-09-20-tier-2-2",
+      "targetText": "没有",
+      "contextTokens": [
+        "这里",
+        "没有",
+        "我",
+        "的",
+        "书"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-21__2026-09-27-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1395217571",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-21__2026-09-27-1",
+      "targetText": "九",
+      "contextTokens": [
+        "我",
+        "有",
+        "九",
+        "本",
+        "书"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-21__2026-09-27-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1395217571",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-21__2026-09-27-2",
+      "targetText": "十",
+      "contextTokens": [
+        "十",
+        "个",
+        "小朋友",
+        "在",
+        "玩"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-21__2026-09-27-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1395217571",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-21__2026-09-27-3",
+      "targetText": "白",
+      "contextTokens": [
+        "白",
+        "云",
+        "在",
+        "天上",
+        "飘"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-21__2026-09-27-tier-2-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1395217571",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-21__2026-09-27-tier-2-1",
+      "targetText": "红色",
+      "contextTokens": [
+        "我",
+        "有",
+        "一",
+        "支",
+        "红色",
+        "笔"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-09-21__2026-09-27-tier-2-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1395217571",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-09-21__2026-09-27-tier-2-2",
+      "targetText": "蓝色",
+      "contextTokens": [
+        "我",
+        "喜欢",
+        "蓝色",
+        "的",
+        "天空"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-10-05__2026-10-11-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1759563195",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-10-05__2026-10-11-1",
+      "targetText": "牛",
+      "contextTokens": [
+        "一",
+        "头",
+        "牛",
+        "吃",
+        "草"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-10-05__2026-10-11-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1759563195",
+      "tier": "tier-1",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-10-05__2026-10-11-2",
+      "targetText": "羊",
+      "contextTokens": [
+        "两",
+        "只",
+        "羊",
+        "吃",
+        "草"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-1",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1759563195",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-1",
+      "targetText": "猫",
+      "contextTokens": [
+        "我",
+        "家",
+        "的",
+        "猫",
+        "很",
+        "小"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-2",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1759563195",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-2",
+      "targetText": "狗",
+      "contextTokens": [
+        "这",
+        "只",
+        "狗",
+        "会",
+        "跑"
+      ],
+      "status": "Draft"
+    },
+    {
+      "id": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-3",
+      "grade": "Kindergarten",
+      "schoolYear": "2026–2027",
+      "sourceDocumentId": "1lBWZeDhb_IIhBJ8SIzZts637JBS6HETh6uFblNNTOxA",
+      "sourceUnitId": "1759563195",
+      "tier": "tier-2",
+      "targetOccurrenceId": "kindergarten__2026-27__2026-10-05__2026-10-11-tier-2-3",
+      "targetText": "鸟",
+      "contextTokens": [
+        "一",
+        "只",
+        "鸟",
+        "在",
+        "唱歌"
+      ],
+      "status": "Draft"
+    }
+  ]
+}

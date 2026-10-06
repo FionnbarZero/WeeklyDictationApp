@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
+import { familyAcquisitionStore } from './familyBeta/acquisitionRuntime.ts'
+import type { AcquisitionTarget } from './acquisition/contracts.ts'
+import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook } from './kindergartenSheetsImporter.ts'
 import { activePracticeWord, type Dataset, type PracticeSession, type SessionAnswer, type Word } from './domain.ts'
@@ -20,16 +24,28 @@ import {
   type KindergartenScoreRecord,
 } from './kindergartenLab/games.tsx'
 import { kindergartenLearningHubView, type KindergartenHubActivityKind, type KindergartenHubLaunch } from './kindergartenLab/learningHub.ts'
+import { kindergartenCurrentSourceWeek } from './kindergartenLab/currentWeek.ts'
 import { kindergartenWritingLabProfile } from './kindergartenLab/practiceProfile.ts'
-import { kindergartenUnitReviewForLab, type KindergartenUnitReviewLab } from './kindergartenLab/unitReview.ts'
+import {
+  kindergartenCompletedUnitPoolForLab,
+  kindergartenNinjaUnitPoolsForLab,
+  kindergartenFinalBossPoolForLab,
+  type KindergartenCumulativePoolLab,
+} from './kindergartenLab/unitReview.ts'
 import {
   kindergartenReadingAcquisitionPathway,
   kindergartenReadingMasteryPathway,
   kindergartenReadingReviewPathway,
 } from './kindergartenLab/readingPractice.ts'
-import { LearningHub } from './learningHub/LearningHub.tsx'
+import { PreviewLearningHub as LearningHub } from './familyBeta/PreviewLearningHub.tsx'
+import type { LearningHubLaunchContext } from './learningHub/contracts.ts'
+import {
+  kindergartenStrokeOrderConfig,
+  StrokeOrderActivity,
+} from './learningGames/strokeOrder/index.ts'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx'
+import type { ReadingTeachingIntroductionContext } from './readingPractice/Tier2ReadingPractice.tsx'
 import { SkyWriting } from './skywriting/index.ts'
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
 import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
@@ -38,12 +54,21 @@ import { kindergartenTier2ReadingProfile } from './tier2/profiles/kindergarten.t
 import { kindergartenWritingPracticeProfile } from './practice/profiles/kindergarten.ts'
 import type { WarmupLifecycleSnapshot, WarmupResultEvidence } from './warmup/contracts.ts'
 import { selectWarmupWords } from './warmup/engine.ts'
+import {
+  playAudioPlan,
+  playCachedWordAudio,
+  playCachedWordAudioOnce,
+  playReadingTeachingSequence,
+  stopActiveAudio,
+} from './audio/promptAudio.ts'
+import { kindergartenInstructionAudio, withKindergartenAudio } from './audio/kindergartenAudio.ts'
+import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
-const DEFAULT_FIXTURE_TAB = 'Week 6 09/21'
 const KINDERGARTEN_REVIEW_INSTRUCTION = 'Look at each answer carefully. Tap “I got it right” when your writing matches the word, or “I got it wrong” when you want more practice.'
+const kindergartenAudioProfile = gradeAudioProfileFor('Kindergarten')
 
 type WritingPractice = { state: KindergartenAcquisitionLabState; dataset: Dataset; revealMethod: KindergartenLabRevealMethod }
 type StandaloneActivity = Exclude<KindergartenHubActivityKind,
@@ -65,37 +90,58 @@ function normalizeWorkbook(value: unknown): Omit<SheetsWorkbookPayload, 'sourceT
 }
 
 function speakText(text: string, language = 'zh-CN', rate = 0.55) {
-  if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = language
-  utterance.rate = rate
-  window.speechSynthesis.speak(utterance)
-  return () => window.speechSynthesis.cancel()
+  if (!text) return
+  return playAudioPlan([{
+    text,
+    language: language === 'zh-CN' || language === 'en-GB' || language === 'en-IE' ? language : 'en-US',
+    rate,
+  }])
 }
 
-function speakWord(word: Word) {
-  return speakText(word.text)
+function speakWord(word: Word, warmup = false) {
+  const rate = warmup ? kindergartenAudioProfile.masteryRate : kindergartenAudioProfile.dictationRate
+  return playCachedWordAudio(withKindergartenAudio(word), warmup, {
+    playbackRate: rate,
+    sentenceRate: rate,
+    pauseMs: kindergartenAudioProfile.segmentGapMs,
+  })
 }
+
+function playMasteryWord(word: Word) { return speakWord(word, true) }
 
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!target.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(target.text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.55
-    utterance.onend = () => resolve()
-    utterance.onerror = () => reject(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
+  return playCachedWordAudioOnce(withKindergartenAudio(target), { playbackRate: kindergartenAudioProfile.readingRate })
+}
+
+function speakReadingIntroduction(
+  target: Tier2ReadingTarget,
+  context: ReadingTeachingIntroductionContext,
+): Promise<void> {
+  const newTargetInstruction = kindergartenInstructionAudio('newTarget')
+  return playReadingTeachingSequence(withKindergartenAudio(target), {
+    playbackRate: kindergartenAudioProfile.readingRate,
+    sentenceRate: kindergartenAudioProfile.readingRate,
+    instructionRate: kindergartenAudioProfile.instructionRate,
+    pauseMs: kindergartenAudioProfile.segmentGapMs,
+    ...(context.firstPresentationOfNewTarget
+      ? {
+          newTargetAnnouncement: newTargetInstruction.text,
+          newTargetAnnouncementStoragePath: newTargetInstruction.storagePath,
+        }
+      : {}),
   })
+}
+
+function speakKindergartenTextOnce(text: string) {
+  const word: Word = { id: `audio-${text}`, text, sentence: '', datasetId: '__audio-cue__' }
+  return playCachedWordAudioOnce(withKindergartenAudio(word))
 }
 
 function writingSessionFor(practice: WritingPractice): PracticeSession {
   const prompt = practice.state.flow.prompt
+  const acquisition = prompt
+    ? { ...practice.state.flow, prompt: { ...prompt, word: withKindergartenAudio(prompt.word) } }
+    : practice.state.flow
   return {
     id: `kindergarten-lab-${practice.state.cohortId}`,
     childId: 'kindergarten-lab-child',
@@ -114,7 +160,7 @@ function writingSessionFor(practice: WritingPractice): PracticeSession {
     warmupCategoryByWordId: {},
     warmupRandomRotationWordIds: [],
     warmupRotationCycleId: 1,
-    acquisition: practice.state.flow as PracticeSession['acquisition'],
+    acquisition: acquisition as PracticeSession['acquisition'],
     currentRevealMethod: practice.revealMethod,
     warmupOnly: false,
   }
@@ -149,20 +195,22 @@ function dayAfter(dateKey: string) {
   return date.toISOString().slice(0, 10)
 }
 
-function masteryDatasetFor(review: KindergartenUnitReviewLab | null): Dataset | null {
+function masteryDatasetFor(review: KindergartenCumulativePoolLab | null): Dataset | null {
   if (!review) return null
-  const id = '__kindergarten-unit-1-mastery-lab__'
+  const id = `__kindergarten-${review.unitId || 'completed-unit'}-mastery-lab__`
   const tier1 = review.dataset.words.map((word) => ({ ...word, id: `${id}:writing:${word.id}`, datasetId: id }))
   return {
     ...review.dataset,
     id,
-    description: 'Development-only Kindergarten Unit 1 writing mastery bank',
+    description: `Development-only Kindergarten ${review.label} writing mastery bank`,
     words: tier1,
     vocabulary: { tier1, tier2: [], tier3: [] },
   }
 }
 
 function KindergartenLearningLab() {
+  const attemptId = useRef<string>(crypto.randomUUID())
+  const acquisitionStore = useRef<ReturnType<typeof familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>>>(null)
   const [candidates, setCandidates] = useState<WeeklyDatasetCandidate[]>([])
   const [selectedSourceUnitId, setSelectedSourceUnitId] = useState('')
   const [status, setStatus] = useState('Loading the trusted local Kindergarten fixture…')
@@ -175,6 +223,7 @@ function KindergartenLearningLab() {
   const [scores, setScores] = useState<KindergartenScoreRecord[]>([])
   const [masteryResults, setMasteryResults] = useState<WarmupResultEvidence[]>([])
   const [masteryWords, setMasteryWords] = useState<Word[]>([])
+  const [activeNinjaPoolId, setActiveNinjaPoolId] = useState('')
 
   useEffect(() => {
     if (!import.meta.env.DEV && !publicPreviewEnabled && !prototypeBaselineEnabled) {
@@ -182,17 +231,19 @@ function KindergartenLearningLab() {
       setError(true)
       return
     }
-    void fetch(fixtureUrl, { cache: 'no-store' })
+    void (familyPreview ? fetchCurriculum('Kindergarten').then(result => new Response(JSON.stringify(result.snapshot.payload))) : fetch(fixtureUrl, { cache: 'no-store' }))
       .then((response) => {
         if (!response.ok) throw new Error(`Fixture request failed with HTTP ${response.status}.`)
         return response.json()
       })
       .then((payload) => {
         const inspected = inspectKindergartenWorkbook(normalizeWorkbook(payload))
-        const usable = inspected.filter(kindergartenCandidateIsUsableInLab)
-        const preferred = usable.find((candidate) => candidate.rawDate === DEFAULT_FIXTURE_TAB) || usable[0]
-        if (!preferred) throw new Error('The fixture has no Kindergarten vocabulary tab usable by the lab.')
-        setCandidates(inspected)
+        const selectedWeek = familyPreview ? new URLSearchParams(window.location.search).get('week') : null
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+        const preferred = (selectedWeek ? inspected.find(c => c.normalizedStartDate === selectedWeek) : null)
+          || kindergartenCurrentSourceWeek(familyPreview ? inspected.filter(c => c.normalizedStartDate && c.normalizedStartDate <= today) : inspected)
+        if (!preferred) throw new Error('The fixture has no dated Kindergarten source tab usable by the lab.')
+        setCandidates(familyPreview ? inspected.filter(c => c.normalizedStartDate && c.normalizedStartDate <= today) : inspected)
         setSelectedSourceUnitId(preferred.source.sourceUnitId)
         setStatus('Kindergarten paths loaded. Choose an adventure and your session scores will appear in the Ninja Record.')
       })
@@ -202,27 +253,49 @@ function KindergartenLearningLab() {
       })
   }, [])
 
-  const usableCandidates = useMemo(() => candidates.filter(kindergartenCandidateIsUsableInLab), [candidates])
-  const selectedCandidate = usableCandidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId) || usableCandidates[0]
-  const unitReview = useMemo<KindergartenUnitReviewLab | null>(() => {
-    if (!candidates.length) return null
-    try { return kindergartenUnitReviewForLab(candidates) } catch { return null }
-  }, [candidates])
-  const masteryDataset = useMemo(() => masteryDatasetFor(unitReview), [unitReview])
+  const selectedCandidate = candidates.find((candidate) => candidate.source.sourceUnitId === selectedSourceUnitId)
+    || kindergartenCurrentSourceWeek(candidates)
+  const finalBossPool = useMemo<KindergartenCumulativePoolLab | null>(() => {
+    if (!selectedCandidate) return null
+    try { return kindergartenFinalBossPoolForLab(candidates, selectedCandidate) } catch { return null }
+  }, [candidates, selectedCandidate])
+  const ninjaPools = useMemo<KindergartenCumulativePoolLab[]>(() => {
+    if (!selectedCandidate) return []
+    try { return kindergartenNinjaUnitPoolsForLab(candidates, selectedCandidate) } catch { return [] }
+  }, [candidates, selectedCandidate])
+  const completedUnitPool = useMemo<KindergartenCumulativePoolLab | null>(() => {
+    if (!selectedCandidate) return null
+    try { return kindergartenCompletedUnitPoolForLab(candidates, selectedCandidate) } catch { return null }
+  }, [candidates, selectedCandidate])
+  const masteryDataset = useMemo(() => masteryDatasetFor(completedUnitPool), [completedUnitPool])
   const tier1Words = selectedCandidate?.tier1.map((word) => word.text) || []
   const tier2Words = selectedCandidate?.tier2.map((word) => word.text) || []
-  const choicePool = [...tier2Words, ...tier1Words]
+  const activeNinjaPool = ninjaPools.find((pool) => pool.dataset.id === activeNinjaPoolId) || ninjaPools[0]
+  const ninjaTier1Words = activeNinjaPool?.tier1Words || []
+  const ninjaTier2Words = activeNinjaPool?.tier2Words || []
+  const ninjaChoicePool = [...ninjaTier2Words, ...ninjaTier1Words]
 
   function recordScore(score: ScoreInput) {
+    try {
+      const pool = score.kind === 'Final Boss' ? finalBossPool : score.kind === 'Spirit Realm' ? completedUnitPool : score.kind === 'Ninja game' ? activeNinjaPool : null
+      const sourceUnits = new Set(pool?.dataset.words.map(word => word.sourceSlideId))
+      const datasetIds = pool ? candidates.filter(candidate => sourceUnits.has(candidate.source.sourceUnitId)).flatMap(candidate => candidate.datasetId ? [candidate.datasetId] : []) : selectedCandidate?.datasetId ? [selectedCandidate.datasetId] : []
+      if (familyPreview && score.total > 0) savePreviewResult({ id: attemptId.current, activity: score.label, channel: readingPathway ? 'reading' : score.kind === 'Ninja game' ? 'game' : 'writing', datasetIds, correct: score.correct, attempted: score.total })
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Saving failed. Keep this activity open and retry.'); setError(true)
+      window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+      return false
+    }
     setScores((current) => [...current, {
       ...score,
       id: `kindergarten-score-${Date.now()}-${current.length + 1}`,
       completedAt: new Date().toISOString(),
     }])
+    return true
   }
 
   function returnToHub(message = 'Returned to the Kindergarten paths.') {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    stopActiveAudio()
     setActiveActivity(null)
     setReadingPathway(null)
     setMasteryWords([])
@@ -231,12 +304,12 @@ function KindergartenLearningLab() {
   }
 
   function completeStandalone(score: ScoreInput) {
-    recordScore(score)
+    if (!recordScore(score)) return
     returnToHub(`${score.label} complete: ${score.correct}/${score.total}. The score is shown in this visit’s Ninja Record.`)
   }
 
   function leavePractice(message: string) {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    stopActiveAudio()
     setWritingPractice(null)
     setReadingPathway(null)
     setTestReviewSession(null)
@@ -246,10 +319,16 @@ function KindergartenLearningLab() {
   }
 
   function startWriting() {
-    if (!selectedCandidate) return
+    if (!selectedCandidate || !kindergartenCandidateIsUsableInLab(selectedCandidate)) return
     try {
+      const initial = startKindergartenAcquisitionLab(selectedCandidate)
+      const store = familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>(
+        initial.targetSet, kindergartenWritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
+      )
+      acquisitionStore.current = store
+      if (store) attemptId.current = store.current.sessionId
       setWritingPractice({
-        state: startKindergartenAcquisitionLab(selectedCandidate),
+        state: store ? { ...initial, flow: store.current.envelope.flow, assessments: store.current.assessments } : initial,
         dataset: kindergartenWritingDatasetForLab(selectedCandidate),
         revealMethod: 'timer',
       })
@@ -267,12 +346,12 @@ function KindergartenLearningLab() {
   function finishWriting() {
     if (writingPractice) {
       const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
-      if (scored.length) recordScore({
+      if (scored.length && !recordScore({
         label: 'Writing characters',
         kind: 'Current week',
         correct: scored.filter((item) => item.correct).length,
         total: scored.length,
-      })
+      })) return
     }
     leavePractice('Returned to the paths. This visit’s writing score is shown in the Ninja Record.')
   }
@@ -281,18 +360,25 @@ function KindergartenLearningLab() {
     if (typeof answer === 'object') return
     if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
-    setWritingPractice((current) => current ? {
-      ...current,
-      state: answerKindergartenAcquisitionLab(current.state, answer, current.revealMethod),
-      revealMethod: 'timer',
-    } : current)
+    if (!writingPractice) return
+    try {
+      const saved = acquisitionStore.current?.answer(answer, writingPractice.revealMethod)
+      setWritingPractice({ ...writingPractice,
+        state: saved ? { ...writingPractice.state, flow: saved.envelope.flow, assessments: saved.assessments }
+          : answerKindergartenAcquisitionLab(writingPractice.state, answer, writingPractice.revealMethod),
+        revealMethod: 'timer' })
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Response could not be saved. Please retry.')
+      setError(true)
+      window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+    }
   }
 
   function startUnitReview() {
-    if (!unitReview) return
-    setTestReviewDataset(unitReview.dataset)
-    setTestReviewSession(testReviewSessionFor(unitReview.dataset))
-    setStatus('Facing the Final Boss: the cumulative Unit 1 writing review is ready.')
+    if (!finalBossPool) return
+    setTestReviewDataset(finalBossPool.dataset)
+    setTestReviewSession(testReviewSessionFor(finalBossPool.dataset))
+    setStatus(`Facing the Final Boss: the cumulative ${finalBossPool.label} writing pool is ready.`)
   }
 
   function completeTestReviewDictation(method: 'timer' | 'skip_timer' = 'timer') {
@@ -309,7 +395,7 @@ function KindergartenLearningLab() {
     if (typeof answer === 'object') {
       if (answer.kind !== 'deferred-writing-test-review') return
       const correct = answer.completion.assessments.filter((item) => item.correct).length
-      recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })
+      if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })) return
       leavePractice(`Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`)
       return
     }
@@ -327,13 +413,13 @@ function KindergartenLearningLab() {
       return
     }
     const correct = primaryAnswers.filter((item) => item.correct).length
-    recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: primaryAnswers.length })
+    if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: primaryAnswers.length })) return
     leavePractice(`Final Boss complete: ${correct}/${primaryAnswers.length}. The score is shown in the Ninja Record.`)
   }
 
   function startSpiritRealm() {
-    if (!masteryDataset || !unitReview) return
-    const masteredAt = dayAfter(unitReview.dataset.endDate)
+    if (!masteryDataset || !completedUnitPool) return
+    const masteredAt = dayAfter(completedUnitPool.dataset.endDate)
     const lifecycle: WarmupLifecycleSnapshot = {
       masteredDatasetIds: [masteryDataset.id],
       masteredAtByDatasetId: { [masteryDataset.id]: masteredAt },
@@ -364,10 +450,21 @@ function KindergartenLearningLab() {
     }])
   }
 
-  function launchFromHub(launch: KindergartenHubLaunch) {
+  function launchFromHub(launch: KindergartenHubLaunch, context: LearningHubLaunchContext) {
+    attemptId.current = crypto.randomUUID()
     if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'dojo-stroke-order') {
+      if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
+        setActiveActivity(launch.kind)
+        setStatus('Stroke Order started with the current Kindergarten writing characters.')
+      } else {
+        setStatus('The current Kindergarten writing cohort is unavailable.')
+        setError(true)
+      }
+      return
+    }
     if (launch.kind === 'dojo-reading') {
-      if (selectedCandidate) {
+      if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
         setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
         setStatus('Running the current-week high-frequency reading Acquisition flow.')
       } else {
@@ -378,9 +475,9 @@ function KindergartenLearningLab() {
     }
     if (launch.kind === 'final-boss') { startUnitReview(); return }
     if (launch.kind === 'final-boss-reading') {
-      if (unitReview) {
-        setReadingPathway(kindergartenReadingReviewPathway(unitReview))
-        setStatus('Facing the Final Boss: the cumulative Unit 1 reading review is ready.')
+      if (finalBossPool) {
+        setReadingPathway(kindergartenReadingReviewPathway(finalBossPool))
+        setStatus(`Facing the Final Boss: the cumulative ${finalBossPool.label} reading pool is ready.`)
       } else {
         setStatus('The cumulative Kindergarten reading review is unavailable.')
         setError(true)
@@ -389,13 +486,25 @@ function KindergartenLearningLab() {
     }
     if (launch.kind === 'spirit-realm') { startSpiritRealm(); return }
     if (launch.kind === 'spirit-realm-reading') {
-      if (unitReview) {
-        setReadingPathway(kindergartenReadingMasteryPathway(unitReview))
+      if (completedUnitPool) {
+        setReadingPathway(kindergartenReadingMasteryPathway(completedUnitPool))
         setStatus('The Spirit Realm opened the separate Tier 2 reading mastery path.')
       } else {
         setStatus('The Kindergarten reading mastery path is unavailable.')
         setError(true)
       }
+      return
+    }
+    if (launch.kind.startsWith('ninja-')) {
+      const selectedNinjaPool = ninjaPools.find((pool) => pool.dataset.id === context.cohortId) || ninjaPools[0]
+      if (!selectedNinjaPool) {
+        setStatus('Choose a Kindergarten unit before starting Ninja Skills.')
+        setError(true)
+        return
+      }
+      setActiveNinjaPoolId(selectedNinjaPool.dataset.id)
+      setActiveActivity(launch.kind)
+      setStatus(`${launch.label} started with ${selectedNinjaPool.label}. Finish the activity to add its score to the Ninja Record.`)
       return
     }
     setActiveActivity(launch.kind)
@@ -407,7 +516,8 @@ function KindergartenLearningLab() {
     const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
     const correct = scored.filter((item) => item.correct).length
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · Session-only development record</p>
+      {error && <p role="alert">{status}</p>}
+      <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · {familyPreview ? 'Choose Done for today to save this session score.' : 'Session-only development record'}</p>
       <PracticeView
         session={writingSessionFor(writingPractice)}
         datasets={[writingPractice.dataset]}
@@ -429,7 +539,7 @@ function KindergartenLearningLab() {
   if (testReviewSession && testReviewDataset) {
     const activeWord = activePracticeWord(testReviewSession)
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss cumulative Unit 1 review · Session-only development record</p>
+      <p className="k-practice-note"><strong>Responses stay unscored until final review.</strong> · Final Boss reviewed-unit test · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
       <PracticeView
         session={testReviewSession}
         datasets={[testReviewDataset]}
@@ -451,7 +561,7 @@ function KindergartenLearningLab() {
   if (readingPathway?.kind === 'test-review') {
     const targets = tier2ReadingPathwayTargets(readingPathway)
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss cumulative Unit 1 reading review · Session-only development record</p>
+      <p className="k-practice-note"><strong>Record every response before the final review.</strong> · Final Boss reviewed-unit reading test · {familyPreview ? 'Completed scores appear in family Progress.' : 'Session-only development record'}</p>
       <DeferredTestReview
         key={`kindergarten-reading-review-${readingPathway.cycle || 1}`}
         mode="reading"
@@ -478,55 +588,78 @@ function KindergartenLearningLab() {
       ? 'Current week'
       : 'Spirit Realm'
     return <main className="k-lab-shell practice">
-      <p className="k-practice-note">Tier 2 recorded reading · Session-only development record</p>
+      <p className="k-practice-note">Tier 2 recorded reading · {familyPreview ? 'Recordings remain temporary; completed scores appear in family Progress.' : 'Session-only development record'}</p>
       <Tier2ReadingPractice
         key={`${readingPathway.kind}-${readingPathway.cohorts.map((cohort) => cohort.datasetId).join('-')}`}
         profile={kindergartenTier2ReadingProfile}
         pathway={readingPathway}
         label={label}
+        onPlayReference={speakReadingReference}
+        onPlayTeachingIntroduction={speakReadingIntroduction}
         onExit={() => returnToHub('Reading practice exited. No score was added.')}
-        onComplete={(summary) => completeStandalone({
+        onComplete={(summary) => {
+          if (summary.sessionId) attemptId.current = summary.sessionId
+          completeStandalone({
           label,
           kind: scoreKind,
           correct: summary.correct,
           total: summary.attempted,
-        })}
-        sessionNote="Kindergarten development reading · recording and results remain in this visit"
+          })
+        }}
+        sessionNote={familyPreview ? 'Recordings stay only in this session. Completed scores appear in family progress.' : 'Kindergarten development reading · recording and results remain in this visit'}
       />
     </main>
   }
 
-  const speak = (text: string) => { speakText(text) }
-  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={tier2Words} choicePool={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
-  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={choicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  const speak = (text: string) => speakKindergartenTextOnce(text)
+  if (activeActivity === 'dojo-stroke-order' && selectedCandidate) {
+    const config = kindergartenStrokeOrderConfig(selectedCandidate)
+    return <StrokeOrderActivity
+      key={config.sourceId}
+      {...config}
+      playAudio={speak}
+      onExit={() => returnToHub('Stroke Order exited. No score was added.')}
+      onComplete={(summary) => completeStandalone({
+        label: 'Stroke Order',
+        kind: 'Current week',
+        correct: summary.correct,
+        total: summary.attempted,
+      })}
+    />
+  }
+  if (activeActivity === 'ninja-listening') return <ListeningLilyPads targets={ninjaTier2Words} choicePool={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'ninja-memory') return <MemoryLanterns words={ninjaChoicePool} onExit={returnToHub} onComplete={completeStandalone} speak={speak} />
   if (activeActivity === 'ninja-sky-writing') return <SkyWriting
-    words={tier1Words}
+    words={ninjaTier1Words}
     onExit={() => returnToHub()}
     onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
     speak={speak}
   />
-  if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} speak={speak} />
+  if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} playWord={playMasteryWord} />
 
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>
-  const hubModel = kindergartenLearningHubView(selectedCandidate, unitReview)
+  const hubModel = kindergartenLearningHubView(selectedCandidate, finalBossPool, ninjaPools, completedUnitPool)
 
   return <main className="k-lab-shell k-hub-shell">
-    <p className="k-lab-safety">Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write, saved progress, or production activation</p>
-    <details className="k-lab-settings">
-      <summary>Development fixture controls</summary>
+    {!familyPreview && <p className="k-lab-safety">Development-only child experience · Local fixture and session-only scores · No Google request, Firestore write, saved progress, or production activation</p>}
+    {!familyPreview && <details className="k-lab-settings">
+      <summary>{familyPreview ? 'Choose a previous week' : 'Development fixture controls'}</summary>
       <label className="k-week-picker">Current fixture week
         <select value={selectedCandidate.source.sourceUnitId} onChange={(event) => setSelectedSourceUnitId(event.target.value)}>
-          {usableCandidates.map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
+          {candidates.filter((candidate) => candidate.assignedWeek).map((candidate) => <option key={candidate.source.sourceUnitId} value={candidate.source.sourceUnitId}>{candidate.rawDate} · {candidate.normalizedStartDate}–{candidate.normalizedEndDate}</option>)}
         </select>
-        <span className="k-manual-note">Manual selection only—this lab does not infer the active week.</span>
+        <span className="k-manual-note">Defaults to the authoritative top spreadsheet tab. Select another week only to test that fixture.</span>
       </label>
-    </details>
-    <LearningHub model={hubModel} onLaunch={launchFromHub} />
-    <NinjaRecord scores={scores} />
+    </details>}
+    <LearningHub model={hubModel} onLaunch={launchFromHub} hideUnavailable={familyPreview} />
+    <NinjaRecord scores={scores} persistent={familyPreview} />
     <p className={`k-status${error ? ' error' : ''}`} role="status" aria-live="polite">{status}</p>
   </main>
 }
 
 const rootElement = document.getElementById('kindergarten-lab-root')
+if (window.parent === window) {
+  void import('./familyBeta/installProblemReporter.tsx').then((m) => m.installProblemReporter('Kindergarten'))
+}
 if (!rootElement) throw new Error('Missing Kindergarten learning lab root.')
 createRoot(rootElement).render(<KindergartenLearningLab />)

@@ -1,6 +1,6 @@
 # ADR 0005: Kindergarten is writing-only until Tier 2 receives a separate release decision
 
-- Status: Accepted
+- Status: Partially superseded by [ADR 0008](./0008-family-beta-product-and-release-policy.md) for the approved one-device family beta. The October 5 release includes Kindergarten reading with browser-local completed scores. The broader authenticated-production capability gate below remains separate; it must not be used to remove approved reading from the live family beta.
 - Date: 2026-10-01
 
 ## Context

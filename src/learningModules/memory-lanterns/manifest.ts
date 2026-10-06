@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'memory-flip', title: 'Memory Lanterns', description: 'Hear each Mandarin character and find its identical twin in a lantern field beneath a sunset pergola.', activityLabel: 'Match characters', channels: ['tier-1-writing', 'tier-2-reading'], skills: ['receptive'], inputKind: 'pairs', estimatedSeconds: [60, 120] } as const

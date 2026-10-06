@@ -1,0 +1,5 @@
+{
+  "firestore": {
+    "rules": "deployment/firestore-family-sync.rules"
+  }
+}

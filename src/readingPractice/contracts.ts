@@ -6,11 +6,15 @@ export type ReadingSpeechSegment = {
   readonly rate: number
 }
 
-export function readingShowCopyInstruction(targetText: string): readonly ReadingSpeechSegment[] {
+export function readingShowCopyInstruction(target: string | { readonly text: string; readonly sentence?: string }): readonly ReadingSpeechSegment[] {
+  const targetText = typeof target === 'string' ? target : target.text
+  const context = typeof target === 'string' ? '' : target.sentence?.trim() || ''
   return [
-    { text: "Let's learn a new one. This word is…", language: 'en-GB', rate: 0.9 },
+    { text: 'Read and record', language: 'en-GB', rate: 0.9 },
     { text: targetText, language: 'zh-CN', rate: 0.55 },
-    { text: 'Now you say it and record it.', language: 'en-GB', rate: 0.9 },
+    ...(context ? [{ text: context, language: 'zh-CN' as const, rate: 0.55 }] : []),
+    { text: targetText, language: 'zh-CN', rate: 0.55 },
+    { text: targetText, language: 'zh-CN', rate: 0.55 },
   ]
 }
 

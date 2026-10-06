@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'target-blast', title: 'Shadow Strike Dojo', description: 'Read or hear the prompt, then help a ninja strike the matching practice target.', activityLabel: 'Choose answers', channels: ['tier-1-writing', 'tier-2-reading'], skills: ['receptive'], inputKind: 'selection', estimatedSeconds: [90, 150] } as const

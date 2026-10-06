@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
       text: string
       lang = ''
       rate = 1
+      onstart: null | (() => void) = null
       onend: null | (() => void) = null
       onerror: null | (() => void) = null
 
@@ -28,8 +29,12 @@ test.beforeEach(async ({ page }) => {
       value: {
         cancel() {},
         resume() {},
+        getVoices() { return [] },
         speak(utterance: FakeSpeechSynthesisUtterance) {
-          window.setTimeout(() => utterance.onend?.(), 0)
+          window.setTimeout(() => {
+            utterance.onstart?.()
+            utterance.onend?.()
+          }, 0)
         },
       },
     })
@@ -77,8 +82,12 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
 
   await openGrade2LearningActivity(page, 'The Final Boss Test', 'Reading Test')
   await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
-  await expect(page.getByText('Test Review 1', { exact: true })).toBeVisible()
+  await expect(page.getByText('Collect first', { exact: true })).toBeVisible()
+  await expect(page.getByText(/model pronunciation and correctness buttons stay hidden until every response is collected/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record my reading' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit reading' }).click()
+  await expect(page.getByRole('heading', { name: 'Exit without saving?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Exit without saving' }).click()
 
   await openGrade2LearningActivity(page, 'Enter the Spirit Realm', 'Reading mastery')
   await expect(page.getByText(SESSION_ONLY_NOTE, { exact: true })).toBeVisible()
@@ -88,9 +97,9 @@ test('Grade 2 exposes all Tier 2 routes and recovers from microphone denial with
     if (await page.getByRole('heading', { name: 'Reading path complete' }).isVisible()) break
     await page.getByRole('button', { name: 'Record my reading' }).click()
     const fallback = page.getByRole('alert').filter({ hasText: 'Recording is unavailable.' })
-    await expect(fallback).toContainText('Microphone permission was not granted.')
+    await expect(fallback).toContainText('Microphone access is blocked.')
+    await expect(fallback).toContainText('allow Microphone')
     await page.getByRole('button', { name: 'Continue without recording' }).click()
-    await page.getByRole('button', { name: 'Hear the example pronunciation' }).click()
     await expect(page.getByText('Did your reading match the example?')).toBeVisible()
     await page.getByRole('button', { name: 'Yes' }).click()
   }

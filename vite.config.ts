@@ -48,8 +48,12 @@ function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
-function releaseIdentityHtml(fileName: string, gitRevision: string) {
-  const identity = releaseIdentityByPage[fileName as keyof typeof releaseIdentityByPage]
+function releaseIdentityHtml(fileName: string, gitRevision: string, familySync = false) {
+  const baseIdentity = releaseIdentityByPage[fileName as keyof typeof releaseIdentityByPage]
+  const identity =
+    baseIdentity && familySync
+      ? { ...baseIdentity, status: 'Family beta', persistence: 'Parent account sync · recordings session only' }
+      : baseIdentity
   if (!identity) return ''
   const summary = `${identity.grade} · ${identity.status} · v${APP_VERSION} · r${gitRevision.slice(0, 7)} · ${identity.persistence}`
   const report = [
@@ -85,7 +89,7 @@ export default defineConfig(({ command, mode }) => {
       {
         name: 'release-identity',
         transformIndexHtml(html, context) {
-          const identity = releaseIdentityHtml(basename(context.filename), gitRevision)
+          const identity = releaseIdentityHtml(basename(context.filename), gitRevision, mode === 'family-sync')
           return identity ? html.replace('<body>', `<body>\n    ${identity}`) : html
         },
       },
@@ -96,13 +100,18 @@ export default defineConfig(({ command, mode }) => {
         input:
           mode === 'family-beta'
             ? { app: familyBetaInputByGrade[familyBetaGrade as keyof typeof familyBetaInputByGrade] }
-            : {
-                app: page('./index.html'),
-                grade5LearningHub: page('./grade5-learning-hub.html'),
-                kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
-                testing: page('./testing.html'),
-                ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
-              },
+            : mode === 'production' || mode === 'staging'
+              ? { app: page('./index.html') }
+              : {
+                  app: page('./index.html'),
+                  grade5LearningHub: page('./grade5-learning-hub.html'),
+                  kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
+                  testing: page('./testing.html'),
+                  ...(['reconciliation', 'family-sync'].includes(mode)
+                    ? { familyPreview: page('./family-beta-preview.html') }
+                    : {}),
+                  ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
+                },
       },
     },
   }

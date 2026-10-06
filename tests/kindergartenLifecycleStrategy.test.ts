@@ -19,7 +19,10 @@ const fixturePath = fileURLToPath(new URL('./fixtures/kindergarten-workbook.json
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as Omit<SheetsWorkbookPayload, 'sourceType'>
 const candidates = inspectKindergartenWorkbook(fixture)
 const vocabularySets: LifecycleSet[] = candidates
-  .filter((candidate) => candidate.datasetId && candidate.assignedWeek && candidate.tier1.length > 0)
+  .filter((candidate) => candidate.datasetId
+    && candidate.assignedWeek
+    && candidate.tier1.length > 0
+    && candidate.assignedWeek.endDate <= kindergarten2026UnitPlan[0].instructionEndDate)
   .map((candidate) => ({
     datasetId: candidate.datasetId!,
     grade: candidate.grade,

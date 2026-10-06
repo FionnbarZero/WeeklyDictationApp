@@ -118,6 +118,9 @@ const DEMO_PRODUCTION_ROUNDS: readonly ProductionGameRound[] = DEMO_TERMS.slice(
 }))
 
 const GAME_MARKS: Record<LearningGameId, string> = {
+  'stroke-order-kindergarten': '🥋',
+  'stroke-order-grade2': '🥋',
+  'stroke-order-grade5': '🥋',
   'speed-match': '⚡',
   'target-blast': '☄️',
   'lily-pad-path': '🐸',

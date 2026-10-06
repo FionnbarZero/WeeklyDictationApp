@@ -11,7 +11,7 @@ export function LearningGameShell({ title, eyebrow, progress, onExit, children }
   readonly onExit: () => void
   readonly children: ReactNode
 }) {
-  return <main className="lg-shell">
+  return <main className="lg-shell" data-report-activity={title}>
     <div className="lg-topbar">
       <button className="lg-exit" type="button" onClick={onExit}><X size={18} /> Exit game</button>
       <span className="lg-progress" aria-label={`Progress: ${progress}`}>{progress}</span>

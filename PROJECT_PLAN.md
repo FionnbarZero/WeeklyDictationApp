@@ -2,6 +2,10 @@
 
 > **Archived on 2026-10-01.** This document is preserved for its privacy, migration, grade-policy, and design history. It is no longer the authority for current status or execution order. See [`STATUS.md`](./STATUS.md), [`ROADMAP.md`](./ROADMAP.md), and the [`docs/decisions`](./docs/decisions/README.md) index. Do not delete this archive when migrating durable decisions into ADRs.
 
+The October 5, 2026 owner-approved game rules are saved in the active plan under [EduGames rules within Ninja Dojo](./ROADMAP.md#edugames-rules-within-ninja-dojo), including tier selection, contextual prompts, and acquisition placement.
+
+The owner's later answers are recorded in [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md). They supersede this archive's conflicting experimental labels, per-release approval gates, and blanket restrictions on English meanings or generated contexts. Use [STATUS.md](./STATUS.md) for what is actually live and the [roadmap](./ROADMAP.md#immediate-execution-order) for next work.
+
 ## Purpose
 
 A browser-based Mandarin dictation practice app for children in Chinese immersion programs. The public interface will be hosted through Firebase Hosting and support multiple families and children. The first target language is simplified Mainland Mandarin. Pinyin and English meanings will not appear in the child interface.
@@ -387,6 +391,8 @@ The child-facing response changes from writing to reading aloud:
 4. Collect an explicit child self-assessment.
 
 Tier 2 uses the same high-level grade lifecycle as Tier 1: Acquisition with Familiar and Earned DTs, Expanded Trials, and Correction; the grade’s configured Test Review stages; and an offered or standalone Tier 2 Warmup using already learned Tier 2 words. Grade 5 therefore uses Acquisition, Test Review 1, and Test Review 2 for both Tier 1 writing and Tier 2 reading, and each pathway offers its own up-to-six-term Tier 2 Warmup. Tier 1 and Tier 2 maintain separate progressions, attempts, adaptive state, Warmup graphs, and scores.
+
+Kindergarten Tier 2 reading has one explicitly calibrated Acquisition exception while the Kindergarten writing strategy remains unchanged. It retains the writing Introduction, then uses five scored independent target presentations separated by 1, 2, 3, and 3 DTs: `target, DT, target, DT, DT, target, DT, DT, DT, target, DT, DT, DT, target`. Those targets use 10, 9, 8, 7, and 6 seconds. Its Correction routine is feedback-only and does not contribute to the official score. A failed final Expanded target returns after Correction as the same scored six-second target, and the word enters the Earned DT pool only after that scored target is correct. This Kindergarten reading strategy remains session-only while it is perfected; Grade 2 and Grade 5 do not inherit it until separately approved.
 
 Tier 2 Familiar DT trials use a separate per-child pool of easy displayed characters or words that the child reads aloud. The interim Tier 2 pool is seeded from the approved bootstrap terms listed above; it uses the same term text as Tier 1 but never shares Tier 1 attempts or performance state. Earned Tier 2 DT items come only from completed Tier 2 reading targets. The future imported standard list and individualized baseline replace the bootstrap configuration only through the dedicated DT-baseline branch.
 

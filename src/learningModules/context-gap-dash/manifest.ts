@@ -1,0 +1,1 @@
+export const gameManifest = { id: 'context-gap-dash', title: 'Context Gap Dash', description: 'Listen to the Mandarin sentence, hear each choice, then send Kai racing through the correct word gate.', activityLabel: 'Complete sentences', channels: ['tier-2-reading'], skills: ['reading', 'receptive'], inputKind: 'context', estimatedSeconds: [90, 150] } as const

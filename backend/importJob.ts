@@ -20,7 +20,7 @@ export type ImportJobDependencies = {
 
 const defaults: ImportJobDependencies = { googleAccessToken, fetchGooglePresentation, listDatasetIds, listDatasetReferences, writeImportBatch, firestoreAccessToken }
 
-export type ImportJobResult = { batch: ImportBatchOutcome; written: boolean; writeSummary?: { written: number; datasetCount: number; documentCount: number } }
+export type ImportJobResult = { batch: ImportBatchOutcome; written: boolean; writeSummary?: { written: number; datasetCount: number; documentCount: number; runId?: string; status?: 'complete' } }
 
 export async function runImportJob(config: ImportJobConfig, dependencies: ImportJobDependencies = defaults): Promise<ImportJobResult> {
   const profile = profileForDeckId(config.deckId)

@@ -8,7 +8,21 @@ export type Word = {
   language?: 'mandarin' | 'english'
   tier?: 'tier-1' | 'tier-2' | 'tier-3'
   activityType?: 'dictation' | 'reading' | 'spelling'
-  audio?: { storagePath?: string; voice?: string; generatedAt?: string }
+  learningModule?: AuthoritativeLearningModuleMetadata
+  audio?: {
+    storagePath?: string
+    contextStoragePath?: string
+    voice?: string
+    contextVoice?: string
+    generatedAt?: string
+  }
+}
+
+export type AuthoritativeLearningModuleMetadata = {
+  meaning?: string
+  pinyinText?: string
+  pinyinSteps?: { pinyin: string; candidates: string[] }[]
+  context?: { sentence: string; tokens: string[] }
 }
 
 export type DatasetSourceMetadata = {

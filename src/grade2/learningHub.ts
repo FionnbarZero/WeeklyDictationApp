@@ -11,6 +11,7 @@ import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
 
 export type Grade2LearningHubLaunch =
   | { kind: 'writing'; target: PracticeTarget }
+  | { kind: 'stroke-order'; target: PracticeTarget }
   | { kind: 'reading'; pathway: Tier2ReadingPathway }
   | { kind: 'warmup' }
 
@@ -127,7 +128,7 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
     eyebrow: 'Grade 2 adventures',
     title: 'Ready for your next challenge,',
     titleAccent: `${input.childName}?`,
-    introduction: 'Choose one path. Writing and reading use the same weekly words while keeping their own practice records.',
+    introduction: 'Choose one path. Writing and reading follow their separate teacher targets and practice records.',
     heroTitle: 'Learn. Practice.',
     heroAccent: 'Grow stronger.',
     heroDescription: 'Visit this week’s Dojo, build Ninja Skills, prepare for the Final Boss, or strengthen mastery words in the Spirit Realm.',
@@ -151,6 +152,7 @@ export function grade2LearningHubView(input: Grade2LearningHubInput): LearningHu
         cohort: dojoCohort,
         activities: [
           launchActivity('dojo-writing', 'Tier 1 · Writing', 'Learn to Write', 'Complete the established Grade 2 Acquisition sequence.', '✍️', input.acquisitionTarget ? { kind: 'writing', target: input.acquisitionTarget } : null, 'No writing Acquisition cohort is active.'),
+          launchActivity('dojo-stroke-order', 'Tier 1 · Writing game', 'Stroke Order', 'Watch each target form, copy its strokes, then write it from memory.', '🥋', input.acquisitionTarget ? { kind: 'stroke-order', target: input.acquisitionTarget } : null, 'No writing Acquisition cohort is active.'),
           launchActivity('dojo-reading', 'Tier 2 · Reading', 'Read the Words', 'Look, listen, record, compare, and self-assess each reading word.', '🎧', readingAcquisition ? { kind: 'reading', pathway: readingAcquisition } : null, 'No reading Acquisition cohort is active.'),
         ],
       }),

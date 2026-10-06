@@ -1,0 +1,10 @@
+name = "meghangames-home"
+account_id = "4c11957e0121dba35fe2f16be80526f8"
+compatibility_date = "2026-10-04"
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "./public"
+
+# Existing custom-domain association remains unchanged. Do not add routes or DNS.

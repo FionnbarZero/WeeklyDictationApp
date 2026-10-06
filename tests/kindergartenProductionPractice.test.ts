@@ -23,9 +23,10 @@ const candidates = inspectKindergartenWorkbook(fixture)
 const datasets = candidates
   .filter((candidate) => candidate.status === 'valid')
   .map(datasetFromCanonicalCandidate)
+const unitOneDatasets = datasets.filter((dataset) => dataset.endDate <= '2026-09-27')
 
 test('validated Kindergarten candidates project through the source-neutral production boundary', () => {
-  assert.equal(datasets.length, 4)
+  assert.equal(datasets.length, 5)
   assert.ok(datasets.every(isSourceNeutralCanonicalDataset))
   assert.ok(datasets.every(isCanonicalDataset))
   assert.ok(datasets.every((dataset) => dataset.source?.sourceType === 'google-sheets'))
@@ -34,6 +35,7 @@ test('validated Kindergarten candidates project through the source-neutral produ
   assert.ok(datasets.every((dataset) => dataset.vocabulary?.tier1.every((word) => word.activityType === 'dictation')))
   assert.ok(datasets.every((dataset) => dataset.vocabulary?.tier2.every((word) => word.activityType === 'reading')))
   assert.deepEqual(datasets.flatMap((dataset) => dataset.vocabulary?.tier2.map((word) => word.text) || []), [
+    '猫', '狗', '鸟',
     '红色', '蓝色', '有', '没有', '我', '开心', '爸爸', '妈妈', '小',
   ])
 
@@ -60,7 +62,7 @@ test('Kindergarten production practice has an owned profile but remains behind t
 })
 
 test('the Unit 1 review creates one cumulative session and persists one score per source week', () => {
-  const lifecycle = resolveDatasetLifecycles(datasets, new Date(2026, 9, 3, 12, 0))
+  const lifecycle = resolveDatasetLifecycles(unitOneDatasets, new Date(2026, 9, 3, 12, 0))
   const targets = practiceTargetsForLifecycle(lifecycle)
   const acquisition = targets.find((target) => target.phase === 'acquisition')
   const review = targets.find((target) => target.phase === 'test-review')
@@ -95,7 +97,7 @@ test('the Unit 1 review creates one cumulative session and persists one score pe
     warmupSkipped: true,
     primaryAnswers: session.primaryQueue.map((word) => ({ word, correct: true, revealMethod: 'timer' })),
   }
-  const committed = commitCompletedSession(createInitialState(datasets), completed, new Date(2026, 9, 3, 12, 0))
+  const committed = commitCompletedSession(createInitialState(unitOneDatasets), completed, new Date(2026, 9, 3, 12, 0))
 
   assert.equal(committed.results.filter((result) => result.phase === 'test-review').length, 14)
   assert.deepEqual(committed.scores.map((score) => score.datasetId), review.reviewDatasets?.map((dataset) => dataset.id))

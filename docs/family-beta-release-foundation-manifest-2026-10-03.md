@@ -45,9 +45,9 @@ This is a rehearsal manifest for the C0 release-safety candidate. It is not depl
 - Backup required before a Grade 2 promotion: yes
 - Candidate backup data scope: whole local practice state plus Acquisition and Warmup recovery journals
 - Candidate context checks: exact origin and selected Grade 2 profile
-- Current family-browser backup SHA-256: pending adult-controlled export
-- Non-writing preview restore: pending against the real family-browser export
-- Lossless restore: unavailable and still required before C0 closes
+- Current family-browser backup SHA-256: `40bb29c3bc97ef7a047c73de2dfdbbabadddaa5e13ebebaa700405e4bbdbec17`
+- Non-writing preview restore: passed against the private real-family export on 2026-10-04
+- Lossless restore rehearsal: passed offline with injected interruption rollback, exact apply, and idempotent replay; active-browser apply remains adult-controlled
 - Privacy: backup files remain private and are excluded from routine bug reports
 
 ## Rollback

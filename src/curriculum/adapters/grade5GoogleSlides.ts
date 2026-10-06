@@ -89,6 +89,7 @@ export type Grade5SourceIssue = CurriculumSourceIssue & {
     | 'missing_confirmation_vocabulary'
     | 'confirmation_mismatch'
     | 'progression_chain_blocked'
+    | 'unchanged_cohort'
   severity: 'info' | 'warning' | 'error'
   message: string
   sourceUnitId?: string
@@ -100,7 +101,9 @@ export type Grade5SourceExtraction = {
 } & CurriculumImportResult<Grade5SourceIssue, CurriculumProgressionEvidence, Grade5BookResource>
 
 function textFromUnknown(value: unknown): string {
-  if (typeof value === 'string') return value
+  // Slides responses also contain style strings (font families, alignment,
+  // units, URLs). Only actual text/content fields belong in the vocabulary.
+  if (typeof value === 'string') return ''
   if (!value || typeof value !== 'object') return ''
   if (Array.isArray(value)) return value.map(textFromUnknown).filter(Boolean).join('')
   const record = value as Record<string, unknown>
@@ -377,6 +380,12 @@ function progressionEvidenceFor(
   let chainBlocked = false
   for (const candidate of ordered.slice(baselineIndex + 1)) {
     const parsed = parsedBySourceUnitId.get(candidate.source.sourceUnitId)
+    const previousSource = parsedBySourceUnitId.get(previousAccepted.source.sourceUnitId)
+    if (parsed && previousSource && sameVocabulary(candidateVocabulary(candidate), candidateVocabulary(previousAccepted))
+      && sameVocabulary(parsed.confirmation, previousSource.confirmation)) {
+      issues.push(issueForCandidate(candidate, 'unchanged_cohort', 'info', 'This teacher update repeats the same current and upcoming vocabulary. Existing assignments stay active without an extra progression event.'))
+      continue
+    }
     if (chainBlocked) {
       issues.push(issueForCandidate(candidate, 'progression_chain_blocked', 'error', 'This cohort remains pending because an earlier Grade 5 source conflict has not been resolved.'))
       continue

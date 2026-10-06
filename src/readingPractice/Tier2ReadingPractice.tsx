@@ -17,7 +17,14 @@ import {
   tier2ReadingPathwayTargets,
 } from '../tier2/pathway.ts'
 import { ReadingResponsePanel } from './ReadingResponsePanel.tsx'
-import { readingShowCopyInstruction, type ReadingSpeechSegment } from './contracts.ts'
+import {
+  playCachedWordAudioOnce,
+  playReadingTeachingSequence,
+  stopActiveAudio,
+} from '../audio/promptAudio.ts'
+import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
+import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
+import { familyAcquisitionStore } from '../familyBeta/acquisitionRuntime.ts'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -43,10 +50,15 @@ type QueueRun = {
 type ReadingRun = AcquisitionRun | QueueRun
 
 export type Tier2ReadingPracticeSummary = {
+  readonly sessionId?: string
   readonly kind: Tier2ReadingPathway['kind']
   readonly attempted: number
   readonly correct: number
   readonly diagnostics: number
+}
+
+export type ReadingTeachingIntroductionContext = {
+  readonly firstPresentationOfNewTarget: boolean
 }
 
 export type Tier2ReadingPracticeProps = {
@@ -55,37 +67,29 @@ export type Tier2ReadingPracticeProps = {
   readonly label: string
   readonly onExit: () => void
   readonly onComplete: (summary: Tier2ReadingPracticeSummary) => void
+  readonly onPlayReference?: (target: Tier2ReadingTarget) => Promise<void>
+  readonly onPlayTeachingIntroduction?: (
+    target: Tier2ReadingTarget,
+    context: ReadingTeachingIntroductionContext,
+  ) => Promise<void>
   readonly random?: () => number
   readonly sessionNote?: string
+  readonly persistAcquisition?: boolean
 }
 
-function speakSegment(segment: ReadingSpeechSegment): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!segment.text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      reject(new Error('Mandarin speech playback is unavailable.'))
-      return
-    }
-    const utterance = new SpeechSynthesisUtterance(segment.text)
-    utterance.lang = segment.language
-    utterance.rate = segment.rate
-    let settled = false
-    const finish = (error?: Error) => {
-      if (settled) return
-      settled = true
-      window.clearTimeout(timeout)
-      if (error) reject(error)
-      else resolve()
-    }
-    const timeout = window.setTimeout(() => finish(new Error('Mandarin speech playback timed out.')), 10_000)
-    utterance.onend = () => finish()
-    utterance.onerror = () => finish(new Error('Mandarin speech playback failed.'))
-    window.speechSynthesis.speak(utterance)
+function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playCachedWordAudioOnce(target, { playbackRate: audio.readingRate })
+}
+
+function defaultTeachingIntroduction(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
+  const audio = gradeAudioProfileFor(profile.grade)
+  return playReadingTeachingSequence(target, {
+    playbackRate: audio.readingRate,
+    sentenceRate: audio.readingRate,
+    instructionRate: audio.instructionRate,
+    pauseMs: audio.segmentGapMs,
   })
-}
-
-async function speakSequence(segments: readonly ReadingSpeechSegment[]) {
-  window.speechSynthesis.cancel()
-  for (const segment of segments) await speakSegment(segment)
 }
 
 function initialRun(
@@ -129,21 +133,66 @@ function summaryFor(run: ReadingRun): Tier2ReadingPracticeSummary {
   }
 }
 
-export function Tier2ReadingPractice({
+export function Tier2ReadingPractice(props: Tier2ReadingPracticeProps) {
+  if (props.pathway.kind === 'test-review') {
+    const targets = tier2ReadingPathwayTargets(props.pathway)
+    return <DeferredTestReview
+      mode="reading"
+      targets={targets}
+      activityLabel={props.label}
+      onPlayReference={(target) => props.onPlayReference
+        ? props.onPlayReference(target)
+        : defaultReadingReference(props.profile, target)}
+      onDiscard={props.onExit}
+      onComplete={(completion) => props.onComplete({
+        kind: 'test-review',
+        attempted: completion.attempted,
+        correct: completion.correct,
+        diagnostics: 0,
+      })}
+      exitLabel="Exit reading"
+      sessionNote={props.sessionNote}
+    />
+  }
+  return <ImmediateTier2ReadingPractice {...props} />
+}
+
+function ImmediateTier2ReadingPractice({
   profile,
   pathway,
   label,
   onExit,
   onComplete,
+  onPlayReference,
+  onPlayTeachingIntroduction,
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
+  persistAcquisition = true,
 }: Tier2ReadingPracticeProps) {
   const randomRef = useRef(random)
-  const [run, setRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
+  const [savedStore] = useState(() => pathway.kind === 'acquisition' && persistAcquisition
+    ? familyAcquisitionStore<Tier2ReadingTarget, 'recording-comparison'>(
+      tier2ReadingAcquisitionTargetSet(pathway), profile.acquisitionStrategy, 'reading-dojo', 'tier-2')
+    : null)
+  const [saveError, setSaveError] = useState('')
+  const [run, setRun] = useState<ReadingRun>(() => savedStore
+    ? { kind: 'acquisition', targetSet: tier2ReadingAcquisitionTargetSet(pathway),
+      flow: savedStore.current.envelope.flow, assessments: savedStore.current.assessments }
+    : initialRun(profile, pathway, randomRef.current))
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+  useEffect(() => () => stopActiveAudio(), [])
 
   function answerAcquisition(correct: boolean) {
+    if (savedStore && run.kind === 'acquisition') {
+      try {
+        const saved = savedStore.answer(correct, 'recording-comparison')
+        setRun({ ...run, flow: saved.envelope.flow, assessments: saved.assessments })
+        setSaveError('')
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : 'Response could not be saved. Please retry.')
+      }
+      return
+    }
     setRun((current) => {
       if (current.kind !== 'acquisition' || !current.flow.prompt) return current
       const transition = transitionAcquisition(
@@ -182,7 +231,7 @@ export function Tier2ReadingPractice({
   }
 
   function exit() {
-    window.speechSynthesis?.cancel()
+    stopActiveAudio()
     onExit()
   }
 
@@ -199,6 +248,10 @@ export function Tier2ReadingPractice({
   const progressPosition = run.kind === 'acquisition' ? run.flow.targetIndex : run.index
   const progress = complete ? 100 : Math.round((progressPosition / Math.max(total, 1)) * 100)
   const showContinue = run.kind === 'acquisition' && acquisitionPrompt?.kind === 'show-copy'
+  const firstPresentationOfNewTarget = showContinue
+    && run.kind === 'acquisition'
+    && run.flow.phase === 'introduction'
+    && run.flow.correctionRole === undefined
   const promptId = acquisitionPrompt?.id
     || `${pathway.kind}:${run.kind === 'acquisition' ? run.flow.trialNumber : run.index}:${target?.id || 'complete'}`
   const promptPhase = run.kind === 'acquisition'
@@ -206,15 +259,17 @@ export function Tier2ReadingPractice({
     : run.kind === 'test-review'
       ? `Test Review ${pathway.cycle || 1}`
       : 'Mastery reading'
-  const summary = summaryFor(run)
+  const summary = { ...summaryFor(run), ...(savedStore ? { sessionId: savedStore.current.sessionId } : {}) }
 
-  return <div className="reading-practice-page practice-page">
+  return <div className="reading-practice-page practice-page" data-report-activity="Reading practice" data-report-phase={complete ? 'complete' : promptPhase} data-report-target={complete ? undefined : target?.id} data-report-position={position}>
     <div className="practice-top">
       <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
+      {savedStore && !complete && <button type="button" className="secondary-button" onClick={() => onComplete(summary)}>Done for today</button>}
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>
-    <div className="practice-progress"><span style={{ width: `${progress}%` }} /></div>
+    <div className="practice-progress" role="progressbar" aria-label="Reading practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${complete ? 'complete-card' : ''}`} aria-live="polite">
+      {saveError && <p role="alert">{saveError} Exit and reopen to retry the unfinished prompt.</p>}
       {complete ? <>
         <span className="complete-mark"><Check size={27} /></span>
         <p className="eyebrow">{profile.grade} · Tier 2 reading</p>
@@ -233,8 +288,13 @@ export function Tier2ReadingPractice({
           targetText={target.text}
           assessed={!showContinue}
           teachingPrompt={showContinue}
-          onPlayReference={() => speakSequence([{ text: target.text, language: 'zh-CN', rate: 0.55 }])}
-          onPlayTeachingIntroduction={() => speakSequence(readingShowCopyInstruction(target.text))}
+          allowSkipTimer={run.kind === 'mastery'}
+          onPlayReference={() => onPlayReference
+            ? onPlayReference(target)
+            : defaultReadingReference(profile, target)}
+          onPlayTeachingIntroduction={() => onPlayTeachingIntroduction
+            ? onPlayTeachingIntroduction(target, { firstPresentationOfNewTarget })
+            : defaultTeachingIntroduction(profile, target)}
           onAnswer={(correct) => run.kind === 'acquisition' ? answerAcquisition(correct) : answerQueue(correct)}
           onContinue={() => answerAcquisition(true)}
         />

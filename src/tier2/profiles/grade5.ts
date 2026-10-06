@@ -12,7 +12,7 @@ export const grade5Tier2ReadingProfile = {
   responseRule: TIER2_READING_RESPONSE_RULE,
   lifecycleStrategy: grade5ProgressionLifecycleStrategy,
   acquisitionStrategy: acquisitionStrategyForTier2Reading({
-    id: 'grade-5-tier-2-reading-acquisition-v1',
+    id: 'grade-5-tier-2-reading-acquisition-v2',
     familiarDatasetId: '__grade-5-tier-2-familiar-dt__',
     familiarTargetIdPrefix: 'grade-5-tier-2-familiar-dt',
     pattern: grade5AcquisitionStrategy,

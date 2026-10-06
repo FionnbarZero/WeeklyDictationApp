@@ -1,4 +1,9 @@
-import type { AcquisitionStrategy, AcquisitionTarget } from '../acquisition/contracts.ts'
+import type {
+  AcquisitionCorrectionPolicy,
+  AcquisitionSequenceToken,
+  AcquisitionStrategy,
+  AcquisitionTarget,
+} from '../acquisition/contracts.ts'
 import type { Tier2ReadingTarget } from './contracts.ts'
 
 type ReadingStrategyOptions = {
@@ -6,13 +11,16 @@ type ReadingStrategyOptions = {
   readonly familiarDatasetId: string
   readonly familiarTargetIdPrefix: string
   readonly pattern: AcquisitionStrategy
+  readonly version?: number
+  readonly expandedSequence?: readonly AcquisitionSequenceToken[]
+  readonly correctionPolicy?: AcquisitionCorrectionPolicy
 }
 
 function readingFamiliarTargets(options: ReadingStrategyOptions): Tier2ReadingTarget[] {
   return options.pattern.familiarDtTargets.map((target, index) => ({
     id: `${options.familiarTargetIdPrefix}-${index + 1}`,
     text: target.text,
-    sentence: '',
+    sentence: target.sentence,
     datasetId: options.familiarDatasetId,
     language: 'mandarin',
     tier: 'tier-2',
@@ -29,14 +37,16 @@ function readingFamiliarTargets(options: ReadingStrategyOptions): Tier2ReadingTa
 export function acquisitionStrategyForTier2Reading(
   options: ReadingStrategyOptions,
 ): AcquisitionStrategy<Tier2ReadingTarget> {
+  const correctionPolicy = options.correctionPolicy || options.pattern.correctionPolicy
   return {
     id: options.id,
-    version: options.pattern.version,
+    version: options.version ?? options.pattern.version,
     timers: { ...options.pattern.timers },
     dtObservationMode: options.pattern.dtObservationMode,
+    ...(correctionPolicy ? { correctionPolicy } : {}),
     familiarDtTargets: readingFamiliarTargets(options),
     introductionSequence: [...options.pattern.introductionSequence],
-    expandedSequence: [...options.pattern.expandedSequence],
+    expandedSequence: [...(options.expandedSequence || options.pattern.expandedSequence)],
     correctionSequence: [...options.pattern.correctionSequence],
   }
 }

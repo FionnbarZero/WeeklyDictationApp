@@ -4,6 +4,10 @@
 
 - [Current status](../STATUS.md) — verified capabilities, gates, blockers, and frozen contracts.
 - [Execution roadmap](../ROADMAP.md) — cleanup, production readiness, and rollout as separate programs.
+- [October 5 product and release policy](./decisions/0008-family-beta-product-and-release-policy.md) — current owner decisions, including standing approval for tested beta updates and generated supporting content.
+- [Verified family-sync release](./family-sync-release-2026-10-05.md) — current shared grade links, parent authentication, artifact identities, checks, and rollback targets.
+- [Earlier one-device release](./family-beta-live-2026-10-05.md) — historical publication evidence and previous rollback identities.
+- [Supplemental content policy](./dictation-context-review.md) — generated meanings, sentences, and pinyin; teacher vocabulary remains authoritative.
 - [Prototype baseline](./prototype-baseline.md) — immutable archive plus living regression references.
 - [Architecture decisions](./decisions/README.md) — accepted decisions and consequences.
 

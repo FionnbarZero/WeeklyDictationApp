@@ -38,6 +38,8 @@
 .learning-hub-detail-heading p:last-child { max-width: 680px; margin: 0; color: #69717e; line-height: 1.6; }
 .learning-hub-section-mark { display: grid; place-items: center; width: 70px; height: 70px; flex: 0 0 auto; border-radius: 50%; background: rgb(255 255 255 / 72%); font-family: Georgia, serif; font-size: 30px; }
 .learning-hub-cohorts { display: grid; gap: 14px; }
+.learning-hub-cohort-picker { display: grid; gap: 7px; max-width: 420px; margin: 0 0 14px; color: #4d5562; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.learning-hub-cohort-picker select { width: 100%; min-height: 46px; padding: 10px 38px 10px 13px; border: 1px solid #d8d1e5; border-radius: 12px; color: #322b40; background: #fff; font: 700 .95rem/1.2 Inter, system-ui, sans-serif; letter-spacing: 0; text-transform: none; }
 .learning-hub-cohort { padding: 25px; border: 1px solid #e5e0d8; border-radius: 22px; background: #fff; box-shadow: 0 10px 25px rgb(35 49 57 / 5%); }
 .learning-hub-cohort-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .learning-hub-cohort-heading h2 { margin: 3px 0 0; font-family: Georgia, serif; font-size: 1.8rem; font-weight: 500; }

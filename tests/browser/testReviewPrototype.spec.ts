@@ -1,6 +1,15 @@
 import { expect, test } from './fixtures.ts'
 
 test('writing responses stay hidden until one final all-target review', async ({ page }) => {
+  // This test verifies collection/review semantics, not OS voice timing.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+      cancel() {}, resume() {}, getVoices() { return [] },
+      speak(utterance: SpeechSynthesisUtterance) {
+        setTimeout(() => { utterance.onstart?.({} as SpeechSynthesisEvent); utterance.onend?.({} as SpeechSynthesisEvent) }, 0)
+      },
+    } })
+  })
   await page.goto('/grade2-test-review-prototype.html')
   await page.getByRole('button', { name: 'Try Writing Test Review' }).click()
 

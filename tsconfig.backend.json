@@ -10,6 +10,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup"],
+  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup", "src/familyBeta/model.ts", "src/familyBeta/curriculum.ts"],
   "files": ["src/config.ts", "src/releaseMetadata.ts", "src/domain.ts", "src/kindergartenSheetsImporter.ts", "src/localHydration.ts", "src/slidesImporter.ts", "src/practice/lifecycleProjection.ts", "src/testReview/contracts.ts"]
 }

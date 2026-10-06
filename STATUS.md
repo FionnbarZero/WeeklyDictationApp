@@ -1,102 +1,77 @@
 # Weekly Dictation status
 
-Last verified: 2026-10-03; Program B1 is complete; C0 controlled-family-beta safety is partially operational
+Updated October 5, 2026 against the [verified family-sync release](./docs/family-sync-release-2026-10-05.md) and the owner's [clarified product policy](./docs/decisions/0008-family-beta-product-and-release-policy.md).
 
-This is the authoritative capability matrix for what exists today. A visible UI is not evidence that a capability is durable or eligible for production. Product direction and sequencing live in [ROADMAP.md](./ROADMAP.md); durable architecture decisions live in [docs/decisions](./docs/decisions/README.md).
+This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
-## Current operating posture
+## Live family beta
 
-The product owner reports that one child currently uses each of the Kindergarten, Grade 2, and Grade 5 applications. This is treated as a closed, adult-supervised family beta rather than a public production launch. Kindergarten and Grade 5 now have independent Firebase Hosting destinations with visible release identity and non-expiring rollback targets. Grade 2 remains on its existing GitHub Pages origin so browser-local progress is not stranded. Its real-state disposable restore rehearsal passed; the immediate priority is the exact final artifact preview, repeat rehearsal, adult approval, guarded promotion, and recorded observation.
-
-The synthetic staging project remains separate from the family beta. Real child data, email addresses, recordings, authentication state, and copied family documents are still prohibited in synthetic staging. See [Controlled family beta operations](./docs/family-beta-operations.md).
-
-## Repository health
-
-| Gate | Current result | Notes |
+| Grade | Permanent app | Verified release |
 | --- | --- | --- |
-| Unit tests | 548 passing | Node test runner, including Grade 2 delivery locking, selected-child restore, crash recovery, workspace synchronization, practice coordination, and staging safeguards |
-| Production build | Passing | TypeScript/Vite build plus deterministic performance-budget check |
-| Initial asset budgets | Passing | Production: 549,332/550,000 JavaScript bytes and 41,725/60,000 CSS bytes; 668 JavaScript bytes remain |
-| Browser suite | 44 passing | Includes selected-profile backup/restore, prototype parity, persistence recovery, keyboard focus, and unexpected console/page-error enforcement |
-| Isolated family-beta artifacts | 3 passing | Kindergarten and Grade 5 remain session-only; Grade 2 opens at artifact root with durable-progress protection and visible persistence identity |
-| Frozen static prototype suite | 23 tests | Includes five selected visual references |
-| Public preview suite | 3 passing | Grade 5 Acquisition and both reentry pathways in the built preview artifact |
-| Firestore Emulator | 8 passing | Includes scoped collection-group reads; expected permission-denied output is produced by rejection tests |
-| Frozen reference | `prototype-baseline-2026-10` | Commit `104ca427c743c5e4d00fb9e995c06e1a06874649` |
+| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `ef9d1f75df7046152c4829e8f7cfca635f303461` |
+| Grade 2 | [Open Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same application source |
+| Grade 5 | [Open Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same application source |
 
-The results above passed locally on the Grade 2 delivery candidate based on merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39`; remote CI and the final candidate revision remain pending. `main` requires a pull request, a current branch, all four checks, resolved conversations, and administrator compliance; force pushes and deletion are disabled.
-
-## Capability vocabulary
-
-- **Availability:** `none`, `development`, or `main-app`.
-- **Results:** `session-only` or `durable`.
-- **Recording:** `prompt-local` or `retained`. This applies only where audio recording exists.
-- **Production eligibility:** `blocked` or `eligible`. Eligibility is fail-closed and does not itself deploy or activate a source.
-
-Combinations must be validated centrally before the planned capability registry can activate them. For example, `main-app` plus `session-only` must not be presented as durable progress, and `retained` recording cannot become eligible without an approved privacy and deletion policy.
+These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` serves all three. Existing Firebase and Pages grade addresses were also updated to the same application assets, preserving their local data; see the release inventory for their exact versions. [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53) reconciles this published source into main without another deployment.
 
 ## Current capability matrix
 
-| Grade / capability | Availability | Results | Recording | Family beta posture | Production eligibility | Principal blocker |
-| --- | --- | --- | --- | --- | --- | --- |
-| Grade 2 Tier 1 writing | `main-app` | `durable` | N/A | Used in closed beta with browser-local persistence; selected-child verified restore is merged and passed a disposable rehearsal against real family-browser state, but is not live | `blocked` | Exact final artifact preview/rehearsal, release promotion, migration rehearsal, full rollback drill, operations acceptance, and authorized cross-device pilot |
-| Grade 2 Tier 2 reading | `main-app` | `session-only` | `prompt-local` | Experimental only; must not imply retained progress | `blocked` | Approved behavior contract, versioned Tier 2 persistence, and reference-audio/privacy gates |
-| Kindergarten Tier 1 writing | `development` | `session-only` | N/A | Independent stable destination is live with explicit session-only status; activity defects are under adult review | `blocked` | Approved activity contract and bug fixes, trusted importer deployment, source activation review, and release relationship with Tier 2 |
-| Kindergarten Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Explicit writing-only/session-only/durable decision plus Tier 2 persistence if durable results are promised |
-| Grade 5 Tier 1 writing | `development` | `session-only` | N/A | Independent stable destination is live with explicit experimental and session-only status | `blocked` | Recorded adult activity acceptance, approved behavior contract, importer activation, Warmup policy, and durable two-review-cycle persistence |
-| Grade 5 Tier 2 reading | `development` | `session-only` | `prompt-local` | Experimental only; no retained result or audio | `blocked` | Grade 5 gates plus separate Tier 2 persistence/privacy approval |
-| Trusted curriculum importer | `development` | N/A | N/A | Not part of the current child beta delivery path | `blocked` | Shadow comparison, idempotency evidence, IAM, importer monitoring, and rollback |
+| Capability | Verified state | Remaining work or limit |
+| --- | --- | --- |
+| Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
+| Game results | Hosted Memory Lanterns completion and score/reload checks passed for each grade | Per-game weekly progress and detailed coverage for every game are requirements, not verified complete |
+| Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
+| Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
+| Problem reports | Reports save locally and survive reload; end-of-session batch sharing and cancellation checks passed | Email/share needs a user action; pause-and-preserve behavior across every game is required and still needs verification |
+| Audio and microphone | Hosted tests cover browser playback, synthetic recording/comparison, denial handling, and cleanup | Physical iMac/iPad sound and microphone testing remains necessary; no retained recordings |
+| Writing and Stroke Order | Both retained in product direction with separate acquisition progress and identical grade-owned teaching rules | Full live compliance and removal of experimental labels must be checked; neither is replaced |
+| Reading and Whispering Scrolls | Both retained with separate acquisition progress; Whispering Scrolls must follow reading acquisition rules, including comparison before self-assessment | Verify complete integration against those rules; no automatic pronunciation grading |
+| Other EduGames | Grade-specific game library and some integrated activities exist | Apply the owner's exact tier, sentence, pinyin, and reinforcement rules; do not assume generic game availability means integration is finished |
+| Generated supplemental content | Owner authorizes generated meanings, contexts, and pinyin without manual preapproval | Existing approval-only catalog implementation must be changed and validated before claiming automatic content generation is live |
+| Cross-device accounts and storage | Owner-authorized parent sign-in and family syncing live; two independent browser contexts recovered the score and next prompt | Use the same parent account sequentially across devices; children never sign in; historical data migration remains separate |
 
-## Frozen contracts during Program A
+The teacher documents remain authoritative for target vocabulary, tiers, dates, and units. Generated supporting content must be distinguished from teacher-authored material. Future Kindergarten unit boundaries come from those materials, not an inferred calendar.
 
-Unless a separately reviewed behavior change explicitly authorizes a difference, cleanup must preserve:
+## Data and privacy
 
-- stored schemas and migration compatibility;
-- progression, visit, session, attempt, result, score, and receipt identities;
-- journal-before-state and atomic cloud write semantics;
-- revision checks, exact retries, and idempotent recovery;
-- grade-owned lifecycle and practice policies;
-- child-facing behavior represented by the frozen prototype routes and tests.
+Confirmed scores and saved practice sync through the parent's private family account. Reports, pending/offline writes and older device-only histories still depend on their browser and origin. Do not clear site data to fix a version problem. Parent controls can export scoped device records without authentication tokens. Existing legacy Grade 2 keys remain separate; do not silently migrate or assume complete historical continuity.
 
-## Program A closeout
+Recordings are temporary comparison data, not stored audio. Synthetic tests do not access real child records. The separate synthetic staging environment remains prohibited from receiving real child data, recordings, credentials, or copied family state.
 
-Program A is complete and merged through pull request 39 at `10d44ccd7c006d02c73e7accb11fb29bff54caf6`. The remote quality, build, browser, frozen-prototype, public-preview, and Firestore Emulator jobs passed before merge.
+Rollback releases are retained for both Firebase sites and in Grade 2 deployment history. Restoring code is not a substitute for data recovery. Legacy Grade 2 backup/restore evidence does not establish coverage of every new ledger, report, or mastery key; verify that before a storage migration.
 
-- Workspace reads, assembly, open-session reconciliation, and pending-transition recovery are explicit application operations. Synchronization is ordered, abortable, and covered for stale results, retry, acknowledgement failure, and idempotence.
-- Practice start, answer, exit, experience-specific skip/discard, interstitial advancement, and completion are behind capability-based application operations. React does not import raw Firestore or recovery-journal operations.
-- Initial cloud hydration performs 15 fixed operations. Dataset words and child attempts each use one bounded collection-group query, so there are no per-dataset word or per-history-session attempt fetches.
-- Firestore query durations are exposed as browser Performance entries prefixed `weekly-dictation:firestore-query:`. Latency remains a recorded diagnostic rather than a hard CI gate.
-- Practice, Tier 2 reading, and Progress/History are lazy chunks. The build gate also rejects prototype/development modules in the initial dependency graph.
-- Active practice and reading are represented by one discriminated state, preventing invalid simultaneous experiences.
-- Tier 2 capabilities use centrally validated constrained values. Kindergarten remains fail-closed and writing-only in the integrated application unless a separate Tier 2 release change is approved.
+## Verification evidence
 
-## Known active risks
+October 5 family-sync release checks:
 
-- Kindergarten and Grade 5 have independent Hosting sites, exact-artifact release tooling, and non-expiring revision-scoped rollback channels serving the same Hosting versions as live. Detailed adult acceptance/observation remains unrecorded.
-- Kindergarten live source revision `250d348f52792235ce72b7157b26e7cd0ad7f0bb` predates the rewritten-root no-cache fix. Root requests can remain cached for one hour until an approved replacement artifact is promoted.
-- Grade 2 progress remains tied to the current browser profile and GitHub Pages origin. A checksum-verified whole-local-state backup, deep scope-aware preview, selected-child transactional apply, automatic pre-restore backup, and startup recovery are merged. Their real-state disposable rehearsal passed on `8355522`, but the live artifact does not contain them and the final promotion revision must be rehearsed again.
-- Grade 2's live artifact still lacks visible release and persistence identity. Kindergarten and Grade 5 display those fields consistently.
-- Kindergarten and Grade 5 are session-only development experiences; beta availability must not be presented as saved progress or production eligibility.
-- Current activity tests largely characterize the implemented activity models rather than independently proving that every child-facing activity is product-correct. Activity corrections remain grade-specific behavior changes.
-- Program B1 is complete. B2 synthetic migration rehearsal, backup/restore, failure injection, and the full rollback drill wait until C0 beta safety controls pass.
-- The authorized cross-device Grade 2 pilot with real profile data remains B3 work and cannot begin until B2 passes.
-- The initial JavaScript budget passes with only 470 bytes of headroom. New initial-path UI or dependency work requires measurable bundle reduction first.
-- The bounded word and attempt queries intentionally load continuation-critical records during synchronization. Their 10,000-word and 5,000-attempt safety limits need production-shaped validation before pilot or production acceptance.
-- Browser latency is environment-sensitive and remains telemetry rather than a hard gate.
-- Kindergarten and Grade 5 source activation, durable Tier 2 results, and Grade 5 multi-review persistence remain separate Program C decisions and implementations.
+- 635 unit tests plus type checking, lint, and repository formatting passed.
+- All 44 grade browser regressions passed, including both Grade 5 Boss rounds, Kindergarten's 14 Unit 1 targets, saved acquisition, curriculum, scores, reporting and recording cleanup.
+- The exact additive production policy passed five scoped emulator checks, including interrupted uploads, conflicts and family isolation. Stricter legacy root-policy tests are not represented as production passes.
+- Two independent browser contexts passed parent sign-up/sign-in, score and next-prompt recovery, all three grade hubs and denied anonymous access on the packaged build and again on the published canonical origin. Synthetic accounts/records were cleaned up without touching real records.
+- All 120 public application files matched their recorded hashes at all four live origins. Desktop and iPad-style entry/report controls and homepage links passed.
+- Physical iMac/iPad sound and microphone quality and remaining activity integration still need family testing; no claim is made that all screens or activities are bug-free.
 
-## Program B1 staging foundation
+## Next work and release policy
 
-Program B1 is complete on `ops/staging-foundation`. The isolated `weekly-dictation-staging` Firebase project has its own web app, Hosting site, native Firestore database in `nam5`, Email/Password Authentication, reCAPTCHA Enterprise App Check registration, deletion protection, synthetic-only build gates, and guarded deploy command. It remains on the no-billing plan; App Check enforcement remains disabled for monitoring.
+Work Grade 5 first: fix daily-learning and Boss bugs, then integrate the games, then improve the UI. Target iMac and iPad. Keep activity choice free and Done for today as the session endpoint. Do not introduce a required daily path.
 
-Commit `29e0f972f7ec` is live at `https://weekly-dictation-staging.web.app`. A synthetic Grade 2 lifecycle verified exact Acquisition resume, atomic scored completion, immediate reload, and second-browser visibility. All 104 observed protected requests carried App Check, and the run produced no page errors, failed responses, or unexpected console errors. Temporary accounts and family data were deleted afterward; the Auth inventory is empty. Detailed release, rollback, retention, and test evidence is in [docs/staging-foundation.md](./docs/staging-foundation.md).
+The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations.
+
+Main was not merged by the October 5 release operation. The owner authorized source reconciliation on October 6 through [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53). Live artifacts retain their exact published source identity even after source integration; a merge is not a deployment. Documentation, tests and development-only dependency fixes do not by themselves update the live application.
+
+## Completed engineering foundations
+
+Program A cleanup was merged through PR 39 at `10d44ccd7c006d02c73e7accb11fb29bff54caf6`. It established explicit workspace/practice operations, bounded reads, lazy history/activity loading, and persistence boundaries. Those contracts remain protected; product behavior changes are deliberate changes rather than incidental refactoring.
+
+Program B1 established isolated synthetic staging. Its recorded deployment `29e0f972f7ec` passed synthetic Grade 2 acquisition resume, atomic completion, reload, second-browser visibility, App Check observation, and cleanup. See [staging evidence](./docs/staging-foundation.md). This is not evidence of real-family cross-device synchronization in the live beta.
+
+The family-sync release now supplies its own live two-browser acceptance; broader legacy B2 migration/restore and B4 operations acceptance remain unfinished. Dependency advisories, declared Node 24 versus local runtime differences, bundle budgets, and physical-device performance remain engineering risks. Production's unchanged legacy rules also differ from the stricter root repository policy; this release adds only the separately tested family collections.
 
 ## Documentation authority
 
-1. [STATUS.md](./STATUS.md) states current capability.
-2. [ROADMAP.md](./ROADMAP.md) states approved execution order and exit gates.
-3. [docs/decisions](./docs/decisions/README.md) records durable decisions and their consequences.
-4. [docs/prototype-baseline.md](./docs/prototype-baseline.md) records the immutable and living prototype references.
-5. [docs/family-beta-operations.md](./docs/family-beta-operations.md) defines the closed beta release, backup, bug-response, and rollback procedure.
-6. [docs/family-beta-release-inventory.md](./docs/family-beta-release-inventory.md) records the verified child-facing URLs, deployment artifact, persistence locations, and unresolved release protections without child-identifying data.
-7. [PROJECT_PLAN.md](./PROJECT_PLAN.md) is a preserved historical archive and is not an active status source.
+1. This file states verified current capability and explicit gaps.
+2. [ROADMAP.md](./ROADMAP.md) states approved priorities and product requirements.
+3. [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md) records the latest owner decisions and superseded restrictions.
+4. [Release inventory](./docs/family-beta-release-inventory.md) and [live release record](./docs/family-beta-live-2026-10-05.md) identify permanent URLs and rollback artifacts.
+5. [Family beta operations](./docs/family-beta-operations.md) defines testing, publication, containment, and data protection.
+6. [PROJECT_PLAN.md](./PROJECT_PLAN.md) and dated earlier reports preserve history; their superseded implementation status is not an execution instruction.

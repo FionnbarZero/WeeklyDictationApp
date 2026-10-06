@@ -32,7 +32,8 @@ test('the Grade 5 landing experience uses the shared child-facing visual languag
   const grade5View = source('src/grade5Lab/learningHubView.ts')
 
   assert.match(harnessHtml, /src\/learningHub\/learningHub\.css/)
-  assert.match(harnessSource, /import \{ LearningHub \} from '\.\/learningHub\/LearningHub\.tsx'/)
+  assert.match(harnessSource, /import \{ PreviewLearningHub as LearningHub \} from '\.\/familyBeta\/PreviewLearningHub\.tsx'/)
+  assert.match(source('src/familyBeta/PreviewLearningHub.tsx'), /familyPreview \? <EnhancedHub .* : <LearningHub/)
   assert.match(harnessSource, /<LearningHub model=\{grade5LearningHubView\(learningHubModel\)\}/)
   assert.match(sharedHub, /Ready for your next|model\.title/)
   assert.match(sharedHub, /learning-hub-source-details/)
@@ -85,7 +86,7 @@ test('Grade 2 and the Grade 5 lab render the same shared PracticeView component'
   assert.match(appSource, /import type \{ PracticeAnswer \} from '\.\/practice\/PracticeView'/)
   assert.match(appSource, /import\('\.\/practice\/PracticeView\.tsx'\)[\s\S]*module\.PracticeView/)
   assert.match(harnessSource, /import \{ PracticeView, type PracticeAnswer \} from '\.\/practice\/PracticeView\.tsx'/)
-  assert.match(appSource, /<PracticeView session=\{session\}/)
+  assert.match(appSource, /<PracticeView\s+session=\{session\}/)
   assert.match(harnessSource, /<PracticeView/)
   assert.match(practiceView, /className=\{`practice-page\$\{showingWritingResponse/)
   assert.match(practiceView, /<PromptCountdown/)

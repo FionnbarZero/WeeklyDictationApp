@@ -17,6 +17,7 @@ export const kindergartenSheetsProfile: SheetsParserProfile = {
   academicYearStartMonth: 8,
   writingCharacterHeading: /Writing\s+character\s*[:：]?/i,
   highFrequencyWordHeading: /High(?:\s*[-–—]\s*|\s+)frequency(?:\s+reading)?\s+words?\s*[:：]?/i,
+  unitHeading: /Unit\s+(\d+)\s*:\s*([^\r\n]+)/i,
   reviewWeekHeading: /End\s+of\s+Unit(?:\s+Project\s+Making)?[\s\S]*End\s+of\s+Unit\s+Assessment\s+Review/i,
   termSeparators: /[、,，;；]+/,
 }
@@ -35,6 +36,7 @@ export type KindergartenSheetsDryRunUnit = {
   tier1: string[]
   tier2: string[]
   tier3: string[]
+  curriculumUnit: WeeklyDatasetCandidate['curriculumUnit']
   status: WeeklyDatasetCandidate['status']
   blockers: string[]
 }
@@ -48,6 +50,7 @@ export function kindergartenSheetsDryRunSummary(candidates: WeeklyDatasetCandida
     tier1: candidate.tier1.map((term) => term.text),
     tier2: candidate.tier2.map((term) => term.text),
     tier3: candidate.tier3.map((term) => term.text),
+    curriculumUnit: candidate.curriculumUnit,
     status: candidate.status,
     blockers: candidate.validationOutcomes
       .filter((outcome) => outcome.severity === 'error')

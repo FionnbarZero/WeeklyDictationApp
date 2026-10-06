@@ -30,7 +30,7 @@ export async function fetchGoogleSpreadsheet(
   const metadataUrl = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}`)
   metadataUrl.searchParams.set('includeGridData', 'false')
   metadataUrl.searchParams.set('fields', 'spreadsheetId,sheets(properties(sheetId,title,index))')
-  const metadataResponse = await fetchImpl(metadataUrl, { headers })
+  const metadataResponse = await fetchImpl(metadataUrl, { headers, signal: AbortSignal.timeout(20_000) })
   const metadata = await metadataResponse.json().catch(() => ({})) as GoogleSheetsMetadataResource
   if (!metadataResponse.ok) throw new Error(`Google Sheets metadata read failed: ${apiError(metadata, metadataResponse.statusText)}`)
 
@@ -47,7 +47,7 @@ export async function fetchGoogleSpreadsheet(
   valuesUrl.searchParams.set('majorDimension', 'ROWS')
   valuesUrl.searchParams.set('valueRenderOption', 'FORMATTED_VALUE')
   for (const sheet of sheets) valuesUrl.searchParams.append('ranges', quotedSheetRange(sheet.title))
-  const valuesResponse = await fetchImpl(valuesUrl, { headers })
+  const valuesResponse = await fetchImpl(valuesUrl, { headers, signal: AbortSignal.timeout(20_000) })
   const valuesBody = await valuesResponse.json().catch(() => ({})) as GoogleSheetsValuesResource
   if (!valuesResponse.ok) throw new Error(`Google Sheets values read failed: ${apiError(valuesBody, valuesResponse.statusText)}`)
 

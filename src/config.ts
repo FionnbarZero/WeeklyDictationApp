@@ -7,7 +7,7 @@ import { requirePracticeProfileForGrade } from './practice/profiles/registry.ts'
 export { APP_VERSION } from './releaseMetadata.ts'
 export const DEFAULT_TIME_ZONE = 'America/Los_Angeles'
 export const SUPPORTED_GRADES = ['Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5'] as const
-export type SupportedGrade = typeof SUPPORTED_GRADES[number]
+export type SupportedGrade = (typeof SUPPORTED_GRADES)[number]
 
 export const DEFAULT_GRADE = 'Grade 2' as SupportedGrade
 export const DEFAULT_SCHOOL_YEAR = '2026–2027'
@@ -34,20 +34,52 @@ export type CurriculumSourceRegistryEntry = {
 export type DeckRegistryEntry = CurriculumSourceRegistryEntry
 
 export const SOURCE_REGISTRY: CurriculumSourceRegistryEntry[] = [
-  { grade: 'Grade 2', displayName: 'Grade 2', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE2_DECK_ID, parserProfileId: 'grade-2-2026-27-weekly-focus', sourceAdapterId: 'grade-2-google-slides', practiceProfileId: grade2PracticeProfile.id, active: true },
-  { grade: 'Grade 5', displayName: 'Grade 5', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-slides', sourceDocumentId: GRADE5_DECK_ID, parserProfileId: 'grade-5-2026-27-weekly-focus', sourceAdapterId: 'grade-5-google-slides-v1', practiceProfileId: 'grade-5-unimplemented', active: false },
-  { grade: 'Kindergarten', displayName: 'Kindergarten', schoolYear: DEFAULT_SCHOOL_YEAR, sourceType: 'google-sheets', sourceDocumentId: KINDERGARTEN_SHEETS_ID, parserProfileId: 'kindergarten-2026-27-weekly-focus', sourceAdapterId: 'kindergarten-google-sheets-v1', practiceProfileId: kindergartenWritingPracticeProfile.id, active: false },
+  {
+    grade: 'Grade 2',
+    displayName: 'Grade 2',
+    schoolYear: DEFAULT_SCHOOL_YEAR,
+    sourceType: 'google-slides',
+    sourceDocumentId: GRADE2_DECK_ID,
+    parserProfileId: 'grade-2-2026-27-weekly-focus',
+    sourceAdapterId: 'grade-2-google-slides',
+    practiceProfileId: grade2PracticeProfile.id,
+    active: true,
+  },
+  {
+    grade: 'Grade 5',
+    displayName: 'Grade 5',
+    schoolYear: DEFAULT_SCHOOL_YEAR,
+    sourceType: 'google-slides',
+    sourceDocumentId: GRADE5_DECK_ID,
+    parserProfileId: 'grade-5-2026-27-weekly-focus',
+    sourceAdapterId: 'grade-5-google-slides-v1',
+    practiceProfileId: 'grade-5-unimplemented',
+    active: false,
+  },
+  {
+    grade: 'Kindergarten',
+    displayName: 'Kindergarten',
+    schoolYear: DEFAULT_SCHOOL_YEAR,
+    sourceType: 'google-sheets',
+    sourceDocumentId: KINDERGARTEN_SHEETS_ID,
+    parserProfileId: 'kindergarten-2026-27-weekly-focus',
+    sourceAdapterId: 'kindergarten-google-sheets-v1',
+    practiceProfileId: kindergartenWritingPracticeProfile.id,
+    active: false,
+  },
 ]
 export const DECK_REGISTRY = SOURCE_REGISTRY
 
 export function productionSourceIsActive(grade: string | null | undefined, schoolYear: string | null | undefined) {
   if (!grade || !schoolYear) return false
   let requestedYear: string
-  try { requestedYear = schoolYearToken(schoolYear) } catch { return false }
-  return SOURCE_REGISTRY.some((source) =>
-    source.active
-      && source.grade === grade
-      && schoolYearToken(source.schoolYear) === requestedYear,
+  try {
+    requestedYear = schoolYearToken(schoolYear)
+  } catch {
+    return false
+  }
+  return SOURCE_REGISTRY.some(
+    (source) => source.active && source.grade === grade && schoolYearToken(source.schoolYear) === requestedYear,
   )
 }
 
@@ -62,12 +94,14 @@ export const firebaseConfig = {
   appId: runtimeEnv.VITE_FIREBASE_APP_ID || '',
 }
 export const firebaseAppCheckSiteKey = runtimeEnv.VITE_FIREBASE_APPCHECK_SITE_KEY || ''
+export const accountSignupEnabled = runtimeEnv.VITE_ALLOW_ACCOUNT_SIGNUP === 'true'
 export const stagingObservabilityEnabled =
   deploymentEnvironment === 'staging' && runtimeEnv.VITE_STAGING_OBSERVABILITY === 'true'
 
 const stagingFirebaseError = (() => {
   if (deploymentEnvironment !== 'staging') return null
-  if (runtimeEnv.VITE_STAGING_SYNTHETIC_ONLY !== 'true') return 'The staging application is restricted to synthetic data.'
+  if (runtimeEnv.VITE_STAGING_SYNTHETIC_ONLY !== 'true')
+    return 'The staging application is restricted to synthetic data.'
   if (!/(?:^|-)staging(?:-|$)|(?:^|-)stg(?:-|$)/i.test(firebaseConfig.projectId)) {
     return 'The staging application refused a Firebase project without a staging identity.'
   }
@@ -81,5 +115,6 @@ const stagingFirebaseError = (() => {
 
 export const firebaseConfigReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && !stagingFirebaseError)
 
-export const firebaseSetupMessage = stagingFirebaseError
-  || 'Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to .env.local for authenticated cloud practice.'
+export const firebaseSetupMessage =
+  stagingFirebaseError ||
+  'Firebase is not configured. Add VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID to .env.local for authenticated cloud practice.'
