@@ -40,9 +40,11 @@ async function launch(page: Page, slug: string, channel: 'writing' | 'reading') 
   if (slug === 'grade2' && (await page.getByLabel('Practice week').inputValue()) !== '2026-09-21') {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByLabel('Practice week').selectOption('2026-09-21')
-    await expect(page.locator('iframe')).toHaveAttribute('src', /week=2026-09-21/)
+    await expect(page.locator('iframe:visible')).toHaveAttribute('src', /week=2026-09-21/)
   }
-  const frame = page.frameLocator('iframe')
+  const frame = page.frameLocator('iframe:visible')
+  const back = frame.getByRole('button', { name: /Back to all challenges/ })
+  if (await back.isVisible()) await back.click()
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   const label =
     slug === 'kindergarten'

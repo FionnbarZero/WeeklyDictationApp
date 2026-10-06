@@ -1,3 +1,4 @@
+import { scopedActivityStorage } from '../activity/scopedStorage.ts'
 import { BETA_GRADES, isBetaResult, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
 import { isFamilyActivityContext } from './context.ts'
 import '../activity/activityLifecycle.ts'
@@ -92,19 +93,5 @@ function confirmResult(result: BetaResult) {
 
 export function activityStorage(): Storage {
   if (!familyPreview) return localStorage
-  const prefix = `family-beta-activity:${previewProfile()?.id || 'unselected'}:`
-  const keys = () =>
-    Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)!).filter((k) => k.startsWith(prefix))
-  return {
-    get length() {
-      return keys().length
-    },
-    key: (index) => keys()[index]?.slice(prefix.length) ?? null,
-    getItem: (key) => localStorage.getItem(prefix + key),
-    setItem: (key, value) => localStorage.setItem(prefix + key, value),
-    removeItem: (key) => localStorage.removeItem(prefix + key),
-    clear: () => {
-      for (const key of keys()) localStorage.removeItem(key)
-    },
-  }
+  return scopedActivityStorage(localStorage, `family-beta-activity:${previewProfile()?.id || 'unselected'}:`)
 }

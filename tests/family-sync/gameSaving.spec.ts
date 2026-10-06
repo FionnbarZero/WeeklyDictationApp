@@ -18,7 +18,9 @@ async function completeLanterns(page: Page) {
     await cards.nth(indices[1]).click()
     if (face !== unique[unique.length - 1]) await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
   }
-  await expect(page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })).toBeVisible()
+  await expect(
+    page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }),
+  ).toBeVisible()
   return new Set(faces).size
 }
 async function results(page: Page) {
@@ -34,7 +36,9 @@ for (const [slug, grade, childId] of grades) {
     await page.goto(`/?grade=${slug}`)
     await expect(page).toHaveURL(new RegExp(`/family-beta-preview\\?grade=${slug}$`))
     await expect(page.getByLabel('Child profile')).toHaveValue(childId)
-    await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(
+      page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ }),
+    ).toBeVisible()
     const attempted = await completeLanterns(page)
     await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
@@ -62,14 +66,20 @@ test('missing child context keeps completed game open for retry', async ({ page 
   await page.goto('/family-beta-preview.html?grade=grade5')
   await completeLanterns(page)
   const profile = await page.evaluate(() => sessionStorage.getItem('family-beta-preview-selected-v1'))
-  await page.evaluate(() => { sessionStorage.removeItem('family-beta-preview-selected-v1') })
-  await page.locator('iframe:visible').evaluate(frame => frame.removeAttribute('data-family-profile'))
+  await page.evaluate(() => {
+    sessionStorage.removeItem('family-beta-preview-selected-v1')
+  })
+  await page.locator('iframe:visible').evaluate((frame) => frame.removeAttribute('data-family-profile'))
   await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
-  await expect(page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })).toBeVisible()
+  await expect(
+    page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }),
+  ).toBeVisible()
   await expect(page.frameLocator('iframe:visible').getByRole('alert')).toContainText('Keep the game open')
   expect(await results(page)).toHaveLength(0)
   await page.evaluate((profile) => sessionStorage.setItem('family-beta-preview-selected-v1', profile!), profile)
-  await page.locator('iframe:visible').evaluate((frame, profile) => frame.setAttribute('data-family-profile', profile!), profile)
+  await page
+    .locator('iframe:visible')
+    .evaluate((frame, profile) => frame.setAttribute('data-family-profile', profile!), profile)
   await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
   expect(await results(page)).toHaveLength(1)
 })
@@ -78,18 +88,21 @@ test('partial save retries the same attempt without a duplicate or closing early
   await page.goto('/alias/family-beta-preview.html?grade=grade5')
   await completeLanterns(page)
   // Hold the online acknowledgement so this test inspects the interrupted local write.
-  await page.route('**/firestore.googleapis.com/**', route => route.abort('internetdisconnected'))
-  await page.frameLocator('iframe:visible').locator('body').evaluate(() => {
-    const original = Storage.prototype.setItem
-    let failed = false
-    Storage.prototype.setItem = function (key, data) {
-      if (!failed && key.startsWith('family-beta-preview-results-v1:')) {
-        failed = true
-        throw new Error('Synthetic interrupted ledger write')
+  await page.route('**/firestore.googleapis.com/**', (route) => route.abort('internetdisconnected'))
+  await page
+    .frameLocator('iframe:visible')
+    .locator('body')
+    .evaluate(() => {
+      const original = Storage.prototype.setItem
+      let failed = false
+      Storage.prototype.setItem = function (key, data) {
+        if (!failed && key.startsWith('family-beta-preview-results-v1:')) {
+          failed = true
+          throw new Error('Synthetic interrupted ledger write')
+        }
+        return original.call(this, key, data)
       }
-      return original.call(this, key, data)
-    }
-  })
+    })
   const done = page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })
   await done.click()
   await expect(done).toBeVisible()
@@ -110,22 +123,27 @@ test('partial save retries the same attempt without a duplicate or closing early
 test('a ledger write must be read back before presenting completion', async ({ page }) => {
   await page.goto('/family-beta-preview?grade=grade5')
   await completeLanterns(page)
-  await page.route('**/firestore.googleapis.com/**', route => route.abort('internetdisconnected'))
-  await page.frameLocator('iframe:visible').locator('body').evaluate(() => {
-    const original = Storage.prototype.setItem
-    let ignored = false
-    Storage.prototype.setItem = function (key, data) {
-      if (!ignored && key.startsWith('family-beta-preview-results-v1:')) {
-        ignored = true
-        return
+  await page.route('**/firestore.googleapis.com/**', (route) => route.abort('internetdisconnected'))
+  await page
+    .frameLocator('iframe:visible')
+    .locator('body')
+    .evaluate(() => {
+      const original = Storage.prototype.setItem
+      let ignored = false
+      Storage.prototype.setItem = function (key, data) {
+        if (!ignored && key.startsWith('family-beta-preview-results-v1:')) {
+          ignored = true
+          return
+        }
+        return original.call(this, key, data)
       }
-      return original.call(this, key, data)
-    }
-  })
+    })
   const done = page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })
   await done.click()
   await expect(done).toBeVisible()
-  await expect(page.frameLocator('iframe:visible').getByRole('alert')).toContainText('could not be confirmed on this device')
+  await expect(page.frameLocator('iframe:visible').getByRole('alert')).toContainText(
+    'could not be confirmed on this device',
+  )
   expect(await results(page)).toHaveLength(0)
   await done.click()
   await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
@@ -141,7 +159,9 @@ for (const [entry, slug, childId] of [
     await page.goto(entry)
     await expect(page).toHaveURL(new RegExp(`/family-beta-preview\\?grade=${slug}$`))
     await expect(page.getByLabel('Child profile')).toHaveValue(childId)
-    await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(
+      page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ }),
+    ).toBeVisible()
   })
 }
 

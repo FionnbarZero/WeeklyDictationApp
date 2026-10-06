@@ -197,7 +197,7 @@ function FamilyPreview() {
     } catch (e) {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       setError(message(e))
-      setStatus('Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.')
+      setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       try {
         setResults(previewResults())
       } catch {

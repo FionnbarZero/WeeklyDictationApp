@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
@@ -6,12 +6,14 @@ test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 async function writing(page: Page, slug: string) {
   await page.goto(`/?grade=${slug}`)
   if (slug === 'grade2') {
-    page.on('dialog', d => d.accept())
+    page.on('dialog', (d) => d.accept())
     await page.getByLabel('Practice week').selectOption('2026-09-21')
   }
   const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-  await frame.getByRole('button', { name: slug === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true }).click()
+  await frame
+    .getByRole('button', { name: slug === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true })
+    .click()
   if (slug !== 'kindergarten') await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
   await expect(frame.getByRole('timer')).toBeVisible()
   await expect(frame.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
@@ -41,7 +43,9 @@ for (const [slug, grade] of grades) {
     await page.mouse.up()
     const ink = await frame.locator('.skywriting-stroke').getAttribute('points')
     expect(ink).toBeTruthy()
-    await frame.locator('body').evaluate(body => { body.dataset.continuityProbe = 'same-document' })
+    await frame.locator('body').evaluate((body) => {
+      body.dataset.continuityProbe = 'same-document'
+    })
     await page.getByRole('button', { name: 'Progress', exact: true }).click()
     await page.waitForTimeout(1200)
     await page.getByRole('button', { name: 'Activities', exact: true }).click()
@@ -53,9 +57,13 @@ for (const [slug, grade] of grades) {
 
   test(`${grade}: a sync failure keeps the activity available and reviewed work queued`, async ({ page }) => {
     const frame = await writing(page, slug)
-    await frame.locator('body').evaluate(body => { body.dataset.continuityProbe = 'same-document' })
-    await page.route('**/firestore.googleapis.com/**', route => route.abort('internetdisconnected'))
-    await frame.locator('body').evaluate(() => parent.postMessage({ type: 'family-beta-result-ready' }, location.origin))
+    await frame.locator('body').evaluate((body) => {
+      body.dataset.continuityProbe = 'same-document'
+    })
+    await page.route('**/firestore.googleapis.com/**', (route) => route.abort('internetdisconnected'))
+    await frame
+      .locator('body')
+      .evaluate(() => parent.postMessage({ type: 'family-beta-result-ready' }, location.origin))
     await expect(page.getByRole('alert').first()).toBeVisible()
     await expect(frame.locator('body')).toHaveAttribute('data-continuity-probe', 'same-document')
     await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
@@ -65,7 +73,12 @@ for (const [slug, grade] of grades) {
       await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
     }
     await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
-    const pending = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('family-beta-preview-pending-v1:')).map(key => JSON.parse(localStorage.getItem(key)!)))
+    const pending = () =>
+      page.evaluate(() =>
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith('family-beta-preview-pending-v1:'))
+          .map((key) => JSON.parse(localStorage.getItem(key)!)),
+      )
     expect(await pending()).toHaveLength(1)
     expect((await pending())[0]).toMatchObject({ grade, channel: 'writing', correct: 1, attempted: 1 })
     await page.unroute('**/firestore.googleapis.com/**')
@@ -84,12 +97,12 @@ test('manual pause survives reporting, inner Exit pauses, and discard needs conf
   await expect(frame.getByRole('timer')).toHaveText(remaining)
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
-  page.once('dialog', dialog => dialog.dismiss())
+  page.once('dialog', (dialog) => dialog.dismiss())
   await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
   await page.getByRole('button', { name: 'Resume Grade 5 activity', exact: true }).click()
   await expect(frame.getByRole('timer')).toHaveText(remaining)
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
-  page.once('dialog', dialog => dialog.accept())
+  page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
 })
@@ -97,7 +110,9 @@ test('manual pause survives reporting, inner Exit pauses, and discard needs conf
 test('changing weeks and children keeps distinct owners and restores the original document', async ({ page }) => {
   const frame = await writing(page, 'grade5')
   await frame.getByRole('button', { name: 'Pause', exact: true }).click()
-  await frame.locator('body').evaluate(body => { body.dataset.ownerProbe = 'original-grade5' })
+  await frame.locator('body').evaluate((body) => {
+    body.dataset.ownerProbe = 'original-grade5'
+  })
   const week = await page.locator('iframe:visible').getAttribute('data-family-week')
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
@@ -111,13 +126,22 @@ test('changing weeks and children keeps distinct owners and restores the origina
   await expect(frame.locator('body')).toHaveAttribute('data-owner-probe', 'original-grade5')
   expect(await page.locator('iframe[data-family-slot]').count()).toBe(3)
   // Even a stale mutable selector cannot reassign this frame's reviewed response.
-  await page.evaluate(() => sessionStorage.setItem('family-beta-preview-selected-v1', JSON.stringify({ id: 'synthetic-k', nickname: 'K', grade: 'Kindergarten', active: true })))
+  await page.evaluate(() =>
+    sessionStorage.setItem(
+      'family-beta-preview-selected-v1',
+      JSON.stringify({ id: 'synthetic-k', nickname: 'K', grade: 'Kindergarten', active: true }),
+    ),
+  )
   for (let i = 0; i < 4; i++) {
     await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
     await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   }
   await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
-  const results = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('family-beta-preview-results-v1:')).map(k => JSON.parse(localStorage.getItem(k)!)))
+  const results = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('family-beta-preview-results-v1:'))
+      .map((k) => JSON.parse(localStorage.getItem(k)!)),
+  )
   expect(results).toHaveLength(1)
   expect(results[0]).toMatchObject({ childId: 'synthetic-g5', grade: 'Grade 5', correct: 1, attempted: 1 })
 })
@@ -130,7 +154,7 @@ test('a game feedback delay stays paused behind reporting and navigation', async
   const cards = frame.locator('.lg-memory-card')
   await expect(cards.first()).toBeVisible()
   const faces = await cards.locator('.lg-card-face b').allTextContents()
-  const second = faces.findIndex(face => face !== faces[0])
+  const second = faces.findIndex((face) => face !== faces[0])
   await cards.nth(0).click()
   await cards.nth(second).click()
   await page.getByRole('button', { name: 'Report a problem', exact: true }).click()

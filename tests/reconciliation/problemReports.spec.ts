@@ -95,7 +95,7 @@ for (const [slug, grade] of [
 ]) {
   test(`${grade}: reporting stays available across screens and exports after reload`, async ({ page }) => {
     await page.goto(`/family-beta-preview.html?grade=${slug}`)
-    await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     await openReport(page)
     await page.getByLabel('What did you see or hear?').fill(`A problem in ${grade}`)
     await page.getByLabel('What kind of problem?').selectOption('Sound or microphone')
@@ -132,7 +132,7 @@ for (const [slug, grade] of [
 
 test('a nested activity captures its prompt and keeps a draft when closed', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
-  const frame = page.frameLocator('iframe')
+  const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /The Final Boss Test/ }).click()
   await frame.getByRole('button', { name: 'Writing Test', exact: true }).click()
   await expect(frame.locator('[data-report-target]')).toBeVisible()
@@ -157,7 +157,7 @@ test('a nested activity captures its prompt and keeps a draft when closed', asyn
 
 test('storage and clipboard failures retain the report for manual copying', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=grade2')
-  await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
   await page.evaluate(() => {
     const original = Storage.prototype.setItem
     Storage.prototype.setItem = function (key, value) {

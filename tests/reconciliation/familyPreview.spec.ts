@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 async function finishMemory(page: Page) {
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
-  const cards = page.locator('.lg-memory-card')
+  const cards = page.frameLocator('iframe:visible').locator('.lg-memory-card')
   await expect(cards.first()).toBeVisible()
   // Inspect rendered card faces to deterministically exercise a complete game.
   const faces = await cards.locator('.lg-card-face b').allTextContents()
@@ -36,10 +36,10 @@ async function finishMemory(page: Page) {
     await cards.nth(indices[0]).click()
     await cards.nth(indices[1]).click()
     if (face === uniqueFaces[uniqueFaces.length - 1])
-      await expect(page.getByRole('button', { name: 'Back to Ninja Skills', exact: true })).toBeVisible()
+      await expect(page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })).toBeVisible()
     else await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
   }
-  await page
+  await page.frameLocator('iframe:visible')
     .getByRole('button', { name: /Done|Finish|Back to/ })
     .last()
     .click()
@@ -56,7 +56,7 @@ for (const [slug, grade, childId] of [
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto(`/family-beta-preview.html?grade=${slug}`)
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     await expect(page.getByLabel('Child profile')).toHaveValue(childId)
     await page.screenshot({ path: `reconciliation-test-results/${slug}-preview.png`, fullPage: true })
@@ -78,13 +78,13 @@ for (const [slug, grade, childId] of [
   test(`${grade}: past week and tablet layout are reviewable`, async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto(`/family-beta-preview.html?grade=${slug}`)
-    await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     page.on('dialog', (dialog) => dialog.accept())
     const options = await page.getByLabel('Practice week').locator('option').all()
     const past = await options[options.length - 1].getAttribute('value')
     await page.getByLabel('Practice week').selectOption(past!)
-    await expect(page.locator('iframe')).toHaveAttribute('src', new RegExp(`week=${past}`))
-    await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(page.locator('iframe:visible')).toHaveAttribute('src', new RegExp(`week=${past}`))
+    await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: `reconciliation-test-results/${slug}-tablet.png`, fullPage: true })
   })
@@ -92,7 +92,7 @@ for (const [slug, grade, childId] of [
 
 test('Kindergarten: all 14 Unit 1 writing targets save and survive reload without current-week targets', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
-  const frame = page.frameLocator('iframe')
+  const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /The Final Boss Test/ }).click()
   await frame.getByRole('button', { name: 'Writing Test', exact: true }).click()
   const targets: string[] = []
@@ -122,7 +122,7 @@ for (const [slug, grade, count] of [
 ] as const) {
   test(`${grade}: complete writing review saves its exact score`, async ({ page }) => {
     await page.goto(`/family-beta-preview.html?grade=${slug}`)
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /The Final Boss Test/ }).click()
     await frame.getByRole('button', { name: 'Writing Test', exact: true }).click()
     await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
@@ -160,7 +160,7 @@ for (const [slug, grade] of [
       })
     })
     await page.goto(`/family-beta-preview.html?grade=${slug}`)
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
     await frame.getByRole('button', { name: /Reading (mastery|warmup)/i }).click()
     for (let i = 0; i < 30; i++) {

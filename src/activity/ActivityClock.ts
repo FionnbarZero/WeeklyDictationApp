@@ -16,13 +16,19 @@ export class ActivityClock {
   private elapsedPause = 0
 
   private readonly backend: ClockBackend
-  constructor(backend: ClockBackend = {
-    now: () => performance.now(),
-    schedule: (callback, delay) => globalThis.setTimeout(callback, delay),
-    cancel: handle => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
-  }) { this.backend = backend }
+  constructor(
+    backend: ClockBackend = {
+      now: () => performance.now(),
+      schedule: (callback, delay) => globalThis.setTimeout(callback, delay),
+      cancel: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+    },
+  ) {
+    this.backend = backend
+  }
 
-  get paused() { return this.reasons.size > 0 }
+  get paused() {
+    return this.reasons.size > 0
+  }
   now = () => (this.paused ? this.pausedAt : this.backend.now()) - this.elapsedPause
 
   setPaused(reason: string, paused: boolean) {
@@ -45,23 +51,29 @@ export class ActivityClock {
 
   subscribe(listener: (paused: boolean) => void) {
     this.listeners.add(listener)
-    return () => { this.listeners.delete(listener) }
+    return () => {
+      this.listeners.delete(listener)
+    }
   }
 
   private arm(id: number, task: Task) {
     if (this.paused) return
-    task.handle = this.backend.schedule(() => {
-      task.handle = undefined
-      if (this.paused || !this.tasks.has(id)) return
-      if (!task.repeat) this.tasks.delete(id)
-      try { task.callback() }
-      finally {
-        if (task.repeat && this.tasks.has(id)) {
-          task.due = this.now() + task.repeat
-          this.arm(id, task)
+    task.handle = this.backend.schedule(
+      () => {
+        task.handle = undefined
+        if (this.paused || !this.tasks.has(id)) return
+        if (!task.repeat) this.tasks.delete(id)
+        try {
+          task.callback()
+        } finally {
+          if (task.repeat && this.tasks.has(id)) {
+            task.due = this.now() + task.repeat
+            this.arm(id, task)
+          }
         }
-      }
-    }, Math.max(0, task.due - this.now()))
+      },
+      Math.max(0, task.due - this.now()),
+    )
   }
 
   setTimeout = (callback: () => void, delay = 0): number => {
@@ -94,10 +106,19 @@ export class ActivityClock {
     if (signal?.aborted) return Promise.reject(new Error('Activity playback cancelled.'))
     if (!this.paused) return Promise.resolve()
     return new Promise((resolve, reject) => {
-      const cleanup = () => { unsubscribe(); signal?.removeEventListener('abort', abort) }
-      const abort = () => { cleanup(); reject(new Error('Activity playback cancelled.')) }
-      const unsubscribe = this.subscribe(paused => {
-        if (!paused) { cleanup(); resolve() }
+      const cleanup = () => {
+        unsubscribe()
+        signal?.removeEventListener('abort', abort)
+      }
+      const abort = () => {
+        cleanup()
+        reject(new Error('Activity playback cancelled.'))
+      }
+      const unsubscribe = this.subscribe((paused) => {
+        if (!paused) {
+          cleanup()
+          resolve()
+        }
       })
       signal?.addEventListener('abort', abort, { once: true })
     })

@@ -7,6 +7,7 @@ import {
   promptAudioCompleted,
   promptAudioStarted,
   stopPromptAudio,
+  playManagedMediaElement,
 } from '../src/audio/promptAudio.ts'
 import type { Word } from '../src/domain/contracts.ts'
 import { activityClock } from '../src/activity/activityLifecycle.ts'
@@ -83,6 +84,23 @@ test('report interruption pauses playback, retains the prompt and retries its in
     await completion
     assert.equal(completed, true)
   } finally { activityClock.setPaused('unit-report', false) }
+})
+
+test('a completed recording playback event cannot advance the comparison while reporting is open', async () => {
+  const audio = new FakeAudio()
+  const completion = playManagedMediaElement(audio as unknown as HTMLMediaElement)
+  let complete = false
+  void completion.then(() => { complete = true })
+  try {
+    activityClock.setPaused('recording-report', true)
+    audio.emit('ended')
+    await Promise.resolve()
+    assert.equal(complete, false)
+    assert.equal(audio.pauseCount, 1)
+    activityClock.setPaused('recording-report', false)
+    await completion
+    assert.equal(complete, true)
+  } finally { activityClock.setPaused('recording-report', false) }
 })
 
 test('reading teaching plays a cached English announcement before the Mandarin sequence without browser voices', async () => {
