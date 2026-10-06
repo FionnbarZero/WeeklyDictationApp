@@ -2,6 +2,8 @@
 
 Status: production dependencies have zero known audit findings. The remaining npm findings are isolated to the locally executed `firebase-tools` development CLI.
 
+October 6 reconciliation: pin the existing transitive `source-map-js` build dependency to patched version `1.2.2` in the lockfile for [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q). This removes the new source-map finding without expanding the Firebase tooling exception or changing application behavior.
+
 ## Current disposition
 
 - `firebase-tools` is pinned to `15.32.1`, the current npm release checked on 2026-10-04.

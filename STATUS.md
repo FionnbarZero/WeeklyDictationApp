@@ -12,7 +12,7 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 | Grade 2 | [Open Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same application source |
 | Grade 5 | [Open Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same application source |
 
-These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` serves all three. Existing Firebase and Pages grade addresses were also updated to the same application assets, preserving their local data; see the release inventory for their exact versions. Main remains unmerged.
+These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` serves all three. Existing Firebase and Pages grade addresses were also updated to the same application assets, preserving their local data; see the release inventory for their exact versions. [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53) reconciles this published source into main without another deployment.
 
 ## Current capability matrix
 
@@ -57,7 +57,7 @@ Work Grade 5 first: fix daily-learning and Boss bugs, then integrate the games, 
 
 The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations.
 
-Main was not merged by the October 5 release operation. Application source and release records remain on `codex/family-beta-reconciliation`; live artifacts identify their exact source. Future source integration must respect repository protections and be verified, not inferred from a successful deployment. Documentation-only commits do not change application assets.
+Main was not merged by the October 5 release operation. The owner authorized source reconciliation on October 6 through [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53). Live artifacts retain their exact published source identity even after source integration; a merge is not a deployment. Documentation, tests and development-only dependency fixes do not by themselves update the live application.
 
 ## Completed engineering foundations
 

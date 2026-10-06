@@ -376,7 +376,7 @@ test('Kindergarten Spirit Realm reading plays the child before the cached word a
   expectNoBrowserErrors()
 })
 
-test('Kindergarten Spirit Realm stops an active reading comparison when Skip Timer scoring advances', async ({ page }) => {
+test('Kindergarten Spirit Realm locks scoring during comparison and stops playback on exit', async ({ page }) => {
   await page.addInitScript(() => {
     class FakeMediaRecorder {
       static isTypeSupported() { return true }
@@ -413,8 +413,11 @@ test('Kindergarten Spirit Realm stops an active reading comparison when Skip Tim
   await page.getByRole('button', { name: 'Stop recording' }).click()
   await expect(page.getByText(/your voice plays first/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Yes' }).click()
-  await expect(page.getByText(/Reading Mastery · 2 of 9/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Not yet', exact: true })).toBeDisabled()
+  await expect(page.getByText(/Reading Mastery · 1 of 9/)).toBeVisible()
+  await page.getByRole('button', { name: 'Exit reading', exact: true }).click()
+  await expect(page.getByText('Reading practice exited. No score was added.', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as Window & { __readingPauseCount: number }).__readingPauseCount)).toBeGreaterThan(0)
 })
 
