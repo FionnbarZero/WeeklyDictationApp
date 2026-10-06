@@ -1,6 +1,6 @@
 # A1: confirmed family game saving
 
-October 6, 2026. Implemented on `codex/a1-confirmed-game-saving`; final validation in progress. Not merged or published. No production accounts, records, authentication configuration, security rules, or hosting were changed.
+October 6, 2026. Implemented and locally verified on `codex/a1-confirmed-game-saving`; ready for GPT-6 Astra High review, with CI still required. Not merged or published. No production accounts, records, authentication configuration, security rules, or hosting were changed.
 
 ## Reproduced defects
 
@@ -25,13 +25,13 @@ No stored schema, storage key, curriculum, scoring rule, or game-tier policy cha
 
 ## Verification
 
-Application repair: `abb6ebc`. The final package source revision and manifest digest will be recorded after the remaining regression run.
+Application repair: `abb6ebc`. Browser-tested package source: `61ca9c652646acc991aa41e3530c2bbe097abd2c`. Its 122 recorded files were independently hash-verified against manifest tree SHA-256 `bed24cb8d4295340aff1258ddcd887328b777826afd8230ab06bcce7759b5fb4`. The subsequent acceptance-record commit changes only documentation; CI must rebuild and test the final PR head.
 
 | Check | Result |
 | --- | --- |
 | Typecheck, repository lint/format, focused new-file checks, whitespace check | Passed |
 | Complete unit suite | 636 passed |
-| Exact family-sync package, desktop and Chromium tablet-touch layout | Final 28-check run in progress |
+| Exact family-sync package, desktop and Chromium tablet-touch layout | 28 passed |
 | Existing cross-grade reconciliation regressions | 44 passed |
 | Standalone prototype routes, activity exits, and visual references | 32 passed |
 | Additive production-intended family policy, synthetic Firestore emulator | 2 scoped tests passed |
