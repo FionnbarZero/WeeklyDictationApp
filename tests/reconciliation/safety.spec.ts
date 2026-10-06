@@ -24,7 +24,7 @@ test('corrupt device results are preserved and never represented as successfully
 test('parent preview can promote and undo a grade, then reload the correct profile', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await page.getByRole('button', { name: 'Parent controls' }).click()
-  await expect(page.getByText(/synthetic preview profiles/)).toBeVisible()
+  await expect(page.getByText(/learner profiles are stored only in this browser/)).toBeVisible()
   page.on('dialog', (dialog) => dialog.accept())
   await page.getByLabel('Grade for Learner 1', { exact: true }).selectOption('Grade 2')
   await expect(page.getByLabel('Child profile')).toContainText('Learner 1 · Grade 2')

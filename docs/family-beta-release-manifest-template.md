@@ -1,10 +1,11 @@
 # Family beta release manifest template
 
-Copy this template for every proposed family-beta promotion. Keep the manifest free of child names, credentials, recordings, response content, handwriting images, and unnecessary screenshots. A draft manifest does not authorize deployment.
+Copy this template for every family-beta promotion. Keep it free of child names, credentials, recordings, response content, handwriting images, and unnecessary screenshots. The owner's October 5 standing approval authorizes tested ordinary beta updates; this template records verification, not another required approval request. Data resets and production authentication/security changes remain separately restricted.
 
 ## Release status
 
-- Manifest state: `draft | adult-approved | promoted | accepted | rolled-back`
+- Manifest state: `draft | verified | promoted | accepted | rolled-back`
+- Release authority: October 5 standing approval, or specific approval for work outside that scope
 - Affected grade: `Kindergarten | Grade 2 | Grade 5`
 - Release owner:
 - Observation owner:
@@ -48,7 +49,7 @@ Copy this template for every proposed family-beta promotion. Keep the manifest f
 | Browser tests and clean console | |
 | Firestore Emulator, when applicable | |
 | Bundle and request budgets, when applicable | |
-| Adult preview review | |
+| Physical-device observations or explicit unverified limits | |
 | Unrelated activity launch and exit checks | |
 
 ## Data protection
@@ -62,7 +63,7 @@ Copy this template for every proposed family-beta promotion. Keep the manifest f
 - Audio-retention check:
 - Privacy review:
 
-For Grade 2, a persistence-affecting promotion cannot proceed without a checksum-verified whole-local-practice-state backup and a successful selected-profile, non-writing preview restore. The backup contains records for every profile stored in that browser and must remain private family data; apply restores only the selected profile. For Kindergarten and Grade 5, record `not applicable — session only` only after confirming that no progress, answer, score, or audio is retained.
+For persistence-affecting changes in any grade, verify backup coverage and lossless restore for every affected legacy and family storage contract. Keep backups private. All three family apps retain completed scores and reports locally; do not mark Kindergarten or Grade 5 session-only by default. For compatible changes with no storage effect, record that rationale rather than requiring an unrelated data migration.
 
 ## Promotion and observation
 

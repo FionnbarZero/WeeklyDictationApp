@@ -1,5 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
+import { familyAcquisitionStore } from './familyBeta/acquisitionRuntime.ts'
+import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
@@ -68,6 +70,7 @@ const practiceRoot = createRoot(practiceRootElement)
 let sourceExtraction: Grade5SourceExtraction | null = null
 let learningHubModel: Grade5LearningHubModel | null = null
 let activePractice: Grade5AcquisitionLabState | null = null
+let acquisitionStore: ReturnType<typeof familyAcquisitionStore<AcquisitionTarget, Grade5LabRevealMethod>> = null
 let activeDataset: Dataset | null = null
 let activeDatasets: Dataset[] = []
 let activeSession: PracticeSession | null = null
@@ -234,6 +237,7 @@ function startPrimaryReview() {
 function leavePractice(message = 'Returned to the Grade 5 hub. This development-only run was discarded.') {
   stopActiveAudio()
   activePractice = null
+  acquisitionStore = null
   activeDataset = null
   activeDatasets = []
   activeSession = null
@@ -263,7 +267,16 @@ function answerCurrentPrompt(correct: boolean) {
   if (activeSession.segment === 'primary' && activePractice) {
     if (!activePractice.flow.prompt?.revealed) return
     const assessmentCount = activePractice.assessments.length
-    activePractice = answerGrade5AcquisitionLab(activePractice, correct, currentRevealMethod)
+    try {
+      if (acquisitionStore) {
+        const saved = acquisitionStore.answer(correct, currentRevealMethod)
+        activePractice = { ...activePractice, flow: saved.envelope.flow, assessments: saved.assessments }
+      } else activePractice = answerGrade5AcquisitionLab(activePractice, correct, currentRevealMethod)
+    } catch (error) {
+      practiceSummary.textContent = error instanceof Error ? error.message : 'Response could not be saved. Please retry.'
+      window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+      return
+    }
     const assessment = activePractice.assessments.length > assessmentCount
       ? activePractice.assessments[activePractice.assessments.length - 1]
       : undefined
@@ -372,7 +385,16 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     activePractice = request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
       ? startGrade5AcquisitionLab(candidate)
       : null
+    acquisitionStore = activePractice ? familyAcquisitionStore<AcquisitionTarget, Grade5LabRevealMethod>(
+      activePractice.targetSet, grade5WritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
+    ) : null
+    if (acquisitionStore && activePractice) activePractice = { ...activePractice,
+      flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
+    if (acquisitionStore) {
+      activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }
+      if (acquisitionStore.current.envelope.revision > 0) activeSession = primaryStartState(activeSession)
+    }
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
     hubRootElement.hidden = true
@@ -393,8 +415,8 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
     const pathway = grade5LabReadingPathway(sourceExtraction, request)
     const readingSessionId = crypto.randomUUID()
-    const finishReading = (correct: number, attempted: number) => {
-      try { savePreviewResult({ id: readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted }) }
+    const finishReading = (correct: number, attempted: number, savedSessionId?: string) => {
+      try { savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted }) }
       catch { window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin); return }
       leavePractice(`Reading complete: ${correct}/${attempted}. ${familyPreview ? 'See family progress for saving status.' : 'This lab result was not saved.'}`)
     }
@@ -433,7 +455,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       onPlayReference={speakReadingReference}
       onPlayTeachingIntroduction={speakReadingIntroduction}
       onExit={() => leavePractice('Returned to the Grade 5 hub. This reading run was discarded.')}
-      onComplete={(summary) => finishReading(summary.correct, summary.attempted)}
+      onComplete={(summary) => finishReading(summary.correct, summary.attempted, summary.sessionId)}
       sessionNote={familyPreview ? 'Recordings stay only in this session. Completed scores appear in family progress.' : 'Grade 5 development reading · recording and results are not saved'}
     />)
     practicePanel.scrollTop = 0

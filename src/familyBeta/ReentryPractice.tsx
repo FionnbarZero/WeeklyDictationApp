@@ -94,6 +94,7 @@ export function ReentryPractice({
       {error && <p role="alert">{error}</p>}
       {channel === 'reading' ? (
         <Tier2ReadingPractice
+          persistAcquisition={false}
           profile={profile}
           label="Reenter the Dojo · Reading"
           pathway={{

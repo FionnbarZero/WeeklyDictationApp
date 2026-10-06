@@ -1,6 +1,8 @@
 # Weekly Dictation
 
-For the October 5 all-grade reconciliation candidate, see the [family beta acceptance report](docs/family-beta-acceptance-2026-10-05.md). Build with `npm run build:reconciliation` and review locally with `npm run preview:reconciliation`. This does not change or deploy production.
+All three October 5 family apps are live: [Kindergarten](https://weeklydictation-k-beta.web.app/), [Grade 2](https://fionnbarzero.github.io/WeeklyDictationApp/), and [Grade 5](https://weeklydictation-g5-beta.web.app/). See the [verified release record](docs/family-beta-live-2026-10-05.md), [current status](STATUS.md), and [owner-approved priorities](ROADMAP.md#immediate-execution-order). They use automatic Google curriculum refresh and browser-local completed scores/reports; cross-device sync remains deferred. Tested ordinary updates have standing owner approval under [ADR 0008](docs/decisions/0008-family-beta-product-and-release-policy.md).
+
+Build the family integration with `npm run build:reconciliation` and review locally with `npm run preview:reconciliation`. A local build or GitHub push alone does not publish an app. The source supports older authenticated-app and isolated lab paths as well; the technical notes below must not be mistaken for the live family wrapper's capability inventory.
 
 React/Vite Mandarin dictation practice application with authenticated family profiles, durable Grade 2 Tier 1 practice, and isolated multi-grade development labs. Current capability and release status are tracked in [`STATUS.md`](./STATUS.md); implementation order and exit gates are tracked in [`ROADMAP.md`](./ROADMAP.md).
 

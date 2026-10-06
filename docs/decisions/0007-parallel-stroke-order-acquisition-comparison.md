@@ -1,6 +1,6 @@
 # ADR 0007: Run Stroke Order as a parallel Acquisition comparison
 
-Status: Accepted — 2026-10-04
+Status: Accepted — 2026-10-04; partially superseded October 5 by [ADR 0008](./0008-family-beta-product-and-release-policy.md). Keep both writing activities with separate acquisition progress and the same grade-owned teaching rules. Neither is labelled experimental. The owner has standing approval for tested beta updates; the experimental/official hierarchy and repeated per-release approval requirements below are historical. Other teaching, privacy, and isolation requirements remain in force.
 
 ## Context
 

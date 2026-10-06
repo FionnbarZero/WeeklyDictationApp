@@ -24,6 +24,7 @@ import {
 } from '../audio/promptAudio.ts'
 import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
 import { DeferredTestReview } from '../testReview/DeferredTestReview.tsx'
+import { familyAcquisitionStore } from '../familyBeta/acquisitionRuntime.ts'
 
 type ReadingAttempt = {
   readonly promptKind: string
@@ -49,6 +50,7 @@ type QueueRun = {
 type ReadingRun = AcquisitionRun | QueueRun
 
 export type Tier2ReadingPracticeSummary = {
+  readonly sessionId?: string
   readonly kind: Tier2ReadingPathway['kind']
   readonly attempted: number
   readonly correct: number
@@ -72,6 +74,7 @@ export type Tier2ReadingPracticeProps = {
   ) => Promise<void>
   readonly random?: () => number
   readonly sessionNote?: string
+  readonly persistAcquisition?: boolean
 }
 
 function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
@@ -164,13 +167,32 @@ function ImmediateTier2ReadingPractice({
   onPlayTeachingIntroduction,
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
+  persistAcquisition = true,
 }: Tier2ReadingPracticeProps) {
   const randomRef = useRef(random)
-  const [run, setRun] = useState<ReadingRun>(() => initialRun(profile, pathway, randomRef.current))
+  const [savedStore] = useState(() => pathway.kind === 'acquisition' && persistAcquisition
+    ? familyAcquisitionStore<Tier2ReadingTarget, 'recording-comparison'>(
+      tier2ReadingAcquisitionTargetSet(pathway), profile.acquisitionStrategy, 'reading-dojo', 'tier-2')
+    : null)
+  const [saveError, setSaveError] = useState('')
+  const [run, setRun] = useState<ReadingRun>(() => savedStore
+    ? { kind: 'acquisition', targetSet: tier2ReadingAcquisitionTargetSet(pathway),
+      flow: savedStore.current.envelope.flow, assessments: savedStore.current.assessments }
+    : initialRun(profile, pathway, randomRef.current))
 
   useEffect(() => () => stopActiveAudio(), [])
 
   function answerAcquisition(correct: boolean) {
+    if (savedStore && run.kind === 'acquisition') {
+      try {
+        const saved = savedStore.answer(correct, 'recording-comparison')
+        setRun({ ...run, flow: saved.envelope.flow, assessments: saved.assessments })
+        setSaveError('')
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : 'Response could not be saved. Please retry.')
+      }
+      return
+    }
     setRun((current) => {
       if (current.kind !== 'acquisition' || !current.flow.prompt) return current
       const transition = transitionAcquisition(
@@ -237,15 +259,17 @@ function ImmediateTier2ReadingPractice({
     : run.kind === 'test-review'
       ? `Test Review ${pathway.cycle || 1}`
       : 'Mastery reading'
-  const summary = summaryFor(run)
+  const summary = { ...summaryFor(run), ...(savedStore ? { sessionId: savedStore.current.sessionId } : {}) }
 
   return <div className="reading-practice-page practice-page" data-report-activity="Reading practice" data-report-phase={complete ? 'complete' : promptPhase} data-report-target={complete ? undefined : target?.id} data-report-position={position}>
     <div className="practice-top">
       <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
+      {savedStore && !complete && <button type="button" className="secondary-button" onClick={() => onComplete(summary)}>Done for today</button>}
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>
     <div className="practice-progress" role="progressbar" aria-label="Reading practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
     <section className={`prompt-card ${complete ? 'complete-card' : ''}`} aria-live="polite">
+      {saveError && <p role="alert">{saveError} Exit and reopen to retry the unfinished prompt.</p>}
       {complete ? <>
         <span className="complete-mark"><Check size={27} /></span>
         <p className="eyebrow">{profile.grade} · Tier 2 reading</p>

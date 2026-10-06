@@ -113,14 +113,14 @@ export function ReadingResponsePanel({
   }
 
   function submit(correct: boolean) {
-    if (submittedRef.current || !canCompare) return
+    if (submittedRef.current || !canCompare || comparison !== 'complete') return
     submittedRef.current = true
     stopActiveAudio()
     onAnswer(correct)
   }
 
   function continueInstruction() {
-    if (submittedRef.current || !canCompare) return
+    if (submittedRef.current || !canCompare || comparison !== 'complete') return
     submittedRef.current = true
     stopActiveAudio()
     onContinue()
@@ -196,12 +196,13 @@ export function ReadingResponsePanel({
       </div>
       {assessed
         ? <><SelfAssessmentActions
+          disabled={comparison !== 'complete'}
           onIncorrect={() => submit(false)}
           onCorrect={() => submit(true)}
           incorrectLabel="Not yet"
           correctLabel="Yes"
         /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>
-        : <button className="primary-button reading-continue-button" type="button" onClick={continueInstruction}>Continue</button>}
+        : <button className="primary-button reading-continue-button" type="button" disabled={comparison !== 'complete'} onClick={continueInstruction}>Continue</button>}
     </div>}
   </div>
 }

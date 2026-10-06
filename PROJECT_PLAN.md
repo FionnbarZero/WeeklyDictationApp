@@ -2,6 +2,10 @@
 
 > **Archived on 2026-10-01.** This document is preserved for its privacy, migration, grade-policy, and design history. It is no longer the authority for current status or execution order. See [`STATUS.md`](./STATUS.md), [`ROADMAP.md`](./ROADMAP.md), and the [`docs/decisions`](./docs/decisions/README.md) index. Do not delete this archive when migrating durable decisions into ADRs.
 
+The October 5, 2026 owner-approved game rules are saved in the active plan under [EduGames rules within Ninja Dojo](./ROADMAP.md#edugames-rules-within-ninja-dojo), including tier selection, contextual prompts, and acquisition placement.
+
+The owner's later answers are recorded in [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md). They supersede this archive's conflicting experimental labels, per-release approval gates, and blanket restrictions on English meanings or generated contexts. Use [STATUS.md](./STATUS.md) for what is actually live and the [roadmap](./ROADMAP.md#immediate-execution-order) for next work.
+
 ## Purpose
 
 A browser-based Mandarin dictation practice app for children in Chinese immersion programs. The public interface will be hosted through Firebase Hosting and support multiple families and children. The first target language is simplified Mainland Mandarin. Pinyin and English meanings will not appear in the child interface.

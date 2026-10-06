@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
+import { familyAcquisitionStore } from './familyBeta/acquisitionRuntime.ts'
+import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import { inspectKindergartenWorkbook } from './kindergartenSheetsImporter.ts'
@@ -207,7 +209,8 @@ function masteryDatasetFor(review: KindergartenCumulativePoolLab | null): Datase
 }
 
 function KindergartenLearningLab() {
-  const attemptId = useRef(crypto.randomUUID())
+  const attemptId = useRef<string>(crypto.randomUUID())
+  const acquisitionStore = useRef<ReturnType<typeof familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>>>(null)
   const [candidates, setCandidates] = useState<WeeklyDatasetCandidate[]>([])
   const [selectedSourceUnitId, setSelectedSourceUnitId] = useState('')
   const [status, setStatus] = useState('Loading the trusted local Kindergarten fixture…')
@@ -318,8 +321,14 @@ function KindergartenLearningLab() {
   function startWriting() {
     if (!selectedCandidate || !kindergartenCandidateIsUsableInLab(selectedCandidate)) return
     try {
+      const initial = startKindergartenAcquisitionLab(selectedCandidate)
+      const store = familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>(
+        initial.targetSet, kindergartenWritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
+      )
+      acquisitionStore.current = store
+      if (store) attemptId.current = store.current.sessionId
       setWritingPractice({
-        state: startKindergartenAcquisitionLab(selectedCandidate),
+        state: store ? { ...initial, flow: store.current.envelope.flow, assessments: store.current.assessments } : initial,
         dataset: kindergartenWritingDatasetForLab(selectedCandidate),
         revealMethod: 'timer',
       })
@@ -351,11 +360,18 @@ function KindergartenLearningLab() {
     if (typeof answer === 'object') return
     if (answer === 'done') { finishWriting(); return }
     if (typeof answer !== 'boolean') return
-    setWritingPractice((current) => current ? {
-      ...current,
-      state: answerKindergartenAcquisitionLab(current.state, answer, current.revealMethod),
-      revealMethod: 'timer',
-    } : current)
+    if (!writingPractice) return
+    try {
+      const saved = acquisitionStore.current?.answer(answer, writingPractice.revealMethod)
+      setWritingPractice({ ...writingPractice,
+        state: saved ? { ...writingPractice.state, flow: saved.envelope.flow, assessments: saved.assessments }
+          : answerKindergartenAcquisitionLab(writingPractice.state, answer, writingPractice.revealMethod),
+        revealMethod: 'timer' })
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Response could not be saved. Please retry.')
+      setError(true)
+      window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+    }
   }
 
   function startUnitReview() {
@@ -500,6 +516,7 @@ function KindergartenLearningLab() {
     const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
     const correct = scored.filter((item) => item.correct).length
     return <main className="k-lab-shell practice">
+      {error && <p role="alert">{status}</p>}
       <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · {familyPreview ? 'Choose Done for today to save this session score.' : 'Session-only development record'}</p>
       <PracticeView
         session={writingSessionFor(writingPractice)}
@@ -580,12 +597,15 @@ function KindergartenLearningLab() {
         onPlayReference={speakReadingReference}
         onPlayTeachingIntroduction={speakReadingIntroduction}
         onExit={() => returnToHub('Reading practice exited. No score was added.')}
-        onComplete={(summary) => completeStandalone({
+        onComplete={(summary) => {
+          if (summary.sessionId) attemptId.current = summary.sessionId
+          completeStandalone({
           label,
           kind: scoreKind,
           correct: summary.correct,
           total: summary.attempted,
-        })}
+          })
+        }}
         sessionNote={familyPreview ? 'Recordings stay only in this session. Completed scores appear in family progress.' : 'Kindergarten development reading · recording and results remain in this visit'}
       />
     </main>

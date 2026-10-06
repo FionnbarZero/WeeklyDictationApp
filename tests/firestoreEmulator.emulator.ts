@@ -4,6 +4,7 @@ import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestE
 import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
+import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
 import { grade2Tier1WritingAdaptiveWarmupProfile } from '../src/warmup/adaptive/profiles/grade2.ts'
 import { childMasteryStateId, createMasteryOccurrence, masteryRotationStateId } from '../src/warmup/adaptive/identity.ts'
@@ -16,7 +17,7 @@ let environment: RulesTestEnvironment
 before(async () => {
   environment = await initializeTestEnvironment({
     projectId: 'weekly-dictation-test',
-    firestore: { rules: await readFile(new URL('../firestore.rules', import.meta.url), 'utf8') },
+    firestore: { rules: await readFile(process.env.FAMILY_SYNC_RULES_FILE || new URL('../firestore.rules', import.meta.url), 'utf8') },
   })
   await environment.withSecurityRulesDisabled(async (context) => {
     const database = context.firestore()
@@ -95,6 +96,67 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/number`), { ...result, id: 'number', datasetIds: [123] }))
   await assertFails(setDoc(doc(owner, `${path}/grade`), { ...result, id: 'grade', grade: 'Grade 5' }))
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
+})
+
+test('family practice sync hydrates another device, preserves conflicts, and rejects cross-family and anonymous access', async () => {
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent',
+    endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }
+  const repository = createDeviceSyncRepository(config)
+  const device = () => {
+    const entries = new Map<string, string>()
+    return { get length() { return entries.size }, key: (i: number) => [...entries.keys()][i] ?? null,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => { entries.set(key, value) } }
+  }
+  const first = device(), second = device()
+  const key = 'family-beta-activity:maya:test-checkpoint'
+  first.setItem(key, JSON.stringify({ trial: 1 }))
+  first.setItem('weekly-dictation-auth-v1', 'must-not-upload')
+  await repository.sync(first, 'maya')
+  await repository.sync(second, 'maya')
+  assert.equal(second.getItem(key), first.getItem(key))
+  assert.equal(second.getItem('weekly-dictation-auth-v1'), null)
+  second.setItem(key, JSON.stringify({ trial: 2 }))
+  await repository.sync(second, 'maya')
+  await assert.rejects(repository.sync(first, 'maya', false), /activity was paused/)
+  assert.equal(first.getItem(key), JSON.stringify({ trial: 1 }))
+  await repository.sync(first, 'maya')
+  assert.equal(first.getItem(key), JSON.stringify({ trial: 2 }))
+  const interruptedKey = 'family-beta-activity:maya:interrupted-upload'
+  first.setItem(interruptedKey, JSON.stringify({ trial: 1 }))
+  const interrupted = createDeviceSyncRepository({ ...config, fetchImpl: async (url, init) => {
+    const response = await fetch(url, init)
+    if (String(url).endsWith('/documents:commit')) {
+      assert.equal(response.ok, true)
+      first.setItem(interruptedKey, JSON.stringify({ trial: 2 }))
+      throw new Error('Synthetic dropped upload response')
+    }
+    return response
+  } })
+  await assert.rejects(interrupted.sync(first, 'maya'), /dropped upload response/)
+  await repository.sync(first, 'maya')
+  await repository.sync(second, 'maya')
+  assert.equal(second.getItem(interruptedKey), JSON.stringify({ trial: 2 }))
+  first.setItem(key, JSON.stringify({ trial: 3, correct: true }))
+  second.setItem(key, JSON.stringify({ trial: 3, correct: false }))
+  await repository.sync(first, 'maya')
+  await assert.rejects(repository.sync(second, 'maya'), /both devices/)
+  assert.equal(second.getItem(key), JSON.stringify({ trial: 3, correct: false }))
+  const fresh = device()
+  await repository.sync(fresh, 'maya')
+  assert.equal(fresh.getItem(key), JSON.stringify({ trial: 3, correct: true }))
+  await assert.rejects(createDeviceSyncRepository({ ...config, token: async () => mockToken('intruder') }).sync(device(), 'maya'))
+  const db = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  const id = 'a'.repeat(64)
+  const path = `families/family-parent/children/maya/betaPractice/${id}`
+  const record = { schema: 1, childId: 'maya', key, payload: '{}', generation: 1 }
+  await assertSucceeds(setDoc(doc(db, path), record))
+  await assertFails(getDoc(doc(anonymous, path)))
+  await assertFails(setDoc(doc(db, path), record))
+  await assertFails(setDoc(doc(db, path), { ...record, generation: 2, childId: 'other' }))
+  await assertFails(setDoc(doc(db, path), { ...record, generation: 2, key: 'weekly-dictation-auth-v1' }))
+  await assertFails(setDoc(doc(db, path), { ...record, generation: 2, recording: 'forbidden' }))
 })
 
 async function runCollectionGroupQuery(uid: string, parent: string, collectionId: string) {

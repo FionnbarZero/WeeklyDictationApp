@@ -310,15 +310,16 @@ export async function ensureParentFamily(user: AuthUser, signal?: AbortSignal): 
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   }
+  const existingFamily = existing ? await getDoc<FamilyRecord>(docPath(['families', parent.familyId]), signal) : null
   const family: FamilyRecord = {
     id: parent.familyId,
     ownerParentId: user.uid,
-    createdAt: existing?.createdAt || now,
+    createdAt: existingFamily?.createdAt || existing?.createdAt || now,
     updatedAt: now,
   }
   await putDoc(docPath(['users', user.uid]), parent, signal)
-  await putDoc(docPath(['families', family.id]), family, signal)
-  return { parent, family }
+  if (!existingFamily) await putDoc(docPath(['families', family.id]), family, signal)
+  return { parent, family: existingFamily || family }
 }
 
 export async function listChildren(familyId: string, signal?: AbortSignal) {

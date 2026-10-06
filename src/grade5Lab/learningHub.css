@@ -33,6 +33,11 @@ body.practice-active .grade5-practice-stage { position: fixed; inset: 0; z-index
 body.practice-active .grade5-practice-stage > * { width: min(100%, 720px); margin-right: auto; margin-left: auto; }
 body.practice-active #grade5-practice-root { width: min(1440px, 100%); }
 body.practice-active .grade5-practice-stage:has(.has-skywriting-response) { overflow: hidden; padding: 12px 8px 18px; }
+/* Embedded grade pages already have a viewport supplied by the family frame.
+   A second fixed, scrolling layer can strand the final submit control outside
+   the visible frame. Let the embedded document own its scroll instead. */
+.family-beta-frame body.practice-active { overflow: auto; }
+.family-beta-frame body.practice-active .grade5-practice-stage { position: static; min-height: 100dvh; }
 @media (max-width: 760px) {
   .lab-shell { width: min(100% - 22px, 1080px); }
   body.practice-active .lab-shell { width: calc(100% - 34px); padding-top: 26px; }

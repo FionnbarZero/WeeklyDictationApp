@@ -656,7 +656,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const finishReading = (summary: Tier2ReadingPracticeSummary) => {
     try {
-      savePreviewResult({ activity: readingPathwayLabel(readingPathway!), channel: 'reading', datasetIds: readingPathway!.cohorts.map(c => c.datasetId), correct: summary.correct, attempted: summary.attempted })
+      savePreviewResult({ id: summary.sessionId, activity: readingPathwayLabel(readingPathway!), channel: 'reading', datasetIds: readingPathway!.cohorts.map(c => c.datasetId), correct: summary.correct, attempted: summary.attempted })
     } catch (error) { setCloudError(authErrorMessage(error)); return }
     setCompletedSummary(
       `Reading practice complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. ${familyPreview ? 'See family progress for saving status.' : 'This prototype reading visit was not saved.'}`,

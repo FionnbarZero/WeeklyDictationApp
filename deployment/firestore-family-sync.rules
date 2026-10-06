@@ -17,73 +17,91 @@ service cloud.firestore {
     function validSessionStatus() {
       return request.resource.data.status in ['in_progress', 'partial', 'completed', 'skipped', 'abandoned'];
     }
-    function validSessionShape(familyId, childId, sessionId) {
-      return request.resource.data.keys().hasAll([
-          'id', 'childId', 'familyId', 'sessionDate', 'localDate', 'startedAt',
-          'primaryPhase', 'datasetId', 'status', 'warmupStatus', 'applicationVersion'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'id', 'childId', 'familyId', 'sessionDate', 'localDate', 'startedAt', 'completedAt',
-          'primaryPhase', 'datasetId', 'datasetIds', 'reviewGroupId', 'reviewCycle', 'warmupOnly',
-          'status', 'warmupStatus', 'applicationVersion'
-        ])
-        && request.resource.data.id == sessionId
-        && request.resource.data.childId == childId
-        && request.resource.data.familyId == familyId
-        && request.resource.data.sessionDate is string
-        && request.resource.data.localDate is string
-        && request.resource.data.startedAt is string
-        && (!('completedAt' in request.resource.data) || request.resource.data.completedAt is string)
-        && request.resource.data.primaryPhase in ['acquisition', 'test-review']
-        && request.resource.data.datasetId is string
-        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
-        && (!('datasetIds' in request.resource.data) || request.resource.data.datasetIds is list)
-        && (!('reviewGroupId' in request.resource.data) || request.resource.data.reviewGroupId is string)
-        && (!('warmupOnly' in request.resource.data) || request.resource.data.warmupOnly is bool)
-        && validSessionStatus()
-        && request.resource.data.warmupStatus in ['in_progress', 'partial', 'completed', 'skipped', 'not_started']
-        && request.resource.data.applicationVersion is string
-        && (!('reviewCycle' in request.resource.data)
-          || (request.resource.data.primaryPhase == 'test-review'
-            && request.resource.data.reviewCycle is int
-            && request.resource.data.reviewCycle > 0));
-    }
     function validAttempt(familyId, childId, sessionId, attemptId) {
-      let session = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data;
-      return request.resource.data.keys().hasAll([
-          'id', 'sessionId', 'wordId', 'sourceDatasetId', 'phase', 'correct', 'reviewedAt', 'completionStatus'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'id', 'sessionId', 'wordId', 'sourceDatasetId', 'phase', 'reviewCycle', 'correct',
-          'reviewedAt', 'completionStatus', 'countsTowardWeeklyScore', 'acquisitionKind', 'transitionId'
-        ])
+      return request.resource.data.id is string
         && request.resource.data.id == attemptId
         && request.resource.data.sessionId is string
         && request.resource.data.sessionId == sessionId
         && request.resource.data.wordId is string
         && request.resource.data.sourceDatasetId is string
-        && session.id == sessionId
-        && session.childId == childId
-        && session.familyId == familyId
+        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId))
         && exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
-        && (request.resource.data.sourceDatasetId == session.datasetId
-          || ('datasetIds' in session && request.resource.data.sourceDatasetId in session.datasetIds))
         && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
-        && (request.resource.data.phase == 'warmup' || request.resource.data.phase == session.primaryPhase)
         && (!('reviewCycle' in request.resource.data)
           || (request.resource.data.phase == 'test-review'
             && request.resource.data.reviewCycle is int
             && request.resource.data.reviewCycle > 0))
         && (request.resource.data.phase != 'test-review'
           || ((!('reviewCycle' in request.resource.data)
-                && !('reviewCycle' in session))
-            || (request.resource.data.reviewCycle == session.reviewCycle)))
+                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data))
+            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data.reviewCycle)))
         && request.resource.data.correct is bool
         && request.resource.data.reviewedAt is string
-        && request.resource.data.completionStatus in ['temporary', 'complete']
-        && (!('countsTowardWeeklyScore' in request.resource.data) || request.resource.data.countsTowardWeeklyScore is bool)
-        && (!('acquisitionKind' in request.resource.data) || request.resource.data.acquisitionKind is string)
-        && (!('transitionId' in request.resource.data) || request.resource.data.transitionId is string);
+        && request.resource.data.completionStatus in ['temporary', 'complete'];
+    }
+    function validTier2ReadingProgress(childId, progressId) {
+      return request.resource.data.keys().hasAll([
+          'schemaVersion', 'contractId', 'id', 'childId', 'grade', 'schoolYear',
+          'activityModule', 'profileId', 'profileVersion', 'pathwayKind',
+          'cohortIds', 'targetOccurrenceIds', 'revision', 'status', 'runJson',
+          'startedAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'schemaVersion', 'contractId', 'id', 'childId', 'grade', 'schoolYear',
+          'activityModule', 'profileId', 'profileVersion', 'pathwayKind',
+          'reviewCycle', 'reviewGroupId', 'cohortIds', 'targetOccurrenceIds',
+          'revision', 'status', 'runJson', 'summary', 'startedAt', 'updatedAt',
+          'completedAt'
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.contractId == 'tier2-reading-progress-v1'
+        && request.resource.data.id == progressId
+        && request.resource.data.childId == childId
+        && request.resource.data.grade in ['Grade 2', 'Grade 5']
+        && request.resource.data.schoolYear is string
+        && request.resource.data.activityModule == 'mandarin-tier2-reading'
+        && request.resource.data.profileId is string
+        && request.resource.data.profileVersion is int
+        && request.resource.data.profileVersion > 0
+        && request.resource.data.pathwayKind in ['acquisition', 'test-review', 'mastery']
+        && (!('reviewCycle' in request.resource.data)
+          || (request.resource.data.pathwayKind == 'test-review'
+            && request.resource.data.reviewCycle is int
+            && request.resource.data.reviewCycle > 0))
+        && (!('reviewGroupId' in request.resource.data)
+          || request.resource.data.reviewGroupId is string)
+        && request.resource.data.cohortIds is list
+        && request.resource.data.cohortIds.size() > 0
+        && request.resource.data.cohortIds.size() <= 8
+        && request.resource.data.targetOccurrenceIds is list
+        && request.resource.data.targetOccurrenceIds.size() > 0
+        && request.resource.data.targetOccurrenceIds.size() <= 64
+        && request.resource.data.revision is int
+        && request.resource.data.revision > 0
+        && request.resource.data.status in ['in-progress', 'completed']
+        && request.resource.data.runJson is string
+        && request.resource.data.runJson.size() > 0
+        && request.resource.data.runJson.size() <= 100000
+        && !request.resource.data.runJson.matches('.*"audio".*')
+        && !request.resource.data.runJson.matches('.*"blob".*')
+        && !request.resource.data.runJson.matches('.*blob:.*')
+        && !request.resource.data.runJson.matches('.*data:audio.*')
+        && !request.resource.data.runJson.matches('.*"mimeType".*')
+        && !request.resource.data.runJson.matches('.*"recordingUrl".*')
+        && request.resource.data.startedAt is string
+        && request.resource.data.updatedAt is string
+        && (request.resource.data.status == 'in-progress'
+          ? !('summary' in request.resource.data) && !('completedAt' in request.resource.data)
+          : request.resource.data.summary is map
+            && request.resource.data.summary.kind == request.resource.data.pathwayKind
+            && request.resource.data.summary.attempted is int
+            && request.resource.data.summary.attempted >= 0
+            && request.resource.data.summary.correct is int
+            && request.resource.data.summary.correct >= 0
+            && request.resource.data.summary.correct <= request.resource.data.summary.attempted
+            && request.resource.data.summary.diagnostics is int
+            && request.resource.data.summary.diagnostics >= 0
+            && request.resource.data.completedAt is string);
     }
     function validAcquisitionReceiptShape(progressionId, transitionId) {
       return request.resource.data.progressionId == progressionId
@@ -368,146 +386,82 @@ service cloud.firestore {
             && request.resource.data.lastAppliedTransition.masteryStateId == masteryStateId
             && request.resource.data.lastAppliedTransition.appliedMasteryRevision == request.resource.data.revision));
     }
-    function validScore(familyId, childId, scoreId) {
-      let session = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data;
-      let dataset = get(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId)).data;
-      return request.resource.data.keys().hasAll([
-          'id', 'childId', 'datasetId', 'datasetDateRange', 'phase', 'sessionId',
-          'sessionDate', 'percent', 'correct', 'wordCount'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'id', 'childId', 'datasetId', 'datasetDateRange', 'phase', 'sessionId',
-          'sessionDate', 'percent', 'correct', 'wordCount', 'warmupSessionId', 'reviewCycle'
-        ])
-        && request.resource.data.id == scoreId
+    function validScore(familyId, childId) {
+      return request.resource.data.childId is string
         && request.resource.data.childId == childId
         && request.resource.data.datasetId is string
         && request.resource.data.sessionId is string
-        && session.id == request.resource.data.sessionId
-        && session.childId == childId
-        && session.familyId == familyId
-        && session.status == 'completed'
-        && dataset.id == request.resource.data.datasetId
-        && (request.resource.data.datasetId == session.datasetId
-          || ('datasetIds' in session && request.resource.data.datasetId in session.datasetIds))
-        && request.resource.data.datasetDateRange is string
-        && request.resource.data.datasetDateRange == dataset.dateRange
+        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId))
+        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
         && request.resource.data.sessionDate is string
-        && request.resource.data.sessionDate == session.localDate
-        && request.resource.data.phase == session.primaryPhase
-        && (!('warmupSessionId' in request.resource.data) || request.resource.data.warmupSessionId is string)
+        && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
         && (!('reviewCycle' in request.resource.data)
           || (request.resource.data.phase == 'test-review'
             && request.resource.data.reviewCycle is int
             && request.resource.data.reviewCycle > 0))
         && (request.resource.data.phase != 'test-review'
           || ((!('reviewCycle' in request.resource.data)
-                && !('reviewCycle' in session))
-            || (request.resource.data.reviewCycle == session.reviewCycle)))
+                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data))
+            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data.reviewCycle)))
         && request.resource.data.percent is number
         && request.resource.data.percent >= 0
         && request.resource.data.percent <= 100
-        && request.resource.data.correct is int
-        && request.resource.data.wordCount is int
+        && request.resource.data.correct is number
+        && request.resource.data.wordCount is number
         && request.resource.data.wordCount > 0
         && request.resource.data.correct >= 0
-        && request.resource.data.correct <= request.resource.data.wordCount
-        && (2 * request.resource.data.percent - 1) * request.resource.data.wordCount
-          <= 200 * request.resource.data.correct
-        && 200 * request.resource.data.correct
-          < (2 * request.resource.data.percent + 1) * request.resource.data.wordCount;
+        && request.resource.data.correct <= request.resource.data.wordCount;
     }
 
     match /users/{parentId} {
       allow read: if signedIn() && request.auth.uid == parentId;
       allow create: if signedIn() && request.auth.uid == parentId
-        && request.resource.data.keys().hasAll(['id', 'familyId', 'email', 'role', 'createdAt', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['id', 'familyId', 'email', 'role', 'createdAt', 'updatedAt'])
-        && request.resource.data.id == parentId
         && request.resource.data.familyId == 'family-' + parentId
-        && request.resource.data.email is string
-        && request.resource.data.createdAt is string
-        && request.resource.data.updatedAt is string
         && request.resource.data.role == 'parent';
       allow update: if signedIn() && request.auth.uid == parentId
-        && request.resource.data.keys().hasOnly(['id', 'familyId', 'email', 'role', 'createdAt', 'updatedAt'])
-        && request.resource.data.id == resource.data.id
         && request.resource.data.familyId == resource.data.familyId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'updatedAt']);
+        && request.resource.data.role == resource.data.role;
       allow delete: if false;
     }
 
     match /families/{familyId} {
       allow read: if ownsFamily(familyId);
       allow create: if signedIn() && familyId == 'family-' + request.auth.uid
-        && request.resource.data.keys().hasAll(['id', 'ownerParentId', 'createdAt', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['id', 'ownerParentId', 'createdAt', 'updatedAt'])
-        && request.resource.data.id == familyId
-        && request.resource.data.ownerParentId == request.auth.uid
-        && request.resource.data.createdAt is string
-        && request.resource.data.updatedAt is string;
+        && request.resource.data.ownerParentId == request.auth.uid;
       allow update: if ownsFamily(familyId)
-        && request.resource.data.keys().hasOnly(['id', 'ownerParentId', 'createdAt', 'updatedAt'])
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.ownerParentId == resource.data.ownerParentId
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt']);
+        && request.resource.data.ownerParentId == resource.data.ownerParentId;
       allow delete: if false;
 
       match /children/{childId} {
         allow read: if ownsFamily(familyId);
         allow create: if ownsFamily(familyId)
-          && request.resource.data.keys().hasAll(['id', 'nickname', 'grade', 'schoolYear', 'active', 'gradeEffectiveDate', 'createdAt', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['id', 'nickname', 'grade', 'schoolYear', 'active', 'gradeEffectiveDate', 'createdAt', 'updatedAt'])
           && request.resource.data.active == true
           && request.resource.data.id == childId
-          && request.resource.data.nickname is string
-          && request.resource.data.nickname.size() > 0
-          && request.resource.data.nickname.size() <= 80
-          && request.resource.data.grade is string
-          && request.resource.data.schoolYear is string
-          && request.resource.data.gradeEffectiveDate is string
-          && request.resource.data.createdAt is string
-          && request.resource.data.updatedAt is string;
+          && request.resource.data.keys().hasAll(['id', 'nickname', 'grade', 'schoolYear', 'active', 'gradeEffectiveDate']);
         allow update: if ownsFamily(familyId)
-          && request.resource.data.keys().hasOnly(['id', 'nickname', 'grade', 'schoolYear', 'active', 'gradeEffectiveDate', 'createdAt', 'updatedAt'])
           && request.resource.data.id == resource.data.id
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.nickname is string
-          && request.resource.data.nickname.size() > 0
-          && request.resource.data.nickname.size() <= 80
-          && request.resource.data.grade is string
-          && request.resource.data.schoolYear is string
-          && request.resource.data.active is bool
-          && request.resource.data.gradeEffectiveDate is string
-          && request.resource.data.updatedAt is string;
+          && request.resource.data.createdAt == resource.data.createdAt;
         allow delete: if false;
 
       match /sessions/{sessionId} {
           allow read: if childExists(familyId, childId);
-          allow create: if ownsActiveChild(familyId, childId)
-            && validSessionShape(familyId, childId, sessionId)
-            && request.resource.data.status == 'in_progress';
-          allow update: if ownsActiveChild(familyId, childId)
-            && validSessionShape(familyId, childId, sessionId)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'warmupStatus', 'completedAt'])
-            && (request.resource.data == resource.data || resource.data.status == 'in_progress');
+          allow create, update: if ownsActiveChild(familyId, childId)
+            && request.resource.data.childId == childId
+            && request.resource.data.familyId == familyId
+            && validSessionStatus()
+            && request.resource.data.primaryPhase in ['acquisition', 'test-review']
+            && (!('reviewCycle' in request.resource.data)
+              || (request.resource.data.primaryPhase == 'test-review'
+                && request.resource.data.reviewCycle is int
+                && request.resource.data.reviewCycle > 0));
           allow delete: if false;
 
           match /attempts/{attemptId} {
             allow read: if childExists(familyId, childId);
-            allow create: if ownsActiveChild(familyId, childId)
+            allow create, update: if ownsActiveChild(familyId, childId)
               && validAttempt(familyId, childId, sessionId, attemptId)
               && validOptionalAcquisitionTransition(familyId, childId)
-              && (!('transitionId' in request.resource.data) || !exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)/attempts/$(attemptId)));
-            allow update: if ownsActiveChild(familyId, childId)
-              && validAttempt(familyId, childId, sessionId, attemptId)
-              && (request.resource.data == resource.data
-                || (resource.data.completionStatus == 'temporary'
-                  && request.resource.data.completionStatus == 'complete'
-                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completionStatus'])));
+              && (!('transitionId' in request.resource.data) || !exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)/attempts/$(attemptId)) || request.resource.data == resource.data);
             allow delete: if ownsActiveChild(familyId, childId)
               && resource.data.completionStatus == 'temporary';
           }
@@ -565,7 +519,7 @@ service cloud.firestore {
         match /scores/{scoreId} {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
-            && validScore(familyId, childId, scoreId);
+            && validScore(familyId, childId);
           allow update: if ownsActiveChild(familyId, childId)
             && request.resource.data == resource.data;
           allow delete: if false;
@@ -575,8 +529,6 @@ service cloud.firestore {
           allow read: if childExists(familyId, childId);
           allow create, update: if ownsActiveChild(familyId, childId)
             && stateId == 'current'
-            && request.resource.data.keys().hasAll(['childId', 'rotationCycleId', 'childWordStates', 'monthlyRotationScores', 'updatedAt'])
-            && request.resource.data.keys().hasOnly(['childId', 'rotationCycleId', 'childWordStates', 'monthlyRotationScores', 'updatedAt'])
             && request.resource.data.childId == childId
             && request.resource.data.rotationCycleId is number
             && request.resource.data.childWordStates is list
@@ -779,6 +731,27 @@ service cloud.firestore {
           allow delete: if false;
         }
 
+        match /tier2ReadingProgress/{progressId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validTier2ReadingProgress(childId, progressId);
+          allow update: if ownsActiveChild(familyId, childId)
+            && validTier2ReadingProgress(childId, progressId)
+            && request.resource.data.revision > resource.data.revision
+            && request.resource.data.id == resource.data.id
+            && request.resource.data.childId == resource.data.childId
+            && request.resource.data.grade == resource.data.grade
+            && request.resource.data.schoolYear == resource.data.schoolYear
+            && request.resource.data.activityModule == resource.data.activityModule
+            && request.resource.data.profileId == resource.data.profileId
+            && request.resource.data.profileVersion == resource.data.profileVersion
+            && request.resource.data.pathwayKind == resource.data.pathwayKind
+            && request.resource.data.cohortIds == resource.data.cohortIds
+            && request.resource.data.targetOccurrenceIds == resource.data.targetOccurrenceIds
+            && request.resource.data.startedAt == resource.data.startedAt;
+          allow delete: if false;
+        }
+
         match /acquisitionTransitions/{transitionId} {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
@@ -791,9 +764,7 @@ service cloud.firestore {
 
         match /dtObservations/{observationId} {
           allow read: if childExists(familyId, childId);
-          allow create: if ownsActiveChild(familyId, childId)
-            && request.resource.data.keys().hasAll(['id', 'childId', 'sessionId', 'datasetId', 'wordId', 'text', 'poolType', 'correct', 'revealMethod', 'reviewedAt'])
-            && request.resource.data.keys().hasOnly(['id', 'childId', 'sessionId', 'datasetId', 'wordId', 'text', 'poolType', 'correct', 'revealMethod', 'reviewedAt', 'transitionId'])
+          allow create, update: if ownsActiveChild(familyId, childId)
             && request.resource.data.id == observationId
             && request.resource.data.childId == childId
             && request.resource.data.sessionId is string
@@ -807,9 +778,7 @@ service cloud.firestore {
             && request.resource.data.revealMethod in ['timer', 'skip_timer', 'show_answer']
             && request.resource.data.reviewedAt is string
             && validOptionalAcquisitionTransition(familyId, childId)
-            && getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data.id == request.resource.data.sessionId;
-          allow update: if ownsActiveChild(familyId, childId)
-            && request.resource.data == resource.data;
+            && (!('transitionId' in request.resource.data) || !exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/dtObservations/$(observationId)) || request.resource.data == resource.data);
           allow delete: if false;
         }
       }
@@ -836,10 +805,6 @@ service cloud.firestore {
     }
 
     match /importLogs/{logId} {
-      allow read, write: if false;
-    }
-
-    match /importRuns/{runId} {
       allow read, write: if false;
     }
   }

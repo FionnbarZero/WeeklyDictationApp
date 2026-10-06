@@ -1,0 +1,8 @@
+name = "meghangames-ninjadojo"
+account_id = "4c11957e0121dba35fe2f16be80526f8"
+compatibility_date = "2026-10-04"
+workers_dev = false
+preview_urls = false
+
+# Supply the exact tested artifact with --assets. Existing custom domain remains.
+# No database bindings: the approved Firebase project owns authenticated data.

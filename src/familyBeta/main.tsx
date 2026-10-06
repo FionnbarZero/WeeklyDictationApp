@@ -8,8 +8,10 @@ import { subscribeAuth, signIn, signOut, type AuthState } from '../firebaseClien
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
 import { BETA_GRADES, dailyTotals, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
-import { PROFILE_KEY, acknowledgeResult, pendingResults, previewResults, savePreviewResult } from './runtime.ts'
+import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults, savePreviewResult } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
+import { deviceExport } from './deviceExport.ts'
+import { familyDeviceSyncRepository } from './deviceSync.ts'
 import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import { channelCohort, latestEarlierTargets } from './gamePools.ts'
@@ -70,7 +72,7 @@ function FamilyPreview() {
   const [status, setStatus] = useState(
     firebaseConfigReady
       ? 'Sign in to save across devices.'
-      : 'Device preview: completed scores stay in this browser. Cloud saving is not configured here.',
+      : 'One-device beta: scores and reports stay in this browser. Online syncing is not enabled.',
   )
   const [busy, setBusy] = useState(false)
   const [adultUnlocked, setAdultUnlocked] = useState(!firebaseConfigReady)
@@ -80,14 +82,22 @@ function FamilyPreview() {
   const [pack, setPack] = useState<LearningModulePack | null>(null)
   const frame = useRef<HTMLIFrameElement>(null)
   const syncing = useRef(false)
+  const syncAgain = useRef(false)
+  const refreshRef = useRef<() => Promise<void>>(async () => {})
+  const [readyChild, setReadyChild] = useState('')
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
+  const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChild === child.id)
   useEffect(() => () => stopActiveAudio(), [pack, tab, child?.id])
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
     if (!auth.user) return
     let cancelled = false
+    setReadyChild('')
+    setFamilyId(null)
+    setProfiles([])
+    setResults([])
     void ensureParentFamily(auth.user)
       .then(async ({ family }) => {
         const children = (await listChildren(family.id)).filter((c) =>
@@ -139,10 +149,12 @@ function FamilyPreview() {
   }, [currentGrade, curriculumRetry])
 
   const refreshProgress = useCallback(async () => {
-    if (!child || syncing.current) return
+    if (!child) return
+    if (syncing.current) { syncAgain.current = true; return }
     syncing.current = true
     try {
       if (familyId && auth.user) {
+        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id, !frame.current && !pack)
         const repository = familyResultRepository(familyId)
         const pending = pendingResults()
         for (const item of pending) {
@@ -151,15 +163,27 @@ function FamilyPreview() {
           acknowledgeResult(item.id)
         }
         const saved = await repository.list(child.id)
+        for (const result of saved) {
+          const key = `${RESULT_KEY}:${result.id}`
+          const previous = localStorage.getItem(key)
+          if (previous && JSON.stringify(JSON.parse(previous)) !== JSON.stringify(result)) {
+            const local = JSON.parse(previous) as BetaResult
+            if (Object.keys(result).some(key => JSON.stringify(local[key as keyof BetaResult]) !== JSON.stringify(result[key as keyof BetaResult])))
+              throw new Error('An online score differs from this device’s record. Both copies are preserved.')
+          }
+          if (!previous) localStorage.setItem(key, JSON.stringify(result))
+        }
         setResults(saved)
-        setStatus('Completed results confirmed in your family account.')
+        setStatus('Scores and saved practice confirmed in your private family account. Use the same parent account on your other device.')
+        setReadyChild(child.id)
       } else {
         setResults(previewResults())
-        setStatus('Saved on this preview device. Cross-device saving awaits an approved cloud configuration.')
+        setStatus('Saved in this browser on this device. Online syncing is not enabled; use the same grade link and browser next time.')
       }
       setError('')
     } catch (e) {
       setError(message(e))
+      if (familyId) setReadyChild('')
       setStatus('Saving is not confirmed. Keep this browser’s data and retry.')
       try {
         setResults(previewResults())
@@ -168,8 +192,13 @@ function FamilyPreview() {
       }
     } finally {
       syncing.current = false
+      if (syncAgain.current) {
+        syncAgain.current = false
+        void refreshRef.current()
+      }
     }
-  }, [child?.id, familyId, auth.user?.uid, profiles])
+  }, [child?.id, familyId, auth.user?.uid, profiles, pack])
+  refreshRef.current = refreshProgress
 
   useEffect(() => {
     void refreshProgress()
@@ -187,11 +216,18 @@ function FamilyPreview() {
       }
     }
     const online = () => void refreshProgress()
+    const storageChanged = (event: StorageEvent) => {
+      if (event.key && !event.key.startsWith('family-beta-sync-') && event.key.startsWith('family-beta-')) void refreshProgress()
+    }
     addEventListener('message', receive)
     addEventListener('online', online)
+    addEventListener('storage', storageChanged)
+    const interval = setInterval(() => { if (familyId) void refreshProgress() }, 15000)
     return () => {
       removeEventListener('message', receive)
       removeEventListener('online', online)
+      removeEventListener('storage', storageChanged)
+      clearInterval(interval)
     }
   }, [refreshProgress])
 
@@ -255,8 +291,8 @@ function FamilyPreview() {
       data-report-revision={import.meta.env.VITE_GIT_REVISION || 'local'}
     >
       <header className="beta-toolbar">
-        <strong>Weekly Dictation · Family preview</strong>
-        <small>Review build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
+        <strong>Ninja Dojo · Family beta</strong>
+        <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
         <label>
           Practicing as{' '}
           <select
@@ -313,7 +349,11 @@ function FamilyPreview() {
           </button>
         ))}
       </nav>
-      {child && (tab === 'activities' || tab === 'games') && (
+      {familyId && child && readyChild !== child.id && <section className="beta-panel" role="status">
+        <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
+        <button type="button" onClick={() => void refreshProgress()}>Retry family sync</button>
+      </section>}
+      {child && practiceReady && (tab === 'activities' || tab === 'games') && (
         <label className="beta-week">
           Practice week{' '}
           <select
@@ -336,7 +376,7 @@ function FamilyPreview() {
         </label>
       )}
       {!child && <p>Add a child in Parent controls to begin.</p>}
-      {child && tab === 'activities' && curriculum && (
+      {child && practiceReady && tab === 'activities' && curriculum && (
         <iframe
           ref={frame}
           key={`${child.id}-${currentGrade}-${week}`}
@@ -347,6 +387,7 @@ function FamilyPreview() {
         />
       )}
       {child &&
+        practiceReady &&
         tab === 'games' &&
         (pack ? (
           <Suspense fallback={<p>Loading game…</p>}>
@@ -475,10 +516,22 @@ function FamilyPreview() {
             <>
               {!firebaseConfigReady && (
                 <p>
-                  These are synthetic preview profiles stored on this device. Parent authentication must be configured
-                  before family use.
+                  These learner profiles are stored only in this browser. They do not sync to another device.
                 </p>
               )}
+              <p>Download a private copy of this site's saved scores, reviewed acquisition responses, checkpoints, and problem reports before changing devices or website addresses. This does not move or erase anything.</p>
+              {familyId && <p>Older device-only learner records remain on their original website and are not automatically assigned to an online child profile. Keep their export if you want those histories reconciled.</p>}
+              <button type="button" onClick={() => {
+                try {
+                  const data = deviceExport(localStorage, location.origin)
+                  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = `ninja-dojo-device-records-${data.createdAt.slice(0, 10)}.json`
+                  link.click()
+                  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                } catch (error) { setError(message(error)) }
+              }}>Download this device's records</button>
               {profiles.map((p) => (
                 <div key={p.id} className="beta-profile">
                   <strong>

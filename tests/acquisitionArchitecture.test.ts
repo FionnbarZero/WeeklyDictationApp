@@ -97,6 +97,7 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/application/practice/startPractice.ts',
     'src/application/workspace/contracts.ts',
     'src/domain.ts',
+    'src/familyBeta/acquisitionStore.ts',
     'src/firestoreClient.ts',
     'src/infrastructure/browserPracticePersistence.ts',
     'src/persistence/acquisitionPendingJournal.ts',

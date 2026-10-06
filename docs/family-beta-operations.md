@@ -2,7 +2,7 @@
 
 This plan protects the three grade-level applications currently used by one child per grade while allowing small updates and bug fixes. The family beta is closed, adult-supervised, and separate from both the synthetic staging environment and a public production release.
 
-The objective is not to freeze development. It is to ensure that every child can remain on a known-good app while a replacement is reproduced, tested, reviewed, promoted, observed, and rolled back independently.
+The objective is to deliver tested fixes promptly to permanent live links while preserving data and rollback. Under the owner's October 5 standing approval, ordinary grade updates do not require another preview or deployment approval question. [ADR 0008](./decisions/0008-family-beta-product-and-release-policy.md) is the current release and behavior policy.
 
 ## Beta boundaries
 
@@ -11,37 +11,37 @@ The objective is not to freeze development. It is to ensure that every child can
 - Synthetic staging never receives real child data, email addresses, recordings, authentication state, or copied family documents.
 - Real beta data stays in its authorized family scope and is minimized to what the active capability requires.
 - Microphone audio remains prompt-local and is released when the prompt or visit ends.
-- Kindergarten and Grade 5 remain session-only until separate durable persistence contracts are approved.
-- Grade 2 Tier 1 writing is browser-local durable in the current family-beta build and requires backup, restore, migration, retry, and rollback protection.
+- All three October 5 family apps retain completed scores and reports in the current browser. Exact acquisition resume and complete per-game weekly history still require activity-level verification.
+- Browser-local records in every grade require compatibility and rollback protection; migrations additionally require verified backup and restore coverage.
 - Closed beta availability does not mean production eligibility.
 
 ## Grade-specific safety posture
 
 | Grade | Current beta posture | Required release protection |
 | --- | --- | --- |
-| Kindergarten | Session-only development experience | Stable known-good build, visible session-only notice, no retained result or audio, independent rollback |
-| Grade 2 | Browser-local durable Tier 1 writing; Tier 2 remains session-only | Browser-state export and restore, schema compatibility, exact retry checks, second-browser verification after migration, independent rollback |
-| Grade 5 | Session-only development experience with unresolved product policies | Stable known-good build, visible session-only and experimental notices, no production source activation, independent rollback |
+| Kindergarten | Live writing/reading family beta with local completed scores and reports | Truthful one-device notice, no retained audio, storage compatibility, independent rollback |
+| Grade 2 | Live writing/reading family beta on the existing GitHub Pages origin | Preserve legacy and family records, verify migration coverage before changes to storage, independent rollback |
+| Grade 5 | Live writing/reading family beta; first priority for bug fixes | Truthful one-device notice, no retained audio, grade-owned acquisition rules, storage compatibility, independent rollback |
 
 ## Stable and preview deployments
 
 Each grade must have one documented stable beta destination. A stable destination points only to an explicitly promoted release and does not automatically follow `main`, a development branch, or an unreviewed local build.
 
-Each proposed update receives a temporary preview deployment. The adult reviewer verifies the affected activity on that preview before promotion. Promotion uses the exact reviewed artifact or Hosting version; it does not create a different rebuild from the same source commit.
+Use a temporary preview when required to verify a hosted change, but do not require the owner to approve it again. Publish the exact tested artifact or Hosting version under standing approval; do not rebuild between acceptance and promotion. Verify the permanent live link afterward. The owner's ordinary beta testing happens on that live link.
 
 Every stable deployment retains at least one previous known-good Hosting release or Git deployment tree. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
-Verified on 2026-10-03:
+Current release verified on October 5, 2026:
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
-| Kindergarten | `https://weeklydictation-k-beta.web.app` | `250d348f52792235ce72b7157b26e7cd0ad7f0bb` | Non-expiring `rollback-stable-250d348f5279` verified; adult defect review active; rewritten-root cache fix not yet promoted |
-| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | `a6df41db07331fd0c8dde190dbf80b10650184df` through Pages artifact `8fffebee35a91fc31ba37a8d4dd1141517aaf023` | Restore rehearsal passed on merged candidate `8355522`; exact-artifact preview, approval, and promotion remain open |
-| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `a55d972ccb6f6db00c81b202d4e5bba16a889025` | Non-expiring `rollback-stable-a55d972ccb6f` verified; detailed adult acceptance and observation record incomplete |
+| Kindergarten | `https://weeklydictation-k-beta.web.app` | `f4ef04f1e9898a21553ade00db425bcd8d897bc0` | Published and checksum/browser verified; iMac/iPad activity testing continues |
+| Grade 2 | `https://fionnbarzero.github.io/WeeklyDictationApp/` | Same application source; Pages `0b499f86676dcffe4a62fcf4173a8a32402d039a` | Published and checksum/browser verified; preserve legacy storage and audit new storage coverage |
+| Grade 5 | `https://weeklydictation-g5-beta.web.app` | `f4ef04f1e9898a21553ade00db425bcd8d897bc0` | Published and checksum/browser verified; first priority for daily-learning/Boss fixes |
 
 ## Release identity and manifest
 
-The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md). Use the [family beta release manifest template](./family-beta-release-manifest-template.md) for every proposed promotion. Kindergarten and Grade 5 now use dedicated Firebase Hosting sites. The legacy GitHub Pages artifact still serves all historical routes, but it remains the stable Grade 2 origin only; it is not the promotion path for the two independent session-only apps.
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md) and [live release record](./family-beta-live-2026-10-05.md). Use a release manifest for each promotion. Kindergarten and Grade 5 have dedicated Firebase Hosting sites. GitHub Pages remains the Grade 2 origin; historical routes there are not the canonical Kindergarten or Grade 5 links.
 
 The repository-side artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). Kindergarten and Grade 5 use independent Firebase stable sites. Grade 2 uses a Firebase preview-only site and guarded fast-forward deployment commits on its existing GitHub Pages origin.
 
@@ -63,8 +63,8 @@ Every promotion records:
 | Curriculum identity | Source profile, school year, and content fingerprint or fixture version |
 | Stored-schema versions | Every schema the release reads or writes |
 | Capability changes | Activities enabled, disabled, corrected, or unchanged |
-| Verification | Unit, build, browser, Emulator, preview, and adult acceptance results applicable to the change |
-| Backup | Required Grade 2 backup identity and checksum, or `not applicable` for a session-only change |
+| Verification | Applicable automated, hosted, and physical-device results, plus any unverified limits; standing owner approval covers routine publication |
+| Backup | Backup identity and checksum for persistence-affecting changes, or a documented no-storage-change rationale |
 | Canary | Child/grade scope using a non-identifying label, start time, and observed result |
 | Rollback target | Previous known-good Hosting release and any data-restore procedure |
 | Owner | Person responsible for observation and rollback |
@@ -77,13 +77,15 @@ Every promotion records:
 4. Implement one narrowly scoped fix. Keep behavior changes separate from refactors and dependency upgrades.
 5. Run the relevant unit, typecheck, lint, format, build, browser, performance, and Firestore Emulator gates.
 6. Deploy the exact candidate to a temporary preview destination.
-7. Obtain adult approval of the affected activity and confirm that unrelated activities still open and exit correctly.
-8. For a Grade 2 persistence-affecting change, create and verify the whole-local-state backup, then confirm the selected-profile restore plan before promotion.
-9. Promote the exact reviewed artifact to the affected grade's stable beta destination.
+7. Confirm the fix follows the approved behavior contract and unrelated activities still open and exit correctly. Do not insert another routine adult approval pause.
+8. For a persistence-affecting change in any grade, verify backup coverage and rehearse a lossless restore/migration. Data resets and production security/authentication changes still need separate authority.
+9. Promote the exact tested artifact to the affected grade's permanent beta destination under standing approval; verify its live identity and affected path.
 10. Use one child as the canary only for that child's grade. Confirm launch, exit, resume, completion, and persistence promises appropriate to the activity.
 11. Observe the release and either record acceptance or roll back. Do not continue exposing a release while investigating a critical or high-severity data defect.
 
-## Grade 2 backup and restore
+## Legacy Grade 2 backup and restore evidence
+
+This section documents the earlier application-state tools and rehearsal. It does not prove backup coverage for the October 5 family wrapper's additional ledger, report, or mastery keys. Inspect and extend coverage before any migration; do not repeat a legacy migration exercise as a prerequisite to an unrelated compatible UI fix.
 
 Merged Grade 2 source includes a parent-facing **Protect progress** control. **Download backup** exports application state version 2 together with the Acquisition and Warmup recovery journals inside a `weekly-dictation-verified-backup-v1` envelope. The envelope carries a SHA-256 checksum over canonical payload content. Export fails closed if either journal is malformed.
 
@@ -93,7 +95,7 @@ Merged Grade 2 source includes a parent-facing **Protect progress** control. **D
 
 The disposable rehearsal against the real family-browser capture passed on merged revision `8355522bdc82bb50e11855108ee8edd9d26e6c39` at `2026-10-04T01:53:12.341Z`. It covered zero-write preview, wrong-profile rejection, selected-profile merge, unrelated-profile preservation, automatic safety backup, reload, duplicate replay, interrupted-write recovery, injected rollback, and unexpected-newer-storage rejection. No live browser storage was written. The verified private backup remains outside the repository; only its privacy-safe checksum and result belong in a release manifest.
 
-The current live Grade 2 artifact does not expose these controls yet. For the first safety release only, use the origin-bound, download-only capture and isolated candidate procedure in [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md). It does not write the live browser profile or send the captured state over the network.
+For recovery of legacy Grade 2 state, the origin-bound, download-only capture and isolated candidate procedure in [Grade 2 local restore rehearsal](./grade2-local-restore-rehearsal.md) remains reference material. It does not write the live browser profile or send captured state over the network. Do not assume the family wrapper exposes every legacy control.
 
 For each pre-release backup:
 
@@ -129,7 +131,7 @@ The beta cannot rely on Firestore managed export/import while the project remain
 - A new writer must not make the previous known-good reader unsafe without an explicit migration window and rollback plan.
 - Journal-before-state, revision checks, immutable receipts, exact retry, and idempotent recovery remain mandatory.
 - An activity cannot change lifecycle stage, scoring, persistence, or Warmup policy as an incidental UI fix.
-- Unresolved capabilities remain hidden or explicitly experimental; a visible interface is not evidence of durability or production eligibility.
+- Keep both owner-approved writing/reading acquisition alternatives available without experimental labels. Contain unsupported or unsafe individual capabilities with a clear explanation; visibility is not evidence of correctness or durability.
 
 ## Privacy-safe bug reports
 
@@ -164,11 +166,11 @@ C0 is complete when:
 - preview and exact-artifact promotion are documented and rehearsed;
 - Grade 2 whole-local-state export, checksum, scope-aware preview, and selected-child lossless restore pass;
 - every promotion has a release manifest and rollback target;
-- the adult reviewer has rehearsed critical and high-severity rollback decisions;
+- critical and high-severity containment and rollback have been rehearsed and recorded;
 - bug intake avoids child-identifying response content;
-- session-only apps do not imply that progress is retained; and
+- persistence labels accurately distinguish saved results, unfinished-session resume, and absent cross-device synchronization; and
 - synthetic staging remains free of real child data.
 
 ## Work after C0
 
-After C0, activity corrections proceed one grade at a time against an adult-approved behavior contract. Program B2 synthetic migration and full rollback rehearsal can then resume without requiring the three children to leave their stable beta releases.
+Activity corrections proceed Grade 5 first against the owner-approved behavior contract and standing release approval. Program B2 synthetic migration and full rollback rehearsal remain later work and do not require children to leave the live one-device beta while compatible bugs are fixed.

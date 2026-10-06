@@ -34,6 +34,9 @@
 .deferred-review-row .answer-actions { grid-template-columns: 1fr 1fr; }
 .deferred-review-row .answer-actions button { min-height: 47px; }
 .deferred-review-row .answer-actions button:disabled { cursor: not-allowed; opacity: .42; }
+.deferred-reading-review-row { grid-template-columns: 45px minmax(0, 1fr); }
+.deferred-reading-review-row .answer-actions { grid-column: 2; width: min(100%, 420px); justify-self: end; }
+.deferred-reading-review-target { flex-wrap: wrap; }
 .deferred-writing-review-row { grid-template-columns: 45px minmax(0, 1fr); align-items: start; }
 .deferred-writing-review-row .answer-actions { grid-column: 2; width: min(100%, 420px); justify-self: end; }
 .deferred-writing-review-row .skywriting-workspace { margin-top: 14px; }
