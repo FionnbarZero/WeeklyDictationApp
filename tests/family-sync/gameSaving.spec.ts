@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 const grades = [
   ['kindergarten', 'Kindergarten', 'synthetic-k'],
@@ -239,12 +239,28 @@ for (const [slug, grade, childId] of grades) {
 test('query flags in an unrelated host do not activate family behavior', async ({ page }) => {
   await page.goto('/testing.html')
   await page.evaluate(() => {
+    sessionStorage.setItem(
+      'family-beta-preview-selected-v1',
+      JSON.stringify({ id: 'synthetic-g5', nickname: 'Grade 5', grade: 'Grade 5', active: true }),
+    )
     const frame = document.createElement('iframe')
     frame.title = 'Standalone Grade 5'
     frame.src = '/grade5-learning-hub.html?family-preview=1'
     document.body.append(frame)
   })
   const frame = page.frameLocator('iframe[title="Standalone Grade 5"]')
-  await expect(frame.getByText('Grade 5 development lab', { exact: true })).toBeVisible()
+  await expect(frame.locator('#hub-status')).toHaveText(
+    'Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.',
+  )
   expect(await frame.locator('html').getAttribute('class')).not.toContain('family-beta-frame')
+  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+  await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+  for (let i = 0; i < 4; i++) {
+    await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  }
+  await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+  await expect(frame.locator('#hub-status')).toContainText('This development lab does not save progress yet.')
+  expect(await results(page)).toHaveLength(0)
 })

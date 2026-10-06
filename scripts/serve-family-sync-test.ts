@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { resolve, sep } from 'node:path'
 
 // Exercise the same packager used for publication, including its clean-source
