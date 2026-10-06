@@ -39,7 +39,7 @@ function GameShell({ title, eyebrow, score, onExit, children }: {
 }) {
   return <main className="k-game-shell" data-report-activity={title}>
     <div className="k-game-topbar">
-      <button className="k-back" type="button" onClick={() => onExit()}><X size={17} /> Exit game</button>
+      <button className="k-back" type="button" onClick={() => { if (!pauseToFamilyHub()) onExit() }}><X size={17} /> Exit game</button>
       <span className="k-game-live-score">{score}</span>
     </div>
     <header className="k-game-heading">
@@ -381,3 +381,4 @@ export function NinjaRecord({ scores, persistent = false }: { scores: Kindergart
     <small>{persistent ? 'This visit’s scores. Open family Progress above for saved history and saving status.' : 'Development lab: these scores stay only for this open visit and are not saved to a child account.'}</small>
   </section>
 }
+import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
