@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 6, 2026 with architecture-audit findings and [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md). Published artifact evidence remains the [October 5 family-sync release](./docs/family-sync-release-2026-10-05.md). This documentation update does not implement or publish the approved repairs.
+Updated October 6, 2026 with architecture-audit findings, [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md), and the focused [A1 saving repair](./docs/a1-confirmed-game-saving.md). A1 is implemented and locally verified, awaiting Astra review and CI; it is not published. Published artifact evidence remains the [October 5 family-sync release](./docs/family-sync-release-2026-10-05.md).
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -19,7 +19,7 @@ These are permanent, parent-authenticated family beta links on one origin, not e
 | Capability | Verified state | Remaining work or limit |
 | --- | --- | --- |
 | Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
-| Game results | Earlier hosted Memory Lanterns checks passed for the exercised paths | October 6 audit confirmed canonical extensionless routing disables family mode for outer Ninja Skills saving; earlier checks do not cover that path. Per-target results and game coverage remain incomplete |
+| Game results | Earlier hosted Memory Lanterns checks passed for the exercised paths; A1 repairs canonical routing and confirmed, idempotent completion in source, with 28 exact-package browser checks passed | The live release still has the canonical-route defect until reviewed publication. Astra review and CI remain required. Per-target results and game coverage remain incomplete |
 | Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
 | Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
 | Problem reports | Reports save locally and survive reload; end-of-session batch sharing and cancellation checks passed | Email/share needs a user action; pause-and-preserve behavior across every game is required and still needs verification |
@@ -73,7 +73,7 @@ Audit source: Main at `6832900e5638cefc1264adddc7d83df85ae3ddba`. All 635 unit t
 
 Reproduce these findings against the current revision before repairing them. The roadmap tracks implementation; this table preserves audit evidence and does not turn architectural risks into claims of observed data loss or compromise.
 
-The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations.
+The owner gives standing approval to publish tested fixes to the affected permanent live grade. Do not ask for another routine preview/deployment approval. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations. The focused A1 task explicitly stops at a tested pull request for GPT-6 Astra High review: it does not merge or publish this repair.
 
 Main was not merged by the October 5 release operation. The owner authorized source reconciliation on October 6 through [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53). Live artifacts retain their exact published source identity even after source integration; a merge is not a deployment. Documentation, tests and development-only dependency fixes do not by themselves update the live application.
 
