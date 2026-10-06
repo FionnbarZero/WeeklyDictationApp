@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
       return respond(names.map((id) => {
         const data = id.endsWith('/users/synthetic-parent')
           ? { familyId: 'family-synthetic-parent', role: 'parent' }
-          : { ownerParentId: 'synthetic-parent' }
+          : { id: 'family-synthetic-parent', ownerParentId: 'synthetic-parent' }
         return { found: { name: id, fields: fields(data) } }
       }))
     }
