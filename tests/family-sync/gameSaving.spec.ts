@@ -282,8 +282,7 @@ test('query flags in an unrelated host do not activate family behavior', async (
     )
     const frame = document.createElement('iframe')
     frame.title = 'Standalone Grade 5'
-    frame.style.width = '100%'
-    frame.style.height = '1400px'
+    frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:1000'
     frame.src = '/grade5-learning-hub.html?family-preview=1'
     document.body.append(frame)
   })
