@@ -2,7 +2,7 @@
 
 This plan protects the three grade-level applications currently used by one child per grade while allowing small updates and bug fixes. The family beta is closed, adult-supervised, and separate from both the synthetic staging environment and a public production release.
 
-The objective is to deliver tested fixes promptly to permanent live links while preserving data and rollback. Under the owner's October 5 standing approval, ordinary grade updates do not require another preview or deployment approval question. [ADR 0008](./decisions/0008-family-beta-product-and-release-policy.md) is the current release and behavior policy.
+The objective is to deliver tested fixes promptly to permanent live links while preserving data and rollback. Under the owner's October 5 standing approval, ordinary grade updates do not require another preview or deployment approval question. [ADR 0009](./decisions/0009-activity-reliability-and-staged-delivery.md) is the latest reliability/delivery policy; ADR 0008 remains authoritative where not superseded. The canonical origin is `ninjadojo.meghangames.com`; older origin-specific instructions below apply to legacy recovery, not new canonical publication.
 
 ## Beta boundaries
 
@@ -31,7 +31,7 @@ Use a temporary preview when required to verify a hosted change, but do not requ
 
 Every stable deployment retains at least one previous known-good Hosting release or Git deployment tree. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
-Current release verified on October 5, 2026; all use source `ef9d1f75df7046152c4829e8f7cfca635f303461`. Exact canonical and alias versions are in the [release inventory](./family-beta-release-inventory.md).
+Current canonical release verified October 6, 2026: all three use merge `668627922bd95200c748601d7dba371a69a53b37`, Worker version `2e0cb204-5e1f-4483-bafa-4f28911718d7`, with rollback `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64`. See [A1 release acceptance](./a1-release-2026-10-06.md). Older aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`; the [inventory](./family-beta-release-inventory.md) distinguishes those copies from the canonical release.
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
@@ -41,7 +41,7 @@ Current release verified on October 5, 2026; all use source `ef9d1f75df7046152c4
 
 ## Release identity and manifest
 
-The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md) and [live release record](./family-beta-live-2026-10-05.md). Use a release manifest for each promotion. Kindergarten and Grade 5 have dedicated Firebase Hosting sites. GitHub Pages remains the Grade 2 origin; historical routes there are not the canonical Kindergarten or Grade 5 links.
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md) and [A1 live release record](./a1-release-2026-10-06.md). Use a release manifest for each promotion. All three maintained grades now share the canonical Cloudflare origin. Dedicated Kindergarten/Grade 5 Firebase sites and Grade 2 Pages are older aliases, not the supported A1 publication targets.
 
 The repository-side artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). Kindergarten and Grade 5 use independent Firebase stable sites. Grade 2 uses a Firebase preview-only site and guarded fast-forward deployment commits on its existing GitHub Pages origin.
 
