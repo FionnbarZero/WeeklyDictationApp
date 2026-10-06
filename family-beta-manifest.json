@@ -1,12 +1,18 @@
 {
   "schema": 1,
   "grade": "Grade 2",
-  "sourceRevision": "f4ef04f1e9898a21553ade00db425bcd8d897bc0",
-  "curriculumEndpoint": "https://weekly-dictation-curriculum-am3afdy42a-uc.a.run.app/curriculum/beta",
-  "persistence": "Completed scores and problem reports stay in this browser only; recordings are session-only.",
+  "sourceRevision": "ef9d1f75df7046152c4829e8f7cfca635f303461",
   "entry": "family-beta-preview.html?grade=grade2",
-  "fileTreeSha256": "a1a6937cf7740a72150fedd0575d495c09da2109ce742066f884def44d27a006",
+  "canonicalOrigin": "https://ninjadojo.meghangames.com",
+  "firebaseProject": "weeklydictationapp",
+  "persistence": "Parent-authenticated results and saved practice sync; reports stay on device; recordings stay temporary.",
+  "fileTreeSha256": "c6111eaa67958c57d92c6c9b53d4a948aa8f87fca93e1010981b42fce067c640",
   "files": [
+    {
+      "path": "_headers",
+      "bytes": 244,
+      "sha256": "25f839f2748aa2af6808b482b2f43e9b8dd09c8add1aaaaa468884d95ce971e1"
+    },
     {
       "path": ".nojekyll",
       "bytes": 0,
@@ -15,7 +21,7 @@
     {
       "path": ".vite/manifest.json",
       "bytes": 20779,
-      "sha256": "8607696962c3a3e49db1748eaeeb4e5443d5c4276e6bc70243776f925b302bb9"
+      "sha256": "d5f784a1332054b37595d6c7a699d0e4ddcb0ca56b147d3d4c7174ea92733077"
     },
     {
       "path": "assets/activityNames-TQ3TVQMc.js",
@@ -23,59 +29,59 @@
       "sha256": "abe5647d55ddb576674f841e3aebd4dae8e93df13835196f33a5156d099352bd"
     },
     {
-      "path": "assets/app-DfymLKt2.js",
-      "bytes": 145609,
-      "sha256": "267c6bcfd64a4c313a9a84d4aa8f25b8bde6d1a27aa9df79d8a1fa9fb70fb8bd"
+      "path": "assets/app-CtDokMkv.js",
+      "bytes": 145615,
+      "sha256": "6ba6c3434735769bb31dcdf355d646b469b7672bc6bcca64706a38b8bce019a1"
     },
     {
-      "path": "assets/AppErrorBoundary-CZ1M6S5v.js",
-      "bytes": 61725,
-      "sha256": "fb7a53108377bf150c3154e06edf58579a580e360c66e80aa7a473344f751b4b"
+      "path": "assets/AppErrorBoundary-Dtefl8_I.js",
+      "bytes": 34308,
+      "sha256": "64b3b67fd16a51560b852d962bf57ef8c85782d02181b6b2122e56c441be0820"
     },
     {
-      "path": "assets/audioRecorder-CnQCxI5n.js",
+      "path": "assets/audioRecorder-B2KpawVm.js",
       "bytes": 3861,
-      "sha256": "7477735f05e9d654decc6ced435203f5a9fcbfce7f59ef4f1671377941f32635"
+      "sha256": "2b7b10fbd0b1e9e5a72fda70e066ace57acce319b9f86d2930e8c3b8ab69c836"
     },
     {
-      "path": "assets/AuthScreen-Dz7FYh2C.js",
+      "path": "assets/AuthScreen-CiZT6sRC.js",
       "bytes": 2472,
-      "sha256": "7f655ba8858fc01d2f814b770d6b009c4b6be4ca7c89798826e44fe4ef2cf748"
+      "sha256": "6d9db52e8e0189e0fe334a0511b2270fbd3bd6f3b2fed96a28ef59b9f3c56cbc"
     },
     {
-      "path": "assets/automaticGrade2Curriculum-CGgWpMlR.js",
+      "path": "assets/automaticGrade2Curriculum-C0Ce6IVQ.js",
       "bytes": 3633,
-      "sha256": "91d9a77f83779292f7c5e603ceef86fd5b66df34e6c787305199e8b46480c4b6"
+      "sha256": "c5315d6f79bf2261953db44ba874fd0d4b422abba5df98e42dc24676171f041d"
     },
     {
-      "path": "assets/clock-3-6TOiCbka.js",
+      "path": "assets/clock-3-DLQsOKcm.js",
       "bytes": 200,
-      "sha256": "347eabac12c3b98f136091fac50c68c340b2076593b7a93dc58bc670dae1c675"
+      "sha256": "e2cf5f219da75f8a628133f31f0a5ccbd5405ef8ae963a2b6ae7d7e7fce68c4f"
     },
     {
-      "path": "assets/curriculum-BjEC4MI3.js",
-      "bytes": 15816,
-      "sha256": "8518ceb1f8f4b78aaa8666d06d397d7a03cddc330015c84ae0c7700e20ec3aa5"
+      "path": "assets/curriculum-Lz8rBQqt.js",
+      "bytes": 15979,
+      "sha256": "35413f4205a603b79a7c1252d1fad075058a96e60ce05ad5dc599a2ca187cc85"
     },
     {
-      "path": "assets/DeferredTestReview-BY5W0ZgX.js",
+      "path": "assets/DeferredTestReview-BN1MihDn.js",
       "bytes": 22116,
-      "sha256": "bf1c8d427f46ac22adf35b2ae01b6157fb8abe3fbc2f94b458cbde5620a08f9f"
+      "sha256": "348cf61a36f58642e9bf4b6457f6e12a5ef4eceacf0d5a53c2190877b03ad820"
     },
     {
-      "path": "assets/DeferredTestReview-DdxBD_UQ.css",
-      "bytes": 18342,
-      "sha256": "2175b4eb32189e2fb098275594a2f813a7147b8763a05e7a4e0f7e554991a3aa"
+      "path": "assets/DeferredTestReview-ya2mEMjR.css",
+      "bytes": 18557,
+      "sha256": "b17414f548c8e44cdf4a57392f4e3e0c375eb6c5fbcac6a8838f2b665a03dd7d"
     },
     {
-      "path": "assets/eraser-C-XXP4W1.js",
+      "path": "assets/eraser-BseV_-nr.js",
       "bytes": 313,
-      "sha256": "ba55d8573be21d36cf71a8bf1fc647553267e2376b07235bbd6598abe9ff3b0e"
+      "sha256": "7aa3cdde92a1c92a6a4f2e61e2d0d0813c9891fa2e3dc80cd6ff9d7f29f5a460"
     },
     {
-      "path": "assets/familyPreview-1PCxYbE7.js",
-      "bytes": 16696,
-      "sha256": "33fe726864d405803064f811e4dea3f5b9b0f31224cada1d5a0a2436cb1a52dd"
+      "path": "assets/familyPreview-CmquhKYu.js",
+      "bytes": 23390,
+      "sha256": "de459b31932afc05c5bbbe36f8f7c3fc6660773b3994ddce8e81dbddbe2e60ca"
     },
     {
       "path": "assets/flip-Bzh_Qn5N.wav",
@@ -83,14 +89,24 @@
       "sha256": "79eef0c94da2947a0110b8c3c26520ec9b3bbcd7eb1ff56da3663cac4e294a14"
     },
     {
-      "path": "assets/Game-B1fOohN3.js",
-      "bytes": 10788,
-      "sha256": "64b52b6cf3699fabe657dbb5a0a83a03b00ec7853d609904997a046a4176e487"
-    },
-    {
       "path": "assets/Game-BAUJWe1H.css",
       "bytes": 23284,
       "sha256": "9c76af77f7bb2dcc61df528d028af0fd16c9ffbe20bf3c59fdf4718be11ead33"
+    },
+    {
+      "path": "assets/Game-BBHGWLfM.js",
+      "bytes": 13597,
+      "sha256": "8bdddb0391b8ce9d5dad2ee7e9fa775ee79d890be52f505697f82d7c5cff7714"
+    },
+    {
+      "path": "assets/Game-BHx_5gHI.js",
+      "bytes": 1402718,
+      "sha256": "65435cd8df5641843b0b4fec08ebd89749a9a4c2d41fd1bcf94898e64e45b0e8"
+    },
+    {
+      "path": "assets/Game-BLSYm37O.js",
+      "bytes": 10788,
+      "sha256": "c7b7588eb1adbe392985be5bf31c6ba4b3735755504437949a3be24084b549e4"
     },
     {
       "path": "assets/Game-C-UIWUzd.css",
@@ -103,34 +119,19 @@
       "sha256": "ac390f2e84334caae1b5aeaa112bbbe339c81eea2f9fd2251bc4ad87477447bb"
     },
     {
-      "path": "assets/Game-CFAynTOy.js",
-      "bytes": 10169,
-      "sha256": "f32210a6610fa2a2de5d5150e4b1b568cbd30d922b31ab68ddc75b5caed4beb9"
-    },
-    {
-      "path": "assets/Game-CLKk4ftq.js",
-      "bytes": 1402718,
-      "sha256": "c7b41a5ffd7f86b4edc63b548c761dc2fb0df8c6189bc355c98ac010e21518cb"
-    },
-    {
-      "path": "assets/Game-D7LVRV--.js",
+      "path": "assets/Game-CWpCt0MA.js",
       "bytes": 11905,
-      "sha256": "29a76698a4c91020f737805df2ca9d33fe24baae798d677efb892a43295ee9a4"
+      "sha256": "473b8f772daef45857c3569adc5a9018d053c1aa6b7779da750f8ff82066adfe"
+    },
+    {
+      "path": "assets/Game-CxjibL0O.js",
+      "bytes": 16120,
+      "sha256": "50ca423921d43f527ee28924bf560c24340f6cf3635577cba310306d0264ed6b"
     },
     {
       "path": "assets/Game-DHtGEjnR.css",
       "bytes": 29166,
       "sha256": "fe6b0975b35e684759d8b2da3d8ec33c2ebdd57c2b5283ae0e9b30da9ab650e8"
-    },
-    {
-      "path": "assets/Game-DkcBqata.js",
-      "bytes": 13597,
-      "sha256": "2adaff5085d3e540330b9c70a9a5efc407b4f34cb23d78bc797d7fdcf3f03a4e"
-    },
-    {
-      "path": "assets/Game-Dt7Dzhm6.js",
-      "bytes": 16120,
-      "sha256": "c27ab91efba393c7e99bd24a0cd1fa45089fe9631e52ebdc53e68b603564ec67"
     },
     {
       "path": "assets/Game-DvEQgiy1.css",
@@ -143,19 +144,24 @@
       "sha256": "cdd9536421323cce689363171fddf9dd183ea8d893752d253da5cff96ce2e259"
     },
     {
-      "path": "assets/games-CZeGA5h7.js",
+      "path": "assets/Game-u3r-__58.js",
+      "bytes": 10169,
+      "sha256": "4f38241faca0e9997e7e7f8c3309096b4fd6fc75479c2fefa170685b59332158"
+    },
+    {
+      "path": "assets/games-Bnr_3g7o.js",
       "bytes": 10457,
-      "sha256": "16116330f245ddc229a050a058ad2cd6c941726ad640786fffdde97dfd4a4ac2"
+      "sha256": "3b755911d6062cf6628990aa209be99da582d0345e06d2d3f47685c5af9d6e0b"
     },
     {
-      "path": "assets/grade2Adapter-BpRKnXh4.js",
+      "path": "assets/grade2Adapter-CkenbgWH.js",
       "bytes": 689,
-      "sha256": "c14e0cff23ae3824cf6a0d5c794c748fd41010d058b7e946c3e7a070530af680"
+      "sha256": "57fee68f4c6e664d93de54716dde0e6fa5f305987fbf0f963bbd37cce7031f46"
     },
     {
-      "path": "assets/Grade2StrokeOrderExperience-DY8oSTiO.js",
+      "path": "assets/Grade2StrokeOrderExperience-BAtvrp8B.js",
       "bytes": 730,
-      "sha256": "0d2cd0063ac14832cdde36ab531d2bca3b46aeb80cc539eae9fc5242143406e7"
+      "sha256": "22d4f41ebbd95630ecd7fd7458759d525087acaa2afb4355dff0c3797d839909"
     },
     {
       "path": "assets/grade5-presentation-DsmzqBQg.json",
@@ -163,24 +169,24 @@
       "sha256": "78e8c614814cf34bf711e596ae5cfaaa7799d7d353416f6c1775d3f09648844f"
     },
     {
-      "path": "assets/grade5LearningHub-CwxLDzaA.css",
-      "bytes": 3239,
-      "sha256": "94ea2e5e8b6fd87fa011e411bb906c37ef0cb1a2fe322769c719a00d042529a2"
+      "path": "assets/grade5LearningHub-BFM89vfe.css",
+      "bytes": 3390,
+      "sha256": "a069c63f6e68698e122b34d18687abf33011c61e9cd6d1687f2785b1dc598ace"
     },
     {
-      "path": "assets/grade5LearningHub-uMuNSvOJ.js",
-      "bytes": 25560,
-      "sha256": "82d498f1cd2bbbca1b4a4203815e975b8b24ea5e81a5039b638b4fc08b6d4254"
+      "path": "assets/grade5LearningHub-C0NVXnkJ.js",
+      "bytes": 26101,
+      "sha256": "7206a2dba73486c998bfd8264be944c0c586a703340ceb530e0990a869d60f8e"
     },
     {
-      "path": "assets/HistoryView-DxGO90-h.js",
+      "path": "assets/HistoryView-UgaFU28H.js",
       "bytes": 6386,
-      "sha256": "7a27307d3b8062f47b7f72d74fabc4ef223248ce97df01bd505f3b8391b1c7dc"
+      "sha256": "801c1c54a6bc91e48771b3b0c831476072580749311b30722f3cac6ff982db4b"
     },
     {
-      "path": "assets/HomeViews-DEV6bZz8.js",
+      "path": "assets/HomeViews-e9cDUedm.js",
       "bytes": 18171,
-      "sha256": "539cf62a179cb681529c41821dd055d9f0b602c822cb4ab037ea8cdcf4bedbf1"
+      "sha256": "ed3b857a28ac5a07191ed82a1e17c85417d440f49bf5df48a1d65e3a437d86fb"
     },
     {
       "path": "assets/index.esm-C0PLPHFW.js",
@@ -203,9 +209,9 @@
       "sha256": "f97a83e0f053c680597491f2934894c5bafaf8f5fcf00659ecfda6ed676d39f6"
     },
     {
-      "path": "assets/installProblemReporter-D-nl2t7_.js",
+      "path": "assets/installProblemReporter-C7J7sPOk.js",
       "bytes": 384,
-      "sha256": "ac000db212519401dd45546307046eacf9d4263b3e30d01e93326382832e8635"
+      "sha256": "c0b0fbd3b86e2a7d3a980d74c2097c82c9014c53deb0c7a632d329ec63284b10"
     },
     {
       "path": "assets/kai-celebrate-v1-BbttFDY2.webp",
@@ -223,14 +229,14 @@
       "sha256": "231dc1784dce96e7a143f37e4a9044b3f67474812d368690613c2227c2af2cfa"
     },
     {
-      "path": "assets/kindergartenAudio-oBqfelBk.js",
+      "path": "assets/kindergartenAudio-CrBHxK_4.js",
       "bytes": 23727,
-      "sha256": "a2f402173905ef0072ba7ab92988ead08d2b676072f16cee5ada7c1e0a5b4db8"
+      "sha256": "2815e438c6e147913a6893ad0d8a197d3d52ccb73fce7b82879b09123a880fe7"
     },
     {
-      "path": "assets/kindergartenLearningLab-B2a0VFPa.js",
-      "bytes": 31177,
-      "sha256": "4641feb58dfaeebc727715e8d7c6eda31812bc728ea77e83cd22da8425d527c7"
+      "path": "assets/kindergartenLearningLab-BN1c5r1w.js",
+      "bytes": 31765,
+      "sha256": "69a2415ade7936535f7ef32209111d9ee2128e288ff54b9e2fe3df60bf21acdb"
     },
     {
       "path": "assets/kindergartenLearningLab-xDbY-mnp.css",
@@ -238,14 +244,9 @@
       "sha256": "73fb232ff404eecddd67eafc0108bba9ecc93cc76802c1a35efd7d44376e8dba"
     },
     {
-      "path": "assets/LearningHub-CbxAfptj.js",
+      "path": "assets/LearningHub-DGPfrctl.js",
       "bytes": 6596,
-      "sha256": "33b894b5f2b89317270d907d182d265f1afc58a704cfe0a4e5e0478147ee44f8"
-    },
-    {
-      "path": "assets/learningHub-CDNWIg5w.js",
-      "bytes": 21521,
-      "sha256": "20981addeed273313f6d6eabc5a8a23d57e865c7ee17e0fed572d5dd03c38fe0"
+      "sha256": "5b28ce1104ea8837cc48e24270db258f41aa6444db827b39bb64a12d2c27b2ad"
     },
     {
       "path": "assets/learningHub-DM-PdKpz.css",
@@ -253,24 +254,29 @@
       "sha256": "157c1f52bd4e0f038f3c5763220c71135633272a08842ff91fefffea286e2f2a"
     },
     {
-      "path": "assets/LearningModuleHost-CHORTAqd.js",
+      "path": "assets/learningHub-DW-zQwyj.js",
+      "bytes": 21523,
+      "sha256": "f355673cd9ae58e5903220668ffc0e20f62daa04cfb14397e47d9d8d797217dc"
+    },
+    {
+      "path": "assets/LearningModuleHost-BTDUnb3f.js",
       "bytes": 2220,
-      "sha256": "149700bf6912d20284604311388cb5a9ddad80887f187ac3d72d6c118137043c"
+      "sha256": "034371529184ec2e693d09d7ca3daf7a8cefca23fa47dd25a69a3288abaff03b"
     },
     {
-      "path": "assets/LocalBackupTools-B278azrt.js",
-      "bytes": 38179,
-      "sha256": "e10386981c8e692b4797c13a98ddbf3a23fca9c584cb3eb947d4ed22e305f6cc"
+      "path": "assets/LocalBackupTools-BJte_bAB.js",
+      "bytes": 38176,
+      "sha256": "2a4ca05927e5f3231a7f9e539bce4b43c985638f5a6e1b0d671258acf3f441df"
     },
     {
-      "path": "assets/LocalRestoreGate-BwXdoS6V.js",
+      "path": "assets/LocalRestoreGate-mqkuIlBc.js",
       "bytes": 1393,
-      "sha256": "6b9dc0ada8af90e2e9e4488d7aec7fdfcbdf4c1eb8fb86fd0089187fe9c5932a"
+      "sha256": "860879ea28f8f9a2f9fe902c2bfde92fc2724cb6ce2cc8dae98a3d2473228fdc"
     },
     {
-      "path": "assets/localRestoreJournal-CRZAlpfm.js",
+      "path": "assets/localRestoreJournal-CCMtZHza.js",
       "bytes": 2333,
-      "sha256": "851d65c4bb6065cc340df5d7fca4f76ab07e834cb1cfa4f0a6d1b6109353c435"
+      "sha256": "049e6a1a7476d79b06852c0b46aff4d536f58a590d69f6aa85b86b852d52c6a2"
     },
     {
       "path": "assets/match-CnkSdeSS.wav",
@@ -288,14 +294,14 @@
       "sha256": "00a0c9713968a86abf4e873d2a04572989f458a63aaa2646a3b6947b040da8fb"
     },
     {
-      "path": "assets/PracticeView-DHTHZd3z.js",
+      "path": "assets/PracticeView-BHweaXA-.js",
       "bytes": 16172,
-      "sha256": "b40f08daa111ee982e80425f0fae69187f3f1f696ee59301b55822d1b54b6667"
+      "sha256": "72d1c258cf0238f36b78e2332adc5209a8f14e366c5a0e8226ea508f1772300b"
     },
     {
-      "path": "assets/PreviewLearningHub-7slMLQXq.js",
-      "bytes": 23677,
-      "sha256": "2120d27abc492b1604ece6946416fdcbfcd5f860352c8c48c96060aef9b27fb7"
+      "path": "assets/PreviewLearningHub-B5zFCUZ4.js",
+      "bytes": 23702,
+      "sha256": "4483650bdc6d63b653b129c204e880b09d6f1d6d8113be7969e8fedd8628915a"
     },
     {
       "path": "assets/PreviewLearningHub-DbW29mtd.css",
@@ -308,19 +314,19 @@
       "sha256": "d983ebbfcf2542879f49c1ada6fe4cae70a240c3bd919be8e68d37f15632901d"
     },
     {
-      "path": "assets/ProblemReporter-CDNoO99j.js",
-      "bytes": 10323,
-      "sha256": "ccdcfe2a0b85b5d494a1e7ebaccdc577f8a808a026ffe2b2869e0f052c25ad45"
+      "path": "assets/ProblemReporter-DyG7fMRR.js",
+      "bytes": 10318,
+      "sha256": "0ea3491409ec0c8a6f73021e596aa21f6fed90f15df394a9838f943a44e7da9b"
     },
     {
-      "path": "assets/ProfileModal-BqOIXGt4.js",
+      "path": "assets/ProfileModal-xpmDWTe8.js",
       "bytes": 3002,
-      "sha256": "7c8189f92b47c602a5376e68d89f03ab4afe5ac8f52a88efb0687d37c2f72b9f"
+      "sha256": "3750c45be2b35185233ecc0060b7ce5742731074aa478f2f7bf2d42def17c406"
     },
     {
-      "path": "assets/promptAudio-eTteScna.js",
+      "path": "assets/promptAudio-BYthiV25.js",
       "bytes": 5679,
-      "sha256": "3c50654b856db4a0ccd9cc50e5c88defb20d562c15ea6472092ea8b9a53b30b4"
+      "sha256": "690bd4ca1d60d0765bd34244e1209cf4dd1e5a9021a249e23f4603f49219a2c7"
     },
     {
       "path": "assets/rain-skybridge-v1-CNOYdRZL.webp",
@@ -328,9 +334,9 @@
       "sha256": "044b8a85a703e5fe6f536ed321e9b3d307afec335f97250b376feddadbf804ad"
     },
     {
-      "path": "assets/ReadingResponsePanel-D5h34H7S.js",
-      "bytes": 6517,
-      "sha256": "9dedd4c18ef511101c01b1c713d8d473986bdf0824b9555fa68fb135cba6bf77"
+      "path": "assets/ReadingResponsePanel-BLqald0Q.js",
+      "bytes": 6597,
+      "sha256": "783570f3bf6e4fdafd650c197a84dc0bcd52c086ab0055ae7c0d565f14868fc5"
     },
     {
       "path": "assets/releaseMetadata-DCC6_RnF.js",
@@ -343,14 +349,14 @@
       "sha256": "32e802be72580e75556856999bafa39bff31f874d655006824e7eb803c21b4c1"
     },
     {
-      "path": "assets/sparkles-BcWOu6t0.js",
+      "path": "assets/sparkles-DSfdhH4a.js",
       "bytes": 543,
-      "sha256": "602c75f1657caa821a215f8b3ca681137996d19bbcfd74d5efbc24ad8d18f297"
+      "sha256": "9a67e8915b7643c0a268243cc5b4a3a3cd9b5a538686df2cf128af8236a0c88b"
     },
     {
-      "path": "assets/StrokeOrderActivity-BUQNqMqj.js",
+      "path": "assets/StrokeOrderActivity-CYy4O4uv.js",
       "bytes": 41521,
-      "sha256": "597349d930d37568d36a4f609f5f55a3d73790d90898ca96e357f24cd7525639"
+      "sha256": "06c040ad476583be276a934524ef2421f562fef5e2f92a87312e6ad04dc94827"
     },
     {
       "path": "assets/StrokeOrderActivity-K66tiXVq.css",
@@ -358,9 +364,9 @@
       "sha256": "70e6f4da38e9d418fcdfbcb2ad1dc62acc51c1613ca441703de3e4d74ea2726d"
     },
     {
-      "path": "assets/styles-DtRFGhOg.js",
-      "bytes": 310383,
-      "sha256": "a30de76cd11d5a86fbf549aa53fded13d80a0ef27e4c93d54ab04518408f6506"
+      "path": "assets/styles-BkGsQcOt.js",
+      "bytes": 338159,
+      "sha256": "647900f4dde8b24e314b67d3f6e9844e3db9b17f9d17d65a14d31383837c449c"
     },
     {
       "path": "assets/styles-Q2OB6nSP.css",
@@ -373,19 +379,19 @@
       "sha256": "93a0a03de86182b60a3b9266c447956496f1270b11c988923acd6bfabe1a47e0"
     },
     {
-      "path": "assets/Tier2ReadingPractice-BpZoXtND.js",
-      "bytes": 5761,
-      "sha256": "97237514105472b90318dc1440909a4fbad76cf6100a435d1294f28636d3e59d"
+      "path": "assets/Tier2ReadingPractice-DxzyB2U_.js",
+      "bytes": 9315,
+      "sha256": "662e76cfc418fb0ea0b325f5cfdf41bc2c66d69dd9455bbfcbcfa4c07d8bf7cb"
     },
     {
-      "path": "assets/undo-2-CEBQi6lS.js",
+      "path": "assets/undo-2-DXJHZNSu.js",
       "bytes": 239,
-      "sha256": "4bd37d019a5de6f61765041e0323cd883d2e986766d60216059eacbe0668b5e5"
+      "sha256": "18f510baac53bb5fd0dac0ee104d671e74d40b9c634e869e1a4282ead2671f07"
     },
     {
-      "path": "assets/useDialogFocus-BjXHiqiZ.js",
+      "path": "assets/useDialogFocus-BGZmWLUf.js",
       "bytes": 1052,
-      "sha256": "2cb412413c3cafb12659152ca3a2e2f15078b03285d196d0f339bffeff84c89c"
+      "sha256": "7bf18da053975b27d1e06cb8930eee440be117fcf1dfb905ee448f85d02f84a8"
     },
     {
       "path": "assets/victory-stadium-v1-Is_iGxa7.webp",
@@ -398,14 +404,14 @@
       "sha256": "c765e153a867b2cbc1dc2a2103216b335edbc3682661347c60351ba274095925"
     },
     {
-      "path": "assets/volume-2-DQuNm1RL.js",
+      "path": "assets/volume-2-D1lreEAE.js",
       "bytes": 593,
-      "sha256": "0acca26e70014330b43567f443488a22bafd2e68c9228cd85527bf5e3a997ca9"
+      "sha256": "3a0589f6be7b007d0569c7d0730fff755906198ee2f5560ea1d9e67b2f43514e"
     },
     {
-      "path": "assets/x-DC_7wFV4.js",
+      "path": "assets/x-CLkznLen.js",
       "bytes": 185,
-      "sha256": "de073b1616f47351e4761d7a9c13eb1aa45dd727142d004e62fb864b0565378a"
+      "sha256": "335b08c373e3376ada1c6e3722bbb457ccd5bfb268475d11c754ed3574e01657"
     },
     {
       "path": "audio/kindergarten/instructions/lets-learn-a-new-word.wav",
@@ -589,8 +595,8 @@
     },
     {
       "path": "family-beta-preview.html",
-      "bytes": 1423,
-      "sha256": "95a8a4d75fb2cf79eb6d5dea3ce64c5fa22ac272d8d24b2553352acd508f7b05"
+      "bytes": 1596,
+      "sha256": "c1b77c5e17e03d3bc05e23fa994fc8b03b00f7ae8bc626e07b415dadd597675a"
     },
     {
       "path": "favicon.svg",
@@ -599,18 +605,18 @@
     },
     {
       "path": "grade5-learning-hub.html",
-      "bytes": 5261,
-      "sha256": "23455d02872c340fc98dc0cea655e7d0f7402df95fb483ad904d13308aadb3b8"
+      "bytes": 5570,
+      "sha256": "dbb511ba53750b3d86b35cb2baa1af01db69be707d7cf49d5b71be7c7ca5b02e"
     },
     {
       "path": "index.html",
-      "bytes": 2174,
-      "sha256": "bd6000b104e3c94c0a452371f1da9ddf107d4b025a714f20f089393579b18f63"
+      "bytes": 2080,
+      "sha256": "115fd2b398ead93e836e968b1b524b0d9a48c158ee90d955c048be4829d7be6b"
     },
     {
       "path": "kindergarten-learning-lab.html",
-      "bytes": 3732,
-      "sha256": "4536eb9db572c29994c38b83d41dfd31260df662fdb558e43fec2e10e03788e7"
+      "bytes": 4047,
+      "sha256": "a2a2311672a0e1edefa7c48fc8260b2a9c6b8892e56c46dfd3d08590027f4b19"
     },
     {
       "path": "testing.html",
@@ -618,5 +624,5 @@
       "sha256": "57fbc7dbda78e0027c2d68ebdafba4fa94c10f2acd26026ae62f125e7b305a39"
     }
   ],
-  "packaging": "Reused verified f4ef04f application assets; grade-specific entry and manifest only."
+  "packaging": "Same tested family assets; grade entry and manifest only."
 }
