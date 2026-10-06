@@ -289,7 +289,7 @@ test('query flags in an unrelated host do not activate family behavior', async (
   await expect(frame.locator('#hub-status')).toHaveText(
     'Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.',
   )
-  expect(await frame.locator('html').getAttribute('class')).not.toContain('family-beta-frame')
+  await expect(frame.locator('html')).not.toHaveClass(/family-beta-frame/)
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
   await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
