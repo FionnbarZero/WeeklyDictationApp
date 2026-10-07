@@ -143,7 +143,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       })
     },
     // Call only after the immutable completed result is confirmed. The teaching
-    // checkpoint remains; the next visit starts a new score, not a new word set.
+    // checkpoint remains across partial score sessions. Changed lessons replace
+    // it only after teaching completion, with the previous record archived first.
     finishSession() {
       const lessonChanged = acquisitionDigest({ targetSet: context.targetSet, strategy: context.strategy })
         !== acquisitionDigest({ targetSet: latestContext.targetSet, strategy: latestContext.strategy })

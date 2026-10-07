@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 import { installFamilyFixtures } from './fixtures.ts'
 
-async function launch(page: Page, slug: string, channel: 'writing' | 'reading') {
+async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
   if (slug === 'grade2') await page.getByLabel('Practice week').selectOption('2026-09-21')
   const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
@@ -21,7 +21,7 @@ async function launch(page: Page, slug: string, channel: 'writing' | 'reading') 
     })
     .click()
   const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
-  if (await skip.isVisible()) await skip.click()
+  if (channel === 'writing' && (slug === 'grade2' || (slug === 'grade5' && !resuming))) await skip.click()
   return frame
 }
 
@@ -82,7 +82,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       snapshot.contentSha256 = createHash('sha256').update(JSON.stringify(snapshot.payload)).digest('hex')
       changed = true
       await page.reload()
-      frame = await launch(page, slug, channel)
+      frame = await launch(page, slug, channel, true)
       expect(updatesServed).toBeGreaterThan(0)
       expect(await saved(page, g2Writing)).toEqual(before)
       if (g2Writing) {

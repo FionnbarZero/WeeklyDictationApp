@@ -8,6 +8,7 @@ import { grade5Tier2ReadingProfile } from '../src/tier2/profiles/grade5.ts'
 import { kindergartenTier2ReadingProfile } from '../src/tier2/profiles/kindergarten.ts'
 import type { AcquisitionPersistenceContext } from '../src/acquisition/persistence/contracts.ts'
 import { validateAcquisitionProgressEnvelope } from '../src/acquisition/persistence/validation.ts'
+import { acquisitionDigest } from '../src/acquisition/persistence/identity.ts'
 
 function memory() {
   const records = new Map<string, string>()
@@ -196,6 +197,10 @@ for (const corruption of ['engine', 'future-target', 'timer', 'fingerprint', 'id
     if (corruption === 'fingerprint') bad.envelope.lessonSnapshot.fingerprint = 'bad'
     if (corruption === 'identity') bad.envelope.childId = 'another-child'
     if (corruption === 'missing-snapshot') bad.envelope.lessonSnapshot = null
+    if (bad.envelope.lessonSnapshot && corruption !== 'fingerprint') {
+      const { fingerprint: _fingerprint, ...payload } = bad.envelope.lessonSnapshot
+      bad.envelope.lessonSnapshot.fingerprint = acquisitionDigest(payload)
+    }
     const encoded = JSON.stringify(bad)
     storage.setItem(store.key, encoded)
     assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
@@ -211,6 +216,53 @@ test('v1 rollback readers can read an unchanged lesson, and still reject changed
   const encoded = storage.getItem(store.key)
   openAcquisitionStore(storage, latest)
   assert.equal(storage.getItem(store.key), encoded)
+})
+for (const phase of ['correction', 'earned-dt'] as const) {
+  test(`a pinned ${phase} prompt keeps its sequence and reviewed state after source replacement`, () => {
+    const storage = memory(), ctx = context()
+    let random = 0
+    const store = openAcquisitionStore(storage, ctx, { random: () => random })
+    let guard = 0
+    if (phase === 'correction') {
+      while (store.current.envelope.flow.phase !== 'correction' && guard++ < 100) store.answer(false, 'timer')
+      assert.equal(store.current.envelope.flow.phase, 'correction')
+    } else {
+      while (!store.current.envelope.flow.complete && guard++ < 100) store.answer(true, 'timer')
+      random = 0.99
+      store.finishSession()
+      assert.equal(store.current.envelope.flow.prompt?.kind, 'earned-dt')
+    }
+    const before = JSON.parse(storage.getItem(store.key)!)
+    const latest = { ...ctx, targetSet: { ...ctx.targetSet, targets: ctx.targetSet.targets.map(t => ({ ...t, text: '二' })) } }
+    const resumed = openAcquisitionStore(storage, latest, { random: () => 0 })
+    assert.deepEqual(resumed.current, before)
+    resumed.answer(true, 'timer')
+    assert.deepEqual(resumed.context.targetSet, ctx.targetSet)
+    assert.equal(resumed.current.envelope.revision, before.envelope.revision + 1)
+  })
+}
+test('an interrupted active-record replacement can reuse its verified archive on retry', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 150) store.answer(true, 'timer')
+  const before = storage.getItem(store.key)
+  const latest = { ...ctx, strategy: { ...ctx.strategy, version: ctx.strategy.version + 1 } }
+  const resumed = openAcquisitionStore(storage, latest)
+  const write = storage.setItem
+  storage.setItem = (key, value) => {
+    if (key === store.key) throw new Error('Interrupted active write')
+    write(key, value)
+  }
+  assert.throws(() => resumed.finishSession(), /Interrupted/)
+  assert.equal(storage.getItem(store.key), before)
+  assert.equal(storage.records.size, 2)
+  storage.setItem = write
+  const retry = openAcquisitionStore(storage, latest)
+  retry.finishSession()
+  assert.equal(retry.current.envelope.revision, 0)
+  assert.equal(storage.records.size, 2)
+  assert.ok([...storage.records.values()].includes(before!))
 })
 test('quota failure does not advance the in-memory response or checkpoint', () => {
   const storage = memory()
