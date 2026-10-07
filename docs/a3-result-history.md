@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: implemented on `codex/a3-result-history`; local acceptance passed, independent review and final-head CI required. Not merged or published. The live release remains A2 (`b72ed85`).
+Status: implemented on `codex/a3-result-history`; October 7 review findings repaired and focused rechecks passed. Re-review and final-head CI remain release gates. Not merged or published. The live release remains A2 (`b72ed85`).
 
 ## Scope and sequence
 
@@ -23,6 +23,8 @@ Regression-only commit `d2c2b46` failed before implementation: ordinary refresh 
 - The cursor contains only family, child, completion time, and attempt identity. It is validated before use and becomes a strict start-after boundary, never an offset. New scores inserted before that boundary do not move older attempts between pages.
 - Child/account navigation cancels pending history loads. A late response cannot appear under another child. A failed page fetch keeps the current page and allows retry. Background sync does not replace an older page being read.
 - A failed routine sync switches the latest view to preserved device records without reusing its online cursor. An already-open remote page retains its own loader and boundary. Offline display is explicitly labelled; more records may remain online.
+- Local older-page browsing keeps its own continuation flag and reads the device ledger after the last displayed time/identity boundary. Reconnecting does not substitute the online first page as its data source, and new arrivals do not shift an offset. A failed local read leaves the current page and retry available. This does not introduce a second full-history snapshot in view state; bounding the existing local ledger reads remains A3.3 work.
+- Both recent and older online pages are checked against existing per-attempt and legacy local copies before adoption. Disagreement or unreadable stored data rejects the page, preserving the current display and both records; a matching per-attempt key cannot hide a conflicting legacy copy. Older pages remain read-only and are not added to the device ledger.
 - Each distinct completed attempt has one graph point, including multiple attempts on one day or at the same timestamp. Exact retries deduplicate by attempt identity; conflicting payloads fail closed. Graphs separate grade, channel, and activity; they do not change mastery.
 - Graphs use chronological attempt order, with ID tie-breaking, and score percentage. Exact times and numerator/denominator scores are available as text. Times and daily summaries use America/Los_Angeles. Page-only totals are labelled; they are not presented as full-day or lifetime totals.
 - The existing immutable save/readback/outbox contract is unchanged. Recent confirmed results retain the existing local-copy behavior. Existing browser records are not pruned, migrated, or deleted. This bounds new history reads and the visible page, not all historical local storage or practice syncing.
@@ -48,5 +50,13 @@ October 6 local acceptance used clean source `309c5656df838c0be78381998adf1ab9a6
 | Artifact verification | All 131 files matched their recorded hashes |
 
 The canonical test artifact's file-tree SHA-256 is `95c7444b0f1a4f81e095827bfda1aa6ac681350f419d7960e3e8e9408e5bbccf`. It remains local at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-D8iSN9`; temporary artifacts are not permanent release storage. Desktop and tablet screenshots were inspected for layout and reporting controls. These are Chromium and tablet-emulation checks, not physical iMac/iPad, Safari, or real microphone/speaker-quality acceptance.
+
+## October 7 review repairs
+
+Review of PR #58 at `958c494` found three problems. GitHub's Ubuntu runner could not write the Mac-only screenshot path, so two tests stopped before their recovery assertions. A local older page lost its continuation button after a successful background reconnect. Older online pages also bypassed the existing local-copy integrity check.
+
+Regression-first commit `de7333d` uses Playwright's per-test output directory and adds packaged reproductions for reconnecting, keyed-copy conflicts, and legacy-copy conflicts. All three new desktop cases failed against the unrepaired implementation. Repair `ec32d33` implements the two history boundaries above; it changes no stored schema, immutable-write/outbox policy, authentication, database rules, or production records.
+
+Local repair checks on `ec32d33` passed all 675 unit tests and all 10 focused packaged desktop/tablet history checks, plus type checking, lint, repository formatting, and focused Biome. Additional coverage includes a new result arriving between local pages, a failed local read followed by retry, matching-copy key-order independence, malformed/unreadable storage, and unchanged ledgers after a rejected page. The full canonical suite now contains 98 checks. Final-head integration results are tracked on [PR #58](https://github.com/FionnbarZero/WeeklyDictationApp/pull/58); the earlier acceptance table describes its recorded pre-review source, not a substitute for the repaired head's CI or re-review.
 
 No live site or real family data was touched. Before publication: independent GPT-6 Astra Extra High review, final-head CI, merge-artifact checks, and a release record with synthetic backend verification and A2 rollback. Stop for approval before any newly required production migration or security change. Do not start A3.2 by treating these history tests as curriculum-resume acceptance.
