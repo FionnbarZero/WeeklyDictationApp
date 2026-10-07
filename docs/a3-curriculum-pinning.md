@@ -87,3 +87,19 @@ Limits: this is not first-use offline onboarding, automatic cloud conflict resol
 Keep the PR draft. Grade 2 corrected-week adoption and durable confirmed discard have **not** been implemented by this increment. Grade 2 needs coexisting curriculum identities and preserved result provenance; removing its import conflict guard would silently reinterpret old answers. Durable discard needs archived reviewed history and a sync-safe reset/retirement record; deleting a launch button or local key can allow an older device to restore the discarded attempt. Engine retirement remains unauthorized and unimplemented.
 
 The new offline shell adds a release-specific requirement: rehearse both upgrade and rollback with an already-controlled browser. In particular, the prior A3.1 provider rollback command is not sufficient after publishing this shell, because an installed worker can keep serving its cached release. Prepare and verify a compatible rollback shell or a reviewed retirement worker before publication. Independent release review, final-head GitHub checks, and physical-device microphone/speaker acceptance remain separate gates. No production data, security setting, or hosted application was changed.
+
+### Offline increment acceptance
+
+Final application change: `e7890d6a04dac93fd915ea80f38ca1c36cf0d77d`. The final packaged/tested tree includes documentation commit `cbde960156284705454d3b8e139477cfd41a8c2e`; subsequent acceptance-document commits do not change application code.
+
+| Check | Evidence |
+| --- | --- |
+| Complete unit suite | 721 passed on final packaged source |
+| Complete canonical desktop/tablet regression suite | 154 passed on `0b33ea8`; later changes isolate cache scope, rebuild alias integrity metadata, normalize decoded response headers, and order imports |
+| Final-package full-offline browser checks | All 18 passed on `cbde960`: all six grade/channel paths on desktop and tablet-touch, plus sign-out, denied family access, and a different parent |
+| Family policy, local emulator | 5 passed; no policy change or production request |
+| Type, lint, repository format, focused Biome | Passed |
+| Production build/performance | Passed: initial JS 546,147/550,000 bytes; CSS 42,745/60,000 bytes |
+| Final canonical and alias integrity | Canonical 135 files verified; each alias verified (135/136/135 files). Each offline shell's 126 file entries match the corresponding package |
+
+The final browser-tested canonical artifact is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-x4nEpR`, source `cbde960156284705454d3b8e139477cfd41a8c2e`, tree SHA-256 `e1d57c66902d2ef99d3679f7db5e21996a5cf720148c66feba954c6e189788ae`. The independently packaged artifact at `ninja-dojo-family-sync-HKkX3R` has the identical tree. These are temporary local test artifacts, not hosted previews or durable release archives. The new final GitHub head needs its own checks. No test result here establishes physical iPad/iMac audio behavior or the still-pending controlled-browser upgrade/rollback rehearsal.
