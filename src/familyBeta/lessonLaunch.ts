@@ -11,6 +11,7 @@ export type LessonLaunch = {
   progressionId: string
   lessonFingerprint: string
   sourceHash: string
+  sourceMetadata: Pick<CurriculumSnapshot, 'retrievedAt' | 'sourceModifiedAt'>
   week: string
   channel: 'writing' | 'reading'
 }
@@ -34,24 +35,20 @@ function confirmedWrite(storage: Store, key: string, raw: string) {
 export function cacheLessonSource(storage: Store, childId: string, snapshot: CurriculumSnapshot) {
   if (!/^[\w-]{1,160}$/.test(childId)) throw new Error(failure)
   // Stay below the existing opaque-sync record budget. Never truncate a source.
-  // Retrieval timestamps may change while content stays identical; retain the
-  // first metadata for this immutable content-addressed record.
+  // Retrieval metadata belongs to the lesson route, not the shared content
+  // object: two devices fetching identical words at different times must write
+  // identical source records, otherwise they create a false sync conflict.
   const key = sourceKey(childId, snapshot.contentSha256)
-  const old = storage.getItem(key)
-  const raw = JSON.stringify(snapshot)
+  const raw = JSON.stringify({
+    schema: snapshot.schema,
+    grade: snapshot.grade,
+    sourceId: snapshot.sourceId,
+    contentSha256: snapshot.contentSha256,
+    payload: snapshot.payload,
+  })
   if (new TextEncoder().encode(raw).byteLength > 650_000)
     throw new Error('This teacher source is too large to retain safely for reopening. No lesson was started.')
-  if (old === null) confirmedWrite(storage, key, raw)
-  else {
-    const prior = JSON.parse(old) as CurriculumSnapshot
-    inspectSnapshot(prior)
-    if (
-      prior.grade !== snapshot.grade ||
-      prior.sourceId !== snapshot.sourceId ||
-      JSON.stringify(prior.payload) !== JSON.stringify(snapshot.payload)
-    )
-      throw new Error(failure)
-  }
+  confirmedWrite(storage, key, raw)
 }
 
 function verifyEnvelope(envelope: AcquisitionProgressEnvelope, profile: BetaProfile) {
@@ -113,6 +110,7 @@ export function rememberLessonLaunch(
     progressionId: envelope.id,
     lessonFingerprint: envelope.lessonSnapshot!.fingerprint,
     sourceHash: source.contentSha256,
+    sourceMetadata: { retrievedAt: source.retrievedAt, sourceModifiedAt: source.sourceModifiedAt },
     week: actualWeek,
     channel: envelope.tier === 'tier-1' ? 'writing' : 'reading',
   }
@@ -127,14 +125,20 @@ export function rememberLessonLaunch(
 
 function currentEnvelope(storage: Store, launch: LessonLaunch): AcquisitionProgressEnvelope | undefined {
   const shared = storage.getItem(`family-beta-acquisition-v1:${launch.progressionId}`)
-  if (shared) return JSON.parse(shared).envelope
+  if (shared) {
+    const envelope = JSON.parse(shared).envelope
+    if (!envelope) throw new Error(failure)
+    return envelope
+  }
   if (launch.grade !== 'Grade 2' || launch.channel !== 'writing') return undefined
   const raw = storage.getItem(`family-beta-activity:${launch.childId}:weekly-dictation-state-v2`)
-  return raw
-    ? JSON.parse(raw).acquisitionProgressEnvelopes?.find(
-        (e: AcquisitionProgressEnvelope) => e.id === launch.progressionId,
-      )
-    : undefined
+  if (!raw) return undefined
+  const matches =
+    JSON.parse(raw).acquisitionProgressEnvelopes?.filter(
+      (e: AcquisitionProgressEnvelope) => e.id === launch.progressionId,
+    ) || []
+  if (matches.length > 1) throw new Error(failure)
+  return matches[0]
 }
 
 export async function readSavedLesson(
@@ -148,7 +152,11 @@ export async function readSavedLesson(
     launch.childId !== profile.id ||
     launch.grade !== profile.grade ||
     !/^[\w-]{1,200}$/.test(launch.progressionId) ||
+    !/^[a-f0-9]{16}$/.test(launch.lessonFingerprint) ||
     !/^[a-f0-9]{64}$/.test(launch.sourceHash) ||
+    !launch.sourceMetadata ||
+    !Number.isFinite(Date.parse(launch.sourceMetadata.retrievedAt)) ||
+    typeof launch.sourceMetadata.sourceModifiedAt !== 'string' ||
     !/^\d{4}-\d{2}-\d{2}$/.test(launch.week) ||
     !['writing', 'reading'].includes(launch.channel)
   )
@@ -158,22 +166,23 @@ export async function readSavedLesson(
   verifyEnvelope(envelope, profile)
   if (envelope.id !== launch.progressionId || launch.channel !== (envelope.tier === 'tier-1' ? 'writing' : 'reading'))
     throw new Error(failure)
-  if (envelope.status === 'teaching-complete' || envelope.lessonSnapshot!.fingerprint !== launch.lessonFingerprint)
-    return null
+  if (envelope.lessonSnapshot!.fingerprint !== launch.lessonFingerprint) return null
   const raw = storage.getItem(sourceKey(profile.id, launch.sourceHash))
   if (!raw) throw new Error(failure)
-  const { snapshot } = await validateCurriculum(raw, profile.grade)
+  const { snapshot } = await validateCurriculum(
+    JSON.stringify({
+      ...JSON.parse(raw),
+      retrievedAt: launch.sourceMetadata.retrievedAt,
+      sourceModifiedAt: launch.sourceMetadata.sourceModifiedAt,
+    }),
+    profile.grade,
+  )
   if (snapshot.contentSha256 !== launch.sourceHash || !sourceMatches(envelope, snapshot, launch.week))
     throw new Error(failure)
-  // Validation is asynchronous. A concurrent finish/replacement must not turn
+  // Validation is asynchronous. A concurrent replacement must not turn
   // an obsolete launch button into a new lesson using the old source.
   const current = currentEnvelope(storage, launch)
-  if (
-    !current ||
-    current.status === 'teaching-complete' ||
-    current.lessonSnapshot?.fingerprint !== launch.lessonFingerprint
-  )
-    return null
+  if (!current || current.lessonSnapshot?.fingerprint !== launch.lessonFingerprint) return null
   verifyEnvelope(current, profile)
   return { ...launch, source: snapshot }
 }

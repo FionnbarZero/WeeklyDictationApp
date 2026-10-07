@@ -101,6 +101,25 @@ test('index alone cannot resurrect a missing, archived, or replaced checkpoint',
   storage.data.delete(store.key)
   assert.deepEqual((await listSavedLessons(storage, profile)).lessons, [])
 })
+test('earned DT and a finished lesson awaiting score completion retain their saved route', async () => {
+  const { storage, store, profile } = fixture()
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 1000) store.answer(true, 'test')
+  assert.equal(store.current.envelope.flow.teachingComplete, true)
+  assert.equal(store.current.envelope.flow.complete, true)
+  assert.equal((await listSavedLessons(storage, profile)).lessons.length, 1)
+  store.finishSession()
+  assert.equal(store.current.envelope.flow.prompt?.kind, 'earned-dt')
+  assert.equal((await listSavedLessons(storage, profile)).lessons.length, 1)
+})
+test('a malformed checkpoint cannot silently look like a missing lesson', async () => {
+  const { storage, store, profile } = fixture()
+  storage.setItem(store.key, '{}')
+  const result = await listSavedLessons(storage, profile)
+  assert.equal(result.lessons.length, 0)
+  assert.equal(result.warnings.length, 1)
+  assert.equal(storage.getItem(store.key), '{}')
+})
 test('source validation rejects a different grade and checksum changes', async () => {
   const { source } = fixture()
   await assert.rejects(validateCurriculum(JSON.stringify(source), 'Kindergarten'), /wrong grade/)
@@ -112,6 +131,14 @@ test('source cache preserves first metadata for repeated identical content', () 
   const before = JSON.stringify([...storage.data])
   cacheLessonSource(storage, profile.id, { ...source, retrievedAt: new Date().toISOString() })
   assert.equal(JSON.stringify([...storage.data]), before)
+})
+test('two devices caching the same content at different times produce identical sync records', () => {
+  const { source, profile } = fixture()
+  const first = memory(),
+    second = memory()
+  cacheLessonSource(first, profile.id, source)
+  cacheLessonSource(second, profile.id, { ...source, retrievedAt: '2026-10-07T12:00:00.000Z' })
+  assert.deepEqual([...first.data], [...second.data])
 })
 test('the actual saved cohort week wins over a later calendar week that repeats it', async () => {
   const { source, storage, profile, store, week } = fixture()
