@@ -48,6 +48,8 @@ test('completed same-day attempts have separate graph points and older history l
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
   await expect(page.getByText('Daily totals for this page', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `/private/tmp/a3-history-${test.info().project.name}.png` })
   await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('The current page and saved records are unchanged')
   await expect(page.locator('[data-result-point]')).toHaveCount(50)

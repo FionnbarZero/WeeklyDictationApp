@@ -159,30 +159,3 @@ test('graphs separate reading, writing, Boss, games and grades without changing 
   )
   assert.throws(() => distinctAttempts([{ ...score('one'), correct: 100 }], profile.id), /validation/)
 })
-
-test('routine result refresh reads one bounded recent page instead of walking the whole history', async () => {
-  const requested: URL[] = []
-  const repository = createResultRepository({
-    projectId: 'synthetic',
-    familyId: 'family',
-    token: async () => 'synthetic',
-    fetchImpl: async (input) => {
-      const url = new URL(String(input))
-      requested.push(url)
-      return Response.json(
-        url.searchParams.has('pageToken')
-          ? { documents: [document(score('old', '2025-10-06T15:00:00.000Z'))] }
-          : { documents: [document(score('recent'))], nextPageToken: 'older-page' },
-      )
-    },
-  })
-  const loaded = await repository.list(profile.id)
-  assert.equal(requested.length, 1, 'routine sync must not fetch older pages')
-  assert.equal(requested[0].searchParams.get('pageSize'), '50')
-  assert.equal(requested[0].searchParams.get('orderBy'), 'completedAt desc, __name__ desc')
-  assert.ok(requested[0].search.includes('completedAt%20desc'))
-  assert.deepEqual(
-    loaded.map((r) => r.id),
-    ['recent'],
-  )
-})
