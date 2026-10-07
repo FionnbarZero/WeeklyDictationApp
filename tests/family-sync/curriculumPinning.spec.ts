@@ -76,6 +76,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
             : route.fulfill({ contentType: 'application/json', body: JSON.stringify(snapshot) }),
         )
         await page.reload()
+        await page.getByText('Saved lessons', { exact: true }).click()
         await page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) }).click()
         frame = page.frameLocator('iframe:visible')
         await frame.getByRole('button', { name: /Enter the Dojo/ }).click()

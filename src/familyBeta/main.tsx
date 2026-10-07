@@ -85,6 +85,7 @@ function FamilyPreview() {
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
   const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
   const [resumingId, setResumingId] = useState<string | null>(null)
+  const [savedLessonsOpen, setSavedLessonsOpen] = useState(false)
   const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
   const [resumeRefresh, setResumeRefresh] = useState(0)
   const slotsRef = useRef(slots)
@@ -364,6 +365,7 @@ function FamilyPreview() {
         src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
       }])
       setResumingId(id)
+      setSavedLessonsOpen(false)
       setTab('activities')
       setSelectedSlots(current => ({ ...current, [`${savedWorkspace}:activities`]: id }))
       setActivityError('')
@@ -470,14 +472,15 @@ function FamilyPreview() {
           </select>
         </label>
       )}
-      {child && practiceReady && tab === 'activities' && savedLessons.owner === child.id && (savedLessons.lessons.length > 0 || savedLessons.warnings.length > 0) && <section className="beta-panel" aria-label="Saved lessons">
-        <h2>Saved lessons</h2>
+      {child && practiceReady && tab === 'activities' && <details className="beta-panel" open={savedLessonsOpen} onToggle={e => setSavedLessonsOpen(e.currentTarget.open)}>
+        <summary>Saved lessons</summary>
         <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
-        {savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
-        {savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
+        {savedLessons.owner === child.id && savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
+        {savedLessons.owner === child.id && savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
           Resume saved {lesson.channel} · {lesson.week}
         </button>)}
-      </section>}
+        {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && <p>No saved lessons are available yet.</p>}
+      </details>}
       {resumeSlot && <section className="beta-panel" role="status">
         Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the current teacher curriculum.
         <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>

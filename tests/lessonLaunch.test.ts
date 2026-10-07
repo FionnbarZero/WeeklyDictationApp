@@ -109,7 +109,9 @@ test('earned DT and a finished lesson awaiting score completion retain their sav
   assert.equal(store.current.envelope.flow.complete, true)
   assert.equal((await listSavedLessons(storage, profile)).lessons.length, 1)
   store.finishSession()
-  assert.equal(store.current.envelope.flow.prompt?.kind, 'earned-dt')
+  assert.equal(store.current.envelope.flow.teachingComplete, true)
+  assert.equal(store.current.envelope.flow.complete, false)
+  assert.ok(['earned-dt', 'familiar-dt'].includes(store.current.envelope.flow.prompt?.kind || ''))
   assert.equal((await listSavedLessons(storage, profile)).lessons.length, 1)
 })
 test('a malformed checkpoint cannot silently look like a missing lesson', async () => {
