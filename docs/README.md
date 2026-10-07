@@ -5,7 +5,8 @@
 - [Current status](../STATUS.md) — verified capabilities, gates, blockers, and frozen contracts.
 - [Execution roadmap](../ROADMAP.md) — cleanup, production readiness, and rollout as separate programs.
 - [October 5 product and release policy](./decisions/0008-family-beta-product-and-release-policy.md) — current owner decisions, including standing approval for tested beta updates and generated supporting content.
-- [Verified family-sync release](./family-sync-release-2026-10-05.md) — current shared grade links, parent authentication, artifact identities, checks, and rollback targets.
+- [Current A3.1 canonical release](./a3-release-2026-10-07.md) — shared live grade links, exact artifact, verification, and A2 rollback.
+- [Initial family-sync release](./family-sync-release-2026-10-05.md) — historical parent authentication, artifact identities, checks, and rollback targets.
 - [Earlier one-device release](./family-beta-live-2026-10-05.md) — historical publication evidence and previous rollback identities.
 - [Supplemental content policy](./dictation-context-review.md) — generated meanings, sentences, and pinyin; teacher vocabulary remains authoritative.
 - [Prototype baseline](./prototype-baseline.md) — immutable archive plus living regression references.
@@ -15,7 +16,7 @@
 
 ## Architecture and persistence
 
-- [A3.1 result history](./a3-result-history.md) — bounded history reads and per-attempt graphs; review increment, not live or all of A3.
+- [A3.1 result history](./a3-result-history.md) — bounded history reads and per-attempt graphs, published October 7; A3.2/A3.3 remain pending.
 
 - [A2 activity continuity](./a2-preserve-active-work.md) — shared pause/ownership contract and repair evidence; [published A2 release](./a2-release-2026-10-06.md) records live verification and rollback.
 - [Canonical source boundary](./canonical-source-boundary.md)

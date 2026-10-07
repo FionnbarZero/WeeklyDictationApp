@@ -31,7 +31,7 @@ Use a temporary preview when required to verify a hosted change, but do not requ
 
 Every stable deployment retains at least one previous known-good Hosting release or Git deployment tree. A rollback changes only the affected grade unless a shared backend or schema defect requires broader containment.
 
-Current canonical release verified October 6, 2026: all three use merge `668627922bd95200c748601d7dba371a69a53b37`, Worker version `2e0cb204-5e1f-4483-bafa-4f28911718d7`, with rollback `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64`. See [A1 release acceptance](./a1-release-2026-10-06.md). Older aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`; the [inventory](./family-beta-release-inventory.md) distinguishes those copies from the canonical release.
+Current canonical release verified October 7, 2026: all three use merge `55e9189c7f38f6d6436a6e3b5acd7f115d5964a8`, Worker version `9284d0af-7088-4aea-a34f-f86bc3f78665`, with A2 rollback `09948689-ea48-4ff6-a9a2-798a6c6114fb`. See [A3.1 release acceptance](./a3-release-2026-10-07.md). Older aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`; the [inventory](./family-beta-release-inventory.md) distinguishes those copies from the canonical release.
 
 | Grade | Stable destination | Live source | Current operational gap |
 | --- | --- | --- | --- |
@@ -41,9 +41,9 @@ Current canonical release verified October 6, 2026: all three use merge `6686279
 
 ## Release identity and manifest
 
-The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md) and [A1 live release record](./a1-release-2026-10-06.md). Use a release manifest for each promotion. All three maintained grades now share the canonical Cloudflare origin. Dedicated Kindergarten/Grade 5 Firebase sites and Grade 2 Pages are older aliases, not the supported A1 publication targets.
+The verified current snapshot is recorded in the [family beta release inventory](./family-beta-release-inventory.md) and [A3.1 live release record](./a3-release-2026-10-07.md). Use a release manifest for each promotion. All three maintained grades now share the canonical Cloudflare origin. Dedicated Kindergarten/Grade 5 Firebase sites and Grade 2 Pages are older aliases, not the supported publication targets.
 
-The repository-side artifact, preview, exact-promotion, and rollback controls are defined in [independent family beta delivery](./independent-family-beta-delivery.md). Kindergarten and Grade 5 use independent Firebase stable sites. Grade 2 uses a Firebase preview-only site and guarded fast-forward deployment commits on its existing GitHub Pages origin.
+The older repository-side artifact, preview, exact-promotion, and rollback controls are preserved in [independent family beta delivery](./independent-family-beta-delivery.md). Those Firebase/Pages procedures apply only to legacy targets. Current canonical publication uses the family-sync packager and existing Cloudflare Worker configuration, as recorded in the current release report; do not run a legacy deployment as an additional canonical release step.
 
 Every child-facing beta displays a concise identifier containing:
 

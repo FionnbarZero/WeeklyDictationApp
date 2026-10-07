@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: implemented on `codex/a3-result-history`; October 7 review findings repaired and focused rechecks passed. Re-review and final-head CI remain release gates. Not merged or published. The live release remains A2 (`b72ed85`).
+Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for exact artifact, completed release checks, and retained A2 rollback. A3.2 and A3.3 remain pending.
 
 ## Scope and sequence
 
@@ -59,4 +59,4 @@ Regression-first commit `de7333d` uses Playwright's per-test output directory an
 
 Local repair checks on `ec32d33` passed all 675 unit tests and all 10 focused packaged desktop/tablet history checks, plus type checking, lint, repository formatting, and focused Biome. Additional coverage includes a new result arriving between local pages, a failed local read followed by retry, matching-copy key-order independence, malformed/unreadable storage, and unchanged ledgers after a rejected page. The full canonical suite now contains 98 checks. Final-head integration results are tracked on [PR #58](https://github.com/FionnbarZero/WeeklyDictationApp/pull/58); the earlier acceptance table describes its recorded pre-review source, not a substitute for the repaired head's CI or re-review.
 
-No live site or real family data was touched. Before publication: independent GPT-6 Astra Extra High review, final-head CI, merge-artifact checks, and a release record with synthetic backend verification and A2 rollback. Stop for approval before any newly required production migration or security change. Do not start A3.2 by treating these history tests as curriculum-resume acceptance.
+The review repairs did not touch a live site or real family data. Final-head CI subsequently passed all five jobs, and the tree-identical merge passed release review, all 98 canonical package checks, 675 unit tests, and three production-intended family-policy emulator checks. The [October 7 release](./a3-release-2026-10-07.md) records publication, synthetic backend acceptance before and after deployment, and A2 rollback. Stop for approval before any newly required production migration or security change. Do not start A3.2 by treating these history tests as curriculum-resume acceptance.
