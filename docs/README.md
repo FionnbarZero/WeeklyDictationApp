@@ -5,7 +5,8 @@
 - [Current status](../STATUS.md) — verified capabilities, gates, blockers, and frozen contracts.
 - [Execution roadmap](../ROADMAP.md) — cleanup, production readiness, and rollout as separate programs.
 - [October 5 product and release policy](./decisions/0008-family-beta-product-and-release-policy.md) — current owner decisions, including standing approval for tested beta updates and generated supporting content.
-- [Current A3.1 canonical release](./a3-release-2026-10-07.md) — shared live grade links, exact artifact, verification, and A2 rollback.
+- [Current A3.2 canonical release](./a32-release-2026-10-07.md) — shared live grade links, exact artifact, verification, guarded rollback, and bounded owner check.
+- [Earlier A3.1 canonical release](./a3-release-2026-10-07.md) — historical result-history release evidence; its unguarded rollback is not the safe A3.2 recovery target.
 - [Initial family-sync release](./family-sync-release-2026-10-05.md) — historical parent authentication, artifact identities, checks, and rollback targets.
 - [Earlier one-device release](./family-beta-live-2026-10-05.md) — historical publication evidence and previous rollback identities.
 - [Supplemental content policy](./dictation-context-review.md) — generated meanings, sentences, and pinyin; teacher vocabulary remains authoritative.
@@ -16,7 +17,8 @@
 
 ## Architecture and persistence
 
-- [A3.1 result history](./a3-result-history.md) — bounded history reads and per-attempt graphs, published October 7; A3.2/A3.3 remain pending.
+- [A3.1 result history](./a3-result-history.md) — bounded history reads and per-attempt graphs, published October 7.
+- [A3.2 curriculum continuity](./a3-curriculum-pinning.md) — pinning, saved-source/offline recovery, Grade 2 editions, discard, and review repairs; published October 7. A3.3 conflict/storage remains next.
 
 - [A2 activity continuity](./a2-preserve-active-work.md) — shared pause/ownership contract and repair evidence; [published A2 release](./a2-release-2026-10-06.md) records live verification and rollback.
 - [Canonical source boundary](./canonical-source-boundary.md)
