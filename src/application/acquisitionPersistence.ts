@@ -1,6 +1,8 @@
 import { startAcquisition } from '../acquisition/engine.ts'
 import type { AcquisitionCheckpoint, AcquisitionPersistenceContext, AcquisitionProgressEnvelope } from '../acquisition/persistence/contracts.ts'
 import { acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
+import { pinAcquisitionLesson, resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
+import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/validation.ts'
 import { createAcquisitionProgressEnvelope, migrateAcquisitionProgress } from '../acquisition/persistence/migration.ts'
 import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint, buildAcquisitionResumeCheckpoint } from '../acquisition/persistence/reducer.ts'
 import { APP_VERSION } from '../config.ts'
@@ -28,9 +30,10 @@ export function acquisitionPersistenceContext(
   childId: string,
   dataset: Dataset,
   grade = dataset.grade,
+  envelope?: AcquisitionProgressEnvelope<Word>,
 ): AcquisitionPersistenceContext<Word> {
   const profile = requirePracticeProfileForGrade(grade)
-  return {
+  const context: AcquisitionPersistenceContext<Word> = {
     identity: {
       childId,
       datasetId: dataset.id,
@@ -45,6 +48,7 @@ export function acquisitionPersistenceContext(
     strategy: profile.acquisition,
     strategyUpgrades: acquisitionStrategyUpgradesFor(profile.acquisition),
   }
+  return envelope ? resolveAcquisitionLesson(envelope, context) : context
 }
 
 type PreparedAcquisition = {
@@ -91,8 +95,9 @@ export function prepareAcquisitionProgress(
   dataset: Dataset,
   timestamp: string,
   random: () => number = Math.random,
+  pinLesson = false,
 ): PreparedAcquisition {
-  const context = acquisitionPersistenceContext(childId, dataset)
+  let context = acquisitionPersistenceContext(childId, dataset)
   const progressionId = acquisitionProgressionId(context.identity)
   const existingQuarantine = (state.acquisitionProgressQuarantine || []).find((item) => item.childId === childId && item.datasetId === dataset.id)
   if (existingQuarantine) return { status: 'blocked', state, reason: existingQuarantine.reason }
@@ -112,6 +117,16 @@ export function prepareAcquisitionProgress(
   }
   const raw = currentMatches[0] || legacyMatches[0]
   if (raw) {
+    try {
+      if ('lessonSnapshot' in raw) context = resolveAcquisitionLesson(raw as AcquisitionProgressEnvelope<Word>, context)
+      else if (pinLesson && !validateAcquisitionProgressEnvelope(raw, context).valid) {
+        throw new Error('This older record does not contain a verifiable original lesson. Nothing was erased. Please report this problem.')
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'The original lesson could not be restored.'
+      return { status: 'blocked', state: { ...state,
+        acquisitionProgressQuarantine: quarantineRecord(state, childId, dataset.id, reason, raw, timestamp) }, reason }
+    }
     const migrated = migrateAcquisitionProgress(raw, context)
     if (migrated.status === 'quarantined') {
       return {
@@ -120,7 +135,7 @@ export function prepareAcquisitionProgress(
         reason: migrated.reason,
       }
     }
-    const envelope = migrated.envelope
+    const envelope = pinLesson ? pinAcquisitionLesson(migrated.envelope, context) : migrated.envelope
     return {
       status: 'ready',
       context,
@@ -129,7 +144,8 @@ export function prepareAcquisitionProgress(
     }
   }
   const flow = startAcquisition(context.targetSet, context.strategy, random)
-  const envelope = createAcquisitionProgressEnvelope(context, flow, timestamp)
+  const created = createAcquisitionProgressEnvelope(context, flow, timestamp)
+  const envelope = pinLesson ? pinAcquisitionLesson(created, context) : created
   return {
     status: 'ready',
     context,
@@ -272,7 +288,7 @@ export function recoverAcquisitionCheckpoints(
     if (!dataset) return { status: 'blocked', state, recoveredTransitionIds, reason: `Pending Acquisition transition ${checkpoint.transitionId} has no canonical dataset.` }
     let context: AcquisitionPersistenceContext<Word>
     try {
-      context = acquisitionPersistenceContext(baseEnvelope.childId, dataset, baseEnvelope.grade)
+      context = acquisitionPersistenceContext(baseEnvelope.childId, dataset, baseEnvelope.grade, baseEnvelope)
       const envelope = (state.acquisitionProgressEnvelopes || []).find((item) => item.id === checkpoint.progressionId)
       if (!envelope) {
         const restored = migrateAcquisitionProgress(baseEnvelope, context)

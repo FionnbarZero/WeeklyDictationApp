@@ -21,7 +21,7 @@ export function familyAcquisitionStore<T extends AcquisitionTarget, R extends st
       tier,
     },
     lifecycleStage: { kind: 'acquisition' },
-    applicationVersion: 'family-beta-checkpoint-v1',
+    applicationVersion: import.meta.env?.VITE_GIT_REVISION || 'family-beta-checkpoint-v1',
     targetSet,
     strategy,
   })
@@ -32,6 +32,7 @@ export function familyAcquisitionStore<T extends AcquisitionTarget, R extends st
     get current() {
       return store.current
     },
+    get context() { return store.context },
     answer(correct: boolean, revealMethod: R) {
       const saved = store.answer(correct, revealMethod)
       window.parent.postMessage({ type: 'family-beta-result-ready' }, window.location.origin)

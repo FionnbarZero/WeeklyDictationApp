@@ -268,7 +268,7 @@ function validateAcquisition(state: AppState, childId: string, pending: readonly
     if (!dataset) throw new Error(`Acquisition progression ${envelope.id} has no canonical dataset.`)
     const validation = validateAcquisitionProgressEnvelope(
       envelope,
-      acquisitionPersistenceContext(childId, dataset, envelope.grade),
+      acquisitionPersistenceContext(childId, dataset, envelope.grade, envelope),
     )
     if (!validation.valid)
       throw new Error(`Acquisition progression ${envelope.id} is malformed. ${validation.errors[0]}`)
@@ -318,7 +318,7 @@ function validateAcquisition(state: AppState, childId: string, pending: readonly
       throw new Error(`Pending Acquisition transition ${entry.checkpoint.transitionId} has no canonical dataset.`)
     const validation = validateAcquisitionProgressEnvelope(
       entry.baseEnvelope,
-      acquisitionPersistenceContext(childId, dataset, entry.baseEnvelope.grade),
+      acquisitionPersistenceContext(childId, dataset, entry.baseEnvelope.grade, entry.baseEnvelope),
     )
     if (!validation.valid)
       throw new Error(`Pending Acquisition base ${entry.baseEnvelope.id} is malformed. ${validation.errors[0]}`)
@@ -511,7 +511,7 @@ function validateBackupOwnership(state: AppState) {
     if (!dataset) throw new Error(`Acquisition progression ${envelope.id} has no canonical dataset.`)
     const validation = validateAcquisitionProgressEnvelope(
       envelope,
-      acquisitionPersistenceContext(envelope.childId, dataset, envelope.grade),
+      acquisitionPersistenceContext(envelope.childId, dataset, envelope.grade, envelope),
     )
     if (!validation.valid)
       throw new Error(`Acquisition progression ${envelope.id} is malformed. ${validation.errors[0]}`)
@@ -641,7 +641,7 @@ function validateBackupJournals(
       throw new Error(`Pending Acquisition transition ${entry.checkpoint.transitionId} has no canonical dataset.`)
     const validation = validateAcquisitionProgressEnvelope(
       base,
-      acquisitionPersistenceContext(base.childId, dataset, base.grade),
+      acquisitionPersistenceContext(base.childId, dataset, base.grade, base),
     )
     if (!validation.valid) throw new Error(`Pending Acquisition base ${base.id} is malformed. ${validation.errors[0]}`)
   }

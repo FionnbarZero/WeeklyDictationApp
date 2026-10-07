@@ -177,7 +177,7 @@ function ImmediateTier2ReadingPractice({
     : null)
   const [saveError, setSaveError] = useState('')
   const [run, setRun] = useState<ReadingRun>(() => savedStore
-    ? { kind: 'acquisition', targetSet: tier2ReadingAcquisitionTargetSet(pathway),
+    ? { kind: 'acquisition', targetSet: savedStore.context.targetSet,
       flow: savedStore.current.envelope.flow, assessments: savedStore.current.assessments }
     : initialRun(profile, pathway, randomRef.current))
 

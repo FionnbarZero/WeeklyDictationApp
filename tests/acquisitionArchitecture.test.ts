@@ -40,6 +40,7 @@ test('the Acquisition engine boundary has only its approved dependencies', () =>
     'engine.ts': ['./contracts.ts'],
     'persistence/contracts.ts': ['../contracts.ts'],
     'persistence/identity.ts': ['../contracts.ts', './contracts.ts'],
+    'persistence/lessonSnapshot.ts': ['../contracts.ts', './contracts.ts', './identity.ts', './validation.ts'],
     'persistence/migration.ts': ['../contracts.ts', '../engine.ts', './contracts.ts', './identity.ts', './validation.ts'],
     'persistence/reducer.ts': ['../contracts.ts', '../engine.ts', '../transition.ts', './contracts.ts', './identity.ts', './validation.ts'],
     'persistence/repository.ts': ['./contracts.ts'],

@@ -161,7 +161,14 @@ export async function startPractice(input: {
   let state = revalidatedWarmup.state
   let preparedAcquisition =
     input.target?.phase === 'acquisition'
-      ? prepareAcquisitionProgress(state, input.child.id, input.target.dataset, startedAt)
+      ? prepareAcquisitionProgress(
+          state,
+          input.child.id,
+          input.target.dataset,
+          startedAt,
+          Math.random,
+          !input.persistence.cloud,
+        )
       : null
   if (preparedAcquisition?.status === 'blocked') {
     return {

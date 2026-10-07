@@ -4,7 +4,7 @@ import type {
   AcquisitionPersistenceContext,
   AcquisitionProgressEnvelope,
 } from '../acquisition/persistence/contracts.ts'
-import { acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
+import { acquisitionDigest, acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
 import { createAcquisitionProgressEnvelope } from '../acquisition/persistence/migration.ts'
 import {
   applyAcquisitionCheckpoint,
@@ -12,6 +12,7 @@ import {
   buildAcquisitionResumeCheckpoint,
 } from '../acquisition/persistence/reducer.ts'
 import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/validation.ts'
+import { pinAcquisitionLesson, resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
 export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
@@ -26,17 +27,18 @@ export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
 // Audio, handwriting images, credentials and provisional answers never enter it.
 export function openAcquisitionStore<T extends AcquisitionTarget, R extends string>(
   storage: Store,
-  context: AcquisitionPersistenceContext<T>,
+  latestContext: AcquisitionPersistenceContext<T>,
   options: { random?: () => number; now?: () => string; uuid?: () => string } = {},
 ) {
   const random = options.random || Math.random
   const now = options.now || (() => new Date().toISOString())
   const uuid = options.uuid || (() => crypto.randomUUID())
-  const key = `family-beta-acquisition-v1:${acquisitionProgressionId(context.identity)}`
+  const key = `family-beta-acquisition-v1:${acquisitionProgressionId(latestContext.identity)}`
+  let context = latestContext
   let raw = storage.getItem(key)
   let current: SavedAcquisition<T, R>
 
-  function validate(value: unknown): SavedAcquisition<T, R> {
+  function validate(value: unknown, validationContext = context): SavedAcquisition<T, R> {
     const saved = value as SavedAcquisition<T, R> | null
     if (
       !saved ||
@@ -45,7 +47,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       !/^[\w-]{1,160}$/.test(saved.sessionId) ||
       !Array.isArray(saved.assessments) ||
       !Array.isArray(saved.reviewedTrials) ||
-      !validateAcquisitionProgressEnvelope(saved.envelope, context).valid ||
+      !validateAcquisitionProgressEnvelope(saved.envelope, validationContext).valid ||
       saved.assessments.some(
         (a) =>
           !a ||
@@ -64,45 +66,49 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     return saved
   }
 
-  function commit(next: SavedAcquisition<T, R>) {
+  function commit(next: SavedAcquisition<T, R>, nextContext = context) {
     if (storage.getItem(key) !== raw)
       throw new Error(
         'This activity changed in another tab. Reload to resume the saved response; nothing was overwritten.',
       )
-    const encoded = JSON.stringify(validate(next))
+    const resolvedContext = resolveAcquisitionLesson(next.envelope, nextContext)
+    const encoded = JSON.stringify(validate(next, resolvedContext))
     storage.setItem(key, encoded)
     if (storage.getItem(key) !== encoded)
       throw new Error('Saving could not be confirmed. Keep this activity open and retry.')
     raw = encoded
     current = next
+    context = resolvedContext
     return current
+  }
+
+  function fresh(nextContext: AcquisitionPersistenceContext<T>): SavedAcquisition<T, R> {
+    return {
+      schema: 1, sessionId: uuid(),
+      envelope: pinAcquisitionLesson(createAcquisitionProgressEnvelope(nextContext,
+        startAcquisition(nextContext.targetSet, nextContext.strategy, random), now()), nextContext),
+      assessments: [], reviewedTrials: [],
+    }
   }
 
   if (raw !== null) {
     try {
-      current = validate(JSON.parse(raw))
+      const parsed = JSON.parse(raw)
+      if (parsed?.envelope && typeof parsed.envelope === 'object') context = resolveAcquisitionLesson(parsed.envelope, latestContext)
+      current = validate(parsed)
+      if (!current.envelope.lessonSnapshot) commit({ ...current, envelope: pinAcquisitionLesson(current.envelope, context) })
     } catch (error) {
       if (error instanceof SyntaxError)
         throw new Error('Saved acquisition could not be read. Nothing was erased. Please report this problem.')
       throw error
     }
   } else {
-    current = {
-      schema: 1,
-      sessionId: uuid(),
-      envelope: createAcquisitionProgressEnvelope(
-        context,
-        startAcquisition(context.targetSet, context.strategy, random),
-        now(),
-      ),
-      assessments: [],
-      reviewedTrials: [],
-    }
-    commit(current)
+    commit(fresh(context))
   }
 
   return {
     key,
+    get context() { return context },
     get current() {
       return current
     },
@@ -139,6 +145,20 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     // Call only after the immutable completed result is confirmed. The teaching
     // checkpoint remains; the next visit starts a new score, not a new word set.
     finishSession() {
+      const lessonChanged = acquisitionDigest({ targetSet: context.targetSet, strategy: context.strategy })
+        !== acquisitionDigest({ targetSet: latestContext.targetSet, strategy: latestContext.strategy })
+      if (current.envelope.flow.teachingComplete && lessonChanged) {
+        // Archive first, read back, then replace the active record with the same
+        // compare-and-swap guard used for answers. A retry may find this archive.
+        const next = fresh(latestContext)
+        if (storage.getItem(key) !== raw) throw new Error('This activity changed in another tab. Nothing was overwritten.')
+        const archiveKey = `${key}:completed:${acquisitionDigest({ sessionId: current.sessionId, envelope: current.envelope })}`
+        const existing = storage.getItem(archiveKey)
+        if (existing !== null && existing !== raw) throw new Error('The earlier lesson archive conflicts. Nothing was erased.')
+        if (existing === null) storage.setItem(archiveKey, raw!)
+        if (storage.getItem(archiveKey) !== raw) throw new Error('The earlier lesson could not be safely archived. Please retry.')
+        return commit(next, latestContext)
+      }
       const sessionId = uuid()
       let envelope = current.envelope
       if (envelope.flow.complete && envelope.flow.teachingComplete) {

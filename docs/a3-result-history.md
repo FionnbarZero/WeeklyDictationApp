@@ -7,7 +7,7 @@ Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and p
 A3 is split at three architectural boundaries so a persistence migration is not hidden inside a display change:
 
 1. **A3.1, this change:** bounded online result-history reads and one graph point per distinct completed attempt.
-2. **A3.2, pending:** durable validated curriculum/strategy pinning, prompt-resume compatibility, and a tested transition for existing unfinished records.
+2. **A3.2, in development:** durable validated curriculum/strategy pinning, prompt-resume compatibility, and a tested transition for existing unfinished records. The [first increment and remaining gates](./a3-curriculum-pinning.md) do not yet constitute full A3.2 acceptance.
 3. **A3.3, pending:** whole-activity unfinished-checkpoint reconciliation, deterministic reviewed-answer time/skew/tie handling, separation of checkpoint data from accumulated history, and bounded durable storage. Completed attempts from either device must remain immutable and independent.
 
 Detailed per-target provenance and storage/retention integration still require their appropriate schema and compatibility work. E2's destructive historical cleanup remains separately authorized. This PR does not complete A3.

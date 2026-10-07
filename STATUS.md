@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 7, 2026. A3.1 bounded result history and separate completed-attempt graphs are merged as `55e9189`, published, and live-verified on all three canonical grades. The [A3.1 release record](./docs/a3-release-2026-10-07.md) records exact artifact, checks, limitations, and retained A2 rollback. A3.2 curriculum pinning is next; A3.3 conflict/storage work remains pending. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
+Updated October 7, 2026. A3.1 bounded result history and separate completed-attempt graphs are merged as `55e9189`, published, and live-verified on all three canonical grades. The [A3.1 release record](./docs/a3-release-2026-10-07.md) records exact artifact, checks, limitations, and retained A2 rollback. A3.2's [first pinning increment](./docs/a3-curriculum-pinning.md) is in development, not released or complete; its durable launch and Grade 2 corrected-week gates remain open. A3.3 conflict/storage work remains pending. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 

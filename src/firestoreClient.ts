@@ -991,7 +991,8 @@ export function cloudDataToAppState(
     const candidate = currentCandidates[0] || candidates[0]
     if (!candidate) continue
     try {
-      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade)
+      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade,
+        'schemaVersion' in candidate ? candidate : undefined)
       const migrated = migrateAcquisitionProgress(candidate, context)
       if (migrated.status === 'quarantined') {
         acquisitionProgressQuarantine.push({

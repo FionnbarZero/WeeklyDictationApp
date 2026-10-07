@@ -7,6 +7,7 @@ import { grade2Tier2ReadingProfile } from '../src/tier2/profiles/grade2.ts'
 import { grade5Tier2ReadingProfile } from '../src/tier2/profiles/grade5.ts'
 import { kindergartenTier2ReadingProfile } from '../src/tier2/profiles/kindergarten.ts'
 import type { AcquisitionPersistenceContext } from '../src/acquisition/persistence/contracts.ts'
+import { validateAcquisitionProgressEnvelope } from '../src/acquisition/persistence/validation.ts'
 
 function memory() {
   const records = new Map<string, string>()
@@ -94,10 +95,13 @@ test('child and activity identities isolate records; stale tabs do not overwrite
   assert.notEqual(otherChild.key, one.key)
   assert.equal(otherActivity.current.envelope.revision, 0)
 })
-test('malformed records and changed curricula fail without erasing earlier data', () => {
+test('legacy records with changed curricula fail without erasing earlier data', () => {
   const storage = memory()
   const ctx = context()
   const original = openAcquisitionStore(storage, ctx)
+  const legacy = JSON.parse(storage.getItem(original.key)!)
+  delete legacy.envelope.lessonSnapshot
+  storage.setItem(original.key, JSON.stringify(legacy))
   const before = storage.getItem(original.key)
   assert.throws(
     () =>
@@ -111,6 +115,102 @@ test('malformed records and changed curricula fail without erasing earlier data'
   storage.setItem(original.key, '{broken')
   assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
   assert.equal(storage.getItem(original.key), '{broken')
+})
+for (const strategy of [grade5AcquisitionStrategy, kindergartenAcquisitionStrategy,
+  grade2Tier2ReadingProfile.acquisitionStrategy, grade5Tier2ReadingProfile.acquisitionStrategy,
+  kindergartenTier2ReadingProfile.acquisitionStrategy]) {
+  test(`${strategy.id}: teacher and strategy updates cannot change an unfinished lesson`, () => {
+    const storage = memory()
+    const original = context(strategy)
+    const store = openAcquisitionStore(storage, original, { random: () => 0 })
+    store.answer(true, 'timer')
+    const before = JSON.parse(JSON.stringify(store.current))
+    const latest = { ...original,
+      targetSet: { ...original.targetSet, targets: original.targetSet.targets.map(t => ({ ...t, text: '二', sentence: '二的例句' })) },
+      strategy: { ...original.strategy, version: original.strategy.version + 1,
+        timers: { ...original.strategy.timers, familiarDtSeconds: 99 } } }
+    const resumed = openAcquisitionStore(storage, latest, { random: () => 0 })
+    assert.deepEqual(resumed.current, before)
+    assert.deepEqual(resumed.context.targetSet, original.targetSet)
+    assert.deepEqual(resumed.context.strategy, original.strategy)
+    resumed.answer(true, 'timer')
+    assert.equal(resumed.current.envelope.strategyVersion, original.strategy.version)
+    assert.equal(resumed.current.envelope.targetSetFingerprint, before.envelope.targetSetFingerprint)
+    const other = openAcquisitionStore(storage, { ...latest, identity: { ...latest.identity, childId: 'new-child' } })
+    assert.deepEqual(other.context.targetSet, latest.targetSet)
+  })
+}
+test('compatible legacy records acquire a snapshot without moving the prompt or score', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  store.answer(true, 'timer')
+  const legacy = JSON.parse(storage.getItem(store.key)!)
+  delete legacy.envelope.lessonSnapshot
+  storage.setItem(store.key, JSON.stringify(legacy))
+  const resumed = openAcquisitionStore(storage, ctx)
+  assert.ok(resumed.current.envelope.lessonSnapshot)
+  assert.deepEqual(resumed.current.envelope.flow, legacy.envelope.flow)
+  assert.equal(resumed.current.sessionId, legacy.sessionId)
+  assert.deepEqual(resumed.current.reviewedTrials, legacy.reviewedTrials)
+})
+test('a corrected lesson starts only after completed teaching is confirmed; the earlier lesson remains archived', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 150) store.answer(true, 'timer')
+  assert.ok(store.current.envelope.flow.teachingComplete)
+  const original = storage.getItem(store.key)
+  const latest = { ...ctx, targetSet: { ...ctx.targetSet,
+    targets: ctx.targetSet.targets.map(t => ({ ...t, text: '二' })) } }
+  const resumed = openAcquisitionStore(storage, latest)
+  assert.equal(resumed.current.sessionId, store.current.sessionId)
+  resumed.finishSession()
+  assert.equal(resumed.current.envelope.flow.teachingComplete, false)
+  assert.equal(resumed.current.envelope.revision, 0)
+  assert.notEqual(resumed.current.sessionId, store.current.sessionId)
+  assert.deepEqual(resumed.context.targetSet, latest.targetSet)
+  assert.ok([...storage.records.entries()].some(([key, value]) => key !== store.key && value === original))
+})
+test('failed archive writes leave the old lesson and its score available', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 150) store.answer(true, 'timer')
+  const latest = { ...ctx, strategy: { ...ctx.strategy, version: ctx.strategy.version + 1 } }
+  const resumed = openAcquisitionStore(storage, latest)
+  const before = storage.getItem(store.key)
+  storage.setItem = () => { throw new Error('Quota exceeded') }
+  assert.throws(() => resumed.finishSession(), /Quota/)
+  assert.equal(storage.getItem(store.key), before)
+  assert.equal(resumed.current.sessionId, store.current.sessionId)
+  assert.deepEqual(resumed.context.strategy, ctx.strategy)
+})
+for (const corruption of ['engine', 'future-target', 'timer', 'fingerprint', 'identity', 'missing-snapshot'] as const) {
+  test(`invalid pinned ${corruption} is preserved and never replaced by today's lesson`, () => {
+    const storage = memory(), ctx = context()
+    const store = openAcquisitionStore(storage, ctx)
+    const bad = JSON.parse(storage.getItem(store.key)!)
+    if (corruption === 'engine') bad.envelope.lessonSnapshot.engineContract = 'future-engine-v99'
+    if (corruption === 'future-target') bad.envelope.lessonSnapshot.targetSet.targets[0].text = '改正'
+    if (corruption === 'timer') bad.envelope.lessonSnapshot.strategy.timers.familiarDtSeconds = -1
+    if (corruption === 'fingerprint') bad.envelope.lessonSnapshot.fingerprint = 'bad'
+    if (corruption === 'identity') bad.envelope.childId = 'another-child'
+    if (corruption === 'missing-snapshot') bad.envelope.lessonSnapshot = null
+    const encoded = JSON.stringify(bad)
+    storage.setItem(store.key, encoded)
+    assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
+    assert.equal(storage.getItem(store.key), encoded)
+  })
+}
+test('v1 rollback readers can read an unchanged lesson, and still reject changed curriculum without erasure', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx)
+  assert.equal(validateAcquisitionProgressEnvelope(store.current.envelope, ctx).valid, true)
+  const latest = { ...ctx, targetSet: { ...ctx.targetSet, targets: ctx.targetSet.targets.map(t => ({ ...t, text: '二' })) } }
+  assert.equal(validateAcquisitionProgressEnvelope(store.current.envelope, latest).valid, false)
+  const encoded = storage.getItem(store.key)
+  openAcquisitionStore(storage, latest)
+  assert.equal(storage.getItem(store.key), encoded)
 })
 test('quota failure does not advance the in-memory response or checkpoint', () => {
   const storage = memory()

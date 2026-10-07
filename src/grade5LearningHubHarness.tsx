@@ -389,7 +389,9 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
       activePractice.targetSet, grade5WritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
     ) : null
     if (acquisitionStore && activePractice) activePractice = { ...activePractice,
+      targetSet: acquisitionStore.context.targetSet,
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
+    if (acquisitionStore) activeDataset = { ...activeDataset, words: [...acquisitionStore.context.targetSet.targets] }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
     if (acquisitionStore) {
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }

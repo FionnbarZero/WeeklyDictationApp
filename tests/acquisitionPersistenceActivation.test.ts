@@ -49,6 +49,41 @@ test('opening Acquisition creates one versioned progression without changing the
   assert.equal(prepared.envelope.schoolYear, '2026-27')
 })
 
+test('Grade 2 local acquisition pins its lesson and replays a pending answer against the original words', () => {
+  const first = prepareAcquisitionProgress(stateWithDataset(), 'maya', dataset, '2026-09-29T16:00:00.000Z', () => 0, true)
+  assert.equal(first.status, 'ready')
+  if (first.status !== 'ready') return
+  assert.ok(first.envelope.lessonSnapshot)
+  const checkpoint = createAcquisitionAnswerCheckpoint({ envelope: first.envelope, context: first.context,
+    sessionId: 'session-pinned', occurredAt: '2026-09-29T16:01:00.000Z',
+    answeredPromptId: first.envelope.flow.prompt!.id,
+    response: { correct: true, revealMethod: 'timer' }, random: () => 0 })
+  const updatedDataset = { ...dataset, words: dataset.words.map(word => ({ ...word, text: '改正' })) }
+  const state = { ...first.state, datasets: [updatedDataset] }
+  const restored = prepareAcquisitionProgress(state, 'maya', updatedDataset, '2026-09-30T16:00:00.000Z', () => 0, true)
+  assert.equal(restored.status, 'ready')
+  if (restored.status !== 'ready') return
+  assert.deepEqual(restored.envelope, first.envelope)
+  assert.deepEqual(restored.context.targetSet.targets, dataset.words)
+  const recovered = recoverAcquisitionCheckpoints(state, [{ checkpoint, baseEnvelope: first.envelope }])
+  assert.equal(recovered.status, 'recovered')
+  assert.equal(recovered.state.acquisitionProgressEnvelopes![0].revision, 1)
+  assert.deepEqual(recovered.state.acquisitionProgressEnvelopes![0].lessonSnapshot, first.envelope.lessonSnapshot)
+  assert.deepEqual(recovered.state.scores, state.scores)
+  assert.deepEqual(recovered.state.completedSessions, state.completedSessions)
+})
+
+test('Grade 2 pin activation blocks an unverifiable legacy lesson instead of applying a current strategy', () => {
+  const first = prepareAcquisitionProgress(stateWithDataset(), 'maya', dataset, '2026-09-29T16:00:00.000Z', () => 0)
+  assert.equal(first.status, 'ready')
+  if (first.status !== 'ready') return
+  const changed = { ...dataset, words: dataset.words.map(word => ({ ...word, text: '改正' })) }
+  const result = prepareAcquisitionProgress(first.state, 'maya', changed, '2026-09-30T16:00:00.000Z', () => 0, true)
+  assert.equal(result.status, 'blocked')
+  assert.equal(result.state.acquisitionProgressEnvelopes![0], first.envelope)
+  assert.equal(result.state.acquisitionProgressQuarantine![0].raw, first.envelope)
+})
+
 test('legacy progress migrates in place while malformed progress is preserved and blocks a silent restart', () => {
   const fresh = prepareAcquisitionProgress(stateWithDataset(), 'maya', dataset, '2026-09-29T16:00:00.000Z', () => 0)
   assert.equal(fresh.status, 'ready')
