@@ -44,6 +44,7 @@ export function cacheLessonSource(storage: Store, childId: string, snapshot: Cur
   if (old === null) confirmedWrite(storage, key, raw)
   else {
     const prior = JSON.parse(old) as CurriculumSnapshot
+    inspectSnapshot(prior)
     if (
       prior.grade !== snapshot.grade ||
       prior.sourceId !== snapshot.sourceId ||
@@ -99,6 +100,12 @@ export function rememberLessonLaunch(
 ) {
   verifyEnvelope(envelope, profile)
   if (!['tier-1', 'tier-2'].includes(envelope.tier)) throw new Error(failure)
+  // A calendar week can repeat an earlier cohort (notably Grade 5). Route by
+  // the checkpoint's actual curriculum identity, not the wrapper's date label.
+  const actualWeek =
+    inspectSnapshot(source).candidates.find(
+      (c) => c.datasetId === envelope.datasetId.replace(/^__kindergarten-lab__/, ''),
+    )?.normalizedStartDate || week
   const launch: LessonLaunch = {
     schema: 1,
     childId: profile.id,
@@ -106,14 +113,14 @@ export function rememberLessonLaunch(
     progressionId: envelope.id,
     lessonFingerprint: envelope.lessonSnapshot!.fingerprint,
     sourceHash: source.contentSha256,
-    week,
+    week: actualWeek,
     channel: envelope.tier === 'tier-1' ? 'writing' : 'reading',
   }
   const old = storage.getItem(launchKey(launch))
   // Never replace an original route with a later teacher document. Its complete
   // source and live checkpoint are revalidated before it can be reopened.
   if (old !== null) return
-  if (source.grade !== profile.grade || !sourceMatches(envelope, source, week)) throw new Error(failure)
+  if (source.grade !== profile.grade || !sourceMatches(envelope, source, actualWeek)) throw new Error(failure)
   cacheLessonSource(storage, profile.id, source)
   confirmedWrite(storage, launchKey(launch), JSON.stringify(launch))
 }
@@ -158,6 +165,16 @@ export async function readSavedLesson(
   const { snapshot } = await validateCurriculum(raw, profile.grade)
   if (snapshot.contentSha256 !== launch.sourceHash || !sourceMatches(envelope, snapshot, launch.week))
     throw new Error(failure)
+  // Validation is asynchronous. A concurrent finish/replacement must not turn
+  // an obsolete launch button into a new lesson using the old source.
+  const current = currentEnvelope(storage, launch)
+  if (
+    !current ||
+    current.status === 'teaching-complete' ||
+    current.lessonSnapshot?.fingerprint !== launch.lessonFingerprint
+  )
+    return null
+  verifyEnvelope(current, profile)
   return { ...launch, source: snapshot }
 }
 

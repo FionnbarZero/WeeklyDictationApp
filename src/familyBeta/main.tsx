@@ -372,6 +372,7 @@ function FamilyPreview() {
 
   function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
+    if (resumingId === slot.id) setResumingId(null)
     setSlots(current => current.filter(item => item.id !== slot.id))
     setSelectedSlots(current => ({ ...current, [`${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`]: undefined }))
   }

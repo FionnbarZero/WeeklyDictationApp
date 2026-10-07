@@ -113,6 +113,12 @@ test('source cache preserves first metadata for repeated identical content', () 
   cacheLessonSource(storage, profile.id, { ...source, retrievedAt: new Date().toISOString() })
   assert.equal(JSON.stringify([...storage.data]), before)
 })
+test('the actual saved cohort week wins over a later calendar week that repeats it', async () => {
+  const { source, storage, profile, store, week } = fixture()
+  for (const key of storage.data.keys()) if (key.includes(':lesson-launch-v1:')) storage.data.delete(key)
+  rememberLessonLaunch(storage, profile, store.current.envelope, source, '2026-12-21')
+  assert.equal((await listSavedLessons(storage, profile)).lessons[0].week, week)
+})
 test('failed writes and mismatched source binding never erase a checkpoint', () => {
   const { source, storage, store, profile, week } = fixture()
   const before = storage.getItem(store.key)

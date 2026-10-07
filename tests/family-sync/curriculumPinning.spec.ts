@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
+import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { installFamilyFixtures } from './fixtures.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
@@ -40,44 +41,94 @@ async function saved(page: Page, grade2Writing: boolean) {
 
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
   for (const channel of ['writing', 'reading'] as const) {
-    test(`${slug} ${channel}: saved lesson opens after reload without the curriculum service`, async ({ page }) => {
-      await installFamilyFixtures(page)
-      await page.goto(`/?grade=${slug}`)
-      let frame = await launch(page, slug, channel)
-      if (channel === 'writing') {
-        await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
-        await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-      } else {
-        await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
-        await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
-        await frame.getByRole('button', { name: 'Yes', exact: true }).click()
-      }
-      const before = await saved(page, slug === 'grade2' && channel === 'writing')
-      await page.route(`**/curriculum/beta/${slug}.json`, (route) => route.fulfill({ status: 503, body: 'offline' }))
-      await page.reload()
-      await page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) }).click()
-      frame = page.frameLocator('iframe:visible')
-      await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-      await frame
-        .getByRole('button', {
-          name:
-            slug === 'kindergarten'
-              ? channel === 'writing'
-                ? 'Writing characters'
-                : 'High-frequency words'
-              : channel === 'writing'
-                ? 'Learn to Write'
-                : 'Read the Words',
-          exact: true,
-        })
-        .click()
-      if (slug === 'grade2' && channel === 'writing')
-        await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
-      expect(await saved(page, slug === 'grade2' && channel === 'writing')).toEqual(before)
-      await expect(
-        frame.getByRole('button', { name: channel === 'writing' ? 'Skip Timer' : 'Record my reading', exact: true }),
-      ).toBeVisible()
-    })
+    for (const sourceState of ['unavailable', 'removed-week'])
+      test(`${slug} ${channel}: saved lesson opens after reload with ${sourceState} curriculum`, async ({ page }) => {
+        await installFamilyFixtures(page)
+        await page.goto(`/?grade=${slug}`)
+        let frame = await launch(page, slug, channel)
+        if (channel === 'writing') {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+          await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        } else {
+          await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+          await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+          await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+        }
+        const before = await saved(page, slug === 'grade2' && channel === 'writing')
+        const snapshot = JSON.parse(await readFile(`public/curriculum/beta/${slug}.json`, 'utf8'))
+        const originalHash = snapshot.contentSha256
+        const removed = inspectSnapshot(snapshot).candidates.find(
+          (c) => c.datasetId === before.datasetId.replace(/^__kindergarten-lab__/, ''),
+        )!
+        if (slug === 'kindergarten')
+          snapshot.payload.sheets = snapshot.payload.sheets.filter(
+            (sheet: { sheetId: number }) => String(sheet.sheetId) !== removed.source.sourceUnitId,
+          )
+        else
+          snapshot.payload.slides = snapshot.payload.slides.filter(
+            (slide: { objectId: string }) => slide.objectId !== removed.source.sourceUnitId,
+          )
+        snapshot.contentSha256 = createHash('sha256').update(JSON.stringify(snapshot.payload)).digest('hex')
+        expect(inspectSnapshot(snapshot).candidates.some((c) => c.datasetId === removed.datasetId)).toBe(false)
+        await page.route(`**/curriculum/beta/${slug}.json`, (route) =>
+          sourceState === 'unavailable'
+            ? route.fulfill({ status: 503, body: 'offline' })
+            : route.fulfill({ contentType: 'application/json', body: JSON.stringify(snapshot) }),
+        )
+        await page.reload()
+        await page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) }).click()
+        frame = page.frameLocator('iframe:visible')
+        await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+        await expect(
+          frame.getByRole('button', {
+            name:
+              slug === 'kindergarten'
+                ? channel === 'writing'
+                  ? 'High-frequency words'
+                  : 'Writing characters'
+                : channel === 'writing'
+                  ? 'Read the Words'
+                  : 'Learn to Write',
+            exact: true,
+          }),
+        ).toHaveCount(0)
+        await frame
+          .getByRole('button', {
+            name:
+              slug === 'kindergarten'
+                ? channel === 'writing'
+                  ? 'Writing characters'
+                  : 'High-frequency words'
+                : channel === 'writing'
+                  ? 'Learn to Write'
+                  : 'Read the Words',
+            exact: true,
+          })
+          .click()
+        if (slug === 'grade2' && channel === 'writing')
+          await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+        expect(await saved(page, slug === 'grade2' && channel === 'writing')).toEqual(before)
+        await expect(
+          frame.getByRole('button', { name: channel === 'writing' ? 'Skip Timer' : 'Record my reading', exact: true }),
+        ).toBeVisible()
+        await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-curriculum', originalHash)
+        if (channel === 'writing') {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+          await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        } else {
+          await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+          await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+          await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+        }
+        expect((await saved(page, slug === 'grade2' && channel === 'writing')).revision).toBe(before.revision + 1)
+        if (sourceState === 'removed-week') {
+          await page.getByRole('button', { name: 'Return to current teacher lessons' }).click()
+          await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-curriculum', snapshot.contentSha256)
+          await expect(
+            page.getByLabel('Practice week').locator(`option[value="${removed.normalizedStartDate}"]`),
+          ).toHaveCount(0)
+        }
+      })
     test(`${slug} ${channel}: reviewed lesson survives a teacher edit and a full reload`, async ({ page }) => {
       await installFamilyFixtures(page)
       page.on('dialog', (dialog) => dialog.accept())
