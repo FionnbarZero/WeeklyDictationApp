@@ -9,7 +9,6 @@ import { createChild, ensureParentFamily, listChildren, updateChild } from '../f
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
 import { BETA_GRADES, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import { ResultHistory } from './ResultHistory.tsx'
-import { distinctAttempts } from './resultHistory.ts'
 import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
@@ -203,7 +202,9 @@ function FamilyPreview() {
         }
         setReadyChildren(current => new Set([...current, child.id]))
         if (childRef.current !== child.id) return
-        setResults(distinctAttempts([...saved, ...pendingResults()], child.id))
+        // Keep the visible remote page aligned with its cursor. Newly queued
+        // results remain in the outbox and appear after their confirmed refresh.
+        setResults(saved)
         setHistoryCursor({ owner: `${scope}:${child.id}`, token: page.nextPageToken })
         setStatus('Scores and saved practice confirmed in your private family account. Use the same parent account on your other device.')
       } else {
@@ -215,6 +216,7 @@ function FamilyPreview() {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       setError(message(e))
       setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())
       } catch {
@@ -486,7 +488,7 @@ function FamilyPreview() {
         child={child}
         results={results}
         nextPageToken={historyCursor.owner === `${scope}:${child.id}` ? historyCursor.token : ''}
-        loadPage={familyId ? (token, signal) => familyResultRepository(familyId).listPage(child.id, token, signal) : undefined}
+        loadPage={familyId && historyCursor.owner === `${scope}:${child.id}` ? (token, signal) => familyResultRepository(familyId).listPage(child.id, token, signal) : undefined}
       />}
       {tab === 'parent' && (
         <section className="beta-panel">

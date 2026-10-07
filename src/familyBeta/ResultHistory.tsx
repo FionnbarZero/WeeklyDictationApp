@@ -18,7 +18,7 @@ const timestamp = (at: string) =>
 
 /** One visible page. Background sync refreshes latest, never replaces a page being read. */
 export function ResultHistory({ child, results, nextPageToken, loadPage }: Props) {
-  const [older, setOlder] = useState<(ResultPage & { number: number }) | null>(null)
+  const [older, setOlder] = useState<(ResultPage & { number: number; loadPage?: Props['loadPage'] }) | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const request = useRef<AbortController | null>(null)
@@ -26,7 +26,8 @@ export function ResultHistory({ child, results, nextPageToken, loadPage }: Props
   const allLocal = distinctAttempts(results, child.id).reverse()
   const current = older?.results || allLocal.slice(0, RESULT_PAGE_SIZE)
   const cursor = older ? older.nextPageToken : nextPageToken
-  const hasOlderLocal = !loadPage && allLocal.length > (older?.number || 1) * RESULT_PAGE_SIZE
+  const pageLoader = older ? older.loadPage : loadPage
+  const hasOlderLocal = !pageLoader && allLocal.length > (older?.number || 1) * RESULT_PAGE_SIZE
 
   async function next() {
     if (busy) return
@@ -36,12 +37,12 @@ export function ResultHistory({ child, results, nextPageToken, loadPage }: Props
     setError('')
     try {
       const number = (older?.number || 1) + 1
-      const page = loadPage
-        ? await loadPage(cursor, controller.signal)
+      const page = pageLoader
+        ? await pageLoader(cursor, controller.signal)
         : { results: allLocal.slice((number - 1) * RESULT_PAGE_SIZE, number * RESULT_PAGE_SIZE), nextPageToken: '' }
       // Validate before replacing the visible page; late child/account responses are ignored.
       distinctAttempts(page.results, child.id)
-      if (!controller.signal.aborted) setOlder({ ...page, number })
+      if (!controller.signal.aborted) setOlder({ ...page, number, loadPage: pageLoader })
     } catch (e) {
       if (!controller.signal.aborted)
         setError(
@@ -61,6 +62,9 @@ export function ResultHistory({ child, results, nextPageToken, loadPage }: Props
     <section className="beta-panel">
       <h1>{child.nickname}’s progress</h1>
       <p>Every completed attempt has its own point. Times and daily boundaries use Pacific time.</p>
+      {!pageLoader && (
+        <p>Showing records saved on this device. More history may be available when online saving reconnects.</p>
+      )}
       <p role="status">
         {older ? `Older attempts · page ${older.number}` : 'Latest attempts'} · {current.length} shown. Charts and
         totals cover only this page, not all history.

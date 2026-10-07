@@ -25,11 +25,13 @@ test('completed same-day attempts have separate graph points and older history l
   let olderRequests = 0
   let latestRequests = 0
   let failOlder = true
+  let failLatest = false
   await page.route('**/children/synthetic-g5:runQuery', (route) => {
     const older = Boolean(route.request().postDataJSON().structuredQuery.startAt)
     if (older) olderRequests++
     else latestRequests++
     if (older && failOlder) return route.fulfill({ status: 503, body: '{}' })
+    if (!older && failLatest) return route.fulfill({ status: 503, body: '{}' })
     const results = older ? records.slice(50) : records.slice(0, 51)
     return route.fulfill({
       contentType: 'application/json',
@@ -62,8 +64,14 @@ test('completed same-day attempts have separate graph points and older history l
   await expect.poll(() => latestRequests).toBeGreaterThan(latestBefore)
   expect(olderRequests).toBe(2)
   await expect(page.locator('[data-result-point]')).toHaveCount(2)
+  // A background outage cannot replace the older page or reuse its remote cursor for local history.
+  failLatest = true
+  await page.evaluate(() => dispatchEvent(new Event('online')))
+  await expect(page.getByRole('alert')).toContainText('Saved results could not be loaded')
+  await expect(page.locator('[data-result-point]')).toHaveCount(2)
   await page.getByRole('button', { name: 'Latest attempts', exact: true }).click()
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
+  await expect(page.getByText(/Showing records saved on this device/)).toBeVisible()
   // Older pages are not copied into the primary browser result ledger.
   const cachedOlder = await page.evaluate(() =>
     Object.keys(localStorage).filter((key) => /results-v1:attempt-05[01]$/.test(key)),
