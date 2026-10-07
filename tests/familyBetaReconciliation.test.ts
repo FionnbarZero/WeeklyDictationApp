@@ -83,7 +83,7 @@ test('cloud result save verifies readback, retries idempotently and loads on a s
       documents.set(url.pathname, JSON.parse(String(init.body)))
       return new Response('{}')
     }
-    if (url.pathname.endsWith('/betaResults')) return Response.json({ documents: [...documents.values()] })
+    if (url.pathname.endsWith(':runQuery')) return Response.json([...documents.values()].map(document => ({ document })))
     return Response.json(documents.get(url.pathname))
   }
   const config = { projectId: 'demo-test', familyId: 'family-one', token: async () => 'test', fetchImpl: fakeFetch }
