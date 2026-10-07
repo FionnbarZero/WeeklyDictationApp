@@ -80,6 +80,8 @@ function FamilyPreview() {
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
   const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
+  const slotsRef = useRef(slots)
+  slotsRef.current = slots
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
   const syncing = useRef(false)
   const syncAgain = useRef(false)
@@ -172,7 +174,8 @@ function FamilyPreview() {
     syncing.current = true
     try {
       if (familyId && auth.user) {
-        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id, !slots.some(slot => slot.profile.id === child.id))
+        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
+          () => scopeRef.current === scope && !slotsRef.current.some(slot => slot.profile.id === child.id))
         if (scopeRef.current !== scope) return
         const repository = familyResultRepository(familyId)
         const pending = pendingResults()

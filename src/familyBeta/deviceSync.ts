@@ -86,7 +86,7 @@ export function createDeviceSyncRepository(options: {
     return records
   }
   return {
-    async sync(storage: StoragePort, childId: string, allowDownload = true) {
+    async sync(storage: StoragePort, childId: string, allowDownload: boolean | (() => boolean) = true) {
       if (!/^[\w-]+$/.test(childId)) throw new Error('Invalid child scope.')
       const remote = await list(childId)
       const keys = new Set(remote.keys())
@@ -114,9 +114,11 @@ export function createDeviceSyncRepository(options: {
         }
         if (local === null || (baseline !== null && local === baseline)) {
           if (online === null) throw new Error('An online record is missing. Existing device data was preserved.')
-          if (!allowDownload)
+          // The request may outlive the activity/account that allowed it. Check
+          // current ownership for every adoption, immediately before writing.
+          if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
             throw new Error(
-              'Newer practice is available from another device. The activity was paused to protect it. Retry family sync to load that saved position.',
+              'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
             )
           // No await between checking the local base and adopting the confirmed remote.
           storage.setItem(key, online)

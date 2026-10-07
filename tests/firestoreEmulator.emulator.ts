@@ -118,7 +118,7 @@ test('family practice sync hydrates another device, preserves conflicts, and rej
   assert.equal(second.getItem('weekly-dictation-auth-v1'), null)
   second.setItem(key, JSON.stringify({ trial: 2 }))
   await repository.sync(second, 'maya')
-  await assert.rejects(repository.sync(first, 'maya', false), /activity was paused/)
+  await assert.rejects(repository.sync(first, 'maya', false), /open activity was not changed/)
   assert.equal(first.getItem(key), JSON.stringify({ trial: 1 }))
   await repository.sync(first, 'maya')
   assert.equal(first.getItem(key), JSON.stringify({ trial: 2 }))
