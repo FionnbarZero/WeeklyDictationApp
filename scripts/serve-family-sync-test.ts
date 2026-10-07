@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { resolve, sep } from 'node:path'
+import { prepareOfflineRollback } from './familyOfflineRollback.ts'
 
 // Exercise the same packager used for publication, including its clean-source
 // guard and grade-entry redirects. Tests intercept every remote request.
@@ -9,7 +10,10 @@ const output = execFileSync(process.execPath, ['--experimental-strip-types', 'sc
   encoding: 'utf8',
 })
 const artifact = JSON.parse(output.slice(output.lastIndexOf('\n{') + 1)) as { directory: string; revision: string }
-const directory = resolve(artifact.directory)
+let directory = resolve(artifact.directory)
+// Explicit opt-in local rehearsal only; no such route exists in the deployed app.
+const previousDirectory = process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT
+const rollback = previousDirectory ? prepareOfflineRollback(previousDirectory, artifact.revision) : null
 const types: Record<string, string> = {
   html: 'text/html',
   js: 'text/javascript',
@@ -22,6 +26,26 @@ const types: Record<string, string> = {
 }
 createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost')
+  if (rollback && req.method === 'POST' && url.pathname === '/__rehearsal__/version') {
+    const version = url.searchParams.get('version')
+    const selected =
+      version === 'candidate'
+        ? artifact.directory
+        : version === 'previous'
+          ? previousDirectory
+          : version === 'rollback'
+            ? rollback.directory
+            : null
+    if (!selected) {
+      res.writeHead(400)
+      res.end()
+      return
+    }
+    directory = resolve(selected)
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ version, candidate: artifact.revision, rollback: rollback.manifest.fileTreeSha256 }))
+    return
+  }
   const alias = url.pathname.startsWith('/alias/')
   let pathname = alias ? url.pathname.slice('/alias'.length) : url.pathname
   // Model Cloudflare's clean-URL redirect; /alias models a .html-preserving host.

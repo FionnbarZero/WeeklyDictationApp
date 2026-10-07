@@ -73,6 +73,59 @@ test('revision identity fails canonical validation if edited or transplanted to 
   )
 })
 
+test('Grade 2 waits for score submission and preserves each completed attempt when adopting a correction', () => {
+  const original = source('比如、部分'),
+    corrected = source('不同、内容')
+  const prepared = prepareAcquisitionProgress(
+    createInitialState(original),
+    'child',
+    original[0],
+    '2026-10-07T10:00:00.000Z',
+    () => 0,
+    true,
+  )
+  assert.equal(prepared.status, 'ready')
+  const state = retainGrade2Editions(prepared.state, corrected)
+  state.acquisitionProgressEnvelopes = state.acquisitionProgressEnvelopes!.map((e) => ({
+    ...e,
+    flow: { ...e.flow, teachingComplete: true },
+  }))
+  for (const id of ['earlier-attempt', 'latest-attempt']) {
+    state.results.push({
+      id: `result-${id}`,
+      childId: 'child',
+      datasetId: original[0].id,
+      datasetDateRange: original[0].dateRange,
+      wordId: original[0].words[0].id,
+      grade: 'Grade 2',
+      phase: 'acquisition',
+      sessionId: id,
+      sessionDate: '2026-10-07',
+      completedAt: id === 'earlier-attempt' ? '2026-10-07T10:00:00.000Z' : '2026-10-07T11:00:00.000Z',
+      correct: true,
+      scored: true,
+      revealMethod: 'timer',
+      completeSourceDatasetReviewed: false,
+    })
+  }
+  const completion = (id: string) => ({
+    id,
+    childId: 'child',
+    sessionDate: '2026-10-07',
+    primaryDatasetId: original[0].id,
+    primaryPhase: 'acquisition' as const,
+    complete: true,
+  })
+  state.completedSessions.push(completion('earlier-attempt'))
+  assert.equal(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
+  state.completedSessions.push(completion('latest-attempt'))
+  const history = JSON.stringify({ results: state.results, completedSessions: state.completedSessions })
+  assert.notEqual(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
+  const restored = loadState(JSON.stringify(state))
+  assert.equal(JSON.stringify({ results: restored.results, completedSessions: restored.completedSessions }), history)
+  assert.equal(restored.completedSessions.length, 2)
+})
+
 test('the strict default importer still refuses changed same-ID curriculum', () => {
   const state = createInitialState(source('比如、部分'))
   state.datasetImportReferences = [

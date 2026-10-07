@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
 import { openAcquisitionStore } from '../src/familyBeta/acquisitionStore.ts'
+import { retireAcquisition } from '../src/familyBeta/acquisitionRetirement.ts'
 import { listSavedLessons, rememberLessonLaunch } from '../src/familyBeta/lessonLaunch.ts'
 import { validateCurriculum } from '../src/familyBeta/curriculum.ts'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
@@ -268,6 +269,42 @@ test('family saved-source routes reopen on a second device with no teacher reque
   assert.deepEqual(restored.lessons[0].source, loaded.snapshot)
   assert.equal(second.getItem(store.key), first.getItem(store.key))
   await assert.rejects(createDeviceSyncRepository({ ...config, token: async () => mockToken('intruder') }).sync(device(), childId))
+})
+
+test('family discard reaches a stale second device before a checkpoint conflict and cannot resurrect old work', async () => {
+  const childId = 'retirement-child'
+  await environment.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: true, grade: 'Grade 2' })
+  })
+  const repository = createDeviceSyncRepository({ projectId: 'weekly-dictation-test', familyId: 'family-parent', endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') })
+  const device = () => {
+    const entries = new Map<string, string>()
+    return { get length() { return entries.size }, key: (i: number) => [...entries.keys()][i] ?? null, getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value) } }
+  }
+  const first = device(), second = device()
+  const context: AcquisitionPersistenceContext = {
+    identity: { childId, grade: 'Grade 2', datasetId: 'retired-week', schoolYear: '2026-27', activityModule: 'writing-dojo', tier: 'tier-1' }, lifecycleStage: { kind: 'acquisition' }, applicationVersion: 'retirement-test', strategy: grade2AcquisitionStrategy,
+    targetSet: { id: 'retired-week', targets: [{ id: 'word', datasetId: 'retired-week', text: '一', sentence: '', tier: 'tier-1' }] },
+  }
+  const original = openAcquisitionStore(first, context, { random: () => 0 })
+  await repository.sync(first, childId)
+  await repository.sync(second, childId)
+  const stale = openAcquisitionStore(second, context)
+  original.answer(true, 'timer')
+  stale.answer(false, 'timer')
+  const retained = first.getItem(original.key), staleRetained = second.getItem(stale.key)
+  retireAcquisition(first, original.context.identity)
+  await repository.sync(first, childId)
+  await assert.rejects(repository.sync(second, childId), /both devices/)
+  assert.throws(() => stale.answer(true, 'timer'), /discarded/)
+  const fresh = openAcquisitionStore(second, context)
+  assert.notEqual(fresh.key, original.key)
+  assert.equal(fresh.current.envelope.revision, 0)
+  assert.equal(first.getItem(original.key), retained)
+  assert.equal(second.getItem(stale.key), staleRetained)
+  const third = device()
+  await repository.sync(third, childId)
+  assert.equal(openAcquisitionStore(third, context).key, fresh.key)
 })
 
 async function runCollectionGroupQuery(uid: string, parent: string, collectionId: string) {

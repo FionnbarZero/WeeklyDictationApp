@@ -54,6 +54,7 @@ if ('serviceWorker' in navigator && window.parent === window) {
     (file) =>
       entries.includes(file.path) ||
       file.path === 'offline-registration.js' ||
+      file.path === 'rollback-guard.js' ||
       file.path.startsWith('assets/') ||
       file.path.startsWith('audio/'),
   )

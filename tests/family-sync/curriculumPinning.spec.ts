@@ -265,6 +265,35 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       expect(after.revision).toBe(before.revision + 1)
       expect(after.lessonSnapshot).toEqual(before.lessonSnapshot)
       expect(JSON.stringify(after)).not.toMatch(/blob:|data:audio|audio\/webm/)
+      if (g2Writing) {
+        // Retiring the old attempt must adopt the actual corrected edition,
+        // not recreate an attempt against the original dataset's word IDs.
+        await frame
+          .locator('body')
+          .evaluate(() => parent.postMessage({ type: 'family-beta-activity-paused' }, location.origin))
+        await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+        await page.reload()
+        frame = await launch(page, slug, channel)
+        const readEditions = () =>
+          page.evaluate(
+            () =>
+              JSON.parse(localStorage.getItem('family-beta-activity:synthetic-g2:weekly-dictation-state-v2')!)
+                .acquisitionProgressEnvelopes,
+          )
+        const editions = await readEditions()
+        expect(editions.find((e: { id: string }) => e.id === after.id)).toEqual(after)
+        const corrected = editions.find((e: { datasetId: string }) => e.datasetId.includes('__rev_'))
+        expect(corrected.revision).toBe(0)
+        expect(corrected.lessonSnapshot.targetSet.targets[0].text).toBe(words[1].text)
+        expect(corrected.lessonSnapshot.targetSet.targets[0].id).not.toBe(words[0].id)
+        await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+        await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await page.reload()
+        await launch(page, slug, channel, true)
+        const resumed = await readEditions()
+        expect(resumed.find((e: { id: string }) => e.id === corrected.id).revision).toBe(1)
+        expect(resumed.find((e: { id: string }) => e.id === after.id)).toEqual(after)
+      }
     })
   }
 }
