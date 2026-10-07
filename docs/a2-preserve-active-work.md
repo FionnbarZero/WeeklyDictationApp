@@ -38,11 +38,22 @@ The three reported failures were reproduced before implementation in regression-
 
 The original PR's GitHub browser job also failed because a scoring test depended on the host's speech service. The same failure was reproduced locally: prompt audio failed, so Skip Timer correctly remained disabled. The test now supplies explicit speech success/error events while using the real prompt sequencing and audio gate. A separate regression verifies that audio failure prevents collection and a successful retry re-enables it; this does not establish physical-device audio quality.
 
+The subsequent re-review found a delayed-download race: discarding the last retained Grade 2 slot allowed a download to start, then the replacement activity opened before that download finished. The stale permission could replace its stored checkpoint underneath its initialized state owner, blocking the next answer. Regression-only commit `79de436` reproduced the failure. Repair `b7e6061` checks the current account scope and retained slots immediately before each downloaded record is adopted, with no asynchronous gap before writing. A newly opened activity keeps its checkpoint and sync baseline, warns that newer online practice exists, and continues accepting answers. Initial hydration remains allowed when no activity owns the child. This is an ownership guard, not A3 conflict resolution; neither competing copy is silently discarded.
+
 ## Verification
 
 The regression suite covers timer pauses, actual handwriting retention, offline reviewed work and successful retry, nested/manual pause, explicit discard, fixed child ownership, game feedback delays, and recording interruption in all three grades' acquisition and Boss activities. It also checks that completed temporary recording data remains playable without entering browser storage.
 
-Post-review verification on October 6, 2026:
+Latest delayed-download repair verification on October 6, 2026:
+
+- 664 unit tests passed, including three live download-permission tests: revocation while pending, allowed initial hydration, and permission checked separately for each record.
+- 88 exact-package checks passed: 44 each on Chromium desktop and touch-tablet profiles. The new delayed-response regression preserves the replacement Grade 2 activity's checkpoint and sync baseline, then successfully records its next answer without a reload.
+- Two production-intended family-policy emulator checks passed with disposable records.
+- Type checking, lint, repository formatting, targeted family reliability formatting, and production build budgets passed. Initial JavaScript remains 542,574 / 550,000 bytes; CSS remains 42,745 / 60,000 bytes.
+
+The latest tested family package is source `b7e6061c394da080ec96415a9c1dc61e167eeac3`, tree digest `362a794850bcebd8f78431e8fad9dc395754710bab5e3a3ea95d0b93d8d0be5f`, retained at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-M7yVoX`. Subsequent changes record documentation only. All five CI jobs passed on prior head `8fecff2`; the new final head must pass its own CI. The standalone/reconciliation results below are earlier evidence, not newly rerun checks for this narrow repair.
+
+Earlier post-review verification on October 6, 2026:
 
 - 661 unit tests, including renewal invalidation/races and shared-store stale-write protection.
 - 86 exact-package checks: 43 each on Chromium desktop and touch-tablet profiles, including all four new review regressions on both profiles.
