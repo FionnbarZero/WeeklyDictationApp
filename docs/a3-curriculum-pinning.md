@@ -1,6 +1,6 @@
 # A3.2 — curriculum and teaching-rule pinning
 
-Status: first increment implemented and locally verified in [draft PR #60](https://github.com/FionnbarZero/WeeklyDictationApp/pull/60), on `codex/a3-curriculum-pinning`, based on `6573e09`. This is **not a completed A3.2 release**; do not merge or publish it as one. Production remains A3.1 (`55e9189`). No production records, authentication, security rules, or hosting have been changed.
+Status: checkpoint pinning and saved-source navigation implemented in [draft PR #60](https://github.com/FionnbarZero/WeeklyDictationApp/pull/60), on `codex/a3-curriculum-pinning`, based on `6573e09`. This is **not a completed A3.2 release**; do not merge or publish it as one. Production remains A3.1 (`55e9189`). No production records, authentication, security rules, or hosting have been changed.
 
 ## First increment: durable acquisition context
 
@@ -14,9 +14,17 @@ In the shared family store, a confirmed completed teaching lesson can give way t
 
 The snapshot is additive to the existing v1 envelope. A previous reader can still validate the unchanged original context. If its current source differs, it blocks without erasing the record. This is preservation-compatible rollback, not a promise that an old binary can execute an unfamiliar future strategy. Restoring a previous binary must not delete the snapshot or archive.
 
+## Second increment: saved-source navigation
+
+The family menu now has a collapsible **Saved lessons** section. Each ordinary reading/writing Dojo binds its original checkpoint fingerprint to a validated source and the actual cohort week, independently of today's calendar-week menu. All six grade/channel paths can reopen and answer after the curriculum service fails or the teacher removes that week. Returning to current lessons uses the new source; a saved-source menu exposes only its original reading or writing Dojo, not unrelated old games or tests. A lesson already open is reused, including Grade 5 weeks that repeat an earlier cohort, rather than opening a competing copy of its checkpoint.
+
+The wrapper supplies each owned activity frame's exact validated source. Source contents and launch metadata use the existing child-owned opaque-sync prefix; no new production permissions are required. A separate device can recover both. Immutable source contents exclude variable fetch timestamps so identical content fetched by two devices cannot create a false content-cache conflict. The original retrieval metadata stays with the lesson route. Sources have a 650 KB per-record bound, below the existing sync limit; writes are confirmed by readback. Unknown, corrupted, missing-source and cross-child routes fail closed without erasing records. A stale index cannot resurrect a missing or replaced checkpoint. Teaching-complete records remain reachable for earned-DT practice or an unfinished score visit; completed scores are not rewritten.
+
+This is **curriculum-service outage recovery**, not complete cold-start offline operation. The page and parent/family initialization must still load. Existing records acquire a route when opened against a source that can establish their target identity; the app cannot reconstruct an original source that was never retained. Temporary drawings and recordings still must be repeated after a reload. Automatic conflict resolution and total storage retention remain later work.
+
 ## Remaining A3.2 gates — do not mark complete or deploy as complete
 
-1. **Durable launch/resume index and curriculum availability.** Today's screens still discover activities through the latest source. A deleted week, removed tier, invalid replacement, or unavailable curriculum endpoint can prevent reaching an otherwise intact saved lesson. Introduce a validated, child-scoped resume route and source cache; prove offline reload and removed-week launch without pinning unrelated new activities to old data.
+1. **Full offline startup.** The saved-source route removes dependence on current curriculum availability, including deleted weeks. A reload with the entire connection unavailable still needs a version-safe offline app shell and parent/family bootstrap recovery that respects sign-out and confirmed credential invalidation. Do not count a simulated curriculum HTTP 503 as this broader acceptance check.
 2. **Grade 2 corrected-week adoption.** Its importer currently refuses a changed already-imported week. Preserve that safeguard until the old dataset and completed-result provenance can coexist with a corrected version. Do not overwrite a canonical target's text under an old score/mastery identity. Pinning alone does not fix this import boundary.
 3. **Explicit discard and engine retirement.** Connect durable lesson discard to the approved confirmation UI without deleting completed scores or reviewed history. Define the retention/upgrade route before retiring the supported engine contract. Existing slot discard is not proof of durable lesson discard.
 4. **Transition and release rehearsal.** Test existing records, storage/readback failures, backend upload/download, removed targets, correction/earned-DT resume, rollback, and current/new lesson selection across all three grades. Keep ordinary browser beta coverage separate from physical-device audio acceptance.
@@ -44,3 +52,22 @@ Local verification on October 7:
 The final-source artifact records `16baf2a01a050b64c5e4824aff4a7a8364efbb2d`, with tree SHA-256 `71826a1e7b41deba1b075a0d766b0edc75ca6ad9b6d8bcb8e3ee5d32808d7a9d`. Its local directory is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-H63D8l`; this temporary directory is not a published preview or permanent release archive. Later acceptance-document commits do not change application source. GitHub final-head checks and independent review remain separate gates; no live acceptance or physical-device microphone/speaker testing is claimed.
 
 The initial packaged run exposed a test-only warmup race: Grade 2 renders its introductory screen asynchronously, so an immediate visibility probe sometimes skipped the test's **Skip Warmup** click. Awaiting the expected Grade 2 warmup control fixed that test; the full 110-check run and both subsequent focused runs passed. The original wrong-curriculum failures were reproduced before implementation, not hidden by this wait adjustment.
+
+## Saved-source increment acceptance and final analysis
+
+Application source: `55d85a1279bbae91cbd5d998817fbd2762216727`. Final local acceptance completed October 7; later documentation-only commits do not change this application artifact.
+
+| Check | Saved-source evidence |
+| --- | --- |
+| Full unit suite | 713 passed on final application source |
+| Canonical desktop/tablet suite | All 136 passed on final application source (68 desktop, 68 tablet-touch), including all 38 curriculum/resume checks |
+| Production-intended family rules, local emulator | 5 passed, including source/route/checkpoint recovery on a second device and cross-family denial |
+| Type, lint, repository format, focused Biome | Passed |
+| Production build and budgets | Passed: initial JS 546,138/550,000 bytes; CSS 42,745/60,000 bytes |
+| Exact canonical artifact | All 133 file hashes and complete tree hash verified against its manifest |
+
+The final application artifact is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-SHUdJL`, tree SHA-256 `8d238019c76e3d7f7f125736127c23b5524131dc814dcb630b164c49c70357e5`. It is a temporary local test artifact, not a published preview or permanent archive. The prior draft head `230957f` passed GitHub Quality gates; the new final head must pass its own checks. No live acceptance or physical-device audio testing is claimed.
+
+Review of this increment found and repaired three integration risks: Grade 5's calendar week is not necessarily its teaching cohort; adding navigation above an active writing surface must not move the pad; and reopening a lesson already mounted must reuse its activity owner. Source identity, child ownership, content checksums, stale-checkpoint checks, readback failure, and second-device recovery have dedicated coverage. One test incorrectly assumed DT's random choice must always be an earned target; it now accepts the engine's valid familiar/earned choices while asserting teaching completion and an open practice prompt.
+
+Release assessment: **keep PR #60 draft**. The source/checkpoint boundary is substantially safer, but full A3.2 remains incomplete for the four gates above. Additional architectural risks are total storage growth and the 500-record sync ceiling (A3.3), the small initial-JavaScript budget headroom, and browser/device audio behavior not established by synthetic tests. Sources are deduplicated per child/content hash, not automatically deleted. No source-cache eviction, historical migration, engine retirement, or production cleanup has been performed. This is an implementation-agent final analysis, not the separate independent release review required by the roadmap.

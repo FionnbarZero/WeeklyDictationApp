@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 7, 2026. A3.1 bounded result history and separate completed-attempt graphs are merged as `55e9189`, published, and live-verified on all three canonical grades. The [A3.1 release record](./docs/a3-release-2026-10-07.md) records exact artifact, checks, limitations, and retained A2 rollback. A3.2's [first pinning increment](./docs/a3-curriculum-pinning.md) is in development, not released or complete; its durable launch and Grade 2 corrected-week gates remain open. A3.3 conflict/storage work remains pending. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
+Updated October 7, 2026. A3.1 bounded result history and separate completed-attempt graphs are merged as `55e9189`, published, and live-verified on all three canonical grades. The [A3.1 release record](./docs/a3-release-2026-10-07.md) records exact artifact, checks, limitations, and retained A2 rollback. A3.2's [pinning and saved-source increments](./docs/a3-curriculum-pinning.md) are in development, not released or complete; full offline startup, Grade 2 corrected-week adoption, and durable discard remain open. A3.3 conflict/storage work remains pending. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -60,7 +60,7 @@ October 5 family-sync release checks:
 
 ## Next work and release policy
 
-Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. A2 active-work continuity and A3.1 distinct attempt graphs are published. ADR 0009's durable curriculum pinning, automatic unfinished conflict resolution, complete game-subset coverage, and retention policy remain pending. Start A3.2 next, with its own regression, compatibility, review, and release gates.
+Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. A2 active-work continuity and A3.1 distinct attempt graphs are published. Continue A3.2 with full offline startup, Grade 2 corrected-week adoption, durable discard, and transition/release rehearsal. Automatic unfinished conflict resolution, complete game-subset coverage, and retention policy remain pending; no A3.2 increment is a completed release.
 
 ### October 6 architecture audit baseline
 
