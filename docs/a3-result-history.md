@@ -1,0 +1,38 @@
+# A3.1 — bounded result history and attempt graphs
+
+Status: implemented on `codex/a3-result-history`; acceptance and independent review in progress. Not merged or published. The live release remains A2 (`b72ed85`).
+
+## Scope and sequence
+
+A3 is split at three architectural boundaries so a persistence migration is not hidden inside a display change:
+
+1. **A3.1, this change:** bounded online result-history reads and one graph point per distinct completed attempt.
+2. **A3.2, pending:** durable validated curriculum/strategy pinning, prompt-resume compatibility, and a tested transition for existing unfinished records.
+3. **A3.3, pending:** whole-activity unfinished-checkpoint reconciliation, deterministic reviewed-answer time/skew/tie handling, separation of checkpoint data from accumulated history, and bounded durable storage. Completed attempts from either device must remain immutable and independent.
+
+Detailed per-target provenance and storage/retention integration still require their appropriate schema and compatibility work. E2's destructive historical cleanup remains separately authorized. This PR does not complete A3.
+
+## Reproduced issue
+
+Regression-only commit `d2c2b46` failed before implementation: ordinary refresh followed older result pages even without opening Progress. The browser reproduction also failed its zero-older-requests assertion. The prior Progress view offered daily totals and a list, but no per-attempt graph.
+
+## Contract
+
+- A routine refresh makes one child-scoped query, ordered by completion time and document identity descending. It reads at most 51 documents: 50 visible results and one lookahead to determine whether older history exists.
+- Explicit **Older attempts** loads one additional page. **Latest attempts** returns to the refreshed recent page. Only one older page is held by the view; older pages are not copied into the durable browser result ledger.
+- The cursor contains only family, child, completion time, and attempt identity. It is validated before use and becomes a strict start-after boundary, never an offset. New scores inserted before that boundary do not move older attempts between pages.
+- Child/account navigation cancels pending history loads. A late response cannot appear under another child. A failed page fetch keeps the current page and allows retry. Background sync does not replace an older page being read.
+- A failed routine sync switches the latest view to preserved device records without reusing its online cursor. An already-open remote page retains its own loader and boundary. Offline display is explicitly labelled; more records may remain online.
+- Each distinct completed attempt has one graph point, including multiple attempts on one day or at the same timestamp. Exact retries deduplicate by attempt identity; conflicting payloads fail closed. Graphs separate grade, channel, and activity; they do not change mastery.
+- Graphs use chronological attempt order, with ID tie-breaking, and score percentage. Exact times and numerator/denominator scores are available as text. Times and daily summaries use America/Los_Angeles. Page-only totals are labelled; they are not presented as full-day or lifetime totals.
+- The existing immutable save/readback/outbox contract is unchanged. Recent confirmed results retain the existing local-copy behavior. Existing browser records are not pruned, migrated, or deleted. This bounds new history reads and the visible page, not all historical local storage or practice syncing.
+
+The query uses the documented [Firestore structured query](https://firebase.google.com/docs/firestore/reference/rest/v1/StructuredQuery) and [runQuery endpoint](https://firebase.google.com/docs/firestore/reference/rest/v1/projects.databases.documents/runQuery). The initial list-documents prototype was replaced after emulator testing exposed unsupported ordered page-token pagination; it is not the implemented transport. No database rule, index configuration, record schema, or authentication configuration changes are included. Production verification of the new query is a release gate, not claimed by local emulator success.
+
+## Verification and release boundary
+
+Focused checks cover pagination limits/cursors, malformed or cross-child data, cancelled/failed reads, duplicate/conflicting attempts, same-time graph points, and channel isolation. The production-intended family-rule emulator exercises 55 same-time attempts across pages, insertion of a new result between pages, and denial to another family.
+
+Packaged desktop/tablet tests cover delayed old-history responses across child switches, retry after history failure, background refresh preserving an older page, online-to-local fallback, separate same-day graph points, and no copying of older pages into device storage. Final exact-package and reconciliation results will be recorded below after completion.
+
+No live site or real family data was touched. Before publication: independent GPT-6 Astra Extra High review, final-head CI, merge-artifact checks, and a release record with synthetic backend verification and A2 rollback. Stop for approval before any newly required production migration or security change. Do not start A3.2 by treating these history tests as curriculum-resume acceptance.
