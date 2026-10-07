@@ -1,6 +1,6 @@
 # A2 activity continuity and review
 
-A2 implements the in-session interruption requirements in [ADR 0009](./decisions/0009-activity-reliability-and-staged-delivery.md). It preserves an open activity through family navigation, reporting, and failed syncing. It does not implement A3's curriculum migrations, automatic conflict selection, or new result graphs. Publication requires the roadmap's GPT-6 Astra High release review; the live app remains A1.
+A2 implements the in-session interruption requirements in [ADR 0009](./decisions/0009-activity-reliability-and-staged-delivery.md). It preserves an open activity through family navigation, reporting, and failed syncing. It does not implement A3's curriculum migrations, automatic conflict selection, or new result graphs. It is now merged as `b72ed85` and published; see the [A2 release record](./a2-release-2026-10-06.md). The verification stages below preserve their original provenance.
 
 ## Reproduced baseline
 
@@ -82,6 +82,6 @@ All family-package network requests use synthetic fixtures. Emulator checks use 
 
 ## Compatibility and release handoff
 
-No storage schema, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. Client-side token renewal and Grade 2's reviewed-state ownership were repaired; there is no migration or destructive cleanup. [PR #56](https://github.com/FionnbarZero/WeeklyDictationApp/pull/56) is the review vehicle. Review the repaired renewal boundary, shared-state ownership, external stale-write protection, and the existing timer/audio/recording contract before publication. A fresh Astra High release review and passing final-head CI are still required; the live website remains A1.
+No storage schema, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. Client-side token renewal and Grade 2's reviewed-state ownership were repaired; there is no migration or destructive cleanup. [PR #56](https://github.com/FionnbarZero/WeeklyDictationApp/pull/56) merged as `b72ed85`. Final focused release review checked renewal, shared ownership, live hydration guards and interruption behavior; all five final-head CI jobs passed.
 
-After Astra review and CI pass, merge through repository protections, package the merge commit, rerun the exact-package checks, and publish that exact artifact using the established canonical release process. Retain the currently published A1 Cloudflare version `2e0cb204-5e1f-4483-bafa-4f28911718d7` and its [release record](./a1-release-2026-10-06.md) as the immediate rollback target. Verify all three canonical grade links and synthetic saving after release; do not label this branch or its merge as live before that happens.
+The owner authorized publication after merging. The merge artifact passed all 88 package checks and real-backend synthetic acceptance, was published once, and passed live verification. [Release evidence](./a2-release-2026-10-06.md) identifies the exact artifact, current Cloudflare version, live checks and limitations. A1 version `2e0cb204-5e1f-4483-bafa-4f28911718d7` is the immediate rollback target. A3 remains separate.
