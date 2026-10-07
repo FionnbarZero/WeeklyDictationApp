@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { makeResult } from '../../src/familyBeta/model.ts'
 import { documentValue } from '../../src/firestoreClient.ts'
 import { installFamilyFixtures } from './fixtures.ts'
@@ -51,7 +51,7 @@ test('completed same-day attempts have separate graph points and older history l
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
   await expect(page.getByText('Daily totals for this page', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.screenshot({ path: `/private/tmp/a3-history-${test.info().project.name}.png` })
+  await page.screenshot({ path: test.info().outputPath('history.png') })
   await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('The current page and saved records are unchanged')
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
@@ -78,6 +78,121 @@ test('completed same-day attempts have separate graph points and older history l
   )
   expect(cachedOlder).toEqual([])
 })
+
+const historyProfile = { id: 'synthetic-g5', nickname: 'Synthetic', grade: 'Grade 5' as const, active: true }
+const historyRecords = Array.from({ length: 150 }, (_, i) =>
+  makeResult(
+    historyProfile,
+    {
+      id: `review-${String(i).padStart(3, '0')}`,
+      activity: 'Writing Dojo',
+      channel: 'writing',
+      datasetIds: ['week-one'],
+      correct: 1,
+      attempted: 2,
+    },
+    new Date(Date.UTC(2026, 9, 6, 23) - i * 60000),
+  ),
+)
+
+async function installLongHistory(page: Page, conflict?: 'keyed' | 'legacy') {
+  await installFamilyFixtures(page)
+  await page.addInitScript(
+    ({ records, conflict }) => {
+      for (const result of records) {
+        const stored = conflict === 'keyed' && result.id === 'review-070' ? { ...result, correct: 2 } : result
+        localStorage.setItem(`family-beta-preview-results-v1:${result.id}`, JSON.stringify(stored))
+      }
+      if (conflict === 'legacy')
+        localStorage.setItem('family-beta-preview-results-v1', JSON.stringify([{ ...records[70], correct: 2 }]))
+    },
+    { records: historyRecords, conflict },
+  )
+  const control = { offline: false }
+  await page.route('**/children/synthetic-g5:runQuery', (route) => {
+    if (control.offline) return route.fulfill({ status: 503, body: '{}' })
+    const query = route.request().postDataJSON().structuredQuery
+    const boundary = query.startAt?.values[0]?.stringValue
+    const selected = historyRecords.filter((result) => !boundary || result.completedAt < boundary).slice(0, query.limit)
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(
+        selected.map((result) => ({
+          document: {
+            fields: Object.fromEntries(Object.entries(result).map(([key, value]) => [key, documentValue(value)])),
+          },
+        })),
+      ),
+    })
+  })
+  await page.goto('/?grade=grade5')
+  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Progress', exact: true }).click()
+  await expect(page.locator('[data-result-point]')).toHaveCount(50)
+  return control
+}
+
+test('local older history keeps its source and boundary across reconnect, new arrivals and read failure', async ({
+  page,
+}) => {
+  const control = await installLongHistory(page)
+  control.offline = true
+  await page.evaluate(() => dispatchEvent(new Event('online')))
+  await expect(page.getByRole('alert')).toContainText('Saved results could not be loaded')
+  await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
+  await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
+  control.offline = false
+  await page.evaluate(() => dispatchEvent(new Event('online')))
+  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Older attempts', exact: true })).toBeVisible()
+  await page.evaluate(
+    (newArrival) => {
+      localStorage.setItem(`family-beta-preview-results-v1:${newArrival.id}`, JSON.stringify(newArrival))
+      const original = Storage.prototype.getItem
+      Storage.prototype.getItem = function (key) {
+        if (key === 'family-beta-preview-results-v1') {
+          Storage.prototype.getItem = original
+          throw new Error('Synthetic history read failure')
+        }
+        return original.call(this, key)
+      }
+    },
+    { ...historyRecords[0], id: 'new-arrival', completedAt: '2026-10-06T23:00:01.000Z' },
+  )
+  await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Synthetic history read failure')
+  await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
+  await expect(page.locator('[data-result-point="review-100"]')).toHaveCount(1)
+  await expect(page.locator('[data-result-point]')).toHaveCount(50)
+  await expect(page.locator('[data-result-point="review-099"]')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Older attempts', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Latest attempts', exact: true }).click()
+  await expect(page.locator('[data-result-point="review-000"]')).toHaveCount(1)
+  await expect(page.getByText(/Showing records saved on this device/)).toHaveCount(0)
+})
+
+for (const conflict of ['keyed', 'legacy'] as const) {
+  test(`older online history rejects a conflicting ${conflict} copy without changing the ledger`, async ({ page }) => {
+    await installLongHistory(page, conflict)
+    const ledger = () =>
+      page.evaluate(() =>
+        Object.fromEntries(
+          Object.entries(localStorage).filter(([key]) => key.startsWith('family-beta-preview-results-v1')),
+        ),
+      )
+    const before = await ledger()
+    await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('Both copies are preserved')
+    await expect(page.locator('[data-result-point="review-000"]')).toHaveCount(1)
+    await expect(page.locator('[data-result-point="review-070"]')).toHaveCount(0)
+    expect(await ledger()).toEqual(before)
+    await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('Both copies are preserved')
+    expect(await ledger()).toEqual(before)
+  })
+}
 
 test('a delayed older-history response cannot appear under a different child', async ({ page }) => {
   await installFamilyFixtures(page)
