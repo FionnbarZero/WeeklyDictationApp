@@ -98,12 +98,15 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
     await expect(page.getByRole('alert')).toContainText('Newer practice is available from another device')
     expect(await read()).toBe(older)
     expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(older)
-    // The replacement can continue locally without a reload or stale-write error.
+    // The new generation can continue locally; discarded history must not advance.
     await enterWriting(page)
     await answer(page)
-    expect(JSON.parse(await read()).acquisitionProgressEnvelopes[0].revision).toBeGreaterThan(
-      JSON.parse(older).acquisitionProgressEnvelopes[0].revision,
-    )
+    const oldEnvelope = JSON.parse(older).acquisitionProgressEnvelopes[0]
+    const envelopes = JSON.parse(await read()).acquisitionProgressEnvelopes
+    expect(envelopes.find((e: { id: string }) => e.id === oldEnvelope.id)).toEqual(oldEnvelope)
+    const restarted = envelopes.find((e: { id: string }) => e.id !== oldEnvelope.id)
+    expect(restarted.activityModule).toContain(':restart-')
+    expect(restarted.revision).toBe(1)
     await expect(frame.getByText('Another browser changed saved practice.', { exact: false })).toHaveCount(0)
   } finally {
     release()

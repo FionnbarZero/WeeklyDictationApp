@@ -345,6 +345,11 @@ function KindergartenLearningLab() {
   }
 
   function finishWriting() {
+    try { acquisitionStore.current?.assertActive() }
+    catch (error) {
+      setStatus(error instanceof Error ? error.message : 'This attempt cannot be submitted.'); setError(true)
+      return
+    }
     if (writingPractice) {
       const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
       if (scored.length && !recordScore({

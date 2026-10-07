@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
+import { retireAcquisition } from '../../src/familyBeta/acquisitionRetirement.ts'
 import { installFamilyFixtures } from './fixtures.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
@@ -41,6 +42,56 @@ async function saved(page: Page, grade2Writing: boolean) {
 
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
   for (const channel of ['writing', 'reading'] as const) {
+    test(`${slug} ${channel}: a received discard prevents an old open activity submitting another score`, async ({
+      page,
+    }) => {
+      await installFamilyFixtures(page)
+      await page.goto(`/?grade=${slug}`)
+      const frame = await launch(page, slug, channel)
+      if (channel === 'writing') {
+        for (let i = 0; i < 4; i++) {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+          await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        }
+      } else {
+        await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+        await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+        await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+      }
+      const before = await saved(page, slug === 'grade2' && channel === 'writing')
+      const marker = new Map<string, string>()
+      retireAcquisition(
+        {
+          getItem: (key) => marker.get(key) ?? null,
+          setItem: (key, value) => {
+            marker.set(key, value)
+          },
+        },
+        before,
+      )
+      // Model the exact immutable marker arriving from another tab/device.
+      await page.evaluate(
+        (entries) => {
+          for (const [key, value] of entries) localStorage.setItem(key, value)
+        },
+        [...marker],
+      )
+      const read = () =>
+        page.evaluate(() =>
+          Object.fromEntries(
+            Object.keys(localStorage)
+              .filter((key) => key.startsWith('family-beta-') && !key.startsWith('family-beta-sync-'))
+              .sort()
+              .map((key) => [key, localStorage.getItem(key)]),
+          ),
+        )
+      const retained = await read()
+      await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+      await expect(frame.getByRole('button', { name: 'Done for today', exact: true })).toBeVisible()
+      expect(await saved(page, slug === 'grade2' && channel === 'writing')).toEqual(before)
+      expect(await read()).toEqual(retained)
+    })
+
     test(`${slug} ${channel}: confirmed discard survives reload without erasing reviewed history`, async ({ page }) => {
       await installFamilyFixtures(page)
       await page.goto(`/?grade=${slug}`)

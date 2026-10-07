@@ -68,9 +68,13 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     return saved
   }
 
-  function commit(next: SavedAcquisition<T, R>, nextContext = context) {
+  function assertActive() {
     if (isAcquisitionRetired(storage, context.identity))
       throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
+  }
+
+  function commit(next: SavedAcquisition<T, R>, nextContext = context) {
+    assertActive()
     if (storage.getItem(key) !== raw)
       throw new Error(
         'This activity changed in another tab. Reload to resume the saved response; nothing was overwritten.',
@@ -112,6 +116,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
 
   return {
     key,
+    assertActive,
     get context() { return context },
     get current() {
       return current

@@ -853,7 +853,16 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       current && current.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current,
     )
   }
+  const acquisitionIsActive = (current: PracticeSession | null) => {
+    if (!familyPreview || !current?.acquisitionProgressionId) return true
+    try {
+      const envelope = state.acquisitionProgressEnvelopes?.find(item => item.id === current.acquisitionProgressionId)
+      if (!envelope || !lessonRetirement || lessonRetirement.isAcquisitionRetired(localStorage, envelope)) throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
+      return true
+    } catch (error) { setCloudError(authErrorMessage(error)); return false }
+  }
   const completeSession = async (finished: PracticeSession, baseState: AppState = state) => {
+    if (!acquisitionIsActive(finished)) return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = finished.id
     const storedCloud = finished.cloudSessionId ? cloudSessionsRef.current.get(finished.cloudSessionId) : undefined
@@ -907,6 +916,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const finishAcquisitionForToday = async () => {
     const current = session
     if (!current?.acquisition || current.primaryPhase !== 'acquisition') return
+    if (!acquisitionIsActive(current)) return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = current.id
     const storedCloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
@@ -995,12 +1005,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const answer = (correct: PracticeAnswer) => {
-    if (familyPreview && session?.acquisitionProgressionId) {
-      try {
-        const envelope = state.acquisitionProgressEnvelopes?.find(item => item.id === session.acquisitionProgressionId)
-        if (!envelope || !lessonRetirement || lessonRetirement.isAcquisitionRetired(localStorage, envelope)) throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
-      } catch (error) { setCloudError(authErrorMessage(error)); return }
-    }
+    if (!acquisitionIsActive(session)) return
     if (typeof correct === 'object') {
       if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
       return
