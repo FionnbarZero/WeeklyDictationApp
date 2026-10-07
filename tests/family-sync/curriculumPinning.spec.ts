@@ -53,17 +53,30 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         await frame.getByRole('button', { name: 'Yes', exact: true }).click()
       }
       const before = await saved(page, slug === 'grade2' && channel === 'writing')
-      await page.route(`**/curriculum/beta/${slug}.json`, route => route.fulfill({ status: 503, body: 'offline' }))
+      await page.route(`**/curriculum/beta/${slug}.json`, (route) => route.fulfill({ status: 503, body: 'offline' }))
       await page.reload()
       await page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) }).click()
       frame = page.frameLocator('iframe:visible')
       await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-      await frame.getByRole('button', { name: slug === 'kindergarten'
-        ? channel === 'writing' ? 'Writing characters' : 'High-frequency words'
-        : channel === 'writing' ? 'Learn to Write' : 'Read the Words', exact: true }).click()
-      if (slug === 'grade2' && channel === 'writing') await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+      await frame
+        .getByRole('button', {
+          name:
+            slug === 'kindergarten'
+              ? channel === 'writing'
+                ? 'Writing characters'
+                : 'High-frequency words'
+              : channel === 'writing'
+                ? 'Learn to Write'
+                : 'Read the Words',
+          exact: true,
+        })
+        .click()
+      if (slug === 'grade2' && channel === 'writing')
+        await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
       expect(await saved(page, slug === 'grade2' && channel === 'writing')).toEqual(before)
-      await expect(frame.getByRole('button', { name: channel === 'writing' ? 'Skip Timer' : 'Record my reading', exact: true })).toBeVisible()
+      await expect(
+        frame.getByRole('button', { name: channel === 'writing' ? 'Skip Timer' : 'Record my reading', exact: true }),
+      ).toBeVisible()
     })
     test(`${slug} ${channel}: reviewed lesson survives a teacher edit and a full reload`, async ({ page }) => {
       await installFamilyFixtures(page)

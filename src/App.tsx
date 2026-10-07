@@ -656,6 +656,17 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       }
       if (result.cloudSession) cloudSessionsRef.current.set(id, result.cloudSession)
       setState(result.state)
+      if (familyPreview && result.session.primaryPhase === 'acquisition' && result.session.acquisition) {
+        try {
+          const envelope = result.state.acquisitionProgressEnvelopes?.find(e => e.childId === selectedChild.id && e.datasetId === result.session.primaryDatasetId)
+          if (!envelope) throw new Error('The original lesson checkpoint is unavailable. Your saved work is unchanged.')
+          const { rememberFamilyLesson } = await import('./familyBeta/lessonLaunchRuntime.ts')
+          rememberFamilyLesson(envelope)
+        } catch (error) {
+          setCloudError(authErrorMessage(error))
+          return
+        }
+      }
       completedSessionRef.current = null
       setCompletedSummary(null)
       if (result.warning) setCloudError(result.warning)

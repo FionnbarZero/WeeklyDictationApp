@@ -23,6 +23,7 @@ import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
+import { cacheLessonSource, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
 import '../styles.css'
 import './preview.css'
 
@@ -83,6 +84,9 @@ function FamilyPreview() {
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
   const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
+  const [resumingId, setResumingId] = useState<string | null>(null)
+  const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
+  const [resumeRefresh, setResumeRefresh] = useState(0)
   const slotsRef = useRef(slots)
   slotsRef.current = slots
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
@@ -97,7 +101,8 @@ function FamilyPreview() {
   const today = localDateKey(new Date())
   const available = curriculum?.datasets.filter(d => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) || []
   const dataset = available.find(d => d.startDate === week) || available[0]
-  const workspace = child ? activityWorkspace(child, dataset?.startDate || week) : ''
+  const resumeSlot = tab === 'activities' ? slots.find(slot => slot.id === resumingId && slot.profile.id === child?.id) : undefined
+  const workspace = resumeSlot?.workspace || (child ? activityWorkspace(child, dataset?.startDate || week) : '')
   const selectedSlot = selectedSlots[`${workspace}:${tab}`]
   const pack = slots.find(slot => slot.id === selectedSlot)?.game?.pack
   const scope = `${auth.user?.uid || ''}:${familyId || ''}`
@@ -113,6 +118,7 @@ function FamilyPreview() {
     workspaceOwner.retain([])
     setSlots([])
     setSelectedSlots({})
+    setResumingId(null)
     if (!firebaseConfigReady) return
     setFamilyId(null)
     setProfiles([])
@@ -144,6 +150,15 @@ function FamilyPreview() {
     if (child) sessionStorage.setItem(PROFILE_KEY, JSON.stringify(child))
     if (!firebaseConfigReady) localStorage.setItem('beta-preview-profiles', JSON.stringify(profiles))
   }, [child, profiles])
+
+  useEffect(() => {
+    if (!child || !practiceReady) return
+    let cancelled = false
+    void listSavedLessons(localStorage, child).then(value => {
+      if (!cancelled) setSavedLessons({ owner: child.id, ...value })
+    }).catch(e => { if (!cancelled) setActivityError(message(e)) })
+    return () => { cancelled = true }
+  }, [child?.id, child?.grade, practiceReady, resumeRefresh])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -220,6 +235,7 @@ function FamilyPreview() {
         setResults([])
       }
     } finally {
+      if (scopeRef.current === scope) setResumeRefresh(value => value + 1)
       syncing.current = false
       if (syncAgain.current) {
         syncAgain.current = false
@@ -313,10 +329,13 @@ function FamilyPreview() {
 
   function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack) {
     if (!child || !curriculum || curriculum.snapshot.grade !== currentGrade || !dataset || !practiceReady) return
+    try { cacheLessonSource(localStorage, child.id, curriculum.snapshot) }
+    catch (e) { setActivityError(message(e)); return }
     const id = crypto.randomUUID()
     const slot: FamilyActivitySlot = {
       id, workspace, profile: { ...child }, week: dataset?.startDate || week,
       curriculumVersion: curriculum.snapshot.contentSha256,
+      source: curriculum.snapshot,
       teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
       kind, src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
       ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
@@ -326,8 +345,30 @@ function FamilyPreview() {
   }
 
   useEffect(() => {
-    if (tab === 'activities' && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
-  }, [tab, child, curriculum, practiceReady, workspace, slots])
+    if (tab === 'activities' && !resumingId && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
+  }, [tab, child, curriculum, practiceReady, workspace, slots, resumingId])
+
+  async function resumeSavedLesson(lesson: SavedLessonLaunch) {
+    if (!child || !practiceReady) return
+    try {
+      const saved = await readSavedLesson(localStorage, child, lesson)
+      if (scopeRef.current !== scope || childRef.current !== child.id) return
+      if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')
+      const existing = slotsRef.current.find(slot => slot.profile.id === child.id && slot.week === saved.week && slot.curriculumVersion === saved.sourceHash && slot.kind === 'activities' && (!slot.resumeChannel || slot.resumeChannel === saved.channel))
+      const id = existing?.id || crypto.randomUUID()
+      const savedWorkspace = existing?.workspace || `${activityWorkspace(child, saved.week)}:saved:${id}`
+      if (!existing) setSlots(current => [...current, {
+        id, workspace: savedWorkspace, profile: { ...child }, week: saved.week,
+        curriculumVersion: saved.sourceHash, source: saved.source, resumeChannel: saved.channel,
+        teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local', kind: 'activities',
+        src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
+      }])
+      setResumingId(id)
+      setTab('activities')
+      setSelectedSlots(current => ({ ...current, [`${savedWorkspace}:activities`]: id }))
+      setActivityError('')
+    } catch (e) { setActivityError(message(e)) }
+  }
 
   function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
@@ -361,7 +402,7 @@ function FamilyPreview() {
           <select
             aria-label="Child profile"
             value={child?.id || ''}
-            onChange={(e) => { setSelectedId(e.target.value); setWeek('') }}
+            onChange={(e) => { setSelectedId(e.target.value); setWeek(''); setResumingId(null) }}
           >
             {profiles
               .filter((p) => p.active)
@@ -417,7 +458,7 @@ function FamilyPreview() {
           <select
             aria-label="Practice week"
             value={week}
-            onChange={(e) => setWeek(e.target.value)}
+            onChange={(e) => { setWeek(e.target.value); setResumingId(null) }}
           >
             <option value="">Current teacher lesson</option>
             {available.map((d) => (
@@ -428,6 +469,18 @@ function FamilyPreview() {
           </select>
         </label>
       )}
+      {child && practiceReady && tab === 'activities' && savedLessons.owner === child.id && (savedLessons.lessons.length > 0 || savedLessons.warnings.length > 0) && <section className="beta-panel" aria-label="Saved lessons">
+        <h2>Saved lessons</h2>
+        <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
+        {savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
+        {savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
+          Resume saved {lesson.channel} · {lesson.week}
+        </button>)}
+      </section>}
+      {resumeSlot && <section className="beta-panel" role="status">
+        Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the current teacher curriculum.
+        <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>
+      </section>}
       {!child && <p>Add a child in Parent controls to begin.</p>}
       {slots.map(slot => {
         const active = practiceReady && slot.id === selectedSlot && slot.workspace === workspace && (tab === 'activities' || tab === 'games')
@@ -435,6 +488,7 @@ function FamilyPreview() {
           data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
           data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
+          data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
           data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
           hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
       })}

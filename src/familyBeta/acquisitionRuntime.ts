@@ -1,6 +1,7 @@
 import type { AcquisitionStrategy, AcquisitionTarget, AcquisitionTargetSet } from '../acquisition/contracts.ts'
 import { openAcquisitionStore } from './acquisitionStore.ts'
 import { familyPreview, previewProfile, previewResults } from './runtime.ts'
+import { rememberFamilyLesson } from './lessonLaunchRuntime.ts'
 
 export function familyAcquisitionStore<T extends AcquisitionTarget, R extends string>(
   targetSet: AcquisitionTargetSet<T>,
@@ -27,6 +28,7 @@ export function familyAcquisitionStore<T extends AcquisitionTarget, R extends st
   })
   // Recover a close/reload between confirming a result and opening a new visit.
   if (previewResults().some((result) => result.id === store.current.sessionId)) store.finishSession()
+  rememberFamilyLesson(store.current.envelope)
   return {
     ...store,
     get current() {
