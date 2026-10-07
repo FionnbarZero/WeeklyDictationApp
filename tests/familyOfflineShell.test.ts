@@ -52,6 +52,7 @@ function fixture(t: { after: (fn: () => void) => void }) {
   runInNewContext(source, {
     URL,
     Response,
+    Headers,
     Uint8Array,
     crypto,
     caches,
@@ -61,7 +62,9 @@ function fixture(t: { after: (fn: () => void) => void }) {
     },
     fetch: async (url: URL) => {
       fetched.push(url.pathname)
-      const response = new Response(corrupt ? 'unexpected newer build' : readFileSync(join(directory, url.pathname)))
+      const response = new Response(corrupt ? 'unexpected newer build' : readFileSync(join(directory, url.pathname)), {
+        headers: { 'Content-Encoding': 'gzip', 'Content-Length': '1' },
+      })
       Object.defineProperty(response, 'url', { value: url.href })
       return response
     },
@@ -111,6 +114,10 @@ test('offline shell validates exact package hashes and handles clean/query grade
   assert.equal(
     await (await shell.request('https://dojo.example/assets/lesson-v1.js', 'cors'))!.text(),
     'original engine',
+  )
+  assert.equal(
+    (await shell.request('https://dojo.example/assets/lesson-v1.js', 'cors'))!.headers.get('Content-Encoding'),
+    null,
   )
   for (const url of [
     'https://firestore.googleapis.com/documents',

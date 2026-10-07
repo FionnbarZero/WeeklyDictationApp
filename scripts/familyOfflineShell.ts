@@ -78,7 +78,11 @@ self.addEventListener('install', event => event.waitUntil((async () => {
       if (!response.ok || new URL(response.url).origin !== scope.origin) throw new Error('Offline asset unavailable');
       const body = await response.arrayBuffer();
       if (hex(await crypto.subtle.digest('SHA-256', body)) !== file.sha256) throw new Error('Offline asset checksum mismatch');
-      await cache.put(url, new Response(body, { status: 200, headers: response.headers }));
+      // fetch already decoded any transport compression. The cached body must
+      // not retain headers describing the compressed wire representation.
+      const headers = new Headers(response.headers);
+      headers.delete('Content-Encoding'); headers.delete('Content-Length');
+      await cache.put(url, new Response(body, { status: 200, headers }));
     }
   } catch (error) { await caches.delete(cacheName); throw error; }
 })()));
