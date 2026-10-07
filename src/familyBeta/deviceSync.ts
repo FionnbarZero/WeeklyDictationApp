@@ -2,6 +2,7 @@ import { firebaseConfig } from '../config.ts'
 import { getIdToken } from '../firebaseClient.ts'
 import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
+import { isRetirementKey } from './acquisitionRetirement.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
@@ -97,7 +98,11 @@ export function createDeviceSyncRepository(options: {
         const key = storage.key(i)
         if (key && ownedPracticeRecord(key, storage.getItem(key) || '', childId)) keys.add(key)
       }
-      for (const key of keys) {
+      // Propagate immutable retirements before a mutable checkpoint can block
+      // on an ordinary two-device conflict. Old checkpoints remain history.
+      for (const key of [...keys].sort(
+        (a, b) => Number(isRetirementKey(b, childId)) - Number(isRetirementKey(a, childId)),
+      )) {
         const id = await recordId(key)
         const baseKey = `family-beta-sync-base-v1:${options.familyId}:${childId}:${id}`
         let baseline = storage.getItem(baseKey)

@@ -1,4 +1,8 @@
-import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../acquisition/persistence/contracts.ts'
+import type {
+  AcquisitionCheckpoint,
+  AcquisitionPersistenceContext,
+  AcquisitionProgressEnvelope,
+} from '../../acquisition/persistence/contracts.ts'
 import {
   createPracticeSessionForTarget,
   localDateKey,
@@ -66,6 +70,7 @@ export async function startPractice(input: {
   startedAt: Date
   persistence: StartPracticePersistence
   formatError?: (error: unknown) => string
+  resolveAcquisitionContext?: (context: AcquisitionPersistenceContext<Word>) => AcquisitionPersistenceContext<Word>
 }): Promise<StartPracticeResult> {
   const formatError = input.formatError || errorMessage
   const startedAt = input.startedAt.toISOString()
@@ -168,6 +173,7 @@ export async function startPractice(input: {
           startedAt,
           Math.random,
           !input.persistence.cloud,
+          input.resolveAcquisitionContext,
         )
       : null
   if (preparedAcquisition?.status === 'blocked') {
@@ -290,6 +296,7 @@ export async function startPractice(input: {
     state,
     session: {
       ...practiceSession,
+      ...(preparedAcquisition?.status === 'ready' ? { acquisitionProgressionId: preparedAcquisition.envelope.id } : {}),
       adaptiveWarmupVisitId: warmupVisit.id,
       warmupResumePosition: warmupVisit.nextPosition,
       index: warmupVisit.nextPosition,

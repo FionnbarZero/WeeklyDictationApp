@@ -39,6 +39,65 @@ async function saved(page: Page, grade2Writing: boolean) {
   }, grade2Writing)
 }
 
+for (const slug of ['kindergarten', 'grade2', 'grade5']) {
+  for (const channel of ['writing', 'reading'] as const) {
+    test(`${slug} ${channel}: confirmed discard survives reload without erasing reviewed history`, async ({ page }) => {
+      await installFamilyFixtures(page)
+      await page.goto(`/?grade=${slug}`)
+      let frame = await launch(page, slug, channel)
+      if (channel === 'writing') {
+        for (let i = 0; i < 4; i++) {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+          await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        }
+      } else {
+        await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+        await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+        await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+      }
+      const old = await saved(page, slug === 'grade2' && channel === 'writing')
+      await frame
+        .locator('body')
+        .evaluate(() => parent.postMessage({ type: 'family-beta-activity-paused' }, location.origin))
+      page.once('dialog', (d) => d.dismiss())
+      await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+      expect(
+        await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes(':lesson-retirement-v1:')).length),
+      ).toBe(0)
+      page.once('dialog', (d) => d.accept())
+      await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+      await expect
+        .poll(() =>
+          page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes(':lesson-retirement-v1:')).length),
+        )
+        .toBe(1)
+      await page.reload()
+      await page.getByText('Saved lessons', { exact: true }).click()
+      await expect(page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) })).toHaveCount(0)
+      frame = await launch(page, slug, channel)
+      const envelopes = await page.evaluate(() =>
+        Object.keys(localStorage).flatMap((key) => {
+          if (key.startsWith('family-beta-acquisition-v1:')) return [JSON.parse(localStorage.getItem(key)!).envelope]
+          if (key.startsWith('family-beta-activity:') && key.endsWith(':weekly-dictation-state-v2'))
+            return JSON.parse(localStorage.getItem(key)!).acquisitionProgressEnvelopes || []
+          return []
+        }),
+      )
+      expect(envelopes.find((e) => e.id === old.id)).toEqual(old)
+      const fresh = envelopes.find((e) => e.id !== old.id && e.activityModule.includes(':restart-'))
+      expect(fresh?.revision).toBe(0)
+      if (channel === 'writing') {
+        await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+        await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+      } else {
+        await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+        await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+        await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+      }
+    })
+  }
+}
+
 test('resuming a live Grade 5 cohort reuses its frame even when the calendar week repeats it', async ({ page }) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
@@ -192,8 +251,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       expect(updatesServed).toBeGreaterThan(0)
       expect(await saved(page, g2Writing)).toEqual(before)
       if (g2Writing) {
-        // Replacement of an already imported G2 week is a separate, gated step.
-        await expect(frame.getByText('Weekly vocabulary could not be updated automatically.')).toBeVisible()
+        await expect(frame.getByText('Weekly vocabulary could not be updated automatically.')).toHaveCount(0)
       }
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()

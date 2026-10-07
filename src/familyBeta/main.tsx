@@ -23,7 +23,7 @@ import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
-import { cacheLessonSource, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
+import { cacheLessonSource, discardSavedLesson, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
 import { isConnectionFailure, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
 import '../styles.css'
 import './preview.css'
@@ -438,9 +438,15 @@ function FamilyPreview() {
 
   function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
-    if (resumingId === slot.id) setResumingId(null)
-    setSlots(current => current.filter(item => item.id !== slot.id))
-    setSelectedSlots(current => ({ ...current, [`${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`]: undefined }))
+    try {
+      if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)
+      const removed = slots.filter(item => item.id === slot.id || (slot.savedLesson && item.profile.id === slot.profile.id && item.savedLesson?.progressionId === slot.savedLesson.progressionId))
+      if (removed.some(item => item.id === resumingId)) setResumingId(null)
+      setSlots(current => current.filter(item => !removed.some(value => value.id === item.id)))
+      setSelectedSlots(current => Object.fromEntries(Object.entries(current).map(([key, id]) => [key, removed.some(item => item.id === id) ? undefined : id])))
+      setResumeRefresh(current => current + 1)
+      setActivityError('')
+    } catch (error) { setActivityError(message(error)) }
   }
 
   if (auth.status === 'loading') return <p role="status">Loading family access…</p>

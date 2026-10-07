@@ -70,7 +70,10 @@ export function recordPracticeAnswer(input: {
     const dataset = input.state.datasets.find((item) => item.id === current.primaryDatasetId)
     if (!dataset || !current.acquisition.prompt?.revealed) return { status: 'ignored' }
     const envelope = (input.state.acquisitionProgressEnvelopes || []).find(
-      (item) => item.childId === current.childId && item.datasetId === dataset.id,
+      (item) =>
+        item.childId === current.childId &&
+        item.datasetId === dataset.id &&
+        (!current.acquisitionProgressionId || item.id === current.acquisitionProgressionId),
     )
     if (!envelope) {
       return {

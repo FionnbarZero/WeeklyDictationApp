@@ -1,5 +1,6 @@
 import type { AcquisitionProgressEnvelope } from '../acquisition/persistence/contracts.ts'
 import { resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
+import { envelopeIdentity, isAcquisitionRetired, retireAcquisition } from './acquisitionRetirement.ts'
 import { type CurriculumSnapshot, inspectSnapshot, validateCurriculum } from './curriculum.ts'
 import type { BetaProfile } from './model.ts'
 
@@ -70,18 +71,24 @@ function verifyEnvelope(envelope: AcquisitionProgressEnvelope, profile: BetaProf
   })
 }
 
-function sourceMatches(envelope: AcquisitionProgressEnvelope, source: CurriculumSnapshot, week: string) {
+function sourceDatasetId(envelope: AcquisitionProgressEnvelope) {
   const id = envelope.datasetId.replace(/^__kindergarten-lab__/, '')
+  return envelope.grade === 'Grade 2' && envelope.tier === 'tier-1' ? id.replace(/__rev_[a-f0-9]{16}$/, '') : id
+}
+
+function sourceMatches(envelope: AcquisitionProgressEnvelope, source: CurriculumSnapshot, week: string) {
+  const id = sourceDatasetId(envelope)
   const candidate = inspectSnapshot(source).candidates.find(
     (c) => c.datasetId === id && c.normalizedStartDate === week && c.status === 'valid',
   )
   const words = envelope.tier === 'tier-1' ? candidate?.tier1 : candidate?.tier2
   const targets = envelope.lessonSnapshot!.targetSet.targets
+  if (envelope.datasetId.includes('__rev_') && envelope.datasetId !== `${id}__rev_${candidate?.contentFingerprint.slice(-16)}`) return false
   return (
     words?.length === targets.length &&
     words.every(
       (word, index) =>
-        word.targetOccurrenceId === targets[index].id.replace(/^__kindergarten-lab__/, '') &&
+        word.targetOccurrenceId === targets[index].id.replace(/^__kindergarten-lab__/, '').replace(/__rev_[a-f0-9]{16}(?=-)/, '') &&
         word.text === targets[index].text,
     )
   )
@@ -101,7 +108,7 @@ export function rememberLessonLaunch(
   // the checkpoint's actual curriculum identity, not the wrapper's date label.
   const actualWeek =
     inspectSnapshot(source).candidates.find(
-      (c) => c.datasetId === envelope.datasetId.replace(/^__kindergarten-lab__/, ''),
+      (c) => c.datasetId === sourceDatasetId(envelope),
     )?.normalizedStartDate || week
   const launch: LessonLaunch = {
     schema: 1,
@@ -164,6 +171,7 @@ export async function readSavedLesson(
   const envelope = currentEnvelope(storage, launch)
   if (!envelope) return null
   verifyEnvelope(envelope, profile)
+  if (isAcquisitionRetired(storage, envelopeIdentity(envelope))) return null
   if (envelope.id !== launch.progressionId || launch.channel !== (envelope.tier === 'tier-1' ? 'writing' : 'reading'))
     throw new Error(failure)
   if (envelope.lessonSnapshot!.fingerprint !== launch.lessonFingerprint) return null
@@ -184,7 +192,19 @@ export async function readSavedLesson(
   const current = currentEnvelope(storage, launch)
   if (!current || current.lessonSnapshot?.fingerprint !== launch.lessonFingerprint) return null
   verifyEnvelope(current, profile)
+  if (isAcquisitionRetired(storage, envelopeIdentity(current))) return null
   return { ...launch, source: snapshot }
+}
+
+export function discardSavedLesson(storage: Store, profile: BetaProfile, lesson: { progressionId: string; fingerprint: string }) {
+  const launch = { progressionId: lesson.progressionId, childId: profile.id, grade: profile.grade, channel: 'writing' } as LessonLaunch
+  const envelope = currentEnvelope(storage, launch)
+  if (!envelope) throw new Error('The lesson checkpoint is unavailable. No saved work was discarded.')
+  verifyEnvelope(envelope, profile)
+  if (envelope.id !== lesson.progressionId || envelope.lessonSnapshot?.fingerprint !== lesson.fingerprint)
+    throw new Error('The saved lesson changed. No saved work was discarded.')
+  // Do not remove the checkpoint, its reviewed responses, or completed scores.
+  retireAcquisition(storage, envelopeIdentity(envelope))
 }
 
 export async function listSavedLessons(storage: Store, profile: BetaProfile) {

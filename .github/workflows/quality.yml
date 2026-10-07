@@ -62,6 +62,13 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:public-preview
       - run: npm run test:prototype-baseline
+      - name: Preserve failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: test-results/
+          retention-days: 7
 
   firestore-emulator:
     name: Firestore Emulator

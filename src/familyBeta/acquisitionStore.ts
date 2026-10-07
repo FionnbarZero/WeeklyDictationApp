@@ -13,6 +13,7 @@ import {
 } from '../acquisition/persistence/reducer.ts'
 import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/validation.ts'
 import { pinAcquisitionLesson, resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
+import { currentAcquisitionContext, isAcquisitionRetired } from './acquisitionRetirement.ts'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
 export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
@@ -30,6 +31,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
   latestContext: AcquisitionPersistenceContext<T>,
   options: { random?: () => number; now?: () => string; uuid?: () => string } = {},
 ) {
+  latestContext = currentAcquisitionContext(storage, latestContext)
   const random = options.random || Math.random
   const now = options.now || (() => new Date().toISOString())
   const uuid = options.uuid || (() => crypto.randomUUID())
@@ -67,6 +69,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
   }
 
   function commit(next: SavedAcquisition<T, R>, nextContext = context) {
+    if (isAcquisitionRetired(storage, context.identity))
+      throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
     if (storage.getItem(key) !== raw)
       throw new Error(
         'This activity changed in another tab. Reload to resume the saved response; nothing was overwritten.',

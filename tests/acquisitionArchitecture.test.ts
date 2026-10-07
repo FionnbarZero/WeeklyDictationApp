@@ -98,6 +98,7 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/application/practice/startPractice.ts',
     'src/application/workspace/contracts.ts',
     'src/domain.ts',
+    'src/familyBeta/acquisitionRetirement.ts',
     'src/familyBeta/acquisitionStore.ts',
     'src/familyBeta/lessonLaunch.ts',
     'src/familyBeta/lessonLaunchRuntime.ts',

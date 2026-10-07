@@ -31,6 +31,7 @@ export function acquisitionPersistenceContext(
   dataset: Dataset,
   grade = dataset.grade,
   envelope?: AcquisitionProgressEnvelope<Word>,
+  activityModule = ACQUISITION_ACTIVITY_MODULE,
 ): AcquisitionPersistenceContext<Word> {
   const profile = requirePracticeProfileForGrade(grade)
   const context: AcquisitionPersistenceContext<Word> = {
@@ -39,7 +40,7 @@ export function acquisitionPersistenceContext(
       datasetId: dataset.id,
       grade,
       schoolYear: schoolYearToken(dataset.schoolYear),
-      activityModule: ACQUISITION_ACTIVITY_MODULE,
+      activityModule: envelope?.activityModule?.match(/^mandarin-tier1-writing:restart-[a-f0-9]{16}$/) ? envelope.activityModule : activityModule,
       tier: 'tier-1',
     },
     lifecycleStage: { kind: 'acquisition' },
@@ -96,16 +97,17 @@ export function prepareAcquisitionProgress(
   timestamp: string,
   random: () => number = Math.random,
   pinLesson = false,
+  resolveContext: (context: AcquisitionPersistenceContext<Word>) => AcquisitionPersistenceContext<Word> = context => context,
 ): PreparedAcquisition {
-  let context = acquisitionPersistenceContext(childId, dataset)
+  let context = resolveContext(acquisitionPersistenceContext(childId, dataset))
   const progressionId = acquisitionProgressionId(context.identity)
   const existingQuarantine = (state.acquisitionProgressQuarantine || []).find((item) => item.childId === childId && item.datasetId === dataset.id)
   if (existingQuarantine) return { status: 'blocked', state, reason: existingQuarantine.reason }
   const currentMatches = (state.acquisitionProgressEnvelopes || []).filter((item) => item && (
     item.id === progressionId
-      || (item.childId === childId && item.datasetId === dataset.id)
+      || (context.identity.activityModule === ACQUISITION_ACTIVITY_MODULE && item.childId === childId && item.datasetId === dataset.id && !item.activityModule?.includes(':restart-'))
   ))
-  const legacyMatches = state.acquisitionProgressions.filter((item) => item.childId === childId && item.datasetId === dataset.id)
+  const legacyMatches = context.identity.activityModule === ACQUISITION_ACTIVITY_MODULE ? state.acquisitionProgressions.filter((item) => item.childId === childId && item.datasetId === dataset.id) : []
   if (currentMatches.length > 1 || (currentMatches.length === 0 && legacyMatches.length > 1)) {
     const raw = currentMatches.length > 1 ? currentMatches : legacyMatches
     const reason = 'Conflicting saved Acquisition records reuse the same child and dataset identity.'

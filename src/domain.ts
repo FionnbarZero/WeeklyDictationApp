@@ -230,6 +230,7 @@ export function shouldRecordAcquisitionAnswer(prompt: Pick<AcquisitionPrompt, 'k
 
 export type PracticeSession = {
   id: string
+  acquisitionProgressionId?: string
   childId: string
   grade: string
   primaryDatasetId: string
