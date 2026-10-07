@@ -1,6 +1,6 @@
 # A3.2 — curriculum and teaching-rule pinning
 
-Status: implementation in progress on `codex/a3-curriculum-pinning`, based on `6573e09`. This first increment is **not a completed A3.2 release**. Production remains A3.1 (`55e9189`). No production records, authentication, security rules, or hosting have been changed.
+Status: first increment implemented and locally verified in [draft PR #60](https://github.com/FionnbarZero/WeeklyDictationApp/pull/60), on `codex/a3-curriculum-pinning`, based on `6573e09`. This is **not a completed A3.2 release**; do not merge or publish it as one. Production remains A3.1 (`55e9189`). No production records, authentication, security rules, or hosting have been changed.
 
 ## First increment: durable acquisition context
 
@@ -27,4 +27,20 @@ These are implementation/acceptance dependencies, not requests to change the own
 
 Regression tests reproduced the old failure for five shared-store strategies before the repair. Unit coverage now includes original targets/timers after edits, exact prompt and score-session preservation, compatible legacy pinning, corrupt snapshots, child isolation, stale tabs, archive failure, and strict rollback-reader behavior. Grade 2 coverage includes pending-answer replay with changed current words and preservation of unverifiable legacy records.
 
-Packaged desktop/tablet tests exercise a checksum-valid teacher edit followed by reload and another reviewed answer on all six ordinary grade/channel paths. The Grade 2 writing case explicitly expects the retained import warning; it must not be counted as corrected-week adoption. Acceptance results will be recorded after the packaged run.
+Packaged desktop/tablet tests exercise a checksum-valid teacher edit followed by reload and another reviewed answer on all six ordinary grade/channel paths. The Grade 2 writing case explicitly expects the retained import warning; it must not be counted as corrected-week adoption.
+
+Local verification on October 7:
+
+| Check | Evidence |
+| --- | --- |
+| Full unit suite | 697 passed on final source `16baf2a` |
+| Full canonical desktop/tablet suite | 110 passed on `d4faa82`; subsequent changes bind Grade 2's displayed queue to its saved targets and preserve the original legacy build label |
+| Final-source canonical curriculum checks | All 12 passed on `16baf2a`, covering six grade/channel paths on desktop and tablet-touch |
+| Production-intended family rules, local emulator | All 4 passed on final source, including original snapshots and completed archives recovered unchanged by a second device, plus cross-family denial |
+| Type, lint, repository formatting, focused Biome | Passed on final source |
+| Production build and performance budgets | Passed: initial JS 545,305/550,000 bytes; CSS 42,745/60,000 bytes |
+| Final canonical artifact | All 131 manifest files and the complete file-tree hash verified |
+
+The final-source artifact records `16baf2a01a050b64c5e4824aff4a7a8364efbb2d`, with tree SHA-256 `71826a1e7b41deba1b075a0d766b0edc75ca6ad9b6d8bcb8e3ee5d32808d7a9d`. Its local directory is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-H63D8l`; this temporary directory is not a published preview or permanent release archive. Later acceptance-document commits do not change application source. GitHub final-head checks and independent review remain separate gates; no live acceptance or physical-device microphone/speaker testing is claimed.
+
+The initial packaged run exposed a test-only warmup race: Grade 2 renders its introductory screen asynchronously, so an immediate visibility probe sometimes skipped the test's **Skip Warmup** click. Awaiting the expected Grade 2 warmup control fixed that test; the full 110-check run and both subsequent focused runs passed. The original wrong-curriculum failures were reproduced before implementation, not hidden by this wait adjustment.

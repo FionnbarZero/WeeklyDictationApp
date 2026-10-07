@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for exact artifact, completed release checks, and retained A2 rollback. A3.2 and A3.3 remain pending.
+Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for exact artifact, completed release checks, and retained A2 rollback. A3.2 is in development in draft PR #60; A3.3 remains pending.
 
 ## Scope and sequence
 
