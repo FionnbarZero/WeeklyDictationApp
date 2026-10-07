@@ -149,3 +149,34 @@ The final implementation review reproduced two additional Grade 2 selection fail
 Remaining release handoff: independent **GPT-6 Astra · Extra High** review of PR #60 and this evidence, followed by verified exact-artifact publication under the existing release policy. The old CI head `e37469b` failed one Grade 2 prototype screenshot (635 pixels); the same local visual suite and GitHub browser/visual job now pass unchanged on `c6e5310`. New-head CI must establish its own result, with failed-browser artifacts now retained for diagnosis. No published preview, live feature acceptance, or physical iMac/iPad speaker/microphone result is claimed.
 
 Do not send the owner back to A3.1 to test A3.2. Only after an independently reviewed, verified reachable build is available should the owner receive a brief test of reopening/saving and report pause on their iMac/iPad, with exact build/links and an explicit time limit. Total durable storage growth, the 500-record sync ceiling, automatic conflict selection, game integration, and broad device/audio quality remain separate work; this PR does not claim to fix every screen.
+
+## Independent-review repairs — October 7
+
+Repair source: `2b63aaab64f1f21b2c25dc0b9b55aa89e6e9acca`, still the same unpublished PR #60. The independent review found three release blockers in the earlier candidate: an old live alias could normalize corrected Grade 2 state, a temporary family-bootstrap HTTP error removed previously confirmed offline access, and an explicit saved completed lesson could instead advance a newer unfinished edition. These repairs do not change the approved queue or begin A3.3.
+
+### Old-client compatibility
+
+Grade 2's family activity state and its pending Acquisition/Warmup/restore journals now live together in one child-owned `family-beta-activity:<child>:lesson-workspace-v1` record. On first upgraded use, one readback-confirmed write copies the existing scoped `weekly-dictation-*` records, without deleting or modifying them. Existing root authentication keys and other children's records are not copied. A failed or oversized copy stops safely; a malformed existing protected record never silently falls back to the older data.
+
+All retained Grade 2 frames use that same protected workspace through the family owner. Family syncing adopts this record before considering legacy keys. Once it exists, legacy state/journal keys remain separate recovery records: older clients can change those old keys, but cannot normalize the protected state through their old loader. Subsequent old-site practice is **not automatically merged** into the upgraded workspace. The existing immutable completed-result collection is unchanged. The old aliases have not been deleted, redirected, or updated by this repair.
+
+This is an additive compatibility copy, not a new database schema/rules deployment or destructive migration. The existing 700,000-byte per-record bound still applies to the entire encoded workspace, including journals; it is not increased. A3.3 still owns total-growth bounds and simultaneous unfinished-device conflict resolution. The guarded rollback now recognizes the protected key even before a pinned lesson route exists. Rollback remains containment, not an old engine consuming newer data.
+
+### Temporary outages and exact saved routes
+
+Firestore bootstrap errors retain their HTTP status. Network/timeouts and HTTP 408, 429, and 5xx can restore a previously confirmed, same-parent offline grant. Confirmed 401/403 still revoke that grant; sign-out and invalid-credential behavior are unchanged. A temporary failure does not invent permission for a different parent or a never-synced child.
+
+An explicit Grade 2 saved-writing launch carries its progression identity and lesson fingerprint into its owned frame. It selects the verified source edition rather than the ordinary current-menu rule of preferring unfinished work. The start boundary rechecks the exact progression against retirement markers and blocks a changed/retired attempt without opening a substitute. Ordinary current-teacher navigation retains its existing unfinished-edition behavior.
+
+### Repair verification and remaining gate
+
+- Full unit suite: **744 passed** on `2b63aaa`.
+- Local production-intended family-policy emulator: **7 passed**, including protected-workspace recovery on a fresh device after an authenticated old-protocol write to its legacy record. Root-policy emulator: **15 passed**. No production request or rules change.
+- Prototype behavior/visual suite: **32 passed** on `2b63aaa`; screenshot baselines and tolerances unchanged.
+- Typecheck, lint, repository format, focused boundary checks, build/performance passed. Initial JS **549,380/550,000 bytes**, CSS **42,745/60,000 bytes**. Family compatibility code stays in the parent owner; the standalone local-deck importer loads only when invoked.
+- Exact packaged cross-grade browser suite: **all 196 passed** on `2b63aaa` (98 desktop, 98 tablet-touch; no skips), including both old-release upgrade → controlled guarded rollback → offline recovery → candidate resume rehearsals. Added regressions cover HTTP 429/503 recovery for all three grades, confirmed bootstrap denial, and completed-original versus unfinished-corrected Grade 2 selection across reloads. Existing tests now inspect the protected record, not its intentionally retained legacy copy.
+- Actual old loader rehearsal: archived source `ef9d1f75` normalized a synthetic corrected workspace from **7 datasets to 6** through its original key; the protected record retained **all 7 with unchanged bytes**. This directly reproduces the original compatibility risk without querying real child data.
+- Canonical artifact: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-gbXfvI`, **138 files**, tree **`3bebd196f1dcae51d0aadc073d438ccf8e4e1acb403dee19fb3d5f573dffd5d8`**. All file hashes and the tree hash verified.
+- Updated guarded rollback: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-offline-rollback-0Ou6i4`, previous source `55e9189`, compatibility source `2b63aaa`, **134 files**, tree **`24e767438599e9532934c7300e1e8a7e2eac84e8fc0c80a8002ea46141f35c50`**. All file hashes and its tree hash verified. These local temporary artifacts are not hosted previews or durable release archives.
+
+The repairs require final-head CI and a new independent **GPT-6 Astra · Extra High** review. Nothing in this repair is merged or published. No further owner smoke testing yet; the canonical A3.1 release does not contain these fixes. Physical iMac/iPad audio/touch acceptance, A3.3 conflicts/storage, and later game integration remain explicitly outside this repair's claims.
