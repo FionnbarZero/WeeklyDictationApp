@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: implemented on `codex/a3-result-history`; acceptance and independent review in progress. Not merged or published. The live release remains A2 (`b72ed85`).
+Status: implemented on `codex/a3-result-history`; local acceptance passed, independent review and final-head CI required. Not merged or published. The live release remains A2 (`b72ed85`).
 
 ## Scope and sequence
 
@@ -33,6 +33,20 @@ The query uses the documented [Firestore structured query](https://firebase.goog
 
 Focused checks cover pagination limits/cursors, malformed or cross-child data, cancelled/failed reads, duplicate/conflicting attempts, same-time graph points, and channel isolation. The production-intended family-rule emulator exercises 55 same-time attempts across pages, insertion of a new result between pages, and denial to another family.
 
-Packaged desktop/tablet tests cover delayed old-history responses across child switches, retry after history failure, background refresh preserving an older page, online-to-local fallback, separate same-day graph points, and no copying of older pages into device storage. Final exact-package and reconciliation results will be recorded below after completion.
+Packaged desktop/tablet tests cover delayed old-history responses across child switches, retry after history failure, background refresh preserving an older page, online-to-local fallback, separate same-day graph points, and no copying of older pages into device storage.
+
+October 6 local acceptance used clean source `309c5656df838c0be78381998adf1ab9a62dcf08`, including the offline boundary repair in `5986755`. The subsequent acceptance-record update changes documentation only.
+
+| Check | Result |
+| --- | --- |
+| Unit suite | 671 passed |
+| Canonical family package, desktop and tablet-touch | 92 passed; clean package produced by the publication packager |
+| Three-grade reconciliation | 44 passed against the rebuilt final source |
+| Production-intended family policy, local emulator | 3 passed, including stable cursor pagination and cross-family denial |
+| Type checking, lint, repository formatting, focused Biome | Passed |
+| Production build and performance budgets | Passed; initial JS 542,574/550,000 bytes and CSS 42,745/60,000 bytes |
+| Artifact verification | All 131 files matched their recorded hashes |
+
+The canonical test artifact's file-tree SHA-256 is `95c7444b0f1a4f81e095827bfda1aa6ac681350f419d7960e3e8e9408e5bbccf`. It remains local at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-D8iSN9`; temporary artifacts are not permanent release storage. Desktop and tablet screenshots were inspected for layout and reporting controls. These are Chromium and tablet-emulation checks, not physical iMac/iPad, Safari, or real microphone/speaker-quality acceptance.
 
 No live site or real family data was touched. Before publication: independent GPT-6 Astra Extra High review, final-head CI, merge-artifact checks, and a release record with synthetic backend verification and A2 rollback. Stop for approval before any newly required production migration or security change. Do not start A3.2 by treating these history tests as curriculum-resume acceptance.
