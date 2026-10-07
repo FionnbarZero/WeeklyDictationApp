@@ -4,7 +4,7 @@ Canonical release verified October 7, 2026. Older alias identities below retain 
 
 ## Current stable destinations
 
-All three canonical grades use merge `55e9189c7f38f6d6436a6e3b5acd7f115d5964a8`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, bounded completed-attempt history, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies these canonical links. Cloudflare version `9284d0af-7088-4aea-a34f-f86bc3f78665` is active; A2 version `09948689-ea48-4ff6-a9a2-798a6c6114fb` is retained for rollback. [A3.1 release evidence](./a3-release-2026-10-07.md) records all 129 public-file hashes matching the tested artifact, three-grade live saving/recovery, and live paginated-history acceptance.
+All three canonical grades use merge `490fe4129ec492fa8ede5450250e2a35394a72b5`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, pinned saved lessons with prepared offline reopening, bounded completed-attempt history, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies these canonical links. Cloudflare version `f3b0766b-52ab-4591-a2be-1cb690ee394d` is active; guarded version `1f36538a-04ab-4fa1-a03e-5e11f0a48422` is retained for containment. [A3.2 release evidence](./a32-release-2026-10-07.md) records all 136 public-file hashes matching the tested artifact, three-grade live saving/fresh-browser recovery, Grade 2 offline continuation, and exact rollback instructions. Do not revert to an unguarded old engine after offline-shell installation.
 
 | Grade | Permanent link | Live artifact |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ All three canonical grades use merge `55e9189c7f38f6d6436a6e3b5acd7f115d5964a8`,
 | Grade 2 | [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same release |
 | Grade 5 | [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same release |
 
-## Older aliases — not republished by A3.1
+## Older aliases — not republished by A3.2
 
 These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their original device records. Do not distribute them for current testing. Retirement remains a separate E1 task.
 
@@ -32,7 +32,7 @@ The October 5 operation verified all 120 public files at all four origins; those
 - Recordings remain temporary comparison data, with no uploads or retained audio.
 - Dojo, Boss, and Spirit Realm behavior and unfinished-session persistence still need activity-level acceptance; a saved aggregate score is not proof of exact resume.
 - Ordinary tested updates have standing owner approval. Data resets, production authentication/security changes, and unreviewed migrations remain separately restricted.
-- The homepage uses three links on the canonical Ninja Dojo origin, sharing one parent sign-in. Old grade origins retain the older October 5 build and their local records intact; no A3.1 claim applies to those copies.
+- The homepage uses three links on the canonical Ninja Dojo origin, sharing one parent sign-in. Old grade origins retain the older October 5 build and their local records intact; no current-release claim applies to those copies. New Grade 2 family work uses a protected atomic workspace; later practice on an old alias remains separate and is not silently merged.
 
 ## Remaining acceptance work
 
