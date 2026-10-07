@@ -1,12 +1,6 @@
 import { accountSignupEnabled, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
-
-type StoredAuth = {
-  idToken: string
-  refreshToken?: string
-  expiresAt: number
-  user: AuthUser
-}
+import { AuthRequestError, createTokenProvider, type StoredAuth } from './auth/tokenRefresh.ts'
 
 export type AuthUser = { uid: string; email: string }
 export type AuthState = {
@@ -53,7 +47,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
   })
   const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(`Firebase REST error: ${body?.error?.message || response.statusText}`)
+  if (!response.ok) throw new AuthRequestError(response.status, body?.error?.message || response.statusText)
   return body as T
 }
 
@@ -98,36 +92,16 @@ export function signOut() {
   writeStoredAuth(null)
 }
 
-export async function getIdToken() {
-  const stored = readStoredAuth()
-  if (!stored) throw new Error('You must sign in before accessing cloud data.')
-  if (stored.expiresAt > Date.now() + 60_000) return stored.idToken
-  if (!stored.refreshToken) {
-    writeStoredAuth(null)
-    throw new Error('Your session expired. Sign in again to continue.')
-  }
-  try {
-    const body = await request<{ id_token: string; refresh_token: string; expires_in: string }>(
-      `https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(firebaseConfig.apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(stored.refreshToken)}`,
-      },
-    )
-    const refreshed = {
-      ...stored,
-      idToken: body.id_token,
-      refreshToken: body.refresh_token,
-      expiresAt: Date.now() + Number(body.expires_in || 3600) * 1000,
-    }
-    writeStoredAuth(refreshed)
-    return refreshed.idToken
-  } catch (error) {
-    writeStoredAuth(null)
-    throw error
-  }
-}
+export const getIdToken = createTokenProvider({
+  read: readStoredAuth,
+  write: writeStoredAuth,
+  renew: (token) =>
+    request(`https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(token)}`,
+    }),
+})
 
 export function currentUser() {
   return readStoredAuth()?.user || null

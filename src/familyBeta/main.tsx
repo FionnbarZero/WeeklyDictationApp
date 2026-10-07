@@ -19,6 +19,7 @@ import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
+import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
 import '../styles.css'
 import './preview.css'
@@ -36,6 +37,8 @@ const initialProfiles: BetaProfile[] = BETA_GRADES.map((grade, i) => ({
   active: true,
 }))
 const message = (error: unknown) => (error instanceof Error ? error.message : 'The operation could not be completed.')
+const workspaceOwner = createFamilyWorkspaceOwner(localStorage)
+;(window as FamilyWorkspaceWindow).familyWorkspaceOwner = workspaceOwner
 
 function FamilyPreview() {
   const requested = new URLSearchParams(location.search).get('grade')
@@ -59,7 +62,7 @@ function FamilyPreview() {
   const [selectedId, setSelectedId] = useState(initialProfiles.find((p) => p.grade === initialGrade)!.id)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>('activities')
-  const [curriculum, setCurriculum] = useState<Awaited<ReturnType<typeof fetchCurriculum>> | null>(null)
+  const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>({})
   const [week, setWeek] = useState('')
   const [results, setResults] = useState<BetaResult[]>([])
   const [error, setError] = useState('')
@@ -84,6 +87,7 @@ function FamilyPreview() {
   const [readyChildren, setReadyChildren] = useState<ReadonlySet<string>>(new Set())
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
+  const curriculum = curricula[currentGrade] || null
   const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChildren.has(child.id))
   const today = localDateKey(new Date())
   const available = curriculum?.datasets.filter(d => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) || []
@@ -101,6 +105,7 @@ function FamilyPreview() {
   useEffect(() => {
     let cancelled = false
     setReadyChildren(new Set())
+    workspaceOwner.retain([])
     setSlots([])
     setSelectedSlots({})
     if (!firebaseConfigReady) return
@@ -127,18 +132,22 @@ function FamilyPreview() {
   }, [auth.user?.uid, initialGrade])
 
   useEffect(() => {
+    workspaceOwner.retain(slots.map(slot => slot.profile.id))
+  }, [slots])
+
+  useEffect(() => {
     if (child) sessionStorage.setItem(PROFILE_KEY, JSON.stringify(child))
     if (!firebaseConfigReady) localStorage.setItem('beta-preview-profiles', JSON.stringify(profiles))
   }, [child, profiles])
 
   useEffect(() => {
     const controller = new AbortController()
-    setCurriculum((current) => (current?.snapshot.grade === currentGrade ? current : null))
+    setCurriculumError('')
     const refresh = () => {
       void fetchCurriculum(currentGrade, controller.signal)
         .then((loaded) => {
           if (!controller.signal.aborted) {
-            setCurriculum(loaded)
+            setCurricula(current => ({ ...current, [currentGrade]: loaded }))
             setCurriculumError('')
           }
         })

@@ -27,16 +27,24 @@ async function answer(page: Page) {
 test('offline token renewal preserves the initialized activity and retries later', async ({ page }) => {
   await startWriting(page)
   const frame = page.frameLocator('iframe:visible')
-  await frame.locator('body').evaluate((body) => { body.dataset.reviewProbe = 'original' })
+  await frame.locator('body').evaluate((body) => {
+    body.dataset.reviewProbe = 'original'
+  })
   const remaining = await frame.getByRole('timer').innerText()
   let attempts = 0
   let offline = true
-  await page.route('https://securetoken.googleapis.com/**', route => {
+  await page.route('https://securetoken.googleapis.com/**', (route) => {
     attempts++
-    return offline ? route.abort('internetdisconnected') : route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ id_token: 'synthetic-renewed-token', refresh_token: 'synthetic-refresh', expires_in: '3600' }),
-    })
+    return offline
+      ? route.abort('internetdisconnected')
+      : route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id_token: 'synthetic-renewed-token',
+            refresh_token: 'synthetic-refresh',
+            expires_in: '3600',
+          }),
+        })
   })
   await page.evaluate(() => {
     const key = 'weekly-dictation-auth-v1'
@@ -57,11 +65,13 @@ test('offline token renewal preserves the initialized activity and retries later
 test('returning to a previously loaded grade works while curriculum is offline', async ({ page }) => {
   await startWriting(page)
   const frame = page.frameLocator('iframe:visible')
-  await frame.locator('body').evaluate((body) => { body.dataset.reviewProbe = 'original' })
+  await frame.locator('body').evaluate((body) => {
+    body.dataset.reviewProbe = 'original'
+  })
   const remaining = await frame.getByRole('timer').innerText()
   await page.getByLabel('Child profile').selectOption('synthetic-k')
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
-  await page.route('**/curriculum/beta/grade5.json', route => route.abort('internetdisconnected'))
+  await page.route('**/curriculum/beta/grade5.json', (route) => route.abort('internetdisconnected'))
   await page.getByLabel('Child profile').selectOption('synthetic-g5')
   await expect(page.getByText(/Failed to fetch/)).toBeVisible()
   await expect(frame.locator('body')).toHaveAttribute('data-review-probe', 'original')
@@ -71,7 +81,12 @@ test('returning to a previously loaded grade works while curriculum is offline',
 test('two retained Grade 2 weeks can both save reviewed answers without reopening', async ({ page }) => {
   await startWriting(page, 'grade2', '2026-09-21')
   await answer(page)
-  const read = () => page.evaluate(() => JSON.parse(localStorage.getItem('family-beta-activity:synthetic-g2:weekly-dictation-state-v2')!).acquisitionProgressEnvelopes)
+  const read = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem('family-beta-activity:synthetic-g2:weekly-dictation-state-v2')!)
+          .acquisitionProgressEnvelopes,
+    )
   const first = (await read())[0]
   await page.getByLabel('Practice week').selectOption('2026-09-14')
   await enterWriting(page)
