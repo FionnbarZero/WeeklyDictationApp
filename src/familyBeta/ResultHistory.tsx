@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { RESULT_PAGE_SIZE, type ResultPage } from './cloud.ts'
 import { type BetaProfile, type BetaResult, dailyTotals } from './model.ts'
-import { attemptSeries, distinctAttempts } from './resultHistory.ts'
+import { attemptSeries, distinctAttempts, olderLocalAttempts } from './resultHistory.ts'
 
 type Props = {
   child: BetaProfile
   results: readonly BetaResult[]
   nextPageToken: string
   loadPage?: (token: string, signal: AbortSignal) => Promise<ResultPage>
+  readLocalResults: () => readonly BetaResult[]
 }
 const timestamp = (at: string) =>
   new Intl.DateTimeFormat('en-US', {
@@ -17,8 +18,10 @@ const timestamp = (at: string) =>
   }).format(new Date(at))
 
 /** One visible page. Background sync refreshes latest, never replaces a page being read. */
-export function ResultHistory({ child, results, nextPageToken, loadPage }: Props) {
-  const [older, setOlder] = useState<(ResultPage & { number: number; loadPage?: Props['loadPage'] }) | null>(null)
+export function ResultHistory({ child, results, nextPageToken, loadPage, readLocalResults }: Props) {
+  const [older, setOlder] = useState<
+    (ResultPage & { number: number; loadPage?: Props['loadPage']; hasOlderLocal: boolean }) | null
+  >(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const request = useRef<AbortController | null>(null)
@@ -27,7 +30,7 @@ export function ResultHistory({ child, results, nextPageToken, loadPage }: Props
   const current = older?.results || allLocal.slice(0, RESULT_PAGE_SIZE)
   const cursor = older ? older.nextPageToken : nextPageToken
   const pageLoader = older ? older.loadPage : loadPage
-  const hasOlderLocal = !pageLoader && allLocal.length > (older?.number || 1) * RESULT_PAGE_SIZE
+  const hasOlderLocal = older ? older.hasOlderLocal : !pageLoader && allLocal.length > RESULT_PAGE_SIZE
 
   async function next() {
     if (busy) return
@@ -37,12 +40,16 @@ export function ResultHistory({ child, results, nextPageToken, loadPage }: Props
     setError('')
     try {
       const number = (older?.number || 1) + 1
+      const localPage = pageLoader
+        ? null
+        : olderLocalAttempts(readLocalResults(), child.id, current[current.length - 1])
       const page = pageLoader
         ? await pageLoader(cursor, controller.signal)
-        : { results: allLocal.slice((number - 1) * RESULT_PAGE_SIZE, number * RESULT_PAGE_SIZE), nextPageToken: '' }
+        : { results: localPage!.results, nextPageToken: '' }
       // Validate before replacing the visible page; late child/account responses are ignored.
       distinctAttempts(page.results, child.id)
-      if (!controller.signal.aborted) setOlder({ ...page, number, loadPage: pageLoader })
+      if (!controller.signal.aborted)
+        setOlder({ ...page, number, loadPage: pageLoader, hasOlderLocal: localPage?.hasOlderLocal || false })
     } catch (e) {
       if (!controller.signal.aborted)
         setError(

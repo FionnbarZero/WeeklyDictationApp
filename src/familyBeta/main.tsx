@@ -9,6 +9,7 @@ import { createChild, ensureParentFamily, listChildren, updateChild } from '../f
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
 import { BETA_GRADES, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import { ResultHistory } from './ResultHistory.tsx'
+import { assertSavedAttemptsMatch } from './resultHistory.ts'
 import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
@@ -190,14 +191,10 @@ function FamilyPreview() {
         const page = await repository.listPage(child.id)
         const saved = page.results
         if (scopeRef.current !== scope) return
+        assertSavedAttemptsMatch(saved, localStorage, RESULT_KEY)
         for (const result of saved) {
           const key = `${RESULT_KEY}:${result.id}`
           const previous = localStorage.getItem(key)
-          if (previous && JSON.stringify(JSON.parse(previous)) !== JSON.stringify(result)) {
-            const local = JSON.parse(previous) as BetaResult
-            if (Object.keys(result).some(key => JSON.stringify(local[key as keyof BetaResult]) !== JSON.stringify(result[key as keyof BetaResult])))
-              throw new Error('An online score differs from this device’s record. Both copies are preserved.')
-          }
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
         setReadyChildren(current => new Set([...current, child.id]))
@@ -488,7 +485,13 @@ function FamilyPreview() {
         child={child}
         results={results}
         nextPageToken={historyCursor.owner === `${scope}:${child.id}` ? historyCursor.token : ''}
-        loadPage={familyId && historyCursor.owner === `${scope}:${child.id}` ? (token, signal) => familyResultRepository(familyId).listPage(child.id, token, signal) : undefined}
+        readLocalResults={previewResults}
+        loadPage={familyId && historyCursor.owner === `${scope}:${child.id}` ? async (token, signal) => {
+          const page = await familyResultRepository(familyId).listPage(child.id, token, signal)
+          signal.throwIfAborted()
+          assertSavedAttemptsMatch(page.results, localStorage, RESULT_KEY)
+          return page
+        } : undefined}
       />}
       {tab === 'parent' && (
         <section className="beta-panel">

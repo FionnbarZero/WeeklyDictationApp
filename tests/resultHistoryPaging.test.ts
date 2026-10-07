@@ -2,7 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
-import { attemptSeries, distinctAttempts } from '../src/familyBeta/resultHistory.ts'
+import {
+  assertSavedAttemptsMatch,
+  attemptSeries,
+  distinctAttempts,
+  olderLocalAttempts,
+} from '../src/familyBeta/resultHistory.ts'
 import { documentValue } from '../src/firestoreClient.ts'
 
 const profile = { id: 'child', nickname: 'Synthetic', grade: 'Grade 5' as const, active: true }
@@ -158,4 +163,107 @@ test('graphs separate reading, writing, Boss, games and grades without changing 
     /Neither was replaced/,
   )
   assert.throws(() => distinctAttempts([{ ...score('one'), correct: 100 }], profile.id), /validation/)
+})
+
+test('local history uses a stable time and identity boundary across newly inserted results', () => {
+  const original = Array.from({ length: 125 }, (_, i) => score(`attempt-${String(i).padStart(3, '0')}`))
+  const changed = [...original, score('z-new-arrival'), { ...score('other-child'), childId: 'other' }]
+  const second = olderLocalAttempts(changed, profile.id, original[75])
+  assert.deepEqual(
+    second.results.map((r) => r.id),
+    original
+      .slice(25, 75)
+      .reverse()
+      .map((r) => r.id),
+  )
+  assert.equal(second.hasOlderLocal, true)
+  const third = olderLocalAttempts(changed, profile.id, second.results[49])
+  assert.deepEqual(
+    third.results.map((r) => r.id),
+    original
+      .slice(0, 25)
+      .reverse()
+      .map((r) => r.id),
+  )
+  assert.equal(third.hasOlderLocal, false)
+  assert.equal(changed.length, 127)
+  assert.equal(original[0].id, 'attempt-000')
+})
+
+const ledgerKey = 'synthetic-result-ledger'
+const readOnlyLedger = (entries: Map<string, string>, reads: string[] = []) => ({
+  getItem(key: string) {
+    reads.push(key)
+    return entries.get(key) ?? null
+  },
+})
+
+test('page integrity checks only requested keys and accepts equal keyed and legacy copies', () => {
+  const result = score('one')
+  const reordered = Object.fromEntries(Object.entries(result).reverse())
+  const entries = new Map([
+    [ledgerKey, JSON.stringify([result])],
+    [`${ledgerKey}:one`, JSON.stringify(reordered)],
+    [`${ledgerKey}:unrelated`, 'not read'],
+  ])
+  const before = [...entries]
+  const reads: string[] = []
+  assertSavedAttemptsMatch([result, score('two')], readOnlyLedger(entries, reads), ledgerKey)
+  assert.deepEqual(reads, [ledgerKey, `${ledgerKey}:one`, `${ledgerKey}:two`])
+  assert.deepEqual([...entries], before)
+})
+
+test('page integrity rejects either conflicting copy without overwriting or masking it', () => {
+  const result = score('one')
+  const conflict = { ...result, correct: 0 }
+  for (const entries of [
+    new Map([[`${ledgerKey}:one`, JSON.stringify(conflict)]]),
+    new Map([
+      [ledgerKey, JSON.stringify([conflict])],
+      [`${ledgerKey}:one`, JSON.stringify(result)],
+    ]),
+    new Map([[ledgerKey, JSON.stringify([result, conflict])]]),
+  ]) {
+    const before = [...entries]
+    assert.throws(
+      () => assertSavedAttemptsMatch([result], readOnlyLedger(entries), ledgerKey),
+      /Both copies are preserved/,
+    )
+    assert.deepEqual([...entries], before)
+  }
+})
+
+test('page integrity fails closed on invalid records, unreadable storage and contradictory page copies', () => {
+  const result = score('one')
+  for (const entries of [
+    new Map([[ledgerKey, '{}']]),
+    new Map([[ledgerKey, '[null]']]),
+    new Map([[`${ledgerKey}:one`, 'broken JSON']]),
+    new Map([[`${ledgerKey}:one`, JSON.stringify({ ...result, attempted: 0 })]]),
+  ]) {
+    const before = [...entries]
+    assert.throws(() => assertSavedAttemptsMatch([result], readOnlyLedger(entries), ledgerKey))
+    assert.deepEqual([...entries], before)
+  }
+  assert.throws(
+    () =>
+      assertSavedAttemptsMatch(
+        [result],
+        {
+          getItem() {
+            throw new Error('Storage unavailable')
+          },
+        },
+        ledgerKey,
+      ),
+    /Storage unavailable/,
+  )
+  assert.throws(
+    () => assertSavedAttemptsMatch([result, { ...result, correct: 0 }], readOnlyLedger(new Map()), ledgerKey),
+    /Both copies are preserved/,
+  )
+  assert.throws(
+    () => assertSavedAttemptsMatch([{ ...result, correct: 10 }], readOnlyLedger(new Map()), ledgerKey),
+    /validation/,
+  )
 })
