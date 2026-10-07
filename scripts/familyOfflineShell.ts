@@ -26,11 +26,14 @@ if ('serviceWorker' in navigator && window.parent === window) {
       if (registration.waiting) status('An app update is ready. Close all Ninja Dojo tabs, then reopen to use it. Saved lessons are preserved.');
       else if (registration.active) status('Offline app ready. Previously synced children can reopen saved lessons here; some voices still require internet.');
     };
-    const watch = () => registration.installing?.addEventListener('statechange', () => {
-      check();
-      if (registration.installing?.state === 'redundant' && !registration.active)
-        status('Offline preparation failed. Keep internet access and reopen to retry.');
-    });
+    const watch = () => {
+      const worker = registration.installing;
+      worker?.addEventListener('statechange', () => {
+        check();
+        if (worker.state === 'redundant' && !registration.active)
+          status('Offline preparation failed. Keep internet access and reopen to retry.');
+      });
+    };
     registration.addEventListener('updatefound', watch);
     watch(); check();
     navigator.serviceWorker.ready.then(check);

@@ -272,7 +272,8 @@ function FamilyPreview() {
       setError('')
     } catch (e) {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
-      if (auth.user && e instanceof Error && 'status' in e && [401, 403].includes(Number(e.status))) {
+      const accessDenied = auth.user && e instanceof Error && 'status' in e && [401, 403].includes(Number(e.status))
+      if (auth.user && accessDenied) {
         localStorage.removeItem(offlineFamilyKey(auth.user.uid))
         setReadyChildren(new Set())
       }
@@ -282,7 +283,7 @@ function FamilyPreview() {
           setReadyChildren(current => new Set([...current, child.id]))
       }
       setError(message(e))
-      setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus(accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())

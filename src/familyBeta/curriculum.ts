@@ -82,6 +82,8 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
     signal?.throwIfAborted()
     return loaded
   }
+  if (typeof navigator !== 'undefined' && !navigator.onLine)
+    throw new Error('The device is offline. Reopen an original lesson from Saved lessons.')
   const base = env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
   const response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
   if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
