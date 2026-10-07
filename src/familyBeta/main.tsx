@@ -24,6 +24,7 @@ import { activityClock, confirmActivityDiscard } from '../activity/activityLifec
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
 import { cacheLessonSource, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
+import { isConnectionFailure, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
 import '../styles.css'
 import './preview.css'
 
@@ -96,6 +97,7 @@ function FamilyPreview() {
   const syncAgain = useRef(false)
   const refreshRef = useRef<() => Promise<void>>(async () => {})
   const [readyChildren, setReadyChildren] = useState<ReadonlySet<string>>(new Set())
+  const [offlineShell, setOfflineShell] = useState(document.documentElement.dataset.offlineShell || '')
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
   const curriculum = curricula[currentGrade] || null
@@ -115,6 +117,12 @@ function FamilyPreview() {
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
+    const changed = () => setOfflineShell(document.documentElement.dataset.offlineShell || '')
+    addEventListener('family-offline-shell', changed)
+    changed()
+    return () => removeEventListener('family-offline-shell', changed)
+  }, [])
+  useEffect(() => {
     let cancelled = false
     setReadyChildren(new Set())
     workspaceOwner.retain([])
@@ -126,7 +134,20 @@ function FamilyPreview() {
     setProfiles([])
     setResults([])
     if (!auth.user) return
-    void ensureParentFamily(auth.user)
+    const uid = auth.user.uid
+    const restoreOffline = () => {
+      if (cancelled) return false
+      const cached = readOfflineFamily(localStorage, uid)
+      if (!cached || !cached.ready.length) return false
+      setFamilyId(cached.familyId)
+      setProfiles(cached.profiles)
+      setReadyChildren(new Set(cached.ready))
+      setSelectedId((cached.profiles.find(c => c.grade === initialGrade && cached.ready.includes(c.id)) || cached.profiles.find(c => cached.ready.includes(c.id)))?.id || '')
+      setStatus('Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.')
+      setAdultUnlocked(false)
+      return true
+    }
+    const connect = () => { void ensureParentFamily(auth.user!)
       .then(async ({ family }) => {
         const children = (await listChildren(family.id)).filter((c) =>
           BETA_GRADES.includes(c.grade as BetaGrade),
@@ -137,10 +158,31 @@ function FamilyPreview() {
         setSelectedId((children.find((c) => c.grade === initialGrade) || children[0])?.id || '')
         setStatus('Family account connected.')
         setAdultUnlocked(false)
+        try { rememberOfflineFamily(localStorage, uid, family.id, children) }
+        catch (e) { setError(message(e)) }
       })
-      .catch((e) => !cancelled && setError(message(e)))
+      .catch((e) => {
+        if (cancelled) return
+        if (isConnectionFailure(e) && restoreOffline()) return
+        if (!isConnectionFailure(e)) {
+          localStorage.removeItem(offlineFamilyKey(uid))
+          setReadyChildren(new Set())
+          setProfiles([])
+          setFamilyId(null)
+        }
+        setError(message(e))
+      }) }
+    // A disconnected browser must not try to refresh an expired token first.
+    // This is local access only, and requires an existing signed-in owner.
+    if (!navigator.onLine) {
+      if (!restoreOffline()) setError('Connect once with this parent account and finish family syncing before reopening offline.')
+    } else connect()
+    // Revalidate membership on reconnect. Do not replace mounted workspaces.
+    const reconnect = () => { if (!slotsRef.current.length) connect() }
+    addEventListener('online', reconnect)
     return () => {
       cancelled = true
+      removeEventListener('online', reconnect)
     }
   }, [auth.user?.uid, initialGrade])
 
@@ -194,6 +236,7 @@ function FamilyPreview() {
     syncing.current = true
     try {
       if (familyId && auth.user) {
+        if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
         await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
           () => scopeRef.current === scope && !slotsRef.current.some(slot => slot.profile.id === child.id))
         if (scopeRef.current !== scope) return
@@ -215,6 +258,7 @@ function FamilyPreview() {
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
         setReadyChildren(current => new Set([...current, child.id]))
+        rememberOfflineFamily(localStorage, auth.user.uid, familyId, profiles, child.id)
         if (childRef.current !== child.id) return
         // Keep the visible remote page aligned with its cursor. Newly queued
         // results remain in the outbox and appear after their confirmed refresh.
@@ -228,6 +272,15 @@ function FamilyPreview() {
       setError('')
     } catch (e) {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
+      if (auth.user && e instanceof Error && 'status' in e && [401, 403].includes(Number(e.status))) {
+        localStorage.removeItem(offlineFamilyKey(auth.user.uid))
+        setReadyChildren(new Set())
+      }
+      if (auth.user && isConnectionFailure(e)) {
+        const cached = readOfflineFamily(localStorage, auth.user.uid)
+        if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade))
+          setReadyChildren(current => new Set([...current, child.id]))
+      }
       setError(message(e))
       setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       setHistoryCursor({ owner: '', token: '' })
@@ -722,6 +775,7 @@ function FamilyPreview() {
           )}
         </section>
       )}
+      {offlineShell && <p className="beta-status" data-offline-shell-status>{offlineShell}</p>}
     </div>
   )
 }

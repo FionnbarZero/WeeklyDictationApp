@@ -55,7 +55,10 @@ export function createDeviceSyncRepository(options: {
         `${childId}/betaPractice?pageSize=100${next ? `&pageToken=${encodeURIComponent(next)}` : ''}`,
       )
       if (!response.ok)
-        throw new Error(`Saved practice could not be loaded (${response.status}). Device records are unchanged.`)
+        throw Object.assign(
+          new Error(`Saved practice could not be loaded (${response.status}). Device records are unchanged.`),
+          { status: response.status },
+        )
       const body = await response.json()
       for (const doc of body.documents || []) {
         const record = Object.fromEntries(

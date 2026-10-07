@@ -97,14 +97,16 @@ export async function installFamilyFixtures(page: Page) {
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
   })
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'weekly-dictation-auth-v1',
-      JSON.stringify({
-        idToken: 'synthetic-intercepted-token',
-        expiresAt: Date.now() + 3600_000,
-        user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
-      }),
-    )
+    if (!sessionStorage.getItem('synthetic-auth-initialized'))
+      localStorage.setItem(
+        'weekly-dictation-auth-v1',
+        JSON.stringify({
+          idToken: 'synthetic-intercepted-token',
+          expiresAt: Date.now() + 3600_000,
+          user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
+        }),
+      )
+    sessionStorage.setItem('synthetic-auth-initialized', 'true')
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {

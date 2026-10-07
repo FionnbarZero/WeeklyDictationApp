@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
+import { packageOfflineShell } from './familyOfflineShell.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -41,6 +42,7 @@ writeFileSync(
   Cache-Control: public, max-age=31536000, immutable
 `,
 )
+packageOfflineShell(directory, revision)
 const files = artifactFileRecords(directory)
 const manifest = {
   schema: 1,
