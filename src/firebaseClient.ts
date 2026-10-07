@@ -1,6 +1,6 @@
+import { AuthRequestError, createTokenProvider, type StoredAuth } from './auth/tokenRefresh.ts'
 import { accountSignupEnabled, firebaseConfig, firebaseConfigReady } from './config.ts'
 import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
-import { AuthRequestError, createTokenProvider, type StoredAuth } from './auth/tokenRefresh.ts'
 
 export type AuthUser = { uid: string; email: string }
 export type AuthState = {

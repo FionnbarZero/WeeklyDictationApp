@@ -1,4 +1,4 @@
-import { useCallback, useState, useSyncExternalStore, type SetStateAction } from 'react'
+import { type SetStateAction, useCallback, useState, useSyncExternalStore } from 'react'
 import type { AppState } from '../domain.ts'
 import { familyPreview, previewProfile } from './runtime.ts'
 import type { FamilyWorkspaceWindow } from './workspaceOwner.ts'
