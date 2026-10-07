@@ -1,10 +1,10 @@
 # Family beta release inventory
 
-Canonical release verified October 6, 2026. Older alias identities below retain their October 5 verification. This inventory describes the family wrapper, not the historical standalone prototypes.
+Canonical release verified October 7, 2026. Older alias identities below retain their October 5 verification. This inventory describes the family wrapper, not the historical standalone prototypes.
 
 ## Current stable destinations
 
-All three canonical grades use merge `668627922bd95200c748601d7dba371a69a53b37`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies these canonical links. Cloudflare version `2e0cb204-5e1f-4483-bafa-4f28911718d7` is active; prior version `8d6c4b13-a23e-44ad-bbd4-9dcf79aadd64` is retained for rollback. [A1 release evidence](./a1-release-2026-10-06.md) records all 120 public-file hashes matching the tested artifact and three-grade live saving/recovery acceptance.
+All three canonical grades use merge `55e9189c7f38f6d6436a6e3b5acd7f115d5964a8`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, bounded completed-attempt history, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies these canonical links. Cloudflare version `9284d0af-7088-4aea-a34f-f86bc3f78665` is active; A2 version `09948689-ea48-4ff6-a9a2-798a6c6114fb` is retained for rollback. [A3.1 release evidence](./a3-release-2026-10-07.md) records all 129 public-file hashes matching the tested artifact, three-grade live saving/recovery, and live paginated-history acceptance.
 
 | Grade | Permanent link | Live artifact |
 | --- | --- | --- |
@@ -12,9 +12,9 @@ All three canonical grades use merge `668627922bd95200c748601d7dba371a69a53b37`,
 | Grade 2 | [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same release |
 | Grade 5 | [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same release |
 
-## Older aliases — not republished by A1
+## Older aliases — not republished by A3.1
 
-These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their original device records. Do not distribute them for current A1 testing. Retirement remains a separate E1 task.
+These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their original device records. Do not distribute them for current testing. Retirement remains a separate E1 task.
 
 | Grade | Older address | Retained artifact | Previous release retained |
 | --- | --- | --- | --- |
@@ -22,7 +22,7 @@ These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their origina
 | Grade 2 | [Existing Grade 2 address](https://fionnbarzero.github.io/WeeklyDictationApp/) | Pages commit `7a3278ca26725702dbc7ce4204b0d1318db17e74` | Parent deployment `0b499f86676dcffe4a62fcf4173a8a32402d039a` |
 | Grade 5 | [Existing Grade 5 address](https://weeklydictation-g5-beta.web.app/) | Firebase `5487998f698eb099` | `rollback-before-family-sync`, version `424b6a63322ed355` |
 
-The October 5 operation verified all 120 public files at all four origins; those results are historical, not proof the aliases serve A1. Their exact hashes and publication details remain in the [October 5 family-sync record](./family-sync-release-2026-10-05.md).
+The October 5 operation verified all 120 public files at all four origins; those results are historical, not proof the aliases serve the current release. Their exact hashes and publication details remain in the [October 5 family-sync record](./family-sync-release-2026-10-05.md).
 
 ## Persistence and update boundaries
 
@@ -32,7 +32,7 @@ The October 5 operation verified all 120 public files at all four origins; those
 - Recordings remain temporary comparison data, with no uploads or retained audio.
 - Dojo, Boss, and Spirit Realm behavior and unfinished-session persistence still need activity-level acceptance; a saved aggregate score is not proof of exact resume.
 - Ordinary tested updates have standing owner approval. Data resets, production authentication/security changes, and unreviewed migrations remain separately restricted.
-- The homepage uses three links on the canonical Ninja Dojo origin, sharing one parent sign-in. Old grade origins retain the older October 5 build and their local records intact; no A1 claim applies to those copies.
+- The homepage uses three links on the canonical Ninja Dojo origin, sharing one parent sign-in. Old grade origins retain the older October 5 build and their local records intact; no A3.1 claim applies to those copies.
 
 ## Remaining acceptance work
 

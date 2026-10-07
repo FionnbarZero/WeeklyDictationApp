@@ -1,6 +1,6 @@
 # Weekly Dictation status
 
-Updated October 6, 2026. A2 active-work continuity is merged as `b72ed85`, published, and live-verified on all three canonical grades. The [A2 release record](./docs/a2-release-2026-10-06.md) records exact artifact, checks, limitations, and the retained A1 rollback. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
+Updated October 7, 2026. A3.1 bounded result history and separate completed-attempt graphs are merged as `55e9189`, published, and live-verified on all three canonical grades. The [A3.1 release record](./docs/a3-release-2026-10-07.md) records exact artifact, checks, limitations, and retained A2 rollback. A3.2 curriculum pinning is next; A3.3 conflict/storage work remains pending. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) remains the architectural baseline.
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
@@ -8,18 +8,19 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 | Grade | Permanent app | Verified release |
 | --- | --- | --- |
-| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `b72ed85c83b6ed57e6f1979a71715ba1f5c10e57` |
+| Kindergarten | [Open Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten) | Shared source `55e9189c7f38f6d6436a6e3b5acd7f115d5964a8` |
 | Grade 2 | [Open Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same application source |
 | Grade 5 | [Open Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same application source |
 
-These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `09948689-ea48-4ff6-a9a2-798a6c6114fb` serves all three, with A1 version `2e0cb204-5e1f-4483-bafa-4f28911718d7` retained for rollback. Existing Firebase and Pages aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`, preserving their local records; A2 did not update them. The canonical deployment matches [PR #56](https://github.com/FionnbarZero/WeeklyDictationApp/pull/56) merge `b72ed85`.
+These are permanent, parent-authenticated family beta links on one origin, not expiring previews. Cloudflare version `9284d0af-7088-4aea-a34f-f86bc3f78665` serves all three, with A2 version `09948689-ea48-4ff6-a9a2-798a6c6114fb` retained for rollback. Existing Firebase and Pages aliases remain on October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`, preserving their local records; A3.1 did not update them. The canonical deployment matches [PR #58](https://github.com/FionnbarZero/WeeklyDictationApp/pull/58) merge `55e9189`.
 
 ## Current capability matrix
 
 | Capability | Verified state | Remaining work or limit |
 | --- | --- | --- |
 | Completed writing and reading scores | Immutable family-owned online results with local retry records; second-browser score recovery passed | Older device-only histories are preserved but not automatically mapped to online children |
-| Game results | A2 live: all three canonical grades completed Memory Lanterns, uploaded, survived reload, and recovered each attempt once in a fresh browser; 88 exact-package continuity/saving checks passed | Per-target results and all-game policy coverage remain incomplete; device save confirmation alone is not cloud confirmation |
+| Game results | A3.1 live: all three canonical grades completed Memory Lanterns, uploaded, survived reload, and recovered each attempt once in a fresh browser; 98 exact-package continuity/saving/history checks passed | Per-target results and all-game policy coverage remain incomplete; device save confirmation alone is not cloud confirmation |
+| Completed-attempt history | A3.1 live: recent 50 results, bounded explicit older pages, and a separate point per distinct completed attempt; same-time attempts and insertion between pages passed live verification | Page totals are not lifetime totals; durable ledger growth and per-target provenance remain later work |
 | Exact acquisition resume | Kindergarten/Grade 5 writing and all three ordinary reading Dojos checkpoint reviewed trials; Grade 2's existing activity state syncs too | Stroke Order, Whispering Scrolls and explicit reentry integration remain unfinished; simultaneous conflicting device edits pause rather than merge |
 | Curriculum | Automatic read-only Google source service is live; all three apps use the validated endpoint | Request-driven refresh, no mid-activity replacement; an outage retains the last validated snapshot |
 | Problem reports | Reports save locally and survive reload; session-end batching retained; shared pause/resume passed packaged three-grade tests and live Grade 5 timer/navigation checks | Email/share needs user action; physical-device and broader game-specific quality still require testing |
@@ -42,11 +43,9 @@ Rollback releases are retained for both Firebase sites and in Grade 2 deployment
 
 ## Verification evidence
 
-A3.1 is implemented on `codex/a3-result-history` for review: bounded recent-history queries, explicit older pages, and separate completed-attempt graphs. Local acceptance passed 671 unit tests, 92 exact-package desktop/tablet checks, 44 three-grade reconciliation checks, and 3 production-intended family-policy emulator checks. It is not merged or published and does not complete A3. Curriculum pinning, automatic unfinished-conflict resolution, and bounded durable storage remain pending. See [scope and verification](./docs/a3-result-history.md).
+A3.1 is published at merge `55e9189`. Final-head CI passed all five jobs; the tree-identical merge passed 675 unit tests, 98 exact-package desktop/tablet checks, and 3 production-intended family-policy emulator checks, plus type/lint/format/build gates. The repaired head passed 44 three-grade reconciliation checks before merge. Live manifest and 129 public files matched; six public-entry/report checks and real-backend three-grade saving/reload/fresh-browser recovery passed. The new query and stable pagination preserved 55 same-time synthetic attempts as separate graph points without caching older pages, even with a newer score inserted between pages. All disposable accounts and scoped records were cleaned up; real records and security configuration were untouched. See [release evidence](./docs/a3-release-2026-10-07.md) and [review repair provenance](./docs/a3-result-history.md). Curriculum pinning, automatic unfinished-conflict resolution, and bounded durable storage remain pending; A3 is not complete.
 
-October 7 review repairs in [PR #58](https://github.com/FionnbarZero/WeeklyDictationApp/pull/58) address portable screenshot output, local-history continuation after reconnect, and integrity checks for older scores. Repair `ec32d33` passed 675 unit tests and 10 focused packaged history checks. The full canonical suite now has 98 checks; final-head CI and re-review remain integration/release gates. The live version is unchanged.
-
-October 6 A2 is live at merge `b72ed85`. Final-head CI passed all five jobs; the tree-identical merge passed all 88 exact-package desktop/tablet checks. Live manifest and 129 public files matched; six public-entry/report checks and real-backend three-grade saving/reload/fresh-browser recovery passed. Reporting paused the live Grade 5 timer and navigation retained its document. Synthetic records were removed; real data and security configuration were untouched. See [release evidence](./docs/a2-release-2026-10-06.md) and [repair provenance](./docs/a2-preserve-active-work.md). A3 durable curriculum pinning, cross-device conflict selection, and result-history expansion remain pending.
+October 6 A2 release at merge `b72ed85` is now the immediate rollback. Final-head CI passed all five jobs; the tree-identical merge passed all 88 exact-package desktop/tablet checks. Live manifest and 129 public files matched; six public-entry/report checks and real-backend three-grade saving/reload/fresh-browser recovery passed. Reporting paused the live Grade 5 timer and navigation retained its document. Synthetic records were removed; real data and security configuration were untouched. See [release evidence](./docs/a2-release-2026-10-06.md) and [repair provenance](./docs/a2-preserve-active-work.md).
 
 October 6 A1 release: all five final-head CI jobs passed; the tree-identical merge separately passed 28 exact-package checks on Node 24.21.0. All 120 public canonical files matched the tested artifact. Live three-grade game saving/reload/cross-browser recovery, Grade 5 reviewed-practice recovery, anonymous denial, and six desktop/tablet-touch public-route/report checks passed. Disposable accounts and records were removed; real records and security settings were untouched. See the [release evidence](./docs/a1-release-2026-10-06.md). Physical-device audio, Safari, and broader roadmap work remain outstanding.
 
@@ -61,7 +60,7 @@ October 5 family-sync release checks:
 
 ## Next work and release policy
 
-Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. ADR 0009's offline continuation, pinned curriculum, automatic unfinished conflict resolution, distinct attempt graphs, subset coverage, and retention policy are approved but not yet established by the published release.
+Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. A2 active-work continuity and A3.1 distinct attempt graphs are published. ADR 0009's durable curriculum pinning, automatic unfinished conflict resolution, complete game-subset coverage, and retention policy remain pending. Start A3.2 next, with its own regression, compatibility, review, and release gates.
 
 ### October 6 architecture audit baseline
 
@@ -81,7 +80,7 @@ Audit source: Main at `6832900e5638cefc1264adddc7d83df85ae3ddba`. All 635 unit t
 
 Reproduce these findings against the current revision before repairing them. The roadmap tracks implementation; this table preserves audit evidence and does not turn architectural risks into claims of observed data loss or compromise.
 
-The owner gives standing approval to publish tested fixes to the affected permanent live grade. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations. The owner merged A2 and authorized its verified canonical release, recorded in the A2 release report. A3 is underway; its first result-history increment requires independent review before source integration or publication. The roadmap's task-specific model and review gates remain applicable.
+The owner gives standing approval to publish tested fixes to the affected permanent live grade. Keep regression checks, storage compatibility, exact-artifact publication, rollback, and post-release verification. Stop before separately unauthorized production data resets, authentication/security changes, or destructive migrations. The owner merged PR #58 and authorized its verified A3.1 canonical release, recorded in the A3.1 release report. A3 remains underway; A3.2 and A3.3 require their own implementation and review. The roadmap's task-specific model and review gates remain applicable.
 
 Main was not merged by the October 5 release operation. The owner authorized source reconciliation on October 6 through [PR 53](https://github.com/FionnbarZero/WeeklyDictationApp/pull/53). Live artifacts retain their exact published source identity even after source integration; a merge is not a deployment. Documentation, tests and development-only dependency fixes do not by themselves update the live application.
 
@@ -98,6 +97,6 @@ The family-sync release now supplies its own live two-browser acceptance; broade
 1. This file states verified current capability and explicit gaps.
 2. [ROADMAP.md](./ROADMAP.md) states approved priorities and product requirements.
 3. [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) records the latest reliability and staged-delivery decisions; [ADR 0008](./docs/decisions/0008-family-beta-product-and-release-policy.md) retains unaffected teaching and release policy.
-4. [Release inventory](./docs/family-beta-release-inventory.md) and [live release record](./docs/family-beta-live-2026-10-05.md) identify permanent URLs and rollback artifacts.
+4. [Release inventory](./docs/family-beta-release-inventory.md) and [A3.1 live release record](./docs/a3-release-2026-10-07.md) identify permanent URLs and rollback artifacts.
 5. [Family beta operations](./docs/family-beta-operations.md) defines testing, publication, containment, and data protection.
 6. [PROJECT_PLAN.md](./PROJECT_PLAN.md) and dated earlier reports preserve history; their superseded implementation status is not an execution instruction.
