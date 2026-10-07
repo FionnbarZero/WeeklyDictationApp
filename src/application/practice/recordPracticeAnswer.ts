@@ -69,9 +69,11 @@ export function recordPracticeAnswer(input: {
   if (current.segment === 'primary' && current.acquisition) {
     const dataset = input.state.datasets.find((item) => item.id === current.primaryDatasetId)
     if (!dataset || !current.acquisition.prompt?.revealed) return { status: 'ignored' }
-    const context = acquisitionPersistenceContext(current.childId, dataset, current.grade)
     const envelope = (input.state.acquisitionProgressEnvelopes || []).find(
-      (item) => item.childId === current.childId && item.datasetId === dataset.id,
+      (item) =>
+        item.childId === current.childId &&
+        item.datasetId === dataset.id &&
+        (!current.acquisitionProgressionId || item.id === current.acquisitionProgressionId),
     )
     if (!envelope) {
       return {
@@ -81,7 +83,9 @@ export function recordPracticeAnswer(input: {
       }
     }
     let checkpoint: ReturnType<typeof createAcquisitionAnswerCheckpoint>
+    let context: ReturnType<typeof acquisitionPersistenceContext>
     try {
+      context = acquisitionPersistenceContext(current.childId, dataset, current.grade, envelope)
       checkpoint = createAcquisitionAnswerCheckpoint({
         envelope,
         context,

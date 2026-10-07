@@ -4,8 +4,9 @@ import { execFileSync } from 'node:child_process'
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 import { familyBetaHostingHeaders } from './familyBetaDelivery.ts'
+import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
+import { packageOfflineShell } from './familyOfflineShell.ts'
 
 const artifact = resolve(process.argv[2] || '')
 const slug = process.argv[3]
@@ -31,6 +32,8 @@ writeFileSync(
   readFileSync(wrapper, 'utf8').replace('<head>', () => `<head>${selectGrade}`),
 )
 if (slug === 'grade2') writeFileSync(join(directory, '.nojekyll'), '')
+// The grade selector changes HTML bytes, so rebuild the shell's integrity list.
+packageOfflineShell(directory, revision)
 const files = artifactFileRecords(directory)
 Object.assign(manifest, {
   grade,

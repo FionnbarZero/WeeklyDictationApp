@@ -145,6 +145,41 @@ test('a failed cloud session start blocks presentation without advancing local s
   assert.deepEqual(state, stateWithDataset())
 })
 
+test('local acquisition presentation uses its pinned queue rather than a corrected launch target', async () => {
+  const input = {
+    state: stateWithDataset(),
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    primaryDatasets: [dataset],
+    lifecycleResolution: resolveDatasetLifecycles([dataset], startedAt),
+    sessionId: 'pin-first',
+    startedAt,
+    persistence: startPersistence(false),
+  }
+  const first = await startPractice(input)
+  assert.equal(first.status, 'started')
+  if (first.status !== 'started') return
+  const corrected = {
+    ...dataset,
+    words: [
+      ...dataset.words.map((word) => ({ ...word, text: '改正' })),
+      { ...dataset.words[0], id: 'extra-word', text: '部分' },
+    ],
+  }
+  const resumed = await startPractice({
+    ...input,
+    // The importer has retained the old workspace pending a separately safe
+    // curriculum transition. A launch target must not replace its lesson UI.
+    state: first.state,
+    target: { ...target, dataset: corrected },
+    sessionId: 'pin-resumed',
+  })
+  assert.equal(resumed.status, 'started', 'message' in resumed ? resumed.message : '')
+  if (resumed.status !== 'started') return
+  assert.deepEqual(resumed.session.primaryQueue, dataset.words)
+  assert.deepEqual(resumed.session.acquisition, first.session.acquisition)
+})
+
 test('leaving Acquisition preserves a partial cloud session while leaving Test Review abandons it', async () => {
   const state = stateWithDataset()
   const baseSession = createPracticeSessionForTarget({

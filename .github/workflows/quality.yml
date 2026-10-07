@@ -62,6 +62,13 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:public-preview
       - run: npm run test:prototype-baseline
+      - name: Preserve failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: test-results/
+          retention-days: 7
 
   firestore-emulator:
     name: Firestore Emulator
@@ -101,3 +108,5 @@ jobs:
         run: npx firebase emulators:exec --only firestore --project weekly-dictation-test "node --experimental-strip-types --test --test-name-pattern='^family ' tests/firestoreEmulator.emulator.ts"
       - name: Check family reliability formatting and lint
         run: npx biome check src/activity src/auth/tokenRefresh.ts src/firebaseClient.ts src/familyBeta/cloud.ts src/familyBeta/resultHistory.ts src/familyBeta/ResultHistory.tsx src/familyBeta/deviceSync.ts src/familyBeta/workspaceOwner.ts src/familyBeta/useWorkspaceState.ts src/familyBeta/context.ts src/familyBeta/activitySlots.ts src/familyBeta/gameFrame.tsx tests/resultHistoryPaging.test.ts tests/authTokenRefresh.test.ts tests/deviceSyncDownloadGuard.test.ts tests/sharedWorkspace.test.ts tests/activityClock.test.ts tests/scopedActivityStorage.test.ts tests/familyActivityContext.test.ts scripts/serve-family-sync-test.ts playwright.family-sync.config.ts tests/family-sync
+      - name: Check offline startup and packaging boundaries
+        run: npx biome check src/familyBeta/offlineFamily.ts scripts/familyOfflineShell.ts scripts/package-family-sync.ts scripts/package-family-sync-alias.ts tests/offlineFamily.test.ts tests/familyOfflineShell.test.ts

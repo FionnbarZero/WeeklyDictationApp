@@ -198,7 +198,10 @@ async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit, ti
         : AbortSignal.timeout(15_000),
     })
     const body = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
+    if (!response.ok) throw Object.assign(
+      new Error(`Firestore error: ${body?.error?.message || response.statusText}`),
+      { status: response.status },
+    )
     return body as T
   } finally {
     recordFirestoreQueryTiming(timingLabel, startedAt)
@@ -991,7 +994,8 @@ export function cloudDataToAppState(
     const candidate = currentCandidates[0] || candidates[0]
     if (!candidate) continue
     try {
-      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade)
+      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade,
+        'schemaVersion' in candidate ? candidate : undefined)
       const migrated = migrateAcquisitionProgress(candidate, context)
       if (migrated.status === 'quarantined') {
         acquisitionProgressQuarantine.push({

@@ -24,6 +24,16 @@ export type AcquisitionLifecycleStage =
   | { readonly kind: 'test-review'; readonly cycle: number }
 export type AcquisitionProgressStatus = 'in-progress' | 'teaching-complete'
 
+/** Data only: the compatible engine remains shipped, reviewed application code. */
+export type AcquisitionLessonSnapshot<TTarget extends AcquisitionTarget = AcquisitionTarget> = {
+  readonly schema: 1
+  readonly engineContract: 'acquisition-engine-v1'
+  readonly applicationVersion: string
+  readonly targetSet: AcquisitionTargetSet<TTarget>
+  readonly strategy: AcquisitionStrategy<TTarget>
+  readonly fingerprint: string
+}
+
 export type AcquisitionTransitionReceipt = {
   readonly progressionId: string
   readonly transitionId: string
@@ -54,6 +64,8 @@ export type AcquisitionProgressEnvelope<TTarget extends AcquisitionTarget = Acqu
   readonly createdAt: string
   readonly updatedAt: string
   readonly migratedFromProgressionId?: string
+  /** Additive to v1. Older readers fail closed when their current curriculum differs. */
+  readonly lessonSnapshot?: AcquisitionLessonSnapshot<TTarget>
 }
 
 export type AcquisitionScoredAttemptFact = {

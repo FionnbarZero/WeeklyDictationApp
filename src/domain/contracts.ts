@@ -56,6 +56,8 @@ export type Dataset = {
   /** Source-neutral provenance for datasets created through the canonical boundary. */
   source?: DatasetSourceMetadata
   contentFingerprint?: string
+  /** Additive, immutable Grade 2 correction identity. Old records keep their original IDs. */
+  curriculumRevision?: { originalDatasetId: string; fingerprint: string }
   instructionalRole?: 'weekly-acquisition' | 'current-confirmation' | 'next-week-preview' | 'unassigned'
   /** All normalized source tiers. `words` remains the Tier 1 compatibility view. */
   vocabulary?: DatasetVocabulary

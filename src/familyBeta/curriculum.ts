@@ -61,20 +61,34 @@ export function inspectSnapshot(snapshot: CurriculumSnapshot) {
   return { candidates, datasets: valid.map((c) => datasetFromCanonicalCandidate(c)), warnings }
 }
 
-export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
-  const env = (import.meta as ImportMeta & { env?: Record<string, string> }).env || {}
-  const base = env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
-  const response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
-  if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
-  const raw = await response.text()
-  if (raw.length > 2_000_000) throw new Error('Curriculum response is too large.')
+export async function validateCurriculum(raw: string, grade: BetaGrade) {
+  if (new TextEncoder().encode(raw).byteLength > 2_000_000) throw new Error('Curriculum response is too large.')
   const snapshot = JSON.parse(raw) as CurriculumSnapshot
-  if (snapshot.grade !== grade) throw new Error('The source returned the wrong grade.')
+  if (!snapshot || snapshot.grade !== grade) throw new Error('The source returned the wrong grade.')
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(snapshot.payload)))
   const actual = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
   if (actual !== snapshot.contentSha256) throw new Error('Curriculum checksum does not match.')
   const inspected = inspectSnapshot(snapshot)
-  if (response.headers.get('X-Curriculum-Warning'))
-    inspected.warnings.push('Automatic refresh is unavailable. The last validated teacher snapshot is being served.')
   return { snapshot, ...inspected }
+}
+
+export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
+  const env = (import.meta as ImportMeta & { env?: Record<string, string> }).env || {}
+  // An owned frame uses the exact source selected by its parent. New frames
+  // still receive today's source; a saved-lesson frame gets its original one.
+  const frame = typeof window === 'undefined' ? null : window.frameElement as HTMLIFrameElement | null
+  if (env.VITE_RECONCILIATION_PREVIEW === 'true' && frame?.dataset.familySlot && frame.dataset.familySource) {
+    const loaded = await validateCurriculum(frame.dataset.familySource, grade)
+    signal?.throwIfAborted()
+    return loaded
+  }
+  if (typeof navigator !== 'undefined' && !navigator.onLine)
+    throw new Error('The device is offline. Reopen an original lesson from Saved lessons.')
+  const base = env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
+  const response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
+  if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
+  const loaded = await validateCurriculum(await response.text(), grade)
+  if (response.headers.get('X-Curriculum-Warning'))
+    loaded.warnings.push('Automatic refresh is unavailable. The last validated teacher snapshot is being served.')
+  return loaded
 }

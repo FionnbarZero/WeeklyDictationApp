@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { practiceWorkspaceKey } from '../src/familyBeta/practiceWorkspaceStorage.ts'
 
 const key = 'family-beta-activity:child:checkpoint'
 const digest = (key: string) => createHash('sha256').update(key).digest('hex')
@@ -100,4 +101,18 @@ test('download ownership is rechecked for each record, not just at the start of 
   assert.equal(storage.getItem(baselineKey(key)), 'new')
   assert.equal(storage.getItem(other), 'old')
   assert.equal(storage.getItem(baselineKey(other)), 'old')
+})
+
+test('the upgraded workspace downloads before divergent legacy keys, without replacing either old copy', async () => {
+  const legacy = 'family-beta-activity:child:weekly-dictation-state-v2'
+  const current = practiceWorkspaceKey('child')
+  const { storage, repository, requested, release } = harness([legacy, current])
+  storage.setItem(legacy, 'locally changed by old client')
+  const sync = repository.sync(storage, 'child')
+  await requested
+  release()
+  await sync
+  assert.equal(storage.getItem(current), 'new')
+  assert.equal(storage.getItem(legacy), 'locally changed by old client')
+  assert.equal(storage.getItem(baselineKey(legacy)), 'old')
 })

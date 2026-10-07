@@ -292,6 +292,14 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
       }
     }),
   }
+  const resumeChannel = (window.frameElement as HTMLIFrameElement | null)?.dataset.familyResumeChannel
+  if (resumeChannel === 'writing' || resumeChannel === 'reading') {
+    // A retained source is a route to this unfinished Dojo only, never a menu
+    // for starting unrelated games/tests from obsolete teacher content.
+    model.sections = model.sections.map(section => ({ ...section,
+      activities: section.activities.filter(activity => activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`),
+    })).filter(section => section.activities.length > 0)
+  }
   return (
     <>
       {error && <p role="alert">{error}</p>}

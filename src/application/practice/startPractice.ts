@@ -1,4 +1,8 @@
-import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../acquisition/persistence/contracts.ts'
+import type {
+  AcquisitionCheckpoint,
+  AcquisitionPersistenceContext,
+  AcquisitionProgressEnvelope,
+} from '../../acquisition/persistence/contracts.ts'
 import {
   createPracticeSessionForTarget,
   localDateKey,
@@ -66,6 +70,7 @@ export async function startPractice(input: {
   startedAt: Date
   persistence: StartPracticePersistence
   formatError?: (error: unknown) => string
+  resolveAcquisitionContext?: (context: AcquisitionPersistenceContext<Word>) => AcquisitionPersistenceContext<Word>
 }): Promise<StartPracticeResult> {
   const formatError = input.formatError || errorMessage
   const startedAt = input.startedAt.toISOString()
@@ -161,7 +166,15 @@ export async function startPractice(input: {
   let state = revalidatedWarmup.state
   let preparedAcquisition =
     input.target?.phase === 'acquisition'
-      ? prepareAcquisitionProgress(state, input.child.id, input.target.dataset, startedAt)
+      ? prepareAcquisitionProgress(
+          state,
+          input.child.id,
+          input.target.dataset,
+          startedAt,
+          Math.random,
+          !input.persistence.cloud,
+          input.resolveAcquisitionContext,
+        )
       : null
   if (preparedAcquisition?.status === 'blocked') {
     return {
@@ -265,7 +278,13 @@ export async function startPractice(input: {
     id: input.sessionId,
     childId: input.child.id,
     grade: input.child.grade,
-    target: input.target,
+    target:
+      input.target && preparedAcquisition?.status === 'ready'
+        ? {
+            ...input.target,
+            dataset: { ...input.target.dataset, words: [...preparedAcquisition.context.targetSet.targets] },
+          }
+        : input.target,
     warmup: warmupSelection,
     startedAt,
     cloudSessionId: input.persistence.cloud ? input.sessionId : undefined,
@@ -277,6 +296,7 @@ export async function startPractice(input: {
     state,
     session: {
       ...practiceSession,
+      ...(preparedAcquisition?.status === 'ready' ? { acquisitionProgressionId: preparedAcquisition.envelope.id } : {}),
       adaptiveWarmupVisitId: warmupVisit.id,
       warmupResumePosition: warmupVisit.nextPosition,
       index: warmupVisit.nextPosition,

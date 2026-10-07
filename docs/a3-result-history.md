@@ -1,13 +1,13 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for exact artifact, completed release checks, and retained A2 rollback. A3.2 and A3.3 remain pending.
+Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for exact artifact, completed release checks, and retained A2 rollback. A3.2 implementation and acceptance evidence are in PR #60, unpublished and awaiting its review/release gates; A3.3 remains pending.
 
 ## Scope and sequence
 
 A3 is split at three architectural boundaries so a persistence migration is not hidden inside a display change:
 
 1. **A3.1, this change:** bounded online result-history reads and one graph point per distinct completed attempt.
-2. **A3.2, pending:** durable validated curriculum/strategy pinning, prompt-resume compatibility, and a tested transition for existing unfinished records.
+2. **A3.2, implemented but unpublished:** durable validated curriculum/strategy pinning, prompt-resume compatibility, corrected Grade 2 editions, confirmed discard, and an offline-aware preservation rollback. The [continuation evidence and release gates](./a3-curriculum-pinning.md) require independent review and final-head checks before publication.
 3. **A3.3, pending:** whole-activity unfinished-checkpoint reconciliation, deterministic reviewed-answer time/skew/tie handling, separation of checkpoint data from accumulated history, and bounded durable storage. Completed attempts from either device must remain immutable and independent.
 
 Detailed per-target provenance and storage/retention integration still require their appropriate schema and compatibility work. E2's destructive historical cleanup remains separately authorized. This PR does not complete A3.

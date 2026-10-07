@@ -328,8 +328,9 @@ function KindergartenLearningLab() {
       acquisitionStore.current = store
       if (store) attemptId.current = store.current.sessionId
       setWritingPractice({
-        state: store ? { ...initial, flow: store.current.envelope.flow, assessments: store.current.assessments } : initial,
-        dataset: kindergartenWritingDatasetForLab(selectedCandidate),
+        state: store ? { ...initial, targetSet: store.context.targetSet, flow: store.current.envelope.flow, assessments: store.current.assessments } : initial,
+        dataset: { ...kindergartenWritingDatasetForLab(selectedCandidate),
+          ...(store ? { words: [...store.context.targetSet.targets] } : {}) },
         revealMethod: 'timer',
       })
       setStatus('Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.')
@@ -344,6 +345,11 @@ function KindergartenLearningLab() {
   }
 
   function finishWriting() {
+    try { acquisitionStore.current?.assertActive() }
+    catch (error) {
+      setStatus(error instanceof Error ? error.message : 'This attempt cannot be submitted.'); setError(true)
+      return
+    }
     if (writingPractice) {
       const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
       if (scored.length && !recordScore({

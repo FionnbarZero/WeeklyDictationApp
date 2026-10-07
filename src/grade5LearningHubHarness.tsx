@@ -254,6 +254,7 @@ function leavePractice(message = 'Returned to the Grade 5 hub. This development-
 function recordWritingResult(correct: number, attempted: number) {
   if (!activeSession || !activeDataset) return false
   try {
+    if (activeSession.primaryPhase === 'acquisition') acquisitionStore?.assertActive()
     savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
     return true
   } catch {
@@ -389,7 +390,9 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
       activePractice.targetSet, grade5WritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
     ) : null
     if (acquisitionStore && activePractice) activePractice = { ...activePractice,
+      targetSet: acquisitionStore.context.targetSet,
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
+    if (acquisitionStore) activeDataset = { ...activeDataset, words: [...acquisitionStore.context.targetSet.targets] }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
     if (acquisitionStore) {
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }

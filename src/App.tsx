@@ -4,6 +4,7 @@ import {
   APP_STATE_KEY,
   activePracticeWord,
   type AppState,
+  type Dataset,
   createInitialState,
   revealAcquisitionPrompt,
   filterDatasetsForChild,
@@ -17,7 +18,8 @@ import {
   type Word,
 } from './domain'
 import { writingSessionAnswers } from './application/testReview.ts'
-import { hydrateLocalStateFromJson } from './localHydration.ts'
+import { originalGrade2Dataset, sourceGrade2Datasets } from './curriculum/grade2Revisions.ts'
+import type { SavedWritingLesson } from './familyBeta/grade2LessonSelection.ts'
 import {
   advancePracticeInterstitial,
   completeAcquisitionForToday as completeAcquisitionForTodayOperation,
@@ -292,6 +294,14 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }, [browserPersistence, sharedWorkspace, state])
   const [curriculumSourceMessage, setCurriculumSourceMessage] = useState<string | null>(null)
+  const [grade2SourceDatasets, setGrade2SourceDatasets] = useState<Dataset[] | null>(null)
+  const [grade2CurriculumTools, setGrade2CurriculumTools] = useState<typeof import('./automaticGrade2Curriculum.ts') | null>(null)
+  const [lessonRetirement, setLessonRetirement] = useState<typeof import('./familyBeta/acquisitionRetirement.ts') | null>(null)
+  const [requestedWritingLesson] = useState<SavedWritingLesson | null>(() => {
+    const frame = familyPreview ? window.frameElement as HTMLIFrameElement | null : null
+    return frame?.dataset.familyResumeChannel === 'writing' && frame.dataset.familyResumeLesson
+      ? JSON.parse(frame.dataset.familyResumeLesson) : null
+  })
   const [curriculumSourceError, setCurriculumSourceError] = useState<string | null>(null)
   const [curriculumRefreshAttempt, setCurriculumRefreshAttempt] = useState(0)
   const [activeExperience, setActiveExperience] = useState<ActiveExperience>(null)
@@ -410,9 +420,15 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     : null
   const readingProfile = configuredReadingProfile?.availability === 'main-app' ? configuredReadingProfile : null
   const primaryDatasets = useMemo(
-    () => (selectedChild ? filterDatasetsForChild(state.datasets, selectedChild.grade, selectedChild.schoolYear) : []),
-    [selectedChild, state.datasets],
+    () => (selectedChild ? filterDatasetsForChild(
+      familyPreview && grade2SourceDatasets && grade2CurriculumTools && selectedChild.grade === 'Grade 2'
+        ? grade2CurriculumTools.grade2WritingDatasets(state, grade2SourceDatasets, selectedChild.id, envelope => lessonRetirement?.isAcquisitionRetired(localStorage, envelope) || false, requestedWritingLesson)
+        : state.datasets.filter(dataset => !dataset.curriculumRevision),
+      selectedChild.grade, selectedChild.schoolYear) : []),
+    [selectedChild, state, grade2SourceDatasets, lessonRetirement, grade2CurriculumTools, requestedWritingLesson],
   )
+  const readingDatasets = familyPreview && grade2SourceDatasets
+    ? sourceGrade2Datasets(state, grade2SourceDatasets).map(originalGrade2Dataset) : primaryDatasets
   const currentDate = now()
   const currentDateKey = localDateKey(currentDate)
   const lifecycleResolution = useMemo(
@@ -430,7 +446,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
                 schoolYearKey: readingProfile.schoolYearKey,
                 currentDateKey,
               },
-              sets: primaryDatasets.map((dataset) => ({
+              sets: readingDatasets.map((dataset) => ({
                 datasetId: dataset.id,
                 grade: dataset.grade,
                 schoolYearKey: readingProfile.schoolYearKey,
@@ -440,10 +456,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               })),
               progressionEvents: [],
             },
-            primaryDatasets,
+            readingDatasets,
           )
         : null,
-    [selectedChild, readingProfile, primaryDatasets, currentDateKey],
+    [selectedChild, readingProfile, readingDatasets, currentDateKey],
   )
   const primaryChoices = (lifecycleResolution ? practiceTargetsForLifecycle(lifecycleResolution) : []).filter(
     (choice) => Boolean(practiceProfile && choice.dataset.words.length > 0 && !choice.dataset.isWritingWorkshop),
@@ -495,10 +511,15 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       .then(async (curriculum) => ({
         curriculum,
         loaded: await curriculum.fetchAutomaticGrade2Curriculum({ signal: controller.signal }),
+        retirement: familyPreview ? await import('./familyBeta/acquisitionRetirement.ts') : null,
       }))
-      .then(({ curriculum, loaded: { snapshot, datasetCount } }) => {
+      .then(({ curriculum, loaded: { snapshot, datasetCount }, retirement }) => {
         if (controller.signal.aborted) return
-        setState((current) => curriculum.hydrateAutomaticGrade2Curriculum(current, snapshot))
+        const source = curriculum.hydrateAutomaticGrade2Curriculum(createInitialState(), snapshot)
+        setState((current) => curriculum.hydrateAutomaticGrade2Curriculum(current, snapshot, familyPreview))
+        setGrade2SourceDatasets(source.datasets)
+        setGrade2CurriculumTools(curriculum)
+        setLessonRetirement(retirement)
         setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets automatically from Google Slides.`)
       })
       .catch((error) => {
@@ -614,13 +635,14 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const startPractice = useCallback(
     async (target: PracticeTarget | null) => {
-      if (!selectedChild || !lifecycleResolution || practiceStartInFlight) return
+      if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) return
       setPracticeStartInFlight(true)
       setShowChildMenu(false)
       const id = createSessionId()
       const cloud = Boolean(auth.user && cloudScope)
       const result = await startPracticeOperation({
         state,
+        resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
         child: selectedChild,
         target,
         primaryDatasets,
@@ -656,6 +678,17 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       }
       if (result.cloudSession) cloudSessionsRef.current.set(id, result.cloudSession)
       setState(result.state)
+      if (familyPreview && result.session.primaryPhase === 'acquisition' && result.session.acquisition) {
+        try {
+          const envelope = result.state.acquisitionProgressEnvelopes?.find(e => e.id === result.session.acquisitionProgressionId)
+          if (!envelope) throw new Error('The original lesson checkpoint is unavailable. Your saved work is unchanged.')
+          const { rememberFamilyLesson } = await import('./familyBeta/lessonLaunchRuntime.ts')
+          rememberFamilyLesson(envelope)
+        } catch (error) {
+          setCloudError(authErrorMessage(error))
+          return
+        }
+      }
       completedSessionRef.current = null
       setCompletedSummary(null)
       if (result.warning) setCloudError(result.warning)
@@ -665,6 +698,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       auth.user,
       cloudScope,
       lifecycleResolution,
+      lessonRetirement,
+      requestedWritingLesson,
       now,
       practicePersistence,
       practiceStartInFlight,
@@ -824,7 +859,16 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       current && current.stage === 'complete' ? { ...current, stage: 'review', index: 0 } : current,
     )
   }
+  const acquisitionIsActive = (current: PracticeSession | null) => {
+    if (!familyPreview || !current?.acquisitionProgressionId) return true
+    try {
+      const envelope = state.acquisitionProgressEnvelopes?.find(item => item.id === current.acquisitionProgressionId)
+      if (!envelope || !lessonRetirement || lessonRetirement.isAcquisitionRetired(localStorage, envelope)) throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
+      return true
+    } catch (error) { setCloudError(authErrorMessage(error)); return false }
+  }
   const completeSession = async (finished: PracticeSession, baseState: AppState = state) => {
+    if (!acquisitionIsActive(finished)) return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = finished.id
     const storedCloud = finished.cloudSessionId ? cloudSessionsRef.current.get(finished.cloudSessionId) : undefined
@@ -878,6 +922,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const finishAcquisitionForToday = async () => {
     const current = session
     if (!current?.acquisition || current.primaryPhase !== 'acquisition') return
+    if (!acquisitionIsActive(current)) return
     if (completionInFlightRef.current) return
     completionInFlightRef.current = current.id
     const storedCloud = current.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
@@ -966,6 +1011,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const answer = (correct: PracticeAnswer) => {
+    if (!acquisitionIsActive(session)) return
     if (typeof correct === 'object') {
       if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
       return
@@ -1046,6 +1092,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     event.target.value = ''
     if (!file) return
     try {
+      const { hydrateLocalStateFromJson } = await import('./localHydration.ts')
       const hydrated = hydrateLocalStateFromJson(state, await file.text())
       setState(hydrated.state)
       if (hydrated.batch.status === 'error') {

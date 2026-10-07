@@ -5,6 +5,8 @@ import {
   type Grade2CurriculumSnapshot,
 } from './curriculum/grade2CurriculumSnapshot.ts'
 import { hydrateLocalStateFromReadOnlySource } from './localHydration.ts'
+import { retainGrade2Editions } from './curriculum/grade2Revisions.ts'
+export { grade2WritingDatasets } from './familyBeta/grade2LessonSelection.ts'
 
 const MAX_CURRICULUM_SNAPSHOT_BYTES = 1_000_000
 
@@ -13,14 +15,21 @@ export type AutomaticGrade2Curriculum = {
   datasetCount: number
 }
 
-export function hydrateAutomaticGrade2Curriculum(state: AppState, snapshot: Grade2CurriculumSnapshot) {
-  const hydration = hydrateLocalStateFromReadOnlySource(state, snapshot.presentation)
+export function hydrateAutomaticGrade2Curriculum(
+  state: AppState,
+  snapshot: Grade2CurriculumSnapshot,
+  retainCorrections = false,
+) {
+  const hydration = hydrateLocalStateFromReadOnlySource(
+    retainCorrections ? createInitialState() : state,
+    snapshot.presentation,
+  )
   if (hydration.batch.outcomes.some((outcome) => outcome.status === 'error' || outcome.status === 'conflict')) {
     throw new Error(
       'The Google Slides curriculum conflicts with existing browser lessons. Existing lessons and progress were preserved.',
     )
   }
-  return hydration.state
+  return retainCorrections ? retainGrade2Editions(state, hydration.state.datasets) : hydration.state
 }
 
 async function sha256(value: string) {

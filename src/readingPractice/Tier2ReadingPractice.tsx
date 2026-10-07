@@ -177,7 +177,7 @@ function ImmediateTier2ReadingPractice({
     : null)
   const [saveError, setSaveError] = useState('')
   const [run, setRun] = useState<ReadingRun>(() => savedStore
-    ? { kind: 'acquisition', targetSet: tier2ReadingAcquisitionTargetSet(pathway),
+    ? { kind: 'acquisition', targetSet: savedStore.context.targetSet,
       flow: savedStore.current.envelope.flow, assessments: savedStore.current.assessments }
     : initialRun(profile, pathway, randomRef.current))
 
@@ -261,11 +261,15 @@ function ImmediateTier2ReadingPractice({
       ? `Test Review ${pathway.cycle || 1}`
       : 'Mastery reading'
   const summary = { ...summaryFor(run), ...(savedStore ? { sessionId: savedStore.current.sessionId } : {}) }
+  function finish() {
+    try { savedStore?.assertActive(); onComplete(summary) }
+    catch (error) { setSaveError(error instanceof Error ? error.message : 'This attempt cannot be submitted.') }
+  }
 
   return <div className="reading-practice-page practice-page" data-report-activity="Reading practice" data-report-phase={complete ? 'complete' : promptPhase} data-report-target={complete ? undefined : target?.id} data-report-position={position}>
     <div className="practice-top">
       <button className="back-button" type="button" onClick={() => { if (!pauseToFamilyHub()) exit() }}><X size={18} /> Exit reading</button>
-      {savedStore && !complete && <button type="button" className="secondary-button" onClick={() => onComplete(summary)}>Done for today</button>}
+      {savedStore && !complete && <button type="button" className="secondary-button" onClick={finish}>Done for today</button>}
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>
     <div className="practice-progress" role="progressbar" aria-label="Reading practice progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
@@ -277,7 +281,7 @@ function ImmediateTier2ReadingPractice({
         <h1>Reading path complete</h1>
         <p className="review-instruction">{summary.correct} of {summary.attempted} assessed reading responses were marked correct.</p>
         {summary.diagnostics > 0 && <p className="practice-helper">{summary.diagnostics} Familiar-DT diagnostic response{summary.diagnostics === 1 ? '' : 's'} stayed outside the official target count.</p>}
-        <button className="primary-button review-start-button" type="button" onClick={() => onComplete(summary)}>Done <ArrowLeft size={18} /></button>
+        <button className="primary-button review-start-button" type="button" onClick={finish}>Done <ArrowLeft size={18} /></button>
       </> : target ? <>
         <div className="prompt-meta">
           <span className={`set-chip chip-${run.kind === 'mastery' ? 'warmup' : run.kind}`}>{promptPhase}</span>

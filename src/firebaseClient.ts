@@ -1,5 +1,6 @@
 import { AuthRequestError, createTokenProvider, type StoredAuth } from './auth/tokenRefresh.ts'
 import { accountSignupEnabled, firebaseConfig, firebaseConfigReady } from './config.ts'
+import { offlineFamilyKey } from './familyBeta/offlineFamily.ts'
 import { firebaseAppCheckHeaders } from './firebaseSdkRuntime.ts'
 
 export type AuthUser = { uid: string; email: string }
@@ -33,7 +34,11 @@ function readStoredAuth(): StoredAuth | null {
 function writeStoredAuth(value: StoredAuth | null) {
   if (typeof window === 'undefined') return
   if (value) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value))
-  else window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  else {
+    const previous = readStoredAuth()
+    if (previous) window.localStorage.removeItem(offlineFamilyKey(previous.user.uid))
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  }
   window.dispatchEvent(new Event(authEvent))
 }
 

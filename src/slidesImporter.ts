@@ -15,6 +15,7 @@ import { canonicalDatasetId, targetOccurrenceIdFor } from './curriculum/identity
 import type { CandidateStatus, InstructionalRole, VocabularyOccurrenceCandidate, WeeklyDatasetCandidate } from './curriculum/model.ts'
 import type { Dataset, DatasetVocabulary, Word } from './domain/contracts.ts'
 import { isSourceNeutralCanonicalDataset } from './curriculum/datasetProjection.ts'
+import { originalGrade2Dataset, validGrade2Revision } from './curriculum/grade2Revisions.ts'
 
 export type { ExistingDatasetReference } from './curriculum/classification.ts'
 
@@ -181,7 +182,8 @@ export function profileForDeckId(sourceDeckId: string) {
   return parserProfiles.find((profile) => profile.sourceDeckId === sourceDeckId && DECK_REGISTRY.some((entry) => entry.active && entry.sourceType === 'google-slides' && entry.sourceDocumentId === sourceDeckId && entry.parserProfileId === profile.id)) || null
 }
 
-export function isCanonicalDataset(dataset: Dataset) {
+export function isCanonicalDataset(dataset: Dataset): boolean {
+  if (dataset.curriculumRevision) return validGrade2Revision(dataset) && isCanonicalDataset(originalGrade2Dataset(dataset))
   if (dataset.source) return isSourceNeutralCanonicalDataset(dataset)
   const profile = profileForDataset(dataset)
   if (!profile || dataset.id !== datasetIdFor(profile, dataset)) return false

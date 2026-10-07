@@ -23,6 +23,8 @@ import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
+import { cacheLessonSource, discardSavedLesson, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
+import { isConnectionFailure, isFamilyAccessDenied, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
 import '../styles.css'
 import './preview.css'
 
@@ -83,6 +85,11 @@ function FamilyPreview() {
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<BetaGrade>(initialGrade)
   const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
+  const [resumingId, setResumingId] = useState<string | null>(null)
+  const [savedLessonsOpen, setSavedLessonsOpen] = useState(false)
+  const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
+  const [resumeRefresh, setResumeRefresh] = useState(0)
+  const resumeInFlight = useRef(false)
   const slotsRef = useRef(slots)
   slotsRef.current = slots
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
@@ -90,6 +97,7 @@ function FamilyPreview() {
   const syncAgain = useRef(false)
   const refreshRef = useRef<() => Promise<void>>(async () => {})
   const [readyChildren, setReadyChildren] = useState<ReadonlySet<string>>(new Set())
+  const [offlineShell, setOfflineShell] = useState(document.documentElement.dataset.offlineShell || '')
   const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
   const curriculum = curricula[currentGrade] || null
@@ -97,7 +105,8 @@ function FamilyPreview() {
   const today = localDateKey(new Date())
   const available = curriculum?.datasets.filter(d => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) || []
   const dataset = available.find(d => d.startDate === week) || available[0]
-  const workspace = child ? activityWorkspace(child, dataset?.startDate || week) : ''
+  const resumeSlot = tab === 'activities' ? slots.find(slot => slot.id === resumingId && slot.profile.id === child?.id) : undefined
+  const workspace = resumeSlot?.workspace || (child ? activityWorkspace(child, dataset?.startDate || week) : '')
   const selectedSlot = selectedSlots[`${workspace}:${tab}`]
   const pack = slots.find(slot => slot.id === selectedSlot)?.game?.pack
   const scope = `${auth.user?.uid || ''}:${familyId || ''}`
@@ -108,17 +117,37 @@ function FamilyPreview() {
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
+    const changed = () => setOfflineShell(document.documentElement.dataset.offlineShell || '')
+    addEventListener('family-offline-shell', changed)
+    changed()
+    return () => removeEventListener('family-offline-shell', changed)
+  }, [])
+  useEffect(() => {
     let cancelled = false
     setReadyChildren(new Set())
     workspaceOwner.retain([])
     setSlots([])
     setSelectedSlots({})
+    setResumingId(null)
     if (!firebaseConfigReady) return
     setFamilyId(null)
     setProfiles([])
     setResults([])
     if (!auth.user) return
-    void ensureParentFamily(auth.user)
+    const uid = auth.user.uid
+    const restoreOffline = () => {
+      if (cancelled) return false
+      const cached = readOfflineFamily(localStorage, uid)
+      if (!cached || !cached.ready.length) return false
+      setFamilyId(cached.familyId)
+      setProfiles(cached.profiles)
+      setReadyChildren(new Set(cached.ready))
+      setSelectedId((cached.profiles.find(c => c.grade === initialGrade && cached.ready.includes(c.id)) || cached.profiles.find(c => cached.ready.includes(c.id)))?.id || '')
+      setStatus('Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.')
+      setAdultUnlocked(false)
+      return true
+    }
+    const connect = () => { void ensureParentFamily(auth.user!)
       .then(async ({ family }) => {
         const children = (await listChildren(family.id)).filter((c) =>
           BETA_GRADES.includes(c.grade as BetaGrade),
@@ -129,10 +158,31 @@ function FamilyPreview() {
         setSelectedId((children.find((c) => c.grade === initialGrade) || children[0])?.id || '')
         setStatus('Family account connected.')
         setAdultUnlocked(false)
+        try { rememberOfflineFamily(localStorage, uid, family.id, children) }
+        catch (e) { setError(message(e)) }
       })
-      .catch((e) => !cancelled && setError(message(e)))
+      .catch((e) => {
+        if (cancelled) return
+        if (isConnectionFailure(e) && restoreOffline()) return
+        if (isFamilyAccessDenied(e)) {
+          localStorage.removeItem(offlineFamilyKey(uid))
+          setReadyChildren(new Set())
+          setProfiles([])
+          setFamilyId(null)
+        }
+        setError(message(e))
+      }) }
+    // A disconnected browser must not try to refresh an expired token first.
+    // This is local access only, and requires an existing signed-in owner.
+    if (!navigator.onLine) {
+      if (!restoreOffline()) setError('Connect once with this parent account and finish family syncing before reopening offline.')
+    } else connect()
+    // Revalidate membership on reconnect. Do not replace mounted workspaces.
+    const reconnect = () => { if (!slotsRef.current.length) connect() }
+    addEventListener('online', reconnect)
     return () => {
       cancelled = true
+      removeEventListener('online', reconnect)
     }
   }, [auth.user?.uid, initialGrade])
 
@@ -144,6 +194,15 @@ function FamilyPreview() {
     if (child) sessionStorage.setItem(PROFILE_KEY, JSON.stringify(child))
     if (!firebaseConfigReady) localStorage.setItem('beta-preview-profiles', JSON.stringify(profiles))
   }, [child, profiles])
+
+  useEffect(() => {
+    if (!child || !practiceReady) return
+    let cancelled = false
+    void listSavedLessons(localStorage, child).then(value => {
+      if (!cancelled) setSavedLessons({ owner: child.id, ...value })
+    }).catch(e => { if (!cancelled) setActivityError(message(e)) })
+    return () => { cancelled = true }
+  }, [child?.id, child?.grade, practiceReady, resumeRefresh])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -177,6 +236,7 @@ function FamilyPreview() {
     syncing.current = true
     try {
       if (familyId && auth.user) {
+        if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
         await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
           () => scopeRef.current === scope && !slotsRef.current.some(slot => slot.profile.id === child.id))
         if (scopeRef.current !== scope) return
@@ -198,6 +258,7 @@ function FamilyPreview() {
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
         setReadyChildren(current => new Set([...current, child.id]))
+        rememberOfflineFamily(localStorage, auth.user.uid, familyId, profiles, child.id)
         if (childRef.current !== child.id) return
         // Keep the visible remote page aligned with its cursor. Newly queued
         // results remain in the outbox and appear after their confirmed refresh.
@@ -211,8 +272,18 @@ function FamilyPreview() {
       setError('')
     } catch (e) {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
+      const accessDenied = auth.user && isFamilyAccessDenied(e)
+      if (auth.user && accessDenied) {
+        localStorage.removeItem(offlineFamilyKey(auth.user.uid))
+        setReadyChildren(new Set())
+      }
+      if (auth.user && isConnectionFailure(e)) {
+        const cached = readOfflineFamily(localStorage, auth.user.uid)
+        if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade))
+          setReadyChildren(current => new Set([...current, child.id]))
+      }
       setError(message(e))
-      setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus(accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())
@@ -220,6 +291,7 @@ function FamilyPreview() {
         setResults([])
       }
     } finally {
+      if (scopeRef.current === scope) setResumeRefresh(value => value + 1)
       syncing.current = false
       if (syncAgain.current) {
         syncAgain.current = false
@@ -249,6 +321,11 @@ function FamilyPreview() {
         void refreshProgress()
       }
       if (event.data?.type === 'family-beta-result-ready') {
+        const lesson = event.data.lesson
+        if (lesson && /^acq-progress-v1-[a-f0-9]{16}$/.test(lesson.progressionId) && /^[a-f0-9]{16}$/.test(lesson.fingerprint)) {
+          setSlots(current => current.map(item => item.id === slot.id ? { ...item,
+            savedLesson: { progressionId: lesson.progressionId, fingerprint: lesson.fingerprint } } : item))
+        }
         setActivityError('')
         void refreshProgress()
       }
@@ -313,10 +390,13 @@ function FamilyPreview() {
 
   function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack) {
     if (!child || !curriculum || curriculum.snapshot.grade !== currentGrade || !dataset || !practiceReady) return
+    try { cacheLessonSource(localStorage, child.id, curriculum.snapshot) }
+    catch (e) { setActivityError(message(e)); return }
     const id = crypto.randomUUID()
     const slot: FamilyActivitySlot = {
       id, workspace, profile: { ...child }, week: dataset?.startDate || week,
       curriculumVersion: curriculum.snapshot.contentSha256,
+      source: curriculum.snapshot,
       teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
       kind, src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
       ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
@@ -326,13 +406,47 @@ function FamilyPreview() {
   }
 
   useEffect(() => {
-    if (tab === 'activities' && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
-  }, [tab, child, curriculum, practiceReady, workspace, slots])
+    if (tab === 'activities' && !resumingId && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
+  }, [tab, child, curriculum, practiceReady, workspace, slots, resumingId])
+
+  async function resumeSavedLesson(lesson: SavedLessonLaunch) {
+    if (!child || !practiceReady || resumeInFlight.current) return
+    resumeInFlight.current = true
+    try {
+      const saved = await readSavedLesson(localStorage, child, lesson)
+      if (scopeRef.current !== scope || childRef.current !== child.id) return
+      if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')
+      const existing = slotsRef.current.find(slot => slot.profile.id === child.id && slot.kind === 'activities' &&
+        slot.savedLesson?.progressionId === saved.progressionId && slot.savedLesson.fingerprint === saved.lessonFingerprint)
+      const id = existing?.id || crypto.randomUUID()
+      const savedWorkspace = existing?.workspace || `${activityWorkspace(child, saved.week)}:saved:${id}`
+      if (!existing) setSlots(current => [...current, {
+        id, workspace: savedWorkspace, profile: { ...child }, week: saved.week,
+        curriculumVersion: saved.sourceHash, source: saved.source, resumeChannel: saved.channel,
+        savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
+        teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local', kind: 'activities',
+        src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
+      }])
+      setResumingId(id)
+      setSavedLessonsOpen(false)
+      setTab('activities')
+      setSelectedSlots(current => ({ ...current, [`${savedWorkspace}:activities`]: id }))
+      setActivityError('')
+    } catch (e) { setActivityError(message(e)) }
+    finally { resumeInFlight.current = false }
+  }
 
   function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
-    setSlots(current => current.filter(item => item.id !== slot.id))
-    setSelectedSlots(current => ({ ...current, [`${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`]: undefined }))
+    try {
+      if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)
+      const removed = slots.filter(item => item.id === slot.id || (slot.savedLesson && item.profile.id === slot.profile.id && item.savedLesson?.progressionId === slot.savedLesson.progressionId))
+      if (removed.some(item => item.id === resumingId)) setResumingId(null)
+      setSlots(current => current.filter(item => !removed.some(value => value.id === item.id)))
+      setSelectedSlots(current => Object.fromEntries(Object.entries(current).map(([key, id]) => [key, removed.some(item => item.id === id) ? undefined : id])))
+      setResumeRefresh(current => current + 1)
+      setActivityError('')
+    } catch (error) { setActivityError(message(error)) }
   }
 
   if (auth.status === 'loading') return <p role="status">Loading family access…</p>
@@ -361,7 +475,7 @@ function FamilyPreview() {
           <select
             aria-label="Child profile"
             value={child?.id || ''}
-            onChange={(e) => { setSelectedId(e.target.value); setWeek('') }}
+            onChange={(e) => { setSelectedId(e.target.value); setWeek(''); setResumingId(null) }}
           >
             {profiles
               .filter((p) => p.active)
@@ -417,7 +531,7 @@ function FamilyPreview() {
           <select
             aria-label="Practice week"
             value={week}
-            onChange={(e) => setWeek(e.target.value)}
+            onChange={(e) => { setWeek(e.target.value); setResumingId(null) }}
           >
             <option value="">Current teacher lesson</option>
             {available.map((d) => (
@@ -428,6 +542,19 @@ function FamilyPreview() {
           </select>
         </label>
       )}
+      {child && practiceReady && tab === 'activities' && <details className="beta-panel" open={savedLessonsOpen} onToggle={e => setSavedLessonsOpen(e.currentTarget.open)}>
+        <summary>Saved lessons</summary>
+        <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
+        {savedLessons.owner === child.id && savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
+        {savedLessons.owner === child.id && savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
+          Resume saved {lesson.channel} · {lesson.week}
+        </button>)}
+        {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && <p>No saved lessons are available yet.</p>}
+      </details>}
+      {resumeSlot && <section className="beta-panel" role="status">
+        Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the current teacher curriculum.
+        <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>
+      </section>}
       {!child && <p>Add a child in Parent controls to begin.</p>}
       {slots.map(slot => {
         const active = practiceReady && slot.id === selectedSlot && slot.workspace === workspace && (tab === 'activities' || tab === 'games')
@@ -435,6 +562,8 @@ function FamilyPreview() {
           data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
           data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
+          data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
+          data-family-resume-lesson={slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined}
           data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
           hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
       })}
@@ -654,6 +783,7 @@ function FamilyPreview() {
           )}
         </section>
       )}
+      {offlineShell && <p className="beta-status" data-offline-shell-status>{offlineShell}</p>}
     </div>
   )
 }
