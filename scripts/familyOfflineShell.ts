@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { artifactFileRecords } from './familyBetaRelease.ts'
+import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 /** Only the canonical family package installs an offline shell. No API, auth,
  * curriculum, child data, or arbitrary navigation response enters this cache. */
@@ -45,7 +45,9 @@ if ('serviceWorker' in navigator && window.parent === window) {
     const file = join(directory, entry)
     writeFileSync(
       file,
-      readFileSync(file, 'utf8').replace('</head>', '<script defer src="./offline-registration.js"></script></head>'),
+      readFileSync(file, 'utf8')
+        .replaceAll('<script defer src="./offline-registration.js"></script>', '')
+        .replace('</head>', '<script defer src="./offline-registration.js"></script></head>'),
     )
   }
   const files = artifactFileRecords(directory).filter(
@@ -59,9 +61,10 @@ if ('serviceWorker' in navigator && window.parent === window) {
     join(directory, 'family-offline-sw.js'),
     `
 const revision = ${JSON.stringify(revision)};
-const cacheName = 'ninja-dojo-shell-v1:' + revision;
 const files = ${JSON.stringify(files)};
 const scope = new URL(self.registration.scope);
+const cachePrefix = 'ninja-dojo-shell-v1:' + encodeURIComponent(scope.pathname) + ':';
+const cacheName = cachePrefix + revision + ':' + ${JSON.stringify(fileTreeSha256(files))};
 const routes = new Map(files.map(file => [new URL(file.path, scope).pathname, file]));
 const hex = buffer => [...new Uint8Array(buffer)].map(n => n.toString(16).padStart(2, '0')).join('');
 self.addEventListener('install', event => event.waitUntil((async () => {
@@ -82,7 +85,7 @@ self.addEventListener('install', event => event.waitUntil((async () => {
 // No skipWaiting or clients.claim: an update cannot replace an active lesson's
 // engine, and the first install cannot take over an older uncontrolled page.
 self.addEventListener('activate', event => event.waitUntil((async () => {
-  for (const key of await caches.keys()) if (key.startsWith('ninja-dojo-shell-v1:') && key !== cacheName) await caches.delete(key);
+  for (const key of await caches.keys()) if (key.startsWith(cachePrefix) && key !== cacheName) await caches.delete(key);
 })()));
 self.addEventListener('fetch', event => {
   const request = event.request;

@@ -1,9 +1,9 @@
 import { strict as assert } from 'node:assert'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runInNewContext } from 'node:vm'
 import test from 'node:test'
+import { runInNewContext } from 'node:vm'
 import { packageOfflineShell } from '../scripts/familyOfflineShell.ts'
 
 function fixture(t: { after: (fn: () => void) => void }) {
@@ -26,18 +26,27 @@ function fixture(t: { after: (fn: () => void) => void }) {
   const deleted: string[] = []
   const fetched: string[] = []
   let corrupt = false
+  let currentCache = ''
   const caches = {
-    open: async () => ({
-      put: async (url: URL, response: Response) => {
-        entries.set(url.href, response)
-      },
-      match: async (url: URL) => entries.get(url.href)?.clone(),
-    }),
+    open: async (name: string) => {
+      currentCache = name
+      return {
+        put: async (url: URL, response: Response) => {
+          entries.set(url.href, response)
+        },
+        match: async (url: URL) => entries.get(url.href)?.clone(),
+      }
+    },
     delete: async (key: string) => {
       deleted.push(key)
-      entries.clear()
+      if (key === currentCache) entries.clear()
     },
-    keys: async () => ['ninja-dojo-shell-v1:revision-a', 'ninja-dojo-shell-v1:revision-old', 'unrelated-cache'],
+    keys: async () => [
+      currentCache,
+      'ninja-dojo-shell-v1:%2F:revision-old',
+      'ninja-dojo-shell-v1:%2Fanother-app%2F:revision-old',
+      'unrelated-cache',
+    ],
   }
   const source = readFileSync(join(directory, 'family-offline-sw.js'), 'utf8')
   runInNewContext(source, {
@@ -83,6 +92,7 @@ function fixture(t: { after: (fn: () => void) => void }) {
     lifecycle,
     request,
     source,
+    directory,
     corrupt: () => {
       corrupt = true
     },
@@ -116,11 +126,26 @@ test('incomplete or mixed-version package cannot install an offline shell', asyn
   shell.corrupt()
   await assert.rejects(shell.lifecycle('install'), /checksum/)
   assert.equal(shell.entries.size, 0)
-  assert.deepEqual(shell.deleted, ['ninja-dojo-shell-v1:revision-a'])
+  assert.equal(shell.deleted.length, 1)
+  assert.match(shell.deleted[0], /^ninja-dojo-shell-v1:%2F:revision-a:[a-f0-9]{64}$/)
 })
 test('updates do not take over active lessons; activation cleans only owned old shell caches', async (t) => {
   const shell = fixture(t)
   assert.doesNotMatch(shell.source, /self\.(skipWaiting|clients\.claim)\(/)
+  await shell.lifecycle('install')
   await shell.lifecycle('activate')
-  assert.deepEqual(shell.deleted, ['ninja-dojo-shell-v1:revision-old'])
+  assert.deepEqual(shell.deleted, ['ninja-dojo-shell-v1:%2F:revision-old'])
+  assert.match(await (await shell.request('https://dojo.example/'))!.text(), /original version/)
+})
+
+test('repackaging an alias updates integrity metadata without duplicating the registration', (t) => {
+  const shell = fixture(t)
+  const page = join(shell.directory, 'family-beta-preview.html')
+  writeFileSync(page, readFileSync(page, 'utf8').replace('<head>', '<head><script>/* grade selector */</script>'))
+  packageOfflineShell(shell.directory, 'revision-a')
+  assert.equal(readFileSync(page, 'utf8').match(/offline-registration.js/g)?.length, 1)
+  assert.notEqual(readFileSync(join(shell.directory, 'family-offline-sw.js'), 'utf8'), shell.source)
+  const rebuilt = readFileSync(join(shell.directory, 'family-offline-sw.js'), 'utf8')
+  packageOfflineShell(shell.directory, 'revision-a')
+  assert.equal(readFileSync(join(shell.directory, 'family-offline-sw.js'), 'utf8'), rebuilt)
 })
