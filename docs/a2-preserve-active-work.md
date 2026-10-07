@@ -26,13 +26,35 @@ The family wrapper owns one in-session slot per selected child, grade, resolved 
 
 Messages from embedded activities require both the same origin and the actual registered source window. Completion also checks the slot's attempt, child, grade, and saved ledger record. Late account/child requests cannot change another selected child's displayed sync state. Remote hydration is disabled for children with a retained activity document.
 
-The legacy Grade 2 storage wrapper detects a stale checkpoint write rather than overwriting a newer document's record. Existing acquisition compare-and-write guards remain. Automatic resolution of competing unfinished copies belongs to A3; A2 does not claim to resolve those conflicts.
+Retained Grade 2 documents for one child now share a single parent-owned reviewed-state store. Each engine operation starts from that store's current state, so saving one week does not leave another retained week with an obsolete child-wide snapshot. Subscribers receive state updates without replacing their document or provisional activity. Saves still compare the expected state and the last confirmed storage value; stale asynchronous or external-tab writes fail closed rather than merging arbitrary snapshots. Closing the final slot or changing accounts closes its owner and blocks delayed writes. Existing acquisition journals and compare-and-write guards remain. Automatic resolution of competing unfinished copies across devices belongs to A3.
+
+## PR #56 review repairs
+
+The three reported failures were reproduced before implementation in regression-only commit `0854222`: a failed expired-token renewal removed the active document; returning to a loaded grade offline lost the selected workspace; and two retained Grade 2 weeks could not both continue saving. All three original checks failed, then passed on repair commit `604cd4a`.
+
+- **Token renewal:** transient network, timeout, throttling, and server failures retain the initialized local family session without returning an expired token for cloud access. Confirmed invalid credentials still sign out. Renewal requests are coalesced; late success cannot undo sign-out and late failure cannot clear a replacement account.
+- **Offline grade return:** the wrapper retains each grade's validated curriculum during the visit, so a failed refresh does not replace an existing workspace with an empty week. This is an in-session cache, not A3's durable curriculum pinning.
+- **Retained Grade 2 weeks:** the shared store described above preserves both weeks' checkpoints and separate completed results. Regression coverage finishes both visits and checks both results and checkpoints after reload. External conflicts are still detected, not silently resolved.
+
+The original PR's GitHub browser job also failed because a scoring test depended on the host's speech service. The same failure was reproduced locally: prompt audio failed, so Skip Timer correctly remained disabled. The test now supplies explicit speech success/error events while using the real prompt sequencing and audio gate. A separate regression verifies that audio failure prevents collection and a successful retry re-enables it; this does not establish physical-device audio quality.
 
 ## Verification
 
 The regression suite covers timer pauses, actual handwriting retention, offline reviewed work and successful retry, nested/manual pause, explicit discard, fixed child ownership, game feedback delays, and recording interruption in all three grades' acquisition and Boss activities. It also checks that completed temporary recording data remains playable without entering browser storage.
 
-Local acceptance passed on October 6, 2026:
+Post-review verification on October 6, 2026:
+
+- 661 unit tests, including renewal invalidation/races and shared-store stale-write protection.
+- 86 exact-package checks: 43 each on Chromium desktop and touch-tablet profiles, including all four new review regressions on both profiles.
+- 58 standalone browser checks, including the deterministic scoring check and explicit audio-failure/retry regression.
+- 44 reconciliation checks across all three grades, including both Grade 5 reading Boss rounds, temporary recording cleanup, reporting, and reviewed progress after reload.
+- Two production-intended family-policy emulator checks with disposable records.
+- Type checking, lint, repository formatting, and the expanded family reliability formatting/import-order gate passed.
+- Final production build budgets passed: 542,574 of 550,000 initial JavaScript bytes and 42,745 of 60,000 initial CSS bytes.
+
+The post-review family package is source `575a4fc6941d45c9213bfad5546e1e6612afb662`, with 131 files and tree digest `cff3a9295bfe5c22e70493bd311a8093a4fee399521a6de812a65eb113bb2740`. It is retained locally at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-7Ls4B2`. Subsequent application cleanup only sorts imports and removes an unused state reference; subsequent tests make standalone audio outcomes deterministic. Final-head CI must rebuild and retest its own package; this is not a published artifact.
+
+Original pre-review local acceptance passed on October 6, 2026:
 
 - 645 unit tests; type checking, lint, repository formatting, and the additional family reliability formatting gate.
 - 78 exact-package checks: 39 each on Chromium desktop and touch-tablet profiles, running in isolation.
@@ -41,7 +63,7 @@ Local acceptance passed on October 6, 2026:
 - Two production-intended family-policy emulator tests covering confirmed result retries, practice sync, conflicts, and denied cross-family/anonymous access.
 - Production performance budgets: 540,990 of 550,000 initial JavaScript bytes and 42,745 of 60,000 initial CSS bytes.
 
-The tested package is source `e5efedb858a66eb458b821edd581c46d568c17a5`, containing the application changes through `961c35c` plus documentation and CI configuration. Its 131-file tree digest is `7b66387e4d959aabc86953f86474a1b1aff3ded2b66f1e384e899ce4e0b3e539`. The local package is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-4gvDUH`; its `family-beta-manifest.json` records individual file hashes. This evidence update changes documentation only.
+That pre-review package is source `e5efedb858a66eb458b821edd581c46d568c17a5`, containing the application changes through `961c35c` plus documentation and CI configuration. Its 131-file tree digest is `7b66387e4d959aabc86953f86474a1b1aff3ded2b66f1e384e899ce4e0b3e539`. The local package is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-4gvDUH`; its `family-beta-manifest.json` records individual file hashes. These older results did not cover the three subsequently identified review failures.
 
 An earlier concurrent prototype run removed the package runner's temporary trace files and interrupted one tablet test. The final isolated package run passed all 78 checks; the interrupted run is not counted as a pass. The initial reconciliation run also caught a missing Kindergarten Exit integration and an outdated Grade 5 navigation expectation; both were corrected before the final 44-check pass.
 
@@ -49,6 +71,6 @@ All family-package network requests use synthetic fixtures. Emulator checks use 
 
 ## Compatibility and release handoff
 
-No storage schema, grade engine, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. There is no migration or destructive cleanup. Review retained-document ownership, duplicate unfinished checkpoint handling, audio interruption races, and navigation/recording tests before publication. GitHub push and PR creation await explicit permission after the publishing permission check blocked the remote write; no branch push, PR, merge, deployment, or GitHub CI result is claimed.
+No storage schema, teacher vocabulary, scoring rule, authentication configuration, security rule, or production record was changed. Client-side token renewal and Grade 2's reviewed-state ownership were repaired; there is no migration or destructive cleanup. [PR #56](https://github.com/FionnbarZero/WeeklyDictationApp/pull/56) is the review vehicle. Review the repaired renewal boundary, shared-state ownership, external stale-write protection, and the existing timer/audio/recording contract before publication. A fresh Astra High release review and passing final-head CI are still required; the live website remains A1.
 
 After Astra review and CI pass, merge through repository protections, package the merge commit, rerun the exact-package checks, and publish that exact artifact using the established canonical release process. Retain the currently published A1 Cloudflare version `2e0cb204-5e1f-4483-bafa-4f28911718d7` and its [release record](./a1-release-2026-10-06.md) as the immediate rollback target. Verify all three canonical grade links and synthetic saving after release; do not label this branch or its merge as live before that happens.

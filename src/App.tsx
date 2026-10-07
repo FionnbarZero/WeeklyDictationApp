@@ -291,8 +291,6 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       },
     }
   }, [browserPersistence, sharedWorkspace, state])
-  const stateRef = useRef(state)
-  stateRef.current = state
   const [curriculumSourceMessage, setCurriculumSourceMessage] = useState<string | null>(null)
   const [curriculumSourceError, setCurriculumSourceError] = useState<string | null>(null)
   const [curriculumRefreshAttempt, setCurriculumRefreshAttempt] = useState(0)
