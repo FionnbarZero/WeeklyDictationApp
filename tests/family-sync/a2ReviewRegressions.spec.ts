@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
 import { installFamilyFixtures } from './fixtures.ts'
 
@@ -23,6 +24,91 @@ async function answer(page: Page) {
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   await expect(frame.getByRole('timer')).toBeVisible()
 }
+
+test('a delayed download cannot replace a newly opened Grade 2 workspace', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-24T12:00:00-07:00'))
+  await startWriting(page, 'grade2')
+  const frame = page.frameLocator('iframe:visible')
+  const key = 'family-beta-activity:synthetic-g2:weekly-dictation-state-v2'
+  const digest = (value: string) => createHash('sha256').update(value).digest('hex')
+  const baseKey = `family-beta-sync-base-v1:family-synthetic-parent:synthetic-g2:${digest(key)}`
+  const read = () => page.evaluate((key) => localStorage.getItem(key)!, key)
+  await answer(page)
+  const older = await read()
+  await answer(page)
+  const newer = await read()
+  await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
+  await expect(page.locator('iframe[data-family-slot]')).toHaveCount(1)
+  // Two valid app-generated snapshots model this device's confirmed checkpoint
+  // and a newer checkpoint from another device. No production requests are made.
+  await page.evaluate(
+    ({ key, baseKey, older }) => {
+      localStorage.setItem(key, older)
+      localStorage.setItem(baseKey, older)
+      localStorage.removeItem(`${baseKey}:pending`)
+    },
+    { key, baseKey, older },
+  )
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let requested = false
+  await page.route('**/children/synthetic-g2/betaPractice?*', async (route) => {
+    requested = true
+    await gate
+    const owned = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter(
+          (k) =>
+            k.startsWith('family-beta-activity:synthetic-g2:') || k.startsWith('family-beta-mastery-v1:synthetic-g2:'),
+        )
+        .map((k) => [k, localStorage.getItem(k)!]),
+    )
+    const documents = owned.map(([recordKey, raw]) => {
+      const record = {
+        schema: 1,
+        childId: 'synthetic-g2',
+        key: recordKey,
+        payload: recordKey === key ? newer : raw,
+        generation: 2,
+      }
+      const fields = Object.fromEntries(
+        Object.entries(record).map(([k, value]) => [
+          k,
+          typeof value === 'number' ? { integerValue: String(value) } : { stringValue: value },
+        ]),
+      )
+      return {
+        name: `projects/weeklydictationapp/databases/(default)/documents/families/family-synthetic-parent/children/synthetic-g2/betaPractice/${digest(recordKey)}`,
+        updateTime: '2026-09-24T19:00:00.000Z',
+        fields,
+      }
+    })
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ documents }) })
+  })
+  try {
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+    await expect.poll(() => requested).toBe(true)
+    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    expect(await read()).toBe(older)
+    release()
+    await expect(page.getByRole('alert')).toContainText('Newer practice is available from another device')
+    expect(await read()).toBe(older)
+    expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(older)
+    // The replacement can continue locally without a reload or stale-write error.
+    await enterWriting(page)
+    await answer(page)
+    expect(JSON.parse(await read()).acquisitionProgressEnvelopes[0].revision).toBeGreaterThan(
+      JSON.parse(older).acquisitionProgressEnvelopes[0].revision,
+    )
+    await expect(frame.getByText('Another browser changed saved practice.', { exact: false })).toHaveCount(0)
+  } finally {
+    release()
+  }
+})
 
 test('offline token renewal preserves the initialized activity and retries later', async ({ page }) => {
   await startWriting(page)
