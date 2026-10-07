@@ -13,7 +13,7 @@ export const rollbackGuard = `
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key || !key.startsWith('family-beta-')) continue;
-      if (key.includes(':lesson-launch-v1:') || key.includes(':lesson-retirement-v1:')) { newer = true; break; }
+      if (key.endsWith(':lesson-workspace-v1') || key.includes(':lesson-launch-v1:') || key.includes(':lesson-retirement-v1:')) { newer = true; break; }
       if (key.startsWith('family-beta-acquisition-v1:') || key.endsWith(':weekly-dictation-state-v2')) {
         const raw = localStorage.getItem(key) || '';
         if (raw.includes('"lessonSnapshot"') || raw.includes('"curriculumRevision"')) { newer = true; break; }

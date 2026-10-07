@@ -74,6 +74,24 @@ test('revision identity fails canonical validation if edited or transplanted to 
   )
 })
 
+test('explicitly reopening a completed original lesson does not select an unfinished corrected edition', () => {
+  const original = source('比如、部分'), corrected = source('不同、内容')
+  const first = prepareAcquisitionProgress(createInitialState(original), 'child', original[0], '2026-09-21T00:00:00.000Z', () => 0, true)
+  assert.equal(first.status, 'ready')
+  if (first.status !== 'ready') return
+  const retained = retainGrade2Editions(first.state, corrected)
+  retained.acquisitionProgressEnvelopes![0] = { ...first.envelope, flow: { ...first.envelope.flow, teachingComplete: true } }
+  const latest = sourceGrade2Datasets(retained, corrected)[0]
+  const next = prepareAcquisitionProgress(retained, 'child', latest, '2026-09-21T00:00:00.000Z', () => 0, true)
+  assert.equal(next.status, 'ready')
+  const requested = { progressionId: first.envelope.id, fingerprint: first.envelope.lessonSnapshot!.fingerprint }
+  assert.equal(grade2WritingDatasets(next.state, original, 'child')[0].id, latest.id)
+  assert.equal(grade2WritingDatasets(next.state, original, 'child', () => false, requested)[0].id, original[0].id)
+  assert.throws(() => grade2WritingDatasets(next.state, corrected, 'child', () => false, requested), /exact saved lesson/)
+  assert.throws(() => grade2WritingDatasets(next.state, original, 'other', () => false, requested), /exact saved lesson/)
+  assert.throws(() => grade2WritingDatasets(next.state, original, 'child', () => true, requested), /exact saved lesson/)
+})
+
 for (const timing of ['later', 'same', 'earlier'])
   test(`Grade 2 keeps its latest unsubmitted checkpoint when its clock is ${timing}, preserving completed attempts`, () => {
     const original = source('比如、部分'),

@@ -3,6 +3,7 @@ import { resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnaps
 import { envelopeIdentity, isAcquisitionRetired, retireAcquisition } from './acquisitionRetirement.ts'
 import { type CurriculumSnapshot, inspectSnapshot, validateCurriculum } from './curriculum.ts'
 import type { BetaProfile } from './model.ts'
+import { readPracticeWorkspaceState } from './practiceWorkspaceStorage.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 export type LessonLaunch = {
@@ -138,7 +139,7 @@ function currentEnvelope(storage: Store, launch: LessonLaunch): AcquisitionProgr
     return envelope
   }
   if (launch.grade !== 'Grade 2' || launch.channel !== 'writing') return undefined
-  const raw = storage.getItem(`family-beta-activity:${launch.childId}:weekly-dictation-state-v2`)
+  const raw = readPracticeWorkspaceState(storage, launch.childId)
   if (!raw) return undefined
   const matches =
     JSON.parse(raw).acquisitionProgressEnvelopes?.filter(

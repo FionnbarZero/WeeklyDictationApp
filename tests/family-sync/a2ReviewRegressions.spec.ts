@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
-import { installFamilyFixtures } from './fixtures.ts'
+import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
@@ -29,7 +29,7 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
   await page.clock.setFixedTime(new Date('2026-09-24T12:00:00-07:00'))
   await startWriting(page, 'grade2')
   const frame = page.frameLocator('iframe:visible')
-  const key = 'family-beta-activity:synthetic-g2:weekly-dictation-state-v2'
+  const key = 'family-beta-activity:synthetic-g2:lesson-workspace-v1'
   const digest = (value: string) => createHash('sha256').update(value).digest('hex')
   const baseKey = `family-beta-sync-base-v1:family-synthetic-parent:synthetic-g2:${digest(key)}`
   const read = () => page.evaluate((key) => localStorage.getItem(key)!, key)
@@ -101,8 +101,11 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
     // The new generation can continue locally; discarded history must not advance.
     await enterWriting(page)
     await answer(page)
-    const oldEnvelope = JSON.parse(older).acquisitionProgressEnvelopes[0]
-    const envelopes = JSON.parse(await read()).acquisitionProgressEnvelopes
+    const oldEnvelope = JSON.parse(JSON.parse(older).records['weekly-dictation-state-v2'])
+      .acquisitionProgressEnvelopes[0]
+    const envelopes = JSON.parse(
+      JSON.parse(await read()).records['weekly-dictation-state-v2'],
+    ).acquisitionProgressEnvelopes
     expect(envelopes.find((e: { id: string }) => e.id === oldEnvelope.id)).toEqual(oldEnvelope)
     const restarted = envelopes.find((e: { id: string }) => e.id !== oldEnvelope.id)
     expect(restarted.activityModule).toContain(':restart-')
@@ -190,12 +193,7 @@ test('confirmed account invalidation still removes retained activities', async (
 test('two retained Grade 2 weeks can both save reviewed answers without reopening', async ({ page }) => {
   await startWriting(page, 'grade2', '2026-09-21')
   await answer(page)
-  const read = () =>
-    page.evaluate(
-      () =>
-        JSON.parse(localStorage.getItem('family-beta-activity:synthetic-g2:weekly-dictation-state-v2')!)
-          .acquisitionProgressEnvelopes,
-    )
+  const read = async () => (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes!
   const first = (await read())[0]
   await page.getByLabel('Practice week').selectOption('2026-09-14')
   await enterWriting(page)

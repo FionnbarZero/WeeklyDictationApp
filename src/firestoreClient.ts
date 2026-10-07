@@ -198,7 +198,10 @@ async function authorizedFirestoreRequest<T>(url: string, init?: RequestInit, ti
         : AbortSignal.timeout(15_000),
     })
     const body = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(`Firestore error: ${body?.error?.message || response.statusText}`)
+    if (!response.ok) throw Object.assign(
+      new Error(`Firestore error: ${body?.error?.message || response.statusText}`),
+      { status: response.status },
+    )
     return body as T
   } finally {
     recordFirestoreQueryTiming(timingLabel, startedAt)

@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import test from 'node:test'
 import {
   isConnectionFailure,
+  isFamilyAccessDenied,
   offlineFamilyKey,
   readOfflineFamily,
   rememberOfflineFamily,
@@ -67,6 +68,16 @@ test('malformed/cross-owner bootstrap and unconfirmed storage are not accepted',
 test('permission/credential/content errors are not classified as network outages', () => {
   assert.equal(isConnectionFailure(new TypeError('Failed to fetch')), true)
   assert.equal(isConnectionFailure(new DOMException('timed out', 'TimeoutError')), true)
+  for (const status of [408, 429, 500, 502, 503, 504]) {
+    const error = Object.assign(new Error('Temporary service failure'), { status })
+    assert.equal(isConnectionFailure(error), true)
+    assert.equal(isFamilyAccessDenied(error), false)
+  }
+  for (const status of [401, 403]) {
+    const error = Object.assign(new Error('Denied'), { status })
+    assert.equal(isConnectionFailure(error), false)
+    assert.equal(isFamilyAccessDenied(error), true)
+  }
   for (const error of [
     new Error('PERMISSION_DENIED'),
     new Error('USER_DISABLED'),

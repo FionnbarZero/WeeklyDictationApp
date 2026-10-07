@@ -24,7 +24,7 @@ import { activityClock, confirmActivityDiscard } from '../activity/activityLifec
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
 import { cacheLessonSource, discardSavedLesson, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
-import { isConnectionFailure, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
+import { isConnectionFailure, isFamilyAccessDenied, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
 import '../styles.css'
 import './preview.css'
 
@@ -164,7 +164,7 @@ function FamilyPreview() {
       .catch((e) => {
         if (cancelled) return
         if (isConnectionFailure(e) && restoreOffline()) return
-        if (!isConnectionFailure(e)) {
+        if (isFamilyAccessDenied(e)) {
           localStorage.removeItem(offlineFamilyKey(uid))
           setReadyChildren(new Set())
           setProfiles([])
@@ -272,7 +272,7 @@ function FamilyPreview() {
       setError('')
     } catch (e) {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
-      const accessDenied = auth.user && e instanceof Error && 'status' in e && [401, 403].includes(Number(e.status))
+      const accessDenied = auth.user && isFamilyAccessDenied(e)
       if (auth.user && accessDenied) {
         localStorage.removeItem(offlineFamilyKey(auth.user.uid))
         setReadyChildren(new Set())
@@ -563,6 +563,7 @@ function FamilyPreview() {
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
           data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
           data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
+          data-family-resume-lesson={slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined}
           data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
           hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
       })}

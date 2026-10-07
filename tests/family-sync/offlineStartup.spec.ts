@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { grades, installFamilyFixtures } from './fixtures.ts'
+import { grades, installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
 
 for (const [slug, , id] of grades)
   for (const channel of ['writing', 'reading'] as const) {
@@ -31,19 +31,15 @@ for (const [slug, , id] of grades)
         }
       }
       await answer()
-      const checkpoint = () =>
-        page.evaluate(
-          ({ id, g2 }) => {
-            if (g2)
-              return JSON.parse(localStorage.getItem(`family-beta-activity:${id}:weekly-dictation-state-v2`)!)
-                .acquisitionProgressEnvelopes[0]
-            return Object.keys(localStorage)
-              .filter((k) => k.startsWith('family-beta-acquisition-v1:') && !k.includes(':completed:'))
-              .map((k) => JSON.parse(localStorage.getItem(k)!))
-              .find((r) => r.envelope.childId === id).envelope
-          },
-          { id, g2: slug === 'grade2' && channel === 'writing' },
-        )
+      const checkpoint = async () =>
+        slug === 'grade2' && channel === 'writing'
+          ? (await page.evaluate(readGrade2Workspace, id))!.acquisitionProgressEnvelopes![0]
+          : page.evaluate((id) => {
+              return Object.keys(localStorage)
+                .filter((k) => k.startsWith('family-beta-acquisition-v1:') && !k.includes(':completed:'))
+                .map((k) => JSON.parse(localStorage.getItem(k)!))
+                .find((r) => r.envelope.childId === id).envelope
+            }, id)
       const before = await checkpoint()
       await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
       // A true network cut (not just a curriculum HTTP error) plus a fresh page.

@@ -1,6 +1,6 @@
 import { type SetStateAction, useCallback, useState, useSyncExternalStore } from 'react'
 import type { AppState } from '../domain.ts'
-import { familyPreview, previewProfile } from './runtime.ts'
+import { activityStorage, familyPreview, previewProfile } from './runtime.ts'
 import type { FamilyWorkspaceWindow } from './workspaceOwner.ts'
 
 const noSubscribe = () => () => {}
@@ -12,7 +12,7 @@ export function useWorkspaceState(initialize: () => AppState) {
     const profile = previewProfile()
     const registry = (window.parent as FamilyWorkspaceWindow).familyWorkspaceOwner
     if (!profile || !registry) throw new Error('Open this activity from the family page.')
-    return registry.get(profile.id, initialize)
+    return registry.get(profile.id, initialize, activityStorage())
   })
   const [local, setLocal] = useState(() => owner?.getSnapshot().state || initialize())
   const snapshot = useSyncExternalStore(owner?.subscribe || noSubscribe, owner?.getSnapshot || noSnapshot)

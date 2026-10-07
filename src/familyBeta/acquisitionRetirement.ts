@@ -50,10 +50,15 @@ export function isAcquisitionRetired(storage: Pick<Storage, 'getItem'>, identity
 export function currentAcquisitionContext<T extends AcquisitionTarget>(
   storage: Pick<Storage, 'getItem'>,
   context: AcquisitionPersistenceContext<T>,
+  requestedProgressionId?: string,
 ) {
   let current = context
   for (let count = 0; count < 100; count++) {
-    if (!isAcquisitionRetired(storage, current.identity)) return current
+    if (!isAcquisitionRetired(storage, current.identity)) {
+      if (requestedProgressionId && acquisitionProgressionId(current.identity) !== requestedProgressionId)
+        throw new Error('The saved attempt changed. Return to Saved lessons; no other attempt was opened.')
+      return current
+    }
     current = {
       ...current,
       identity: { ...current.identity, activityModule: marker(current.identity).nextActivityModule },

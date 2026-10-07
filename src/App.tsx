@@ -18,8 +18,8 @@ import {
   type Word,
 } from './domain'
 import { writingSessionAnswers } from './application/testReview.ts'
-import { hydrateLocalStateFromJson } from './localHydration.ts'
 import { originalGrade2Dataset, sourceGrade2Datasets } from './curriculum/grade2Revisions.ts'
+import type { SavedWritingLesson } from './familyBeta/grade2LessonSelection.ts'
 import {
   advancePracticeInterstitial,
   completeAcquisitionForToday as completeAcquisitionForTodayOperation,
@@ -297,6 +297,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [grade2SourceDatasets, setGrade2SourceDatasets] = useState<Dataset[] | null>(null)
   const [grade2CurriculumTools, setGrade2CurriculumTools] = useState<typeof import('./automaticGrade2Curriculum.ts') | null>(null)
   const [lessonRetirement, setLessonRetirement] = useState<typeof import('./familyBeta/acquisitionRetirement.ts') | null>(null)
+  const [requestedWritingLesson] = useState<SavedWritingLesson | null>(() => {
+    const frame = familyPreview ? window.frameElement as HTMLIFrameElement | null : null
+    return frame?.dataset.familyResumeChannel === 'writing' && frame.dataset.familyResumeLesson
+      ? JSON.parse(frame.dataset.familyResumeLesson) : null
+  })
   const [curriculumSourceError, setCurriculumSourceError] = useState<string | null>(null)
   const [curriculumRefreshAttempt, setCurriculumRefreshAttempt] = useState(0)
   const [activeExperience, setActiveExperience] = useState<ActiveExperience>(null)
@@ -417,10 +422,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const primaryDatasets = useMemo(
     () => (selectedChild ? filterDatasetsForChild(
       familyPreview && grade2SourceDatasets && grade2CurriculumTools && selectedChild.grade === 'Grade 2'
-        ? grade2CurriculumTools.grade2WritingDatasets(state, grade2SourceDatasets, selectedChild.id, envelope => lessonRetirement?.isAcquisitionRetired(localStorage, envelope) || false)
+        ? grade2CurriculumTools.grade2WritingDatasets(state, grade2SourceDatasets, selectedChild.id, envelope => lessonRetirement?.isAcquisitionRetired(localStorage, envelope) || false, requestedWritingLesson)
         : state.datasets.filter(dataset => !dataset.curriculumRevision),
       selectedChild.grade, selectedChild.schoolYear) : []),
-    [selectedChild, state, grade2SourceDatasets, lessonRetirement, grade2CurriculumTools],
+    [selectedChild, state, grade2SourceDatasets, lessonRetirement, grade2CurriculumTools, requestedWritingLesson],
   )
   const readingDatasets = familyPreview && grade2SourceDatasets
     ? sourceGrade2Datasets(state, grade2SourceDatasets).map(originalGrade2Dataset) : primaryDatasets
@@ -637,7 +642,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       const cloud = Boolean(auth.user && cloudScope)
       const result = await startPracticeOperation({
         state,
-        resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context) : undefined,
+        resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
         child: selectedChild,
         target,
         primaryDatasets,
@@ -694,6 +699,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       cloudScope,
       lifecycleResolution,
       lessonRetirement,
+      requestedWritingLesson,
       now,
       practicePersistence,
       practiceStartInFlight,
@@ -1086,6 +1092,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     event.target.value = ''
     if (!file) return
     try {
+      const { hydrateLocalStateFromJson } = await import('./localHydration.ts')
       const hydrated = hydrateLocalStateFromJson(state, await file.text())
       setState(hydrated.state)
       if (hydrated.batch.status === 'error') {

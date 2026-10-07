@@ -99,7 +99,9 @@ export function prepareAcquisitionProgress(
   pinLesson = false,
   resolveContext: (context: AcquisitionPersistenceContext<Word>) => AcquisitionPersistenceContext<Word> = context => context,
 ): PreparedAcquisition {
-  let context = resolveContext(acquisitionPersistenceContext(childId, dataset))
+  let context: AcquisitionPersistenceContext<Word>
+  try { context = resolveContext(acquisitionPersistenceContext(childId, dataset)) }
+  catch (error) { return { status: 'blocked', state, reason: error instanceof Error ? error.message : 'The saved lesson could not be opened.' } }
   const progressionId = acquisitionProgressionId(context.identity)
   const existingQuarantine = (state.acquisitionProgressQuarantine || []).find((item) => item.childId === childId && item.datasetId === dataset.id)
   if (existingQuarantine) return { status: 'blocked', state, reason: existingQuarantine.reason }

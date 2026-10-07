@@ -3,6 +3,7 @@ import { getIdToken } from '../firebaseClient.ts'
 import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
+import { legacyPracticeKey, practiceWorkspaceKey } from './practiceWorkspaceStorage.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
@@ -101,8 +102,16 @@ export function createDeviceSyncRepository(options: {
       // Propagate immutable retirements before a mutable checkpoint can block
       // on an ordinary two-device conflict. Old checkpoints remain history.
       for (const key of [...keys].sort(
-        (a, b) => Number(isRetirementKey(b, childId)) - Number(isRetirementKey(a, childId)),
+        (a, b) =>
+          Number(isRetirementKey(b, childId)) * 2 +
+          Number(b === practiceWorkspaceKey(childId)) -
+          Number(isRetirementKey(a, childId)) * 2 -
+          Number(a === practiceWorkspaceKey(childId)),
       )) {
+        // The upgraded workspace owns its state and journals as one record.
+        // Older sites may keep updating legacy keys; preserve them separately,
+        // without letting those writes replace or block the upgraded workspace.
+        if (legacyPracticeKey(key, childId) && storage.getItem(practiceWorkspaceKey(childId)) !== null) continue
         const id = await recordId(key)
         const baseKey = `family-beta-sync-base-v1:${options.familyId}:${childId}:${id}`
         let baseline = storage.getItem(baseKey)

@@ -68,9 +68,17 @@ export function rememberOfflineFamily(
 }
 
 export function isConnectionFailure(error: unknown) {
+  const status = error instanceof Error && 'status' in error ? Number(error.status) : 0
   return (
     error instanceof Error &&
-    (error.name === 'TimeoutError' ||
+    (status === 408 ||
+      status === 429 ||
+      (status >= 500 && status <= 599) ||
+      error.name === 'TimeoutError' ||
       (error.name === 'TypeError' && /failed to fetch|networkerror|load failed/i.test(error.message)))
   )
+}
+
+export function isFamilyAccessDenied(error: unknown) {
+  return error instanceof Error && 'status' in error && [401, 403].includes(Number(error.status))
 }

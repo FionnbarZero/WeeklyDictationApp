@@ -5,6 +5,8 @@ import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { practiceWorkspaceKey, practiceWorkspaceStorage } from '../src/familyBeta/practiceWorkspaceStorage.ts'
+import { createHash } from 'node:crypto'
 import { openAcquisitionStore } from '../src/familyBeta/acquisitionStore.ts'
 import { retireAcquisition } from '../src/familyBeta/acquisitionRetirement.ts'
 import { listSavedLessons, rememberLessonLaunch } from '../src/familyBeta/lessonLaunch.ts'
@@ -189,6 +191,48 @@ test('family practice sync hydrates another device, preserves conflicts, and rej
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, childId: 'other' }))
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, key: 'weekly-dictation-auth-v1' }))
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, recording: 'forbidden' }))
+})
+
+test('family protected workspace survives an older client updating its separate legacy record', async () => {
+  const childId = 'protected-workspace'
+  await environment.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: true, grade: 'Grade 2' })
+  })
+  const repository = createDeviceSyncRepository({ projectId: 'weekly-dictation-test', familyId: 'family-parent',
+    endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') })
+  const device = () => {
+    const records = new Map<string, string>()
+    return { get length() { return records.size }, key: (i: number) => [...records.keys()][i] ?? null,
+      getItem: (key: string) => records.get(key) ?? null,
+      setItem: (key: string, value: string) => { records.set(key, value) } }
+  }
+  const first = device(), upgraded = device(), fresh = device()
+  const logicalKey = 'weekly-dictation-state-v2'
+  const legacy = `family-beta-activity:${childId}:${logicalKey}`
+  const journal = `family-beta-activity:${childId}:weekly-dictation-acquisition-pending-v1`
+  first.setItem(legacy, '{"edition":"original"}')
+  first.setItem(journal, '{"transition":"pending-original"}')
+  await repository.sync(first, childId)
+  await repository.sync(upgraded, childId)
+  const workspace = practiceWorkspaceStorage(upgraded, childId)
+  assert.equal(workspace.getItem('weekly-dictation-acquisition-pending-v1'), first.getItem(journal))
+  workspace.setItem(logicalKey, '{"edition":"corrected","reviewed":2}')
+  await repository.sync(upgraded, childId)
+  // Use the old protocol's authenticated, generation-checked write. The old
+  // client has no knowledge of the protected namespace or its current payload.
+  const db = environment.authenticatedContext('parent').firestore()
+  const path = `families/family-parent/children/${childId}/betaPractice/${createHash('sha256').update(legacy).digest('hex')}`
+  await assertSucceeds(setDoc(doc(db, path), { schema: 1, childId, key: legacy, payload: '{"edition":"old-client-later-answer"}', generation: 2 }))
+  // Deliberately divergent old browser data must not block the new namespace.
+  fresh.setItem(legacy, '{"edition":"another-old-device"}')
+  await repository.sync(fresh, childId)
+  assert.equal(fresh.getItem(practiceWorkspaceKey(childId)), upgraded.getItem(practiceWorkspaceKey(childId)))
+  assert.equal(practiceWorkspaceStorage(fresh, childId).getItem(logicalKey), workspace.getItem(logicalKey))
+  assert.equal(fresh.getItem(legacy), '{"edition":"another-old-device"}')
+  assert.equal((await getDoc(doc(db, path))).data()!.payload, '{"edition":"old-client-later-answer"}')
+  await repository.sync(upgraded, childId)
+  assert.equal(upgraded.getItem(legacy), first.getItem(legacy))
+  await assertFails(getDoc(doc(environment.authenticatedContext('intruder').firestore(), path)))
 })
 
 test('family pinned lessons and completed archives recover unchanged on a second device', async () => {

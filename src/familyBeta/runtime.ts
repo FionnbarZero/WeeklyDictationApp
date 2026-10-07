@@ -1,4 +1,5 @@
 import { scopedActivityStorage } from '../activity/scopedStorage.ts'
+import type { FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { BETA_GRADES, isBetaResult, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
 import { isFamilyActivityContext } from './context.ts'
 import '../activity/activityLifecycle.ts'
@@ -93,5 +94,11 @@ function confirmResult(result: BetaResult) {
 
 export function activityStorage(): Storage {
   if (!familyPreview) return localStorage
+  const profile = previewProfile()
+  if (profile?.grade === 'Grade 2') {
+    const owner = (window.parent as FamilyWorkspaceWindow).familyWorkspaceOwner
+    if (!owner) throw new Error('Open this activity from the family page.')
+    return owner.practiceStorage(profile.id)
+  }
   return scopedActivityStorage(localStorage, `family-beta-activity:${previewProfile()?.id || 'unselected'}:`)
 }

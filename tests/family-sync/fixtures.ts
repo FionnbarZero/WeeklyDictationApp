@@ -1,5 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import type { Page } from '@playwright/test'
+import type { AppState } from '../../src/domain.ts'
+
+/** Serialized by Playwright; keep this reader self-contained. */
+export function readGrade2Workspace(childId = 'synthetic-g2'): AppState | null {
+  const protectedRaw = localStorage.getItem(`family-beta-activity:${childId}:lesson-workspace-v1`)
+  const stateRaw =
+    protectedRaw === null
+      ? localStorage.getItem(`family-beta-activity:${childId}:weekly-dictation-state-v2`)
+      : JSON.parse(protectedRaw).records['weekly-dictation-state-v2']
+  return JSON.parse(stateRaw || 'null')
+}
 
 export const grades = [
   ['kindergarten', 'Kindergarten', 'synthetic-k'],

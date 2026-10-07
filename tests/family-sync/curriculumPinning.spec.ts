@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
 import { retireAcquisition } from '../../src/familyBeta/acquisitionRetirement.ts'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
-import { installFamilyFixtures } from './fixtures.ts'
+import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
   if (slug === 'grade2') await page.getByLabel('Practice week').selectOption('2026-09-21')
@@ -28,16 +28,15 @@ async function launch(page: Page, slug: string, channel: 'writing' | 'reading', 
 }
 
 async function saved(page: Page, grade2Writing: boolean) {
-  return page.evaluate((g2) => {
-    const key = Object.keys(localStorage).find((key) =>
-      g2
-        ? key.startsWith('family-beta-activity:synthetic-g2:') && key.endsWith('weekly-dictation-state-v2')
-        : key.startsWith('family-beta-acquisition-v1:') && !key.includes(':completed:'),
+  if (grade2Writing) return (await page.evaluate(readGrade2Workspace))?.acquisitionProgressEnvelopes?.[0]
+  return page.evaluate(() => {
+    const key = Object.keys(localStorage).find(
+      (key) => key.startsWith('family-beta-acquisition-v1:') && !key.includes(':completed:'),
     )
     if (!key) return null
     const value = JSON.parse(localStorage.getItem(key)!)
-    return g2 ? value.acquisitionProgressEnvelopes?.[0] : value.envelope
-  }, grade2Writing)
+    return value.envelope
+  })
 }
 
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
@@ -126,14 +125,16 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       await page.getByText('Saved lessons', { exact: true }).click()
       await expect(page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) })).toHaveCount(0)
       frame = await launch(page, slug, channel)
-      const envelopes = await page.evaluate(() =>
-        Object.keys(localStorage).flatMap((key) => {
-          if (key.startsWith('family-beta-acquisition-v1:')) return [JSON.parse(localStorage.getItem(key)!).envelope]
-          if (key.startsWith('family-beta-activity:') && key.endsWith(':weekly-dictation-state-v2'))
-            return JSON.parse(localStorage.getItem(key)!).acquisitionProgressEnvelopes || []
-          return []
-        }),
-      )
+      const envelopes =
+        slug === 'grade2' && channel === 'writing'
+          ? (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes!
+          : await page.evaluate(() =>
+              Object.keys(localStorage).flatMap((key) => {
+                if (key.startsWith('family-beta-acquisition-v1:'))
+                  return [JSON.parse(localStorage.getItem(key)!).envelope]
+                return []
+              }),
+            )
       expect(envelopes.find((e) => e.id === old.id)).toEqual(old)
       const fresh = envelopes.find((e) => e.id !== old.id && e.activityModule.includes(':restart-'))
       expect(fresh?.revision).toBe(0)
@@ -325,12 +326,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
         await page.reload()
         frame = await launch(page, slug, channel)
-        const readEditions = () =>
-          page.evaluate(
-            () =>
-              JSON.parse(localStorage.getItem('family-beta-activity:synthetic-g2:weekly-dictation-state-v2')!)
-                .acquisitionProgressEnvelopes,
-          )
+        const readEditions = async () => (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes!
         const editions = await readEditions()
         expect(editions.find((e: { id: string }) => e.id === after.id)).toEqual(after)
         const corrected = editions.find((e: { datasetId: string }) => e.datasetId.includes('__rev_'))

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { installFamilyFixtures } from './fixtures.ts'
+import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
 
 test('an already-controlled browser upgrades, safely rolls back, and recovers its original Grade 2 records', async ({
   page,
@@ -47,7 +47,8 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   frame = await reopen()
-  const upgraded = JSON.parse((await records(page))[key]!)
+  const upgraded = (await page.evaluate(readGrade2Workspace))!
+  expect(JSON.parse((await records(page))[key]!)).toEqual(old)
   expect(upgraded.acquisitionProgressEnvelopes[0].revision).toBe(old.acquisitionProgressEnvelopes[0].revision)
   expect(upgraded.acquisitionProgressEnvelopes[0].lessonSnapshot).toBeTruthy()
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
@@ -103,7 +104,8 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-  const restored = JSON.parse((await records(page))[key]!)
+  const restored = (await page.evaluate(readGrade2Workspace))!
+  expect(JSON.parse((await records(page))[key]!)).toEqual(old)
   expect(restored.acquisitionProgressEnvelopes[0].revision).toBe(upgraded.acquisitionProgressEnvelopes[0].revision + 1)
   expect(restored.acquisitionProgressEnvelopes[0].lessonSnapshot).toEqual(
     upgraded.acquisitionProgressEnvelopes[0].lessonSnapshot,

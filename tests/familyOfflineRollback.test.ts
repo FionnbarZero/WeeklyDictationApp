@@ -53,6 +53,7 @@ for (const key of [
   'family-beta-acquisition-v1:lesson',
   'family-beta-activity:child:weekly-dictation-state-v2',
   'family-beta-activity:child:lesson-retirement-v1:lesson',
+  'family-beta-activity:child:lesson-workspace-v1',
 ]) {
   test(`rollback guard preserves newer records without reading credentials or writing storage: ${key}`, () => {
     const values = new Map([
