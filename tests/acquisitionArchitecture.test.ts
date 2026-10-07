@@ -100,6 +100,7 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/domain.ts',
     'src/familyBeta/acquisitionRetirement.ts',
     'src/familyBeta/acquisitionStore.ts',
+    'src/familyBeta/grade2LessonSelection.ts',
     'src/familyBeta/lessonLaunch.ts',
     'src/familyBeta/lessonLaunchRuntime.ts',
     'src/firestoreClient.ts',

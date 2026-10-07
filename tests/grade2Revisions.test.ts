@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { acquisitionFactId } from '../src/acquisition/persistence/identity.ts'
 import { prepareAcquisitionProgress } from '../src/application/acquisitionPersistence.ts'
 import { originalGrade2Dataset, retainGrade2Editions, sourceGrade2Datasets } from '../src/curriculum/grade2Revisions.ts'
 import { createInitialState, loadState } from '../src/domain.ts'
@@ -73,58 +74,93 @@ test('revision identity fails canonical validation if edited or transplanted to 
   )
 })
 
-test('Grade 2 waits for score submission and preserves each completed attempt when adopting a correction', () => {
-  const original = source('比如、部分'),
-    corrected = source('不同、内容')
-  const prepared = prepareAcquisitionProgress(
-    createInitialState(original),
-    'child',
-    original[0],
-    '2026-10-07T10:00:00.000Z',
-    () => 0,
-    true,
-  )
-  assert.equal(prepared.status, 'ready')
-  const state = retainGrade2Editions(prepared.state, corrected)
-  state.acquisitionProgressEnvelopes = state.acquisitionProgressEnvelopes!.map((e) => ({
-    ...e,
-    flow: { ...e.flow, teachingComplete: true },
-  }))
-  for (const id of ['earlier-attempt', 'latest-attempt']) {
-    state.results.push({
-      id: `result-${id}`,
+for (const timing of ['later', 'same', 'earlier'])
+  test(`Grade 2 keeps its latest unsubmitted checkpoint when its clock is ${timing}, preserving completed attempts`, () => {
+    const original = source('比如、部分'),
+      corrected = source('不同、内容')
+    const prepared = prepareAcquisitionProgress(
+      createInitialState(original),
+      'child',
+      original[0],
+      '2026-10-07T10:00:00.000Z',
+      () => 0,
+      true,
+    )
+    assert.equal(prepared.status, 'ready')
+    const state = retainGrade2Editions(prepared.state, corrected)
+    state.acquisitionProgressEnvelopes = state.acquisitionProgressEnvelopes!.map((e) => ({
+      ...e,
+      flow: { ...e.flow, teachingComplete: true },
+    }))
+    for (const id of ['earlier-attempt', 'latest-attempt']) {
+      const at =
+        id === 'earlier-attempt'
+          ? '2026-10-07T10:00:00.000Z'
+          : timing === 'later'
+            ? '2026-10-07T11:00:00.000Z'
+            : timing === 'same'
+              ? '2026-10-07T10:00:00.000Z'
+              : '2026-10-07T09:00:00.000Z'
+      state.acquisitionTransitionReceipts!.push({
+        progressionId: state.acquisitionProgressEnvelopes![0].id,
+        transitionId: id,
+        payloadFingerprint: 'test',
+        operation: 'answer',
+        promptId: id,
+        expectedRevision: id === 'earlier-attempt' ? 0 : 1,
+        appliedRevision: id === 'earlier-attempt' ? 1 : 2,
+        appliedAt: at,
+      })
+      state.results.push({
+        id: acquisitionFactId(id, 'attempt'),
+        childId: 'child',
+        datasetId: original[0].id,
+        datasetDateRange: original[0].dateRange,
+        wordId: original[0].words[0].id,
+        grade: 'Grade 2',
+        phase: 'acquisition',
+        sessionId: id,
+        sessionDate: '2026-10-07',
+        completedAt: at,
+        correct: true,
+        scored: true,
+        revealMethod: 'timer',
+        completeSourceDatasetReviewed: false,
+      })
+    }
+    const completion = (id: string) => ({
+      id,
       childId: 'child',
-      datasetId: original[0].id,
-      datasetDateRange: original[0].dateRange,
-      wordId: original[0].words[0].id,
-      grade: 'Grade 2',
-      phase: 'acquisition',
-      sessionId: id,
       sessionDate: '2026-10-07',
-      completedAt: id === 'earlier-attempt' ? '2026-10-07T10:00:00.000Z' : '2026-10-07T11:00:00.000Z',
-      correct: true,
-      scored: true,
-      revealMethod: 'timer',
-      completeSourceDatasetReviewed: false,
+      primaryDatasetId: original[0].id,
+      primaryPhase: 'acquisition' as const,
+      complete: true,
     })
-  }
-  const completion = (id: string) => ({
-    id,
-    childId: 'child',
-    sessionDate: '2026-10-07',
-    primaryDatasetId: original[0].id,
-    primaryPhase: 'acquisition' as const,
-    complete: true,
+    state.completedSessions.push(completion('earlier-attempt'))
+    assert.equal(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
+    state.completedSessions.push(completion('latest-attempt'))
+    state.results.push({
+      ...state.results[0],
+      id: acquisitionFactId('retired-trial', 'attempt'),
+      sessionId: 'retired-session',
+      completedAt: '2026-10-08T12:00:00.000Z',
+    })
+    state.acquisitionTransitionReceipts!.push({
+      progressionId: 'retired-generation',
+      transitionId: 'retired-trial',
+      payloadFingerprint: 'test',
+      operation: 'answer',
+      promptId: 'retired',
+      expectedRevision: 98,
+      appliedRevision: 99,
+      appliedAt: '2026-10-08T12:00:00.000Z',
+    })
+    const history = JSON.stringify({ results: state.results, completedSessions: state.completedSessions })
+    assert.notEqual(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
+    const restored = loadState(JSON.stringify(state))
+    assert.equal(JSON.stringify({ results: restored.results, completedSessions: restored.completedSessions }), history)
+    assert.equal(restored.completedSessions.length, 2)
   })
-  state.completedSessions.push(completion('earlier-attempt'))
-  assert.equal(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
-  state.completedSessions.push(completion('latest-attempt'))
-  const history = JSON.stringify({ results: state.results, completedSessions: state.completedSessions })
-  assert.notEqual(grade2WritingDatasets(state, corrected, 'child')[0].id, original[0].id)
-  const restored = loadState(JSON.stringify(state))
-  assert.equal(JSON.stringify({ results: restored.results, completedSessions: restored.completedSessions }), history)
-  assert.equal(restored.completedSessions.length, 2)
-})
 
 test('the strict default importer still refuses changed same-ID curriculum', () => {
   const state = createInitialState(source('比如、部分'))
