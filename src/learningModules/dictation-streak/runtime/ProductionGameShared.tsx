@@ -1,3 +1,4 @@
+import { activityClock } from '../../../activity/activityLifecycle.ts'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Volume2 } from 'lucide-react'
 import type {
@@ -96,13 +97,13 @@ export function ProductionRunner({
 
   useEffect(() => {
     if (!feedback) return
-    const timer = window.setTimeout(() => {
+    const timer = activityClock.setTimeout(() => {
       if (feedback === 'correct') setIndex((current) => current + 1)
       setRevealed(false)
       setFeedback(null)
       setFeedbackResponse('')
     }, feedback === 'correct' ? 1000 : incorrectFeedbackDuration)
-    return () => window.clearTimeout(timer)
+    return () => activityClock.clearTimeout(timer)
   }, [feedback, incorrectFeedbackDuration])
 
   function assess(correct: boolean, response = correct ? 'correct' : 'practice-again') {

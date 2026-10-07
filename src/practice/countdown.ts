@@ -1,11 +1,13 @@
+import { activityClock } from '../activity/activityLifecycle.ts'
+
 export type CountdownScheduler = {
   schedule: (callback: () => void, delayMs: number) => unknown
   cancel: (handle: unknown) => void
 }
 
 const browserScheduler: CountdownScheduler = {
-  schedule: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
-  cancel: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+  schedule: activityClock.setTimeout,
+  cancel: handle => activityClock.clearTimeout(handle as number),
 }
 
 export function createPracticeCountdown(

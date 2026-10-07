@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { Trophy, Volume2 } from 'lucide-react'
 import type {
@@ -203,10 +204,10 @@ export function TargetBlast({
   useEffect(() => {
     if (!round?.audioText || !playAudioRef.current) return
     setAudioState('waiting')
-    const timer = window.setTimeout(() => void speakPrompt(), 320)
+    const timer = activityClock.setTimeout(() => void speakPrompt(), 320)
     return () => {
       audioCycleRef.current += 1
-      window.clearTimeout(timer)
+      activityClock.clearTimeout(timer)
       window.speechSynthesis?.cancel()
     }
   }, [round?.id, round?.audioText, speakPrompt])
@@ -215,41 +216,41 @@ export function TargetBlast({
     if (!selectedChoiceId || !round) return
     let timer: number | undefined
     if (phase === 'throwing') {
-      timer = window.setTimeout(() => {
+      timer = activityClock.setTimeout(() => {
         if (selectedCorrect) playGameSound('correct')
         setPhase(selectedCorrect ? 'impact' : 'teacher-entering')
       }, 460)
     } else if (phase === 'impact') {
-      timer = window.setTimeout(() => {
+      timer = activityClock.setTimeout(() => {
         setIndex((current) => current + 1)
         setSelectedChoiceId(null)
         setPhase('resetting')
       }, 680)
     } else if (phase === 'teacher-entering') {
-      timer = window.setTimeout(() => {
+      timer = activityClock.setTimeout(() => {
         playGameSound('incorrect')
         setPhase('bonk')
       }, 360)
     } else if (phase === 'bonk') {
-      timer = window.setTimeout(() => {
+      timer = activityClock.setTimeout(() => {
         void Promise.resolve(playAudioRef.current?.('不好！', 'zh-CN')).catch(() => undefined)
         setPhase('feedback')
       }, 440)
     } else if (phase === 'feedback') {
-      timer = window.setTimeout(() => {
+      timer = activityClock.setTimeout(() => {
         setSelectedChoiceId(null)
         setPhase('idle')
       }, 800)
     }
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer)
+      if (timer !== undefined) activityClock.clearTimeout(timer)
     }
   }, [phase, round, selectedChoiceId, selectedCorrect])
 
   useEffect(() => {
     if (phase !== 'resetting') return
-    const timer = window.setTimeout(() => setPhase('idle'), 120)
-    return () => window.clearTimeout(timer)
+    const timer = activityClock.setTimeout(() => setPhase('idle'), 120)
+    return () => activityClock.clearTimeout(timer)
   }, [phase])
 
   function choose(choiceId: string) {

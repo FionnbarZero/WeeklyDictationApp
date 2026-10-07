@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { hasFamilyActivityOwner, pauseForReport, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { Headphones, X } from 'lucide-react'
 import { useDialogFocus } from '../accessibility/useDialogFocus.ts'
 import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
@@ -58,6 +59,14 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     error: null,
   })
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  useEffect(() => {
+    if (confirmingDiscard) return pauseForReport()
+  }, [confirmingDiscard])
+  const pauseButton = hasFamilyActivityOwner() && (
+    <button className="back-button" type="button" onClick={pauseToFamilyHub}>
+      Pause and return
+    </button>
+  )
   const capturesRef = useRef<RetainedReadingCapture[]>([])
   const collectionMethodsRef = useRef<Record<string, TestReviewCollectionMethod>>({})
   const submittedRef = useRef(false)
@@ -239,6 +248,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   if (phase === 'review')
     return (
       <div className="deferred-test-review" data-report-activity={`${mode} final test`} data-report-phase="review">
+        {pauseButton}
         <FinalReviewPage
           mode={mode}
           targets={targets}
@@ -267,6 +277,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       data-report-position={index + 1}
     >
       <div className="practice-top">
+        {pauseButton}
         <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}>
           <X size={18} /> {exitLabel}
         </button>

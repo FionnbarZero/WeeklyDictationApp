@@ -7,10 +7,10 @@ test('an unavailable curriculum fails visibly and retries without placeholder le
   )
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await expect(page.getByRole('alert')).toContainText('Curriculum update failed')
-  await expect(page.locator('iframe')).toHaveCount(0)
+  await expect(page.locator('iframe:visible')).toHaveCount(0)
   unavailable = false
   await page.getByRole('button', { name: 'Retry lessons' }).click()
-  await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
 })
 
 test('corrupt device results are preserved and never represented as successfully saved', async ({ page }) => {
@@ -31,5 +31,5 @@ test('parent preview can promote and undo a grade, then reload the correct profi
   await page.getByLabel('Grade for Learner 1', { exact: true }).selectOption('Kindergarten')
   await page.reload()
   await expect(page.getByLabel('Child profile')).toContainText('Learner 1 · Kindergarten')
-  await expect(page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
 })

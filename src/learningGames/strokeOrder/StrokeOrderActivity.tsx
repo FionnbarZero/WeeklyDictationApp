@@ -1,3 +1,4 @@
+import { activityClock, pauseToFamilyHub } from '../../activity/activityLifecycle.ts'
 import {
   useCallback,
   useEffect,
@@ -98,7 +99,7 @@ function StrokePad({
 
   useEffect(
     () => () => {
-      if (paintFrame.current !== null) window.cancelAnimationFrame(paintFrame.current)
+      if (paintFrame.current !== null) activityClock.cancelAnimationFrame(paintFrame.current)
     },
     [],
   )
@@ -109,7 +110,7 @@ function StrokePad({
   }
 
   function scheduleActivePaint() {
-    if (paintFrame.current === null) paintFrame.current = window.requestAnimationFrame(paintActiveStroke)
+    if (paintFrame.current === null) paintFrame.current = activityClock.requestAnimationFrame(paintActiveStroke)
   }
 
   function beginStroke(event: ReactPointerEvent<SVGSVGElement>) {
@@ -149,7 +150,7 @@ function StrokePad({
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
     if (paintFrame.current !== null) {
-      window.cancelAnimationFrame(paintFrame.current)
+      activityClock.cancelAnimationFrame(paintFrame.current)
       paintFrame.current = null
     }
     const completedStroke = simplifyStroke(activePoints.current)
@@ -307,15 +308,15 @@ function Countdown({
     setSeconds(durationSeconds)
     if (!active) return
     let remaining = durationSeconds
-    const timer = window.setInterval(() => {
+    const timer = activityClock.setInterval(() => {
       remaining -= 1
       setSeconds(Math.max(0, remaining))
       if (remaining <= 0) {
-        window.clearInterval(timer)
+        activityClock.clearInterval(timer)
         onCompleteRef.current()
       }
     }, 1000)
-    return () => window.clearInterval(timer)
+    return () => activityClock.clearInterval(timer)
   }, [active, countdownKey, durationSeconds])
   return <>{seconds}s</>
 }
@@ -345,7 +346,7 @@ function ActivityShell({
         <i />
       </div>
       <div className="so-topbar">
-        <button className="so-exit" type="button" onClick={onExit}>
+        <button className="so-exit" type="button" onClick={() => { if (!pauseToFamilyHub()) onExit() }}>
           <X size={18} /> Exit game
         </button>
         <div className="so-progress" aria-label={`Stroke Order progress: ${progress}`}>
@@ -397,7 +398,7 @@ export function StrokeOrderActivity({
   useEffect(() => {
     window.scrollTo(0, 0)
     return () => {
-      if (transitionTimerRef.current !== null) window.clearTimeout(transitionTimerRef.current)
+      if (transitionTimerRef.current !== null) activityClock.clearTimeout(transitionTimerRef.current)
     }
   }, [])
 
@@ -424,8 +425,8 @@ export function StrokeOrderActivity({
 
   useEffect(() => {
     if (!round || phase !== 'copy' || !modelAnimating) return
-    const timer = window.setTimeout(() => setModelAnimating(false), modelAnimationDurationMs(round.strokes.length))
-    return () => window.clearTimeout(timer)
+    const timer = activityClock.setTimeout(() => setModelAnimating(false), modelAnimationDurationMs(round.strokes.length))
+    return () => activityClock.clearTimeout(timer)
   }, [animationKey, modelAnimating, phase, round])
 
   function resetDrawings() {
@@ -464,7 +465,7 @@ export function StrokeOrderActivity({
   function assessCopy(correct: boolean) {
     if (feedback || phase !== 'copy-review') return
     setFeedback(correct ? 'correct' : 'incorrect')
-    transitionTimerRef.current = window.setTimeout(
+    transitionTimerRef.current = activityClock.setTimeout(
       () => {
         transitionTimerRef.current = null
         if (correct) beginMemory()
@@ -491,7 +492,7 @@ export function StrokeOrderActivity({
     setAttempts(nextAttempts)
     onAttempt?.(attempt)
     setFeedback(correct ? 'correct' : 'incorrect')
-    transitionTimerRef.current = window.setTimeout(
+    transitionTimerRef.current = activityClock.setTimeout(
       () => {
         transitionTimerRef.current = null
         setFeedback(null)

@@ -12,10 +12,18 @@ import {
   type ReportCategory,
 } from './problemReports.ts'
 import './preview.css'
+import { pauseForReport } from '../activity/activityLifecycle.ts'
 
 export function ProblemReporter({ grade }: { grade?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const launcher = useRef<HTMLButtonElement>(null)
+  const resume = useRef<(() => void) | null>(null)
+  const open = () => {
+    resume.current ||= pauseForReport()
+    dialog.current?.showModal()
+  }
+  const release = () => { resume.current?.(); resume.current = null }
+  useEffect(() => release, [])
   const [draft, setDraft] = useState<ProblemReport | null>(null)
   const [saved, setSaved] = useState(false)
   const [reports, setReports] = useState<ProblemReport[]>([])
@@ -71,11 +79,12 @@ export function ProblemReporter({ grade }: { grade?: string }) {
       setReports([])
       setError('Saved reports could not be read. Nothing was deleted. You can still describe and copy this problem.')
     }
-    dialog.current?.showModal()
+    open()
   }
 
   function close() {
     dialog.current?.close()
+    release()
     launcher.current?.focus()
   }
 
@@ -121,7 +130,7 @@ export function ProblemReporter({ grade }: { grade?: string }) {
       try { setReports(readProblemReports(localStorage)) }
       catch { setError('Saved reports could not be read. Nothing was deleted.'); setReports([]) }
     }
-    dialog.current?.showModal()
+    open()
   }
 
   async function emailSaved() {
@@ -175,7 +184,7 @@ export function ProblemReporter({ grade }: { grade?: string }) {
         ref={launcher}
         onClick={() => {
           setFinishing(false)
-          if (draft && !saved && draft.description.trim()) dialog.current?.showModal()
+          if (draft && !saved && draft.description.trim()) open()
           else begin()
         }}
       >
@@ -186,6 +195,7 @@ export function ProblemReporter({ grade }: { grade?: string }) {
         data-problem-reporter="true"
         ref={dialog}
         aria-labelledby="beta-report-title"
+        onClose={release}
         onCancel={(event) => {
           event.preventDefault()
           close()
@@ -197,8 +207,8 @@ export function ProblemReporter({ grade }: { grade?: string }) {
           {draft?.context.grade} · {draft?.context.game || draft?.context.activity || draft?.context.screen}
         </p>
         <p>
-          Screen details are captured when you open this form. The activity may keep running; reporting does not submit
-          or discard it.
+          Your activity is paused while this form is open. Close it to continue from the same place.
+          An interrupted recording is discarded so you can record that prompt again.
         </p>
         <p>
           Reports stay in this browser until you email, copy, or export them. No names, answers, screenshots, or recordings are

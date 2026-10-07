@@ -108,7 +108,7 @@ export default defineConfig(({ command, mode }) => {
                   kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
                   testing: page('./testing.html'),
                   ...(['reconciliation', 'family-sync'].includes(mode)
-                    ? { familyPreview: page('./family-beta-preview.html') }
+                    ? { familyPreview: page('./family-beta-preview.html'), familyGame: page('./family-game.html') }
                     : {}),
                   ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
                 },

@@ -1,3 +1,4 @@
+import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Clock3, Headphones, X } from 'lucide-react'
 import type {
@@ -263,7 +264,7 @@ function ImmediateTier2ReadingPractice({
 
   return <div className="reading-practice-page practice-page" data-report-activity="Reading practice" data-report-phase={complete ? 'complete' : promptPhase} data-report-target={complete ? undefined : target?.id} data-report-position={position}>
     <div className="practice-top">
-      <button className="back-button" type="button" onClick={exit}><X size={18} /> Exit reading</button>
+      <button className="back-button" type="button" onClick={() => { if (!pauseToFamilyHub()) exit() }}><X size={18} /> Exit reading</button>
       {savedStore && !complete && <button type="button" className="secondary-button" onClick={() => onComplete(summary)}>Done for today</button>}
       <span className="practice-count">{label}<span>{complete ? ' · complete' : ` · ${position} of ${total}`}</span></span>
     </div>

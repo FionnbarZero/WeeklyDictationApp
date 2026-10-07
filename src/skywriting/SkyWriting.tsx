@@ -1,3 +1,4 @@
+import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, Check, Sparkles, Volume2, X } from 'lucide-react'
 import { SkyWritingAcquisition } from './skywritingacquisition.tsx'
@@ -35,7 +36,7 @@ function SkyWritingShell({ score, onExit, children }: {
 }) {
   return <main className="skywriting-shell" data-report-activity="Sky Writing">
     <div className="skywriting-topbar">
-      <button className="skywriting-exit" type="button" onClick={onExit}><X size={17} /> Exit game</button>
+      <button className="skywriting-exit" type="button" onClick={() => { if (!pauseToFamilyHub()) onExit() }}><X size={17} /> Exit game</button>
       <header className="skywriting-heading">
         <p className="skywriting-eyebrow">Writing practice</p>
         <h1>Sky Writing</h1>

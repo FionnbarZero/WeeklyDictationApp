@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Flag, Volume2 } from 'lucide-react'
 import Phaser from 'phaser'
@@ -120,6 +121,9 @@ class ContextDashScene extends Phaser.Scene {
   }
 
   create() {
+    this.events.once(Phaser.Scenes.Events.CREATE, () => {
+      if (activityClock.paused) this.scene.pause()
+    })
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, GAME_HEIGHT)
     this.cameras.main.scrollX = AREA_SCROLL[0]
 
@@ -295,6 +299,7 @@ class ContextDashScene extends Phaser.Scene {
   }
 
   private chooseGate(choiceIndex: number) {
+    if (activityClock.paused) return
     const gate = this.gates[choiceIndex]
     const round = this.options.rounds[this.roundIndex]
     if (!this.acceptingInput || !gate || !round) return
@@ -712,7 +717,7 @@ export function ContextGapDash({
   }, [])
 
   const previewChoice = useCallback((choiceLabel: string) => {
-    const now = performance.now()
+    const now = activityClock.now()
     const lastPreview = lastChoicePreviewRef.current
     if (lastPreview.label === choiceLabel && now - lastPreview.time < 400) return
     lastChoicePreviewRef.current = { label: choiceLabel, time: now }
@@ -725,8 +730,8 @@ export function ContextGapDash({
 
   useEffect(() => {
     if (!contextAudioText || !playAudio || finished) return
-    const timer = window.setTimeout(() => playLearningText(contextAudioText, 'zh-CN', 0.75), 350)
-    return () => window.clearTimeout(timer)
+    const timer = activityClock.setTimeout(() => playLearningText(contextAudioText, 'zh-CN', 0.75), 350)
+    return () => activityClock.clearTimeout(timer)
   }, [contextAudioText, finished, playAudio, playLearningText])
 
   const handleAttempt = useCallback((index: number, choiceId: string, wasCorrect: boolean) => {
@@ -763,7 +768,14 @@ export function ContextGapDash({
       backgroundColor: '#081923', transparent: false, render: { antialias: true, roundPixels: true },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: [scene],
     })
-    return () => game.destroy(true)
+    const pauseScene = (paused: boolean) => {
+      if (!scene.sys?.isActive() && !scene.sys?.isPaused()) return
+      if (paused) scene.scene.pause()
+      else scene.scene.resume()
+    }
+    const unsubscribe = activityClock.subscribe(pauseScene)
+    game.events.once('ready', () => pauseScene(activityClock.paused))
+    return () => { unsubscribe(); game.destroy(true) }
   }, [handleAttempt, playableRounds, previewChoice, valid])
 
   const finish = useCallback(() => {

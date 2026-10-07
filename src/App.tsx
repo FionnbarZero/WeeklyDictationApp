@@ -40,8 +40,14 @@ import {
   synchronizeChildWorkspace,
 } from './application/workspace/index.ts'
 import { authErrorMessage, signOut, subscribeAuth, type AuthState } from './firebaseClient'
-import { firebaseConfigReady as configuredFirebase, DEFAULT_GRADE, DEFAULT_SCHOOL_YEAR, productionSourceIsActive } from './config'
+import {
+  firebaseConfigReady as configuredFirebase,
+  DEFAULT_GRADE,
+  DEFAULT_SCHOOL_YEAR,
+  productionSourceIsActive,
+} from './config'
 import { activityStorage, familyPreview, previewProfile, savePreviewResult } from './familyBeta/runtime.ts'
+import { useWorkspaceState } from './familyBeta/useWorkspaceState.ts'
 import type { CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
 import { createFirestoreWorkspaceCapabilities } from './infrastructure/firestoreWorkspace.ts'
 import { createBrowserPracticePersistence } from './infrastructure/browserPracticePersistence.ts'
@@ -128,7 +134,16 @@ const sampleChildren: Child[] = [
 
 const currentPreviewProfile = previewProfile()
 const appStorage = activityStorage()
-const demoChildren = currentPreviewProfile ? [{ ...sampleChildren[0], ...currentPreviewProfile, name: currentPreviewProfile.nickname, initials: currentPreviewProfile.nickname.slice(0, 1) }] : sampleChildren
+const demoChildren = currentPreviewProfile
+  ? [
+      {
+        ...sampleChildren[0],
+        ...currentPreviewProfile,
+        name: currentPreviewProfile.nickname,
+        initials: currentPreviewProfile.nickname.slice(0, 1),
+      },
+    ]
+  : sampleChildren
 
 const REVIEW_INSTRUCTION =
   'Do your own best work. Look carefully at your answer, then choose whether it matches. Every try helps you learn.'
@@ -189,7 +204,7 @@ export function App({ now = () => new Date(), manualTestDateLabel }: { now?: App
       ? { status: 'loading', user: null, error: null }
       : { status: 'unconfigured', user: null, error: null },
   )
-  useEffect(() => familyPreview ? undefined : subscribeAuth(setAuth), [])
+  useEffect(() => (familyPreview ? undefined : subscribeAuth(setAuth)), [])
   const content =
     auth.status === 'loading' ? (
       <div className="auth-shell">
@@ -245,18 +260,37 @@ export function App({ now = () => new Date(), manualTestDateLabel }: { now?: App
 
 function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const workspaceCapabilities = useMemo(() => createFirestoreWorkspaceCapabilities(appStorage), [])
-  const practicePersistence = useMemo(() => createBrowserPracticePersistence(appStorage), [])
+  const browserPersistence = useMemo(() => createBrowserPracticePersistence(appStorage), [])
   const [baseView, setView] = useState<BaseView>('home')
   const [family, setFamily] = useState<FamilyRecord | null>(null)
   const [familyChildren, setFamilyChildren] = useState<Child[]>(firebaseConfigReady ? [] : demoChildren)
   const [selectedChildId, setSelectedChildId] = useState(
     () => localStorageGet('weekly-dictation-child') || demoChildren[0].id,
   )
-  const [state, setState] = useState<AppState>(() =>
+  const {
+    state,
+    setState,
+    owner: sharedWorkspace,
+    error: sharedWorkspaceError,
+  } = useWorkspaceState(() =>
     firebaseConfigReady ? createInitialState() : loadLocalWorkspace(workspaceCapabilities.local),
   )
-  const stateRef = useRef(state)
-  stateRef.current = state
+  const practicePersistence = useMemo(() => {
+    if (!sharedWorkspace) return browserPersistence
+    // One engine operation can checkpoint more than once. Only its own
+    // successful updates advance this writer's expected snapshot.
+    let expected = state
+    return {
+      ...browserPersistence,
+      local: {
+        saveState: (next: AppState) => {
+          const saved = sharedWorkspace.save(expected, next)
+          if (sharedWorkspace.getSnapshot().state === next) expected = next
+          return saved
+        },
+      },
+    }
+  }, [browserPersistence, sharedWorkspace, state])
   const [curriculumSourceMessage, setCurriculumSourceMessage] = useState<string | null>(null)
   const [curriculumSourceError, setCurriculumSourceError] = useState<string | null>(null)
   const [curriculumRefreshAttempt, setCurriculumRefreshAttempt] = useState(0)
@@ -440,32 +474,40 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }, [selectedChildId])
   useEffect(() => {
     if (auth.user) return
+    if (sharedWorkspace) {
+      setLocalPersistenceError(sharedWorkspaceError || null)
+      return
+    }
     const saved = localStorageSet(APP_STATE_KEY, JSON.stringify(state))
     setLocalPersistenceError(
       saved
         ? null
         : 'Progress could not be saved in this browser. Keep this page open and use Protect progress to download a backup before continuing.',
     )
-  }, [state, auth.user])
+  }, [state, auth.user, sharedWorkspace, sharedWorkspaceError])
 
   useEffect(() => {
     if (firebaseConfigReady) return
     const controller = new AbortController()
     setCurriculumSourceMessage('Updating lessons from Google Slides…')
     setCurriculumSourceError(null)
-    void import('./automaticGrade2Curriculum.ts').then(async (curriculum) => ({
-      curriculum,
-      loaded: await curriculum.fetchAutomaticGrade2Curriculum({ signal: controller.signal }),
-    })).then(({ curriculum, loaded: { snapshot, datasetCount } }) => {
-      if (controller.signal.aborted) return
-      const hydrated = curriculum.hydrateAutomaticGrade2Curriculum(stateRef.current, snapshot)
-      setState(hydrated)
-      setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets automatically from Google Slides.`)
-    }).catch((error) => {
-      if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
-      setCurriculumSourceMessage(null)
-      setCurriculumSourceError(error instanceof Error ? error.message : 'The Grade 2 curriculum source could not be loaded.')
-    })
+    void import('./automaticGrade2Curriculum.ts')
+      .then(async (curriculum) => ({
+        curriculum,
+        loaded: await curriculum.fetchAutomaticGrade2Curriculum({ signal: controller.signal }),
+      }))
+      .then(({ curriculum, loaded: { snapshot, datasetCount } }) => {
+        if (controller.signal.aborted) return
+        setState((current) => curriculum.hydrateAutomaticGrade2Curriculum(current, snapshot))
+        setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets automatically from Google Slides.`)
+      })
+      .catch((error) => {
+        if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
+        setCurriculumSourceMessage(null)
+        setCurriculumSourceError(
+          error instanceof Error ? error.message : 'The Grade 2 curriculum source could not be loaded.',
+        )
+      })
     return () => controller.abort()
   }, [curriculumRefreshAttempt])
 
@@ -656,8 +698,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const finishReading = (summary: Tier2ReadingPracticeSummary) => {
     try {
-      savePreviewResult({ id: summary.sessionId, activity: readingPathwayLabel(readingPathway!), channel: 'reading', datasetIds: readingPathway!.cohorts.map(c => c.datasetId), correct: summary.correct, attempted: summary.attempted })
-    } catch (error) { setCloudError(authErrorMessage(error)); return }
+      savePreviewResult({
+        id: summary.sessionId,
+        activity: readingPathwayLabel(readingPathway!),
+        channel: 'reading',
+        datasetIds: readingPathway!.cohorts.map((c) => c.datasetId),
+        correct: summary.correct,
+        attempted: summary.attempted,
+      })
+    } catch (error) {
+      setCloudError(authErrorMessage(error))
+      return
+    }
     setCompletedSummary(
       `Reading practice complete: ${summary.correct}/${summary.attempted} assessed responses marked correct. ${familyPreview ? 'See family progress for saving status.' : 'This prototype reading visit was not saved.'}`,
     )
@@ -792,9 +844,25 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setCloudError(null)
     try {
       await outcome.cloudCommit
-      const scores = outcome.state.scores.filter(score => score.sessionId === finished.id)
-      if (scores.length) savePreviewResult({ id: finished.id, activity: finished.warmupOnly ? 'Spirit Realm' : finished.primaryPhase, channel: 'writing', datasetIds: scores.map(score => score.datasetId), correct: scores.reduce((sum, score) => sum + score.correct, 0), attempted: scores.reduce((sum, score) => sum + score.wordCount, 0) })
-      else if (finished.warmupOnly && finished.warmupAnswers.length) savePreviewResult({ id: finished.id, activity: 'Spirit Realm', channel: 'writing', datasetIds: finished.warmupAnswers.map(answer => answer.word.datasetId), correct: finished.warmupAnswers.filter(answer => answer.correct).length, attempted: finished.warmupAnswers.length })
+      const scores = outcome.state.scores.filter((score) => score.sessionId === finished.id)
+      if (scores.length)
+        savePreviewResult({
+          id: finished.id,
+          activity: finished.warmupOnly ? 'Spirit Realm' : finished.primaryPhase,
+          channel: 'writing',
+          datasetIds: scores.map((score) => score.datasetId),
+          correct: scores.reduce((sum, score) => sum + score.correct, 0),
+          attempted: scores.reduce((sum, score) => sum + score.wordCount, 0),
+        })
+      else if (finished.warmupOnly && finished.warmupAnswers.length)
+        savePreviewResult({
+          id: finished.id,
+          activity: 'Spirit Realm',
+          channel: 'writing',
+          datasetIds: finished.warmupAnswers.map((answer) => answer.word.datasetId),
+          correct: finished.warmupAnswers.filter((answer) => answer.correct).length,
+          attempted: finished.warmupAnswers.length,
+        })
       setState(outcome.state)
       setCompletedSummary(outcome.summary)
       setSession(null)
@@ -829,8 +897,16 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setCloudError(null)
     try {
       await outcome.cloudCommit
-      const scores = outcome.state.scores.filter(score => score.sessionId === current.id)
-      if (scores.length) savePreviewResult({ id: current.id, activity: 'Writing Dojo', channel: 'writing', datasetIds: scores.map(score => score.datasetId), correct: scores.reduce((sum, score) => sum + score.correct, 0), attempted: scores.reduce((sum, score) => sum + score.wordCount, 0) })
+      const scores = outcome.state.scores.filter((score) => score.sessionId === current.id)
+      if (scores.length)
+        savePreviewResult({
+          id: current.id,
+          activity: 'Writing Dojo',
+          channel: 'writing',
+          datasetIds: scores.map((score) => score.datasetId),
+          correct: scores.reduce((sum, score) => sum + score.correct, 0),
+          attempted: scores.reduce((sum, score) => sum + score.wordCount, 0),
+        })
       setState(outcome.state)
       setCompletedSummary(outcome.summary)
       setSession(null)
@@ -1069,7 +1145,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               <ShieldCheck size={14} /> Protect progress
             </button>
           )}
-          {!firebaseConfigReady && selectedChild.grade !== 'Grade 2' && <LocalImportControl disabled={activityControlsLocked} onChange={importLocalDeck} />}
+          {!firebaseConfigReady && selectedChild.grade !== 'Grade 2' && (
+            <LocalImportControl disabled={activityControlsLocked} onChange={importLocalDeck} />
+          )}
           {!firebaseConfigReady && localImportMessage && (
             <span className="local-import-status">{localImportMessage}</span>
           )}
@@ -1124,8 +1202,20 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         </div>
       </header>
       <main className="main-content">
-        {curriculumSourceMessage && <p className="curriculum-source-status" role="status">{curriculumSourceMessage}</p>}
-        {curriculumSourceError && <div className="curriculum-source-error error-banner" role="alert"><strong>Weekly vocabulary could not be updated automatically.</strong><p>{curriculumSourceError}</p><button type="button" onClick={() => setCurriculumRefreshAttempt((value) => value + 1)}>Try again</button></div>}
+        {curriculumSourceMessage && (
+          <p className="curriculum-source-status" role="status">
+            {curriculumSourceMessage}
+          </p>
+        )}
+        {curriculumSourceError && (
+          <div className="curriculum-source-error error-banner" role="alert">
+            <strong>Weekly vocabulary could not be updated automatically.</strong>
+            <p>{curriculumSourceError}</p>
+            <button type="button" onClick={() => setCurriculumRefreshAttempt((value) => value + 1)}>
+              Try again
+            </button>
+          </div>
+        )}
         {cloudError && (
           <div className="error-banner" role="alert">
             {cloudError}
@@ -1249,7 +1339,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
                 setView('home')
               }}
               onComplete={finishReading}
-              sessionNote={familyPreview ? 'Recordings stay in this session. Completed scores appear in family progress.' : 'Prototype reading visit · recording and results are not saved yet'}
+              sessionNote={
+                familyPreview
+                  ? 'Recordings stay in this session. Completed scores appear in family progress.'
+                  : 'Prototype reading visit · recording and results are not saved yet'
+              }
             />
           </Suspense>
         )}
@@ -1261,12 +1355,25 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               </div>
             }
           >
-            <Grade2StrokeOrderExperience target={activeExperience.target} onClose={() => setActiveExperience(null)} onComplete={summary => {
-              try {
-                savePreviewResult({ activity: 'Stroke Order', channel: 'game', datasetIds: [activeExperience.target.dataset.id], correct: summary.correct, attempted: summary.attempted })
-                stopActiveAudio(); setActiveExperience(null)
-              } catch (error) { setCloudError(authErrorMessage(error)) }
-            }} />
+            <Grade2StrokeOrderExperience
+              target={activeExperience.target}
+              onClose={() => setActiveExperience(null)}
+              onComplete={(summary) => {
+                try {
+                  savePreviewResult({
+                    activity: 'Stroke Order',
+                    channel: 'game',
+                    datasetIds: [activeExperience.target.dataset.id],
+                    correct: summary.correct,
+                    attempted: summary.attempted,
+                  })
+                  stopActiveAudio()
+                  setActiveExperience(null)
+                } catch (error) {
+                  setCloudError(authErrorMessage(error))
+                }
+              }}
+            />
           </Suspense>
         )}
         {view === 'history' && (
@@ -1319,7 +1426,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
             children={familyChildren}
             selectedChildId={selectedChildId}
             onSelect={chooseChild}
-            onClose={() => { setShowProfiles(false); profileSwitcherRef.current?.focus() }}
+            onClose={() => {
+              setShowProfiles(false)
+              profileSwitcherRef.current?.focus()
+            }}
             onAdd={async (input) => {
               if (!family) return
               const created = await practicePersistence.profiles.createChild(family.id, input)

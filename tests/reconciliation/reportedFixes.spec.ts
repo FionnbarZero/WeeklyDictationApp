@@ -17,7 +17,7 @@ test('Grade 5 cannot launch legacy activities while its validated activity rules
   })
   try {
     await page.goto('/family-beta-preview.html?grade=grade5')
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await expect(frame.getByText('Loading teacher activities…', { exact: true })).toBeVisible()
     await expect(frame.getByRole('button', { name: /Enter the Spirit Realm/ })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Report a problem', exact: true })).toBeVisible()
@@ -35,8 +35,8 @@ test('Grade 2 historical September 21 Dojo retains all seven reading targets', a
   await expect(page.getByLabel('Practice week').locator('option[value="2026-09-21"]')).toBeAttached()
   page.on('dialog', (dialog) => dialog.accept())
   await page.getByLabel('Practice week').selectOption('2026-09-21')
-  const frame = page.frameLocator('iframe')
-  await expect(page.locator('iframe')).toHaveAttribute('src', /week=2026-09-21/)
+  const frame = page.frameLocator('iframe:visible')
+  await expect(page.locator('iframe:visible')).toHaveAttribute('src', /week=2026-09-21/)
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await expect(frame.getByRole('button', { name: 'Read the Words', exact: true })).toBeVisible()
   await expect(frame.locator('.learning-hub-word-list')).toContainText([
@@ -47,7 +47,7 @@ test('Grade 2 historical September 21 Dojo retains all seven reading targets', a
 
 test('Kindergarten path integrates games using previous relevant reading targets', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
-  const frame = page.frameLocator('iframe')
+  const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
   await expect(frame.getByRole('button', { name: 'Memory Lanterns', exact: true })).toBeVisible()
   await expect(frame.getByText('红色', { exact: true })).toBeVisible()
@@ -56,19 +56,23 @@ test('Kindergarten path integrates games using previous relevant reading targets
   await frame.getByRole('button', { name: 'Listening Lily Pads', exact: true }).click()
   await expect(frame.locator('.k-word-choice')).toHaveText(['红色', '蓝色'])
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+  await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
   await frame.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
   await expect(frame.locator('.lg-memory-card')).toHaveCount(4)
 })
 
 test('Grade 5 Dojo provides complete stroke guides and both Boss rounds offer full-set reentry', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=grade5')
-  const frame = page.frameLocator('iframe')
+  const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await expect(frame.getByRole('button', { name: 'Stroke Order', exact: true })).toBeEnabled()
   await frame.getByRole('button', { name: 'Stroke Order', exact: true }).click()
   await expect(frame.locator('.so-student-ink')).toBeAttached()
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
-  await frame.getByRole('button', { name: /Back to all challenges/ }).click()
+  page.once('dialog', dialog => dialog.accept())
+  await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
   await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
   await expect(frame.getByRole('button', { name: 'Reenter the Dojo · writing', exact: true })).toBeVisible()
   await frame.getByRole('button', { name: /Back to all challenges/ }).click()
@@ -83,7 +87,7 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
     page,
   }) => {
     await page.goto(`/family-beta-preview.html?grade=${grade}`)
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
     await expect(frame.getByRole('button', { name: /Reenter the Dojo/ })).toHaveCount(0)
     await expect(frame.getByRole('button', { name: 'Writing mastered-word games', exact: true })).toBeVisible()
@@ -117,13 +121,13 @@ test('Shadow Strike inherits its computed aim and freezes targets without snappi
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await page.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
-  const target = page.locator('.lg-world-choice').first()
+  const target = page.frameLocator('iframe:visible').locator('.lg-world-choice').first()
   await expect(target).toBeVisible()
   await expect(target).toBeEnabled()
   // These targets intentionally sway continuously; click without waiting for
   // animation stability, then verify the actual selected/paused state below.
   await target.click({ force: true })
-  const geometry = await page.locator('.lg-target-blast-playfield').evaluate((element) => ({
+  const geometry = await page.frameLocator('iframe:visible').locator('.lg-target-blast-playfield').evaluate((element) => ({
     expected: (element as HTMLElement).style.getPropertyValue('--throw-x'),
     actual: getComputedStyle(element.querySelector('.lg-shuriken-shot')!).getPropertyValue('--throw-x'),
     targetAnimation: getComputedStyle(element.querySelector('.lg-world-choice')!).animationPlayState,

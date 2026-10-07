@@ -15,6 +15,7 @@
 
 ## Architecture and persistence
 
+- [A2 activity continuity](./a2-preserve-active-work.md) — shared pause/ownership contract, regression evidence, limits, and release-review handoff; not yet published.
 - [Canonical source boundary](./canonical-source-boundary.md)
 - [Lifecycle strategy boundary](./lifecycle-strategy-boundary.md)
 - [Acquisition strategy boundary](./acquisition-strategy-boundary.md)

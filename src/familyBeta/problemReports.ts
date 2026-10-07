@@ -27,11 +27,15 @@ export function captureScreenContext(doc: Document): ReportContext {
     if (value) context[key] = value.slice(0, 300)
   }
   let surface = doc
-  const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame')
+  const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame:not([hidden])')
   try {
     if (frame?.contentDocument) {
       surface = frame.contentDocument
       context.route = new URL(frame.src).pathname
+      for (const key of ['week', 'curriculum', 'revision']) {
+        const value = frame.getAttribute(`data-family-${key}`)
+        if (value) context[key] = value.slice(0, 300)
+      }
     }
   } catch {
     context.activity = 'Activity details unavailable'

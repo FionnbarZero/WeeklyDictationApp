@@ -1,4 +1,5 @@
 import type { Word } from '../domain/contracts.ts'
+import { activityClock } from '../activity/activityLifecycle.ts'
 
 export const DICTATION_AUDIO_GAP_MS = 750
 
@@ -114,13 +115,16 @@ export function playManagedMediaElement(element: HTMLMediaElement): Promise<void
   stopActiveAudio()
   return new Promise((resolve, reject) => {
     let settled = false
+    let endedWhilePaused = false
     const cleanup = () => {
+      unsubscribe()
       element.removeEventListener('ended', finish)
       element.removeEventListener('error', fail)
       if (activeMediaStop === cancel) activeMediaStop = null
     }
     const finish = () => {
       if (settled) return
+      if (activityClock.paused) { endedWhilePaused = true; return }
       settled = true
       cleanup()
       resolve()
@@ -135,12 +139,17 @@ export function playManagedMediaElement(element: HTMLMediaElement): Promise<void
       element.pause()
       fail()
     }
+    const unsubscribe = activityClock.subscribe(paused => {
+      if (paused) element.pause()
+      else if (endedWhilePaused) finish()
+      else if (!settled) void element.play().catch(fail)
+    })
     activeMediaStop = cancel
     element.addEventListener('ended', finish, { once: true })
     element.addEventListener('error', fail, { once: true })
     element.currentTime = 0
     try {
-      void element.play().catch(fail)
+      if (!activityClock.paused) void element.play().catch(fail)
     } catch {
       fail()
     }
@@ -177,8 +186,8 @@ export function playAudioPlan(
   stopActiveAudio()
 
   const resolveUrl = options.resolveUrl || defaultAudioUrl
-  const setTimer = options.setTimer || ((callback, delay) => globalThis.setTimeout(callback, delay))
-  const clearTimer = options.clearTimer || ((timer) => globalThis.clearTimeout(timer))
+  const setTimer = options.setTimer || ((callback, delay) => activityClock.setTimeout(callback, delay) as unknown as ReturnType<typeof setTimeout>)
+  const clearTimer = options.clearTimer || ((timer) => activityClock.clearTimeout(timer as unknown as number))
   const speech = options.speech || browserSpeech()
   const createUtterance = options.createUtterance || browserUtterance
   let activeAudio: AudioElementLike | null = null
@@ -187,6 +196,8 @@ export function playAudioPlan(
   let pauseTimer: ReturnType<typeof setTimeout> | undefined
   let releasePause: (() => void) | undefined
   let cancelled = false
+  let interruption = 0
+  const abort = new AbortController()
   let firstSegmentStarted = false
   let startedSettled = false
   let completedSettled = false
@@ -238,9 +249,9 @@ export function playAudioPlan(
       const audio = options.createAudio ? options.createAudio() : new Audio()
       activeAudio = audio
       let settled = false
-      const watchdog = globalThis.setTimeout(() => fail(), 15_000)
+      const watchdog = activityClock.setTimeout(() => fail(), 15_000)
       const cleanup = () => {
-        globalThis.clearTimeout(watchdog)
+        activityClock.clearTimeout(watchdog)
         audio.removeEventListener('playing', handlePlaying)
         audio.removeEventListener('ended', finish)
         audio.removeEventListener('error', fail)
@@ -293,12 +304,12 @@ export function playAudioPlan(
       spokenUtterance.rate = segment.rate
       spokenUtterance.pitch = 1
       let settled = false
-      let voiceTimer: ReturnType<typeof setTimeout> | undefined
+      let voiceTimer: number | undefined
       let waitingForVoices = false
       let segmentStarted = false
-      const watchdog = globalThis.setTimeout(() => finish(playbackError()), 15_000)
+      const watchdog = activityClock.setTimeout(() => finish(playbackError()), 15_000)
       const stopWaitingForVoices = () => {
-        if (voiceTimer !== undefined) globalThis.clearTimeout(voiceTimer)
+        if (voiceTimer !== undefined) activityClock.clearTimeout(voiceTimer)
         voiceTimer = undefined
         if (waitingForVoices) activeSpeech.removeEventListener?.('voiceschanged', beginWithPreferredVoice)
         waitingForVoices = false
@@ -306,7 +317,7 @@ export function playAudioPlan(
       const finish = (error?: Error) => {
         if (settled) return
         settled = true
-        globalThis.clearTimeout(watchdog)
+        activityClock.clearTimeout(watchdog)
         stopWaitingForVoices()
         if (activeUtterance === spokenUtterance) activeUtterance = null
         if (cancelActiveSegment === cancel) cancelActiveSegment = undefined
@@ -342,7 +353,7 @@ export function playAudioPlan(
       else {
         waitingForVoices = true
         activeSpeech.addEventListener?.('voiceschanged', beginWithPreferredVoice)
-        voiceTimer = globalThis.setTimeout(() => begin(), waitMs)
+        voiceTimer = activityClock.setTimeout(() => begin(), waitMs)
       }
     })
   }
@@ -362,14 +373,24 @@ export function playAudioPlan(
   async function run() {
     try {
       for (let index = 0; index < segments.length; index += 1) {
+        if (activityClock.paused) await activityClock.waitUntilRunning(abort.signal)
         if (cancelled) return
         const segment = segments[index]
+        const generation = interruption
         try {
-          await cachedSegment(segment)
+          try { await cachedSegment(segment) }
+          catch {
+            if (cancelled) return
+            if (generation !== interruption) { index -= 1; continue }
+            await speechSegment(segment)
+          }
         } catch {
           if (cancelled) return
-          await speechSegment(segment)
+          if (generation !== interruption) { index -= 1; continue }
+          throw playbackError()
         }
+        if (activityClock.paused) await activityClock.waitUntilRunning(abort.signal)
+        if (generation !== interruption) { index -= 1; continue }
         if (cancelled) return
         if (index < segments.length - 1) await wait(segment.pauseAfterMs ?? options.pauseMs ?? DICTATION_AUDIO_GAP_MS)
       }
@@ -383,8 +404,18 @@ export function playAudioPlan(
       if (!firstSegmentStarted) failStarted(error)
       failCompleted(error)
       if (activePromptAudio === handle) activePromptAudio = null
+    } finally {
+      unsubscribe()
     }
   }
+
+  const unsubscribe = activityClock.subscribe(paused => {
+    if (!paused || cancelled) return
+    interruption += 1
+    // Repeating the interrupted cue keeps speech engines consistent without
+    // resolving a teaching/comparison promise while its activity is paused.
+    stopCurrentSource()
+  })
 
   const handle: PromptAudioHandle = {
     started,
@@ -392,6 +423,8 @@ export function playAudioPlan(
     stop: () => {
       if (cancelled) return
       cancelled = true
+      abort.abort()
+      unsubscribe()
       if (pauseTimer !== undefined) clearTimer(pauseTimer)
       releasePause?.()
       releasePause = undefined

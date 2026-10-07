@@ -20,7 +20,40 @@ async function storedReviewSnapshot(page: import('@playwright/test').Page) {
   }, APP_STATE_KEY)
 }
 
-async function openGrade2WritingReview(page: import('@playwright/test').Page) {
+async function openGrade2WritingReview(page: import('@playwright/test').Page, audioAvailable = true) {
+  // This checks scoring, not the host OS voice service. Keep the real prompt
+  // sequencing and audio gate, with explicit success/error speech events.
+  await page.addInitScript((available) => {
+    let enabled = available
+    const pending = new Set<ReturnType<typeof setTimeout>>()
+    window.addEventListener('review-test-enable-speech', () => {
+      enabled = true
+    })
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {
+          for (const timer of pending) clearTimeout(timer)
+          pending.clear()
+        },
+        resume() {},
+        getVoices() {
+          return []
+        },
+        speak(utterance: SpeechSynthesisUtterance) {
+          const timer = setTimeout(() => {
+            pending.delete(timer)
+            if (!enabled) utterance.onerror?.({} as SpeechSynthesisErrorEvent)
+            else {
+              utterance.onstart?.({} as SpeechSynthesisEvent)
+              utterance.onend?.({} as SpeechSynthesisEvent)
+            }
+          }, 0)
+          pending.add(timer)
+        },
+      },
+    })
+  }, audioAvailable)
   await installGrade2CurriculumFixture(page)
   await page.goto('/?testDate=2026-09-29')
   await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
@@ -74,4 +107,21 @@ test('exiting during collection discards the provisional writing review', async 
   expect(stored.results).toHaveLength(0)
   expect(stored.scores).toHaveLength(0)
   expect(stored.completed).toHaveLength(0)
+})
+
+test('failed writing audio blocks collection until a successful retry', async ({ page }) => {
+  await openGrade2WritingReview(page, false)
+  await expect(page.getByText('The spoken prompt did not play.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeDisabled()
+  const blocked = await storedReviewSnapshot(page)
+  expect(blocked.results).toHaveLength(0)
+  expect(blocked.scores).toHaveLength(0)
+  expect(blocked.completed).toHaveLength(0)
+
+  await page.evaluate(() => dispatchEvent(new Event('review-test-enable-speech')))
+  await page.getByRole('button', { name: 'Try audio again' }).click()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Skip Timer' }).click()
+  await expect(page.getByRole('heading', { name: 'Listen, then write word 2.' })).toBeVisible()
+  expect(await storedReviewSnapshot(page)).toEqual(blocked)
 })

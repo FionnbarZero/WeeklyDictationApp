@@ -1,3 +1,4 @@
+import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { RotateCcw, Undo2, Volume2 } from 'lucide-react'
 import type {
@@ -104,23 +105,23 @@ export function SentenceScramble({
   useEffect(() => {
     if (!round || !playAudio) return
     setPromptPlaying(true)
-    const timer = window.setTimeout(readSentence, 350)
-    return () => window.clearTimeout(timer)
+    const timer = activityClock.setTimeout(readSentence, 350)
+    return () => activityClock.clearTimeout(timer)
   }, [index, playAudio, readSentence, round])
 
   useEffect(() => () => {
     narrationRequestRef.current += 1
-    if (pickupTimerRef.current !== undefined) window.clearTimeout(pickupTimerRef.current)
+    if (pickupTimerRef.current !== undefined) activityClock.clearTimeout(pickupTimerRef.current)
   }, [])
 
   useEffect(() => {
     if (!checked) return
-    const timer = window.setTimeout(() => {
+    const timer = activityClock.setTimeout(() => {
       if (correct) setIndex((current) => current + 1)
       setSelectedIds([])
       setChecked(false)
     }, correct ? 1000 : 2400)
-    return () => window.clearTimeout(timer)
+    return () => activityClock.clearTimeout(timer)
   }, [checked, correct])
 
   function select(tokenId: string) {
@@ -128,7 +129,7 @@ export function SentenceScramble({
     const next = [...selectedIds, tokenId]
     setCarryingId(tokenId)
     playGameSound('select')
-    pickupTimerRef.current = window.setTimeout(() => {
+    pickupTimerRef.current = activityClock.setTimeout(() => {
       setSelectedIds(next)
       setCarryingId(null)
       if (round && next.length === round.tokens.length) resolve(next)

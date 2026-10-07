@@ -150,7 +150,9 @@ test('the shared Test Review boundary has the exact approved Phase 2 file invent
   const combinedSource = typeScriptFiles(boundaryDirectory)
     .map((file) => source(`src/testReview/${file}`))
     .join('\n')
-  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*(?:App|domain|firestore|firebase|lifecycle|grade2|grade5|kindergarten|testReviewPrototype)[^'"]*['"]/i)
+  // The shared interruption clock is not the curriculum progression engine.
+  const withoutActivityClock = combinedSource.replace(/from ['"]\.\.\/activity\/activityLifecycle\.ts['"]/g, '')
+  assert.doesNotMatch(withoutActivityClock, /from\s+['"][^'"]*(?:App|domain|firestore|firebase|lifecycle|grade2|grade5|kindergarten|testReviewPrototype)[^'"]*['"]/i)
   assert.doesNotMatch(combinedSource, /localStorage|sessionStorage/)
 })
 

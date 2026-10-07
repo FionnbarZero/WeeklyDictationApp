@@ -99,7 +99,7 @@ for (const [round, section] of [
       })
     })
     await page.goto('/family-beta-preview.html?grade=grade5')
-    const frame = page.frameLocator('iframe')
+    const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: new RegExp(section) }).click()
     await frame.getByRole('button', { name: 'Reading Test', exact: true }).click()
     const record = frame.getByRole('button', { name: 'Record my reading', exact: true })

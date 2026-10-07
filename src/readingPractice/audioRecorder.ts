@@ -92,6 +92,7 @@ function recorderError(error: unknown): ReadingRecorderError {
 export async function startEphemeralAudioRecording(
   dependencies: AudioRecorderDependencies = browserAudioRecorderDependencies(),
   maximumDurationMs = READING_RECORDING_LIMIT_MS,
+  signal?: AbortSignal,
 ): Promise<ActiveAudioRecording> {
   // A microphone must never compete with an instruction, model, or game cue.
   stopActiveAudio()
@@ -100,6 +101,11 @@ export async function startEphemeralAudioRecording(
     stream = await dependencies.getUserMedia()
   } catch (error) {
     throw recorderError(error)
+  }
+
+  if (signal?.aborted) {
+    stream.getTracks().forEach(track => track.stop())
+    throw new ReadingRecorderError('recording-failed', 'The recording was interrupted. Record this prompt again.')
   }
 
   let recorder: AudioMediaRecorder
@@ -117,7 +123,12 @@ export async function startEphemeralAudioRecording(
   let resolveFinished!: (clip: EphemeralAudioClip) => void
   let rejectFinished!: (error: ReadingRecorderError) => void
 
-  const releaseMicrophone = () => stream.getTracks().forEach((track) => track.stop())
+  let microphoneReleased = false
+  const releaseMicrophone = () => {
+    if (microphoneReleased) return
+    microphoneReleased = true
+    stream.getTracks().forEach(track => track.stop())
+  }
   const clearLimit = () => {
     if (timer !== undefined) dependencies.cancelSchedule(timer)
     timer = undefined
@@ -127,6 +138,7 @@ export async function startEphemeralAudioRecording(
     resolveFinished = resolve
     rejectFinished = reject
   })
+  void finished.catch(() => undefined)
 
   function rejectOnce(error: unknown) {
     if (settled) return
@@ -137,7 +149,7 @@ export async function startEphemeralAudioRecording(
   }
 
   recorder.ondataavailable = (event) => {
-    if (event.data.size > 0) chunks.push(event.data)
+    if (!discarded && event.data.size > 0) chunks.push(event.data)
   }
   recorder.onerror = () => rejectOnce(new ReadingRecorderError('recording-failed', 'The recording stopped unexpectedly.'))
   recorder.onstop = () => {
@@ -192,6 +204,8 @@ export async function startEphemeralAudioRecording(
   }
   const cancel = () => {
     discarded = true
+    chunks.length = 0
+    releaseMicrophone()
     if (recorder.state === 'inactive') {
       rejectOnce(new ReadingRecorderError('recording-failed', 'The recording was cancelled.'))
       return
