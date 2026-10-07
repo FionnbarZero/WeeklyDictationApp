@@ -7,7 +7,9 @@ import { firebaseConfigReady, DEFAULT_SCHOOL_YEAR } from '../config.ts'
 import { subscribeAuth, signIn, signOut, type AuthState } from '../firebaseClient.ts'
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
-import { BETA_GRADES, dailyTotals, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
+import { BETA_GRADES, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
+import { ResultHistory } from './ResultHistory.tsx'
+import { assertSavedAttemptsMatch } from './resultHistory.ts'
 import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
@@ -65,6 +67,7 @@ function FamilyPreview() {
   const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>({})
   const [week, setWeek] = useState('')
   const [results, setResults] = useState<BetaResult[]>([])
+  const [historyCursor, setHistoryCursor] = useState({ owner: '', token: '' })
   const [error, setError] = useState('')
   const [activityError, setActivityError] = useState('')
   const [curriculumError, setCurriculumError] = useState('')
@@ -185,21 +188,21 @@ function FamilyPreview() {
           if (scopeRef.current !== scope) return
           acknowledgeResult(item.id)
         }
-        const saved = await repository.list(child.id)
+        const page = await repository.listPage(child.id)
+        const saved = page.results
         if (scopeRef.current !== scope) return
+        assertSavedAttemptsMatch(saved, localStorage, RESULT_KEY)
         for (const result of saved) {
           const key = `${RESULT_KEY}:${result.id}`
           const previous = localStorage.getItem(key)
-          if (previous && JSON.stringify(JSON.parse(previous)) !== JSON.stringify(result)) {
-            const local = JSON.parse(previous) as BetaResult
-            if (Object.keys(result).some(key => JSON.stringify(local[key as keyof BetaResult]) !== JSON.stringify(result[key as keyof BetaResult])))
-              throw new Error('An online score differs from this device’s record. Both copies are preserved.')
-          }
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
         setReadyChildren(current => new Set([...current, child.id]))
         if (childRef.current !== child.id) return
+        // Keep the visible remote page aligned with its cursor. Newly queued
+        // results remain in the outbox and appear after their confirmed refresh.
         setResults(saved)
+        setHistoryCursor({ owner: `${scope}:${child.id}`, token: page.nextPageToken })
         setStatus('Scores and saved practice confirmed in your private family account. Use the same parent account on your other device.')
       } else {
         setResults(previewResults())
@@ -210,6 +213,7 @@ function FamilyPreview() {
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       setError(message(e))
       setStatus(familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())
       } catch {
@@ -476,46 +480,19 @@ function FamilyPreview() {
             <p>Additional games will appear when their required teacher-approved content is available.</p>
           </section>
         )}
-      {child && tab === 'progress' && (
-        <section className="beta-panel">
-          <h1>{child.nickname}’s progress</h1>
-          <p>Every completed attempt counts. Daily totals reset at midnight Pacific time; history is retained.</p>
-          {dailyTotals(results, child.id).length ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Summed score</th>
-                  <th>Sessions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dailyTotals(results, child.id).map((d) => (
-                  <tr key={d.day}>
-                    <td>{d.day}</td>
-                    <td>
-                      {d.correct} / {d.attempted}
-                    </td>
-                    <td>{d.sessions}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>No completed scores yet.</p>
-          )}
-          <ul>
-            {results
-              .filter((r) => r.childId === child.id)
-              .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
-              .map((r) => (
-                <li key={r.id}>
-                  {r.day} · {r.grade} · {r.activity}: {r.correct}/{r.attempted}
-                </li>
-              ))}
-          </ul>
-        </section>
-      )}
+      {child && tab === 'progress' && <ResultHistory
+        key={`${scope}:${child.id}`}
+        child={child}
+        results={results}
+        nextPageToken={historyCursor.owner === `${scope}:${child.id}` ? historyCursor.token : ''}
+        readLocalResults={previewResults}
+        loadPage={familyId && historyCursor.owner === `${scope}:${child.id}` ? async (token, signal) => {
+          const page = await familyResultRepository(familyId).listPage(child.id, token, signal)
+          signal.throwIfAborted()
+          assertSavedAttemptsMatch(page.results, localStorage, RESULT_KEY)
+          return page
+        } : undefined}
+      />}
       {tab === 'parent' && (
         <section className="beta-panel">
           <h1>Parent controls</h1>

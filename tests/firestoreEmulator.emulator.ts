@@ -98,6 +98,32 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
 })
 
+test('family result history paginates by completion and stable identity without dropping same-time attempts', async () => {
+  const childId = 'history-child'
+  const expected = Array.from({ length: 55 }, (_, i) => makeResult({ id: childId, nickname: 'Synthetic', grade: 'Grade 2', active: true },
+    { id: `history-${String(i).padStart(3, '0')}`, activity: 'Writing Dojo', channel: 'writing', datasetIds: ['dataset-1'], correct: 1, attempted: 2 },
+    new Date('2026-10-06T15:00:00.000Z')))
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore()
+    const batch = writeBatch(db)
+    batch.set(doc(db, `families/family-parent/children/${childId}`), { id: childId, active: true, grade: 'Grade 2' })
+    for (const result of expected) batch.set(doc(db, `families/family-parent/children/${childId}/betaResults/${result.id}`), result)
+    await batch.commit()
+  })
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent', endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }
+  const repository = createResultRepository(config)
+  const first = await repository.listPage(childId)
+  assert.equal(first.results.length, 50)
+  assert.ok(first.nextPageToken)
+  await repository.save({ ...expected[0], id: 'new-arrival', completedAt: '2026-10-06T16:00:00.000Z' })
+  const second = await repository.listPage(childId, first.nextPageToken)
+  assert.equal(second.results.length, 5)
+  assert.equal(second.nextPageToken, '')
+  assert.deepEqual([...first.results, ...second.results].map(r => r.id), expected.map(r => r.id).reverse())
+  assert.equal((await repository.listPage(childId)).results[0].id, 'new-arrival')
+  await assert.rejects(createResultRepository({ ...config, token: async () => mockToken('intruder') }).listPage(childId, first.nextPageToken))
+})
+
 test('family practice sync hydrates another device, preserves conflicts, and rejects cross-family and anonymous access', async () => {
   const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent',
     endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }

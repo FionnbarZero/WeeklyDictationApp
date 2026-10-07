@@ -201,3 +201,18 @@ dialog > .beta-report-launcher-group {
   outline: 3px solid #177ab3;
   outline-offset: 3px;
 }
+
+.beta-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block: 16px;
+}
+.beta-attempt-series svg {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+}
+.beta-attempt-series li {
+  overflow-wrap: anywhere;
+}

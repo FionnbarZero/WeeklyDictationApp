@@ -15,6 +15,8 @@
 
 ## Architecture and persistence
 
+- [A3.1 result history](./a3-result-history.md) — bounded history reads and per-attempt graphs; review increment, not live or all of A3.
+
 - [A2 activity continuity](./a2-preserve-active-work.md) — shared pause/ownership contract and repair evidence; [published A2 release](./a2-release-2026-10-06.md) records live verification and rollback.
 - [Canonical source boundary](./canonical-source-boundary.md)
 - [Lifecycle strategy boundary](./lifecycle-strategy-boundary.md)

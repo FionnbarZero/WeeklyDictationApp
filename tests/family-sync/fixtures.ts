@@ -36,6 +36,26 @@ export async function installFamilyFixtures(page: Page) {
     const base = 'projects/weeklydictationapp/databases/(default)/documents/'
     const name = url.pathname.split('/v1/')[1]
     const respond = (body: unknown) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
+    if (name.endsWith(':runQuery')) {
+      const query = request.postDataJSON().structuredQuery
+      if (query.from?.[0]?.collectionId !== 'betaResults') throw new Error('Unexpected synthetic query')
+      const prefix = `${name.slice(0, -':runQuery'.length)}/betaResults/`
+      const ordered = [...documents.values()]
+        .filter((doc) => doc.name.startsWith(prefix))
+        .sort((a, b) => {
+          const at = (a.fields.completedAt as { stringValue: string }).stringValue
+          const bt = (b.fields.completedAt as { stringValue: string }).stringValue
+          return bt.localeCompare(at) || b.name.localeCompare(a.name)
+        })
+      const after = query.startAt?.values
+      const selected = after
+        ? ordered.filter((doc) => {
+            const at = (doc.fields.completedAt as { stringValue: string }).stringValue
+            return at < after[0].stringValue || (at === after[0].stringValue && doc.name < after[1].referenceValue)
+          })
+        : ordered
+      return respond(selected.slice(0, query.limit).map((document) => ({ document })))
+    }
     if (url.pathname.endsWith('/documents:commit')) {
       for (const write of request.postDataJSON().writes) {
         const update = write.update
