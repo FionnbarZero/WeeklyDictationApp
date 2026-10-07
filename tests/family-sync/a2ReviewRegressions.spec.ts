@@ -78,6 +78,26 @@ test('returning to a previously loaded grade works while curriculum is offline',
   await expect(frame.getByRole('timer')).toHaveText(remaining)
 })
 
+test('confirmed account invalidation still removes retained activities', async ({ page }) => {
+  await startWriting(page)
+  await page.route('https://securetoken.googleapis.com/**', (route) =>
+    route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { message: 'USER_DISABLED' } }),
+    }),
+  )
+  await page.evaluate(() => {
+    const key = 'weekly-dictation-auth-v1'
+    const auth = JSON.parse(localStorage.getItem(key)!)
+    localStorage.setItem(key, JSON.stringify({ ...auth, expiresAt: Date.now(), refreshToken: 'synthetic-refresh' }))
+    dispatchEvent(new Event('online'))
+  })
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await expect(page.locator('iframe[data-family-slot]')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('weekly-dictation-auth-v1'))).toBeNull()
+})
+
 test('two retained Grade 2 weeks can both save reviewed answers without reopening', async ({ page }) => {
   await startWriting(page, 'grade2', '2026-09-21')
   await answer(page)
@@ -99,4 +119,28 @@ test('two retained Grade 2 weeks can both save reviewed answers without reopenin
   const saved = await read()
   expect(saved.find((item: { id: string }) => item.id === first.id).revision).toBeGreaterThan(first.revision)
   expect(saved.find((item: { id: string }) => item.id === second.id)).toEqual(second)
+  // Finish distinct scored visits from both retained weeks. Neither completion
+  // may replace the other week's checkpoint, result or recovery evidence.
+  for (let i = 0; i < 2; i++) await answer(page)
+  await page.frameLocator('iframe:visible').getByRole('button', { name: 'Done for today', exact: true }).click()
+  await page.getByLabel('Practice week').selectOption('2026-09-14')
+  for (let i = 0; i < 3; i++) await answer(page)
+  await page.frameLocator('iframe:visible').getByRole('button', { name: 'Done for today', exact: true }).click()
+  const results = () =>
+    page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
+        .map((key) => JSON.parse(localStorage.getItem(key)!)),
+    )
+  await expect.poll(async () => (await results()).length).toBe(2)
+  const completed = await results()
+  expect(new Set(completed.map((item) => item.id)).size).toBe(2)
+  for (const item of completed)
+    expect(item).toMatchObject({ childId: 'synthetic-g2', grade: 'Grade 2', correct: 1, attempted: 1 })
+  await page.reload()
+  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  expect(await results()).toEqual(completed)
+  const reloaded = await read()
+  expect(reloaded.find((item: { id: string }) => item.id === first.id).revision).toBeGreaterThan(first.revision)
+  expect(reloaded.find((item: { id: string }) => item.id === second.id).revision).toBeGreaterThan(second.revision)
 })

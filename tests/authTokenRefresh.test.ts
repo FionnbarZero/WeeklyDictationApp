@@ -10,6 +10,21 @@ const initial: StoredAuth = {
 }
 const refreshed = { id_token: 'new', refresh_token: 'new-refresh', expires_in: '3600', user_id: 'parent-a' }
 
+test('an expired identity without a refresh credential still requires sign-in', async () => {
+  let stored: StoredAuth | null = { ...initial, refreshToken: undefined }
+  const token = createTokenProvider({
+    read: () => stored,
+    write: (value) => {
+      stored = value
+    },
+    renew: async () => {
+      assert.fail('No renewal without a credential')
+    },
+  })
+  await assert.rejects(token(), /Your session expired/)
+  assert.equal(stored, null)
+})
+
 for (const error of [
   new TypeError('Failed to fetch'),
   new DOMException('Timed out', 'TimeoutError'),
