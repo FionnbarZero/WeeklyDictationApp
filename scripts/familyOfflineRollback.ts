@@ -24,7 +24,7 @@ export const rollbackGuard = `
   if (!newer) return;
   document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Ninja Dojo — progress preserved';
-    document.body.innerHTML = '<main><h1>Your saved work is preserved</h1><p>Ninja Dojo is temporarily using a recovery version. Lessons saved by the newer app cannot be opened by this older version.</p><p>Please keep this browser’s data. Do not clear it or restart your lessons. Return when the updated app is available.</p><button onclick="location.reload()">Check for the updated app</button></main>';
+    document.body.innerHTML = '<main><h1>Your saved work is preserved</h1><p>Ninja Dojo is temporarily using a recovery version. Lessons saved by the newer app cannot be opened by this older version.</p><p>Please keep this browser’s data. Do not clear it or restart your lessons.</p><p>When the updated app is available, close all Ninja Dojo tabs on this device and reopen your usual link. Reloading alone may keep this recovery version open.</p><button onclick="location.reload()">Check for an update</button></main>';
   }, { once: true });
 })();
 `
