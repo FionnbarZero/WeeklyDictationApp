@@ -147,9 +147,11 @@ test('compatible legacy records acquire a snapshot without moving the prompt or 
   store.answer(true, 'timer')
   const legacy = JSON.parse(storage.getItem(store.key)!)
   delete legacy.envelope.lessonSnapshot
+  legacy.envelope.applicationVersion = 'older-original-build'
   storage.setItem(store.key, JSON.stringify(legacy))
   const resumed = openAcquisitionStore(storage, ctx)
   assert.ok(resumed.current.envelope.lessonSnapshot)
+  assert.equal(resumed.current.envelope.lessonSnapshot.applicationVersion, 'older-original-build')
   assert.deepEqual(resumed.current.envelope.flow, legacy.envelope.flow)
   assert.equal(resumed.current.sessionId, legacy.sessionId)
   assert.deepEqual(resumed.current.reviewedTrials, legacy.reviewedTrials)

@@ -117,7 +117,7 @@ export function pinAcquisitionLesson<T extends AcquisitionTarget>(
     JSON.stringify({
       schema: 1,
       engineContract: 'acquisition-engine-v1',
-      applicationVersion: context.applicationVersion,
+      applicationVersion: envelope.applicationVersion,
       targetSet: context.targetSet,
       strategy: context.strategy,
     }),
