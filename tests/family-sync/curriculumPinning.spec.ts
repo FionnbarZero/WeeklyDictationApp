@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
-import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { retireAcquisition } from '../../src/familyBeta/acquisitionRetirement.ts'
+import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { installFamilyFixtures } from './fixtures.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
