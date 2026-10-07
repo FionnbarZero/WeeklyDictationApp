@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { installFamilyFixtures } from './fixtures.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {

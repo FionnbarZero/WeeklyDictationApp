@@ -227,7 +227,7 @@ test('a brand-new cloud progression can be reconstructed from its pending base e
 })
 
 test('a verified backup restores versioned progress and its pending recovery entry exactly', () => {
-  const prepared = prepareAcquisitionProgress(stateWithDataset(), 'maya', dataset, '2026-09-29T16:00:00.000Z', () => 0)
+  const prepared = prepareAcquisitionProgress(stateWithDataset(), 'maya', dataset, '2026-09-29T16:00:00.000Z', () => 0, true)
   assert.equal(prepared.status, 'ready')
   if (prepared.status !== 'ready' || !prepared.envelope.flow.prompt) return
   const checkpoint = createAcquisitionAnswerCheckpoint({
@@ -247,4 +247,19 @@ test('a verified backup restores versioned progress and its pending recovery ent
   const restored = restoreApplicationBackup(serialized)
   assert.deepEqual(restored.state, JSON.parse(JSON.stringify(applied.state)))
   assert.deepEqual(restored.pendingAcquisition, JSON.parse(JSON.stringify(pending)))
+  assert.ok(restored.state.acquisitionProgressEnvelopes![0].lessonSnapshot)
+})
+
+test('cloud hydration resolves an existing pinned lesson without reinterpreting corrected words', () => {
+  const original = importWeeklyDatasets({ presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'cloud-pinned-slide', text: 'Week 9/28-10/2\nMandarin\nTier 1: 需要、部分' }] }, [], grade2DeckProfile).datasets[0]
+  const first = prepareAcquisitionProgress({ ...createInitialState(), datasets: [original] }, 'maya', original,
+    '2026-09-29T16:00:00.000Z', () => 0, true)
+  assert.equal(first.status, 'ready')
+  if (first.status !== 'ready') return
+  const changed = { ...original, words: original.words.map(word => ({ ...word, text: '改正' })) }
+  const hydrated = cloudDataToAppState([changed], [], [], [], 'maya', 'Grade 2', undefined,
+    [first.envelope], [], '2026–2027')
+  assert.equal(hydrated.acquisitionProgressQuarantine?.length, 0)
+  assert.deepEqual(hydrated.acquisitionProgressEnvelopes?.[0], first.envelope)
 })

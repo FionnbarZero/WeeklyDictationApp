@@ -5,6 +5,9 @@ import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { openAcquisitionStore } from '../src/familyBeta/acquisitionStore.ts'
+import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
+import type { AcquisitionPersistenceContext } from '../src/acquisition/persistence/contracts.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
 import { grade2Tier1WritingAdaptiveWarmupProfile } from '../src/warmup/adaptive/profiles/grade2.ts'
 import { childMasteryStateId, createMasteryOccurrence, masteryRotationStateId } from '../src/warmup/adaptive/identity.ts'
@@ -183,6 +186,50 @@ test('family practice sync hydrates another device, preserves conflicts, and rej
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, childId: 'other' }))
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, key: 'weekly-dictation-auth-v1' }))
   await assertFails(setDoc(doc(db, path), { ...record, generation: 2, recording: 'forbidden' }))
+})
+
+test('family pinned lessons and completed archives recover unchanged on a second device', async () => {
+  const childId = 'pinning-child'
+  await environment.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: true, grade: 'Grade 2' })
+  })
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent',
+    endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }
+  const repository = createDeviceSyncRepository(config)
+  const device = () => {
+    const entries = new Map<string, string>()
+    return { entries, get length() { return entries.size }, key: (i: number) => [...entries.keys()][i] ?? null,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => { entries.set(key, value) } }
+  }
+  const first = device(), second = device()
+  const context: AcquisitionPersistenceContext = {
+    identity: { childId, grade: 'Grade 2', datasetId: 'pin-week', schoolYear: '2026-27', activityModule: 'writing-dojo', tier: 'tier-1' },
+    lifecycleStage: { kind: 'acquisition' }, applicationVersion: 'synthetic-pinning-test',
+    strategy: grade2AcquisitionStrategy,
+    targetSet: { id: 'pin-week', targets: [{ id: 'pin-word', datasetId: 'pin-week', text: '一', sentence: '', tier: 'tier-1' }] },
+  }
+  const latest = { ...context, targetSet: { ...context.targetSet, targets: context.targetSet.targets.map(t => ({ ...t, text: '二' })) } }
+  const store = openAcquisitionStore(first, context, { random: () => 0 })
+  store.answer(true, 'timer')
+  await repository.sync(first, childId)
+  await repository.sync(second, childId)
+  const remoteResume = openAcquisitionStore(second, latest)
+  assert.equal(second.getItem(store.key), first.getItem(store.key))
+  assert.deepEqual(remoteResume.context.targetSet, context.targetSet)
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 150) store.answer(true, 'timer')
+  assert.equal(store.current.envelope.flow.teachingComplete, true)
+  const original = first.getItem(store.key)
+  const corrected = openAcquisitionStore(first, latest)
+  corrected.finishSession()
+  await repository.sync(first, childId)
+  await repository.sync(second, childId)
+  assert.deepEqual(openAcquisitionStore(second, latest).context.targetSet, latest.targetSet)
+  const archive = [...first.entries.keys()].find(key => key.startsWith(`${store.key}:completed:`))!
+  assert.ok(archive)
+  assert.equal(second.getItem(archive), original)
+  await assert.rejects(createDeviceSyncRepository({ ...config, token: async () => mockToken('intruder') }).sync(device(), childId))
 })
 
 async function runCollectionGroupQuery(uid: string, parent: string, collectionId: string) {

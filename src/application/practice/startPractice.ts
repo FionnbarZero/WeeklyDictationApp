@@ -272,7 +272,13 @@ export async function startPractice(input: {
     id: input.sessionId,
     childId: input.child.id,
     grade: input.child.grade,
-    target: input.target,
+    target:
+      input.target && preparedAcquisition?.status === 'ready'
+        ? {
+            ...input.target,
+            dataset: { ...input.target.dataset, words: [...preparedAcquisition.context.targetSet.targets] },
+          }
+        : input.target,
     warmup: warmupSelection,
     startedAt,
     cloudSessionId: input.persistence.cloud ? input.sessionId : undefined,
