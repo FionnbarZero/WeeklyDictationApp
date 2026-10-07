@@ -39,6 +39,22 @@ async function saved(page: Page, grade2Writing: boolean) {
   }, grade2Writing)
 }
 
+test('resuming a live Grade 5 cohort reuses its frame even when the calendar week repeats it', async ({ page }) => {
+  await installFamilyFixtures(page)
+  await page.goto('/?grade=grade5')
+  const frame = await launch(page, 'grade5', 'writing')
+  await frame.locator('body').evaluate((body) => {
+    body.dataset.resumeProbe = 'original-activity'
+  })
+  await page.getByText('Saved lessons', { exact: true }).click()
+  await page.getByRole('button', { name: /Resume saved writing/ }).click()
+  await expect(page.locator('iframe')).toHaveCount(1)
+  await expect(frame.locator('body')).toHaveAttribute('data-resume-probe', 'original-activity')
+  await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+  await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  expect((await saved(page, false)).revision).toBe(1)
+})
+
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
   for (const channel of ['writing', 'reading'] as const) {
     for (const sourceState of ['unavailable', 'removed-week'])

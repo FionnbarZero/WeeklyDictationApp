@@ -88,6 +88,7 @@ function FamilyPreview() {
   const [savedLessonsOpen, setSavedLessonsOpen] = useState(false)
   const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
   const [resumeRefresh, setResumeRefresh] = useState(0)
+  const resumeInFlight = useRef(false)
   const slotsRef = useRef(slots)
   slotsRef.current = slots
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
@@ -266,6 +267,11 @@ function FamilyPreview() {
         void refreshProgress()
       }
       if (event.data?.type === 'family-beta-result-ready') {
+        const lesson = event.data.lesson
+        if (lesson && /^acq-progress-v1-[a-f0-9]{16}$/.test(lesson.progressionId) && /^[a-f0-9]{16}$/.test(lesson.fingerprint)) {
+          setSlots(current => current.map(item => item.id === slot.id ? { ...item,
+            savedLesson: { progressionId: lesson.progressionId, fingerprint: lesson.fingerprint } } : item))
+        }
         setActivityError('')
         void refreshProgress()
       }
@@ -350,17 +356,20 @@ function FamilyPreview() {
   }, [tab, child, curriculum, practiceReady, workspace, slots, resumingId])
 
   async function resumeSavedLesson(lesson: SavedLessonLaunch) {
-    if (!child || !practiceReady) return
+    if (!child || !practiceReady || resumeInFlight.current) return
+    resumeInFlight.current = true
     try {
       const saved = await readSavedLesson(localStorage, child, lesson)
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')
-      const existing = slotsRef.current.find(slot => slot.profile.id === child.id && slot.week === saved.week && slot.curriculumVersion === saved.sourceHash && slot.kind === 'activities' && (!slot.resumeChannel || slot.resumeChannel === saved.channel))
+      const existing = slotsRef.current.find(slot => slot.profile.id === child.id && slot.kind === 'activities' &&
+        slot.savedLesson?.progressionId === saved.progressionId && slot.savedLesson.fingerprint === saved.lessonFingerprint)
       const id = existing?.id || crypto.randomUUID()
       const savedWorkspace = existing?.workspace || `${activityWorkspace(child, saved.week)}:saved:${id}`
       if (!existing) setSlots(current => [...current, {
         id, workspace: savedWorkspace, profile: { ...child }, week: saved.week,
         curriculumVersion: saved.sourceHash, source: saved.source, resumeChannel: saved.channel,
+        savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
         teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local', kind: 'activities',
         src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
       }])
@@ -370,6 +379,7 @@ function FamilyPreview() {
       setSelectedSlots(current => ({ ...current, [`${savedWorkspace}:activities`]: id }))
       setActivityError('')
     } catch (e) { setActivityError(message(e)) }
+    finally { resumeInFlight.current = false }
   }
 
   function discardSlot(slot: FamilyActivitySlot) {

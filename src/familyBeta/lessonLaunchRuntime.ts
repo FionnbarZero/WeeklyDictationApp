@@ -15,5 +15,11 @@ export function rememberFamilyLesson(envelope: AcquisitionProgressEnvelope) {
     JSON.parse(frame.dataset.familySource),
     frame.dataset.familyWeek,
   )
-  window.parent.postMessage({ type: 'family-beta-result-ready' }, location.origin)
+  window.parent.postMessage(
+    {
+      type: 'family-beta-result-ready',
+      lesson: { progressionId: envelope.id, fingerprint: envelope.lessonSnapshot!.fingerprint },
+    },
+    location.origin,
+  )
 }
