@@ -167,6 +167,8 @@ The owner's current priority is shared reliability first, followed by Grade 5-sp
 
 ## Working rules
 
+- Owner handoffs: announce the recommended model and reasoning level before each focused stage, and prompt for a needed model change before application-code edits. Follow the persistent handoff instructions in `AGENTS.md`; a prior confirmation for the same stage need not be repeated.
+- Proactively invite a short smoke test at useful verified-build milestones and after affected live releases. Include reachable grade links, the verified build identifier, preview/live status, a short checklist, and known omissions. An unpublished fix must never be represented by an older live link.
 - One architectural concern per PR.
 - Refactors and behavior changes use separate commits or branches.
 - Prototype tests remain green throughout cleanup.
