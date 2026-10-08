@@ -76,8 +76,11 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   await page.route('**/children/synthetic-g2/betaPractice?*', async (route) => {
     requested = true
     await gate
-    const newerRecords = Object.entries(JSON.parse(newer).records as Record<string, string>).filter(([recordKey]) =>
-      recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
+    const newerRecords = Object.entries(JSON.parse(newer).records as Record<string, string>).filter(
+      ([recordKey]) =>
+        recordKey === 'weekly-dictation-history-v1' ||
+        recordKey === 'weekly-dictation-checkpoint-v1' ||
+        recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
     )
     const documents = newerRecords.map(([recordName, raw]) => {
       const recordKey = `${key}:record:${encodeURIComponent(recordName)}`
@@ -108,7 +111,7 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
     expect(await read()).toBe(older)
     release()
     await reload
-    await expect(page.getByRole('alert')).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveCount(0, { timeout: 1_000 })
     const current = JSON.parse(await read()) as { records: Record<string, string> }
     expect(current.records[newerActivity![0]]).toBe(newerActivity![1])
     expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(older)
