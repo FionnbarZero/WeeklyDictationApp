@@ -79,6 +79,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                 : 'Stroke Order',
         channel: 'game',
         datasetIds: active.datasets.map((d) => d.id),
+        schoolYear: active.datasets[0].schoolYear,
         correct,
         attempted,
       })

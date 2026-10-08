@@ -102,6 +102,7 @@ export function SpiritRealmPractice({
         activity: `Spirit Realm · ${channel} · ${typeof game === 'object' && game ? game.title : 'warmup'}`,
         channel,
         datasetIds: [...new Set(prepared.current.words.map((w) => w.datasetId))],
+        schoolYear: datasets[0].schoolYear,
         correct,
         attempted,
       })

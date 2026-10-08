@@ -11,12 +11,14 @@ export type BetaResult = {
   activity: string
   channel: 'writing' | 'reading' | 'game'
   datasetIds: string[]
+  /** Additive provenance; legacy scores may omit it and remain valid. */
+  schoolYear?: string
   correct: number
   attempted: number
   completedAt: string
   day: string
 }
-export type ResultInput = Pick<BetaResult, 'activity' | 'channel' | 'datasetIds' | 'correct' | 'attempted'> & {
+export type ResultInput = Pick<BetaResult, 'activity' | 'channel' | 'datasetIds' | 'schoolYear' | 'correct' | 'attempted'> & {
   id?: string
 }
 
@@ -31,13 +33,13 @@ export function isBetaResult(value: unknown): value is BetaResult {
     'activity',
     'channel',
     'datasetIds',
+    'schoolYear',
     'correct',
     'attempted',
     'completedAt',
     'day',
   ]
   return (
-    Object.keys(r).length === keys.length &&
     Object.keys(r).every((key) => keys.includes(key)) &&
     r.schema === 1 &&
     typeof r.id === 'string' &&
@@ -80,7 +82,8 @@ export function makeResult(profile: BetaProfile, input: ResultInput, now = new D
     completedAt: now.toISOString(),
     day: localDateKey(now),
   }
-  if (!isBetaResult(result)) throw new Error('The completed result is invalid; it has not been saved.')
+  input.schoolYear && (result.schoolYear = input.schoolYear)
+  if (!isBetaResult(result)) throw new Error('Invalid result; not saved.')
   return result
 }
 

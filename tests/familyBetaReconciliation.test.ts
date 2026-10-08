@@ -37,6 +37,14 @@ test('invalid scores and scope do not enter the ledger', () => {
   assert.deepEqual(dailyTotals([good], 'another-child'), [])
 })
 
+test('completed results carry optional school-year provenance without invalidating legacy scores', () => {
+  const current = result('current', '2026-10-05T18:00:00.000Z')
+  const tagged = { ...current, schoolYear: '2026-27' }
+  assert.equal(isBetaResult(tagged), true)
+  assert.equal(isBetaResult({ ...tagged, datasetIds: [123] }), false)
+  assert.equal(isBetaResult(current), true)
+})
+
 test('teacher snapshots keep grade identities and writing/reading targets distinct', () => {
   for (const slug of ['kindergarten', 'grade2', 'grade5']) {
     const snapshot = JSON.parse(

@@ -518,7 +518,7 @@ service cloud.firestore {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
             && request.resource.data.keys().hasAll(['schema','id','childId','grade','activity','channel','datasetIds','correct','attempted','completedAt','day'])
-            && request.resource.data.keys().hasOnly(['schema','id','childId','grade','activity','channel','datasetIds','correct','attempted','completedAt','day'])
+            && request.resource.data.keys().hasOnly(['schema','id','childId','grade','activity','channel','datasetIds','schoolYear','correct','attempted','completedAt','day'])
             && request.resource.data.schema == 1
             && request.resource.data.id == resultId
             && resultId.matches('^[A-Za-z0-9_-]{1,160}$')
@@ -530,6 +530,7 @@ service cloud.firestore {
             && request.resource.data.datasetIds is list && request.resource.data.datasetIds.size() > 0 && request.resource.data.datasetIds.size() <= 100
             && request.resource.data.datasetIds.join('|').split('[|]') == request.resource.data.datasetIds
             && request.resource.data.datasetIds.join('|').matches('^[A-Za-z0-9_:-]{1,300}([|][A-Za-z0-9_:-]{1,300}){0,99}$')
+            && (!('schoolYear' in request.resource.data) || (request.resource.data.schoolYear is string && request.resource.data.schoolYear.size() > 0 && request.resource.data.schoolYear.size() <= 32))
             && request.resource.data.correct is int && request.resource.data.attempted is int
             && request.resource.data.correct >= 0 && request.resource.data.correct <= request.resource.data.attempted
             && request.resource.data.attempted > 0 && request.resource.data.attempted <= 100000

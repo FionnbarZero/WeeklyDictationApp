@@ -50,6 +50,7 @@ function FamilyGame() {
               activity: game.pack.title,
               channel: 'game',
               datasetIds: game.pack.cohort.provenance.map((p) => p.datasetId),
+              schoolYear: game.pack.cohort.schoolYear,
               correct: summary.correct,
               attempted: summary.attempted,
             })
