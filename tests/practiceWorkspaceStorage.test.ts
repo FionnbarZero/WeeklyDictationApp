@@ -236,6 +236,30 @@ test('partitioned state remains writable through the shared workspace after reco
   assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), second)
 })
 
+test('shared workspace accepts canonicalized property order after partition reconstruction', () => {
+  const { storage } = fixture()
+  const state = createInitialState()
+  state.warmupVisitsV1 = [
+    {
+      schemaVersion: 1,
+      contractId: 'adaptive-warmup-visit-v1',
+      id: 'visit-1',
+      childId: 'child',
+      queue: [],
+      revision: 0,
+      status: 'complete',
+    } as never,
+  ]
+  state.adaptiveWarmup = {}
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const owner = createSharedWorkspace(state, app, 'weekly-dictation-state-v2')
+  const next = { ...state, warmupVisitsV1: [...state.warmupVisitsV1, { ...state.warmupVisitsV1[0], id: 'visit-2' }] }
+  assert.equal(owner.save(state, next), true)
+  const final = { ...next, warmupVisitsV1: [...next.warmupVisitsV1, { ...next.warmupVisitsV1[0], id: 'visit-3' }] }
+  assert.equal(owner.save(next, final), true)
+  assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), final)
+})
+
 test('partition records count as one logical state record for the workspace ceiling', () => {
   const { storage } = fixture()
   const app = practiceWorkspaceStorage(storage, 'child')

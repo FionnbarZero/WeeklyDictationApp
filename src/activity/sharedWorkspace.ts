@@ -1,3 +1,29 @@
+function equivalentJson(left: string | null, right: string) {
+  if (left === right) return true
+  try {
+    const compare = (a: unknown, b: unknown): boolean => {
+      if (Object.is(a, b)) return true
+      if (Array.isArray(a) || Array.isArray(b))
+        return (
+          Array.isArray(a) &&
+          Array.isArray(b) &&
+          a.length === b.length &&
+          a.every((item, index) => compare(item, b[index]))
+        )
+      if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+      const aKeys = Object.keys(a)
+      const bKeys = Object.keys(b)
+      return (
+        aKeys.length === bKeys.length &&
+        aKeys.every((key) => Object.hasOwn(b, key) && compare(a[key as keyof typeof a], b[key as keyof typeof b]))
+      )
+    }
+    return compare(left === null ? null : JSON.parse(left), JSON.parse(right))
+  } catch {
+    return false
+  }
+}
+
 /** One in-memory owner for reviewed state across retained, same-tab documents.
  * It never merges arbitrary snapshots or selects a cross-device winner. */
 export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'getItem' | 'setItem'>, key: string) {
@@ -38,8 +64,10 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
           return false
         }
         storage.setItem(key, encoded)
-        if (storage.getItem(key) !== encoded) throw new Error('Browser saving could not be confirmed.')
-        persisted = encoded
+        const confirmed = storage.getItem(key)
+        if (confirmed !== encoded && !equivalentJson(confirmed, encoded))
+          throw new Error('Browser saving could not be confirmed.')
+        persisted = confirmed || encoded
         if (snapshot.state !== next || snapshot.error) {
           snapshot = { state: next, error: '' }
           notify()
