@@ -48,6 +48,7 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   const read = () => page.evaluate((key) => localStorage.getItem(key)!, key)
   await answer(page)
   const older = await read()
+  await page.clock.setFixedTime(new Date('2026-09-24T12:01:00-07:00'))
   await answer(page)
   const newer = await read()
   const newerActivity = Object.entries(JSON.parse(newer).records as Record<string, string>).find(([recordKey]) =>
