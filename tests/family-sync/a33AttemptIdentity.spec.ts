@@ -36,6 +36,20 @@ async function answer(page: Page, channel: 'writing' | 'reading') {
   }
 }
 
+async function savedCheckpoint(page: Page) {
+  return page.evaluate(() => {
+    const key = Object.keys(localStorage).find((k) => k.startsWith('family-beta-acquisition-v1:'))!
+    const raw = localStorage.getItem(key)!
+    const saved = JSON.parse(raw)
+    return {
+      raw,
+      id: saved.sessionId as string,
+      scored: saved.assessments.filter((a: { countsTowardWeeklyScore: boolean }) => a.countsTowardWeeklyScore)
+        .length as number,
+    }
+  })
+}
+
 for (const [slug, channel] of [
   ['kindergarten', 'writing'],
   ['grade5', 'writing'],
@@ -51,12 +65,14 @@ for (const [slug, channel] of [
       const documents: SyntheticFamilyDocuments = new Map()
       await installFamilyFixtures(page, documents)
       await start(page, slug, channel)
-      for (let i = 0; i < (channel === 'writing' ? 4 : 1); i++) await answer(page, channel)
-      const checkpoint = await page.evaluate(() => {
-        const key = Object.keys(localStorage).find((k) => k.startsWith('family-beta-acquisition-v1:'))!
-        const raw = localStorage.getItem(key)!
-        return { raw, id: JSON.parse(raw).sessionId as string }
-      })
+      let checkpoint = await savedCheckpoint(page)
+      // Familiar-DT diagnostics and teaching demonstrations are not scores.
+      // Follow the real sequence until a reviewed weekly-target answer exists.
+      for (let i = 0; i < 12 && checkpoint.scored === 0; i++) {
+        await answer(page, channel)
+        checkpoint = await savedCheckpoint(page)
+      }
+      expect(checkpoint.scored).toBeGreaterThan(0)
       // Wait for the reviewed checkpoint itself, not just a UI save message.
       await expect
         .poll(() =>
