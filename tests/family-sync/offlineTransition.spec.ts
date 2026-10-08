@@ -53,6 +53,26 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   const old = (await page.evaluate(readGrade2Workspace))!
   const candidate = await select('candidate')
   await page.reload()
+  await expect(page.locator('[data-offline-shell-status]')).toContainText('An app update is ready')
+  // The offline shell intentionally waits until every Dojo tab closes before
+  // activating a replacement, so an active lesson is never swapped in place.
+  await page.goto('about:blank')
+  await expect
+    .poll(async () => {
+      for (const worker of context.serviceWorkers()) {
+        try {
+          const ready = await worker.evaluate(
+            async () => !(await self.registration.waiting) && !self.registration.installing,
+          )
+          if (ready) return true
+        } catch {
+          /* The replaced worker can become redundant during polling. */
+        }
+      }
+      return false
+    })
+    .toBe(true)
+  await page.goto('/?grade=grade2')
   await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   frame = await reopen()
