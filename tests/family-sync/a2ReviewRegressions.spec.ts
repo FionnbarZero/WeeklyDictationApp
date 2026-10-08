@@ -76,6 +76,16 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   await page.route('**/children/synthetic-g2/betaPractice?*', async (route) => {
     requested = true
     await gate
+    const owned = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter(
+          (recordKey) =>
+            recordKey.startsWith('family-beta-activity:synthetic-g2:') ||
+            recordKey.startsWith('family-beta-mastery-v1:synthetic-g2:'),
+        )
+        .map((recordKey) => [recordKey, localStorage.getItem(recordKey)!] as const),
+    )
+    const records = new Map(owned)
     const olderRecords = JSON.parse(older).records as Record<string, string>
     const newerRecords = Object.entries(JSON.parse(newer).records as Record<string, string>).filter(
       ([recordKey]) =>
@@ -83,11 +93,11 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
         recordKey === 'weekly-dictation-checkpoint-v1' ||
         recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
     )
-    const documents = newerRecords.map(([recordName, raw]) => {
-      const payload = recordName.startsWith('weekly-dictation-checkpoint-v1:activity:')
-        ? raw
-        : olderRecords[recordName]
+    for (const [recordName, raw] of newerRecords) {
       const recordKey = `${key}:record:${encodeURIComponent(recordName)}`
+      records.set(recordKey, recordName.startsWith('weekly-dictation-checkpoint-v1:activity:') ? raw : olderRecords[recordName])
+    }
+    const documents = [...records].map(([recordKey, payload]) => {
       const record = {
         schema: 1,
         childId: 'synthetic-g2',
