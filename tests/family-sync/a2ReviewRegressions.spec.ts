@@ -76,6 +76,7 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   await page.route('**/children/synthetic-g2/betaPractice?*', async (route) => {
     requested = true
     await gate
+    const olderRecords = JSON.parse(older).records as Record<string, string>
     const newerRecords = Object.entries(JSON.parse(newer).records as Record<string, string>).filter(
       ([recordKey]) =>
         recordKey === 'weekly-dictation-history-v1' ||
@@ -83,12 +84,15 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
         recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
     )
     const documents = newerRecords.map(([recordName, raw]) => {
+      const payload = recordName.startsWith('weekly-dictation-checkpoint-v1:activity:')
+        ? raw
+        : olderRecords[recordName]
       const recordKey = `${key}:record:${encodeURIComponent(recordName)}`
       const record = {
         schema: 1,
         childId: 'synthetic-g2',
         key: recordKey,
-        payload: raw,
+        payload,
         generation: 2,
       }
       const fields = Object.fromEntries(
