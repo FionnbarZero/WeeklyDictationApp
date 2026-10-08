@@ -52,6 +52,42 @@ function context(
     applicationVersion: 'test',
   }
 }
+
+test('two devices continuing the same checkpoint produce distinct completed-attempt identities', () => {
+  const firstDevice = memory(), ctx = context()
+  const first = openAcquisitionStore(firstDevice, ctx, { writerId: 'device-one', random: () => 0 })
+  first.answer(true, 'timer')
+  const secondDevice = memory()
+  for (const [key, raw] of firstDevice.records) secondDevice.setItem(key, raw)
+  const second = openAcquisitionStore(secondDevice, ctx, { writerId: 'device-two', random: () => 0 })
+  assert.equal(second.current.sessionId, first.current.sessionId, 'reading a checkpoint does not create an attempt')
+  assert.deepEqual(second.current.envelope, JSON.parse(JSON.stringify(first.current.envelope)))
+  const inheritedAssessments = [...second.current.assessments]
+  first.answer(true, 'timer')
+  second.answer(false, 'timer')
+  assert.notEqual(second.current.sessionId, first.current.sessionId)
+  assert.deepEqual(second.current.assessments.slice(0, inheritedAssessments.length), inheritedAssessments)
+  const reopened = openAcquisitionStore(secondDevice, ctx, { writerId: 'device-two', random: () => 0 })
+  const sameAttempt = reopened.current.sessionId
+  reopened.answer(true, 'timer')
+  assert.equal(reopened.current.sessionId, sameAttempt, 'same-device retry/reload does not create another result')
+})
+
+test('a legacy unowned attempt is claimed only with a successfully saved reviewed answer', () => {
+  const storage = memory(), ctx = context()
+  const legacy = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  legacy.answer(true, 'timer')
+  const original = storage.getItem(legacy.key)
+  const upgraded = openAcquisitionStore(storage, ctx, { writerId: 'new-device', random: () => 0 })
+  assert.equal(storage.getItem(legacy.key), original)
+  const write = storage.setItem
+  storage.setItem = () => { throw new Error('quota') }
+  assert.throws(() => upgraded.answer(true, 'timer'), /quota/)
+  assert.equal(upgraded.current.sessionId, legacy.current.sessionId)
+  storage.setItem = write
+  upgraded.answer(true, 'timer')
+  assert.notEqual(upgraded.current.sessionId, legacy.current.sessionId)
+})
 for (const strategy of [
   grade5AcquisitionStrategy,
   kindergartenAcquisitionStrategy,

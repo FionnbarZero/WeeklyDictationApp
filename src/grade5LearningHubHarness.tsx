@@ -271,6 +271,7 @@ function answerCurrentPrompt(correct: boolean) {
     try {
       if (acquisitionStore) {
         const saved = acquisitionStore.answer(correct, currentRevealMethod)
+        activeSession = { ...activeSession, id: saved.sessionId }
         activePractice = { ...activePractice, flow: saved.envelope.flow, assessments: saved.assessments }
       } else activePractice = answerGrade5AcquisitionLab(activePractice, correct, currentRevealMethod)
     } catch (error) {

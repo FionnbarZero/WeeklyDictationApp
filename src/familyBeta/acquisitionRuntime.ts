@@ -2,6 +2,7 @@ import type { AcquisitionStrategy, AcquisitionTarget, AcquisitionTargetSet } fro
 import { openAcquisitionStore } from './acquisitionStore.ts'
 import { familyPreview, previewProfile, previewResults } from './runtime.ts'
 import { rememberFamilyLesson } from './lessonLaunchRuntime.ts'
+import { deviceWriter } from './deviceWriter.ts'
 
 export function familyAcquisitionStore<T extends AcquisitionTarget, R extends string>(
   targetSet: AcquisitionTargetSet<T>,
@@ -25,7 +26,7 @@ export function familyAcquisitionStore<T extends AcquisitionTarget, R extends st
     applicationVersion: import.meta.env?.VITE_GIT_REVISION || 'family-beta-checkpoint-v1',
     targetSet,
     strategy,
-  })
+  }, { writerId: deviceWriter(localStorage) })
   // Recover a close/reload between confirming a result and opening a new visit.
   if (previewResults().some((result) => result.id === store.current.sessionId)) store.finishSession()
   rememberFamilyLesson(store.current.envelope)

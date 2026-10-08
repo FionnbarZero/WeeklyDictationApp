@@ -8,6 +8,8 @@ import {
   readResultLedger,
 } from '../src/familyBeta/resultLedger.ts'
 import { syncCompletedBeforePractice } from '../src/familyBeta/syncProgress.ts'
+import { createResultRepository } from '../src/familyBeta/cloud.ts'
+import { isConnectionFailure, isFamilyAccessDenied } from '../src/familyBeta/offlineFamily.ts'
 
 function memory() {
   const records = new Map<string, string>()
@@ -249,3 +251,23 @@ test('a conflicting durable score cannot be uploaded from a different pending co
   assert.equal(saved, false)
   assert.equal(practice, false)
 })
+
+for (const status of [401, 403, 429, 503]) {
+  test(`score-first sync retains HTTP ${status} classification for the existing offline/access policy`, async () => {
+    const repository = createResultRepository({
+      projectId: 'synthetic',
+      familyId: 'family',
+      token: async () => 'synthetic',
+      fetchImpl: async () => new Response('{}', { status }),
+    })
+    for (const operation of [() => repository.save(result), () => repository.listPage('child')]) {
+      await assert.rejects(operation(), (error: unknown) => {
+        assert.ok(error instanceof Error && 'status' in error)
+        assert.equal(error.status, status)
+        assert.equal(Boolean(isFamilyAccessDenied(error)), status === 401 || status === 403)
+        assert.equal(isConnectionFailure(error), status === 429 || status === 503)
+        return true
+      })
+    }
+  })
+}

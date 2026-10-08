@@ -29,10 +29,11 @@ function fields(input: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(input).map(([key, entry]) => [key, value(entry)]))
 }
 
-export async function installFamilyFixtures(page: Page) {
+export type SyntheticFamilyDocuments = Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>
+
+export async function installFamilyFixtures(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
   // This is the production-configured artifact. All external requests are
   // intercepted: synthetic account/storage fixtures never reach production.
-  const documents = new Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>()
   await page.context().route('**/*', async (route) => {
     const url = new URL(route.request().url())
     if (url.origin === 'http://127.0.0.1:5193') return route.continue()
