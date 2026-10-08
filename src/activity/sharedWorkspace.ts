@@ -59,7 +59,8 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
       }
       try {
         const current = storage.getItem(key)
-        if (current !== persisted && current !== encoded) {
+        const canMergeExternal = Boolean((storage as Pick<Storage, 'getItem' | 'setItem'> & { allowConcurrentMerge?: boolean }).allowConcurrentMerge)
+        if (current !== persisted && current !== encoded && !canMergeExternal) {
           snapshot = {
             ...snapshot,
             error: 'Another browser changed saved practice. Nothing was overwritten; keep this activity open.',

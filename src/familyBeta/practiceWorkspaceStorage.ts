@@ -308,6 +308,7 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     return stateRecords(initial.value.records, childId, state)
   })()
   return {
+    allowConcurrentMerge: true,
     get length() {
       return exposedRecordKeys(read().value.records).length
     },
@@ -332,8 +333,10 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
         const before = baselineRecords[recordKey]
         const next = incoming[recordKey]
         if (next === before) continue
-        if (next === undefined) delete records[recordKey]
-        else records[recordKey] = next
+        // A kept-alive frame can omit another frame's activity from its
+        // stale AppState snapshot. Never interpret that omission as deletion;
+        // reviewed progress is retired explicitly through its own marker.
+        if (next !== undefined) records[recordKey] = next
       }
       write({ ...value, records }, raw)
       baselineRecords = records
