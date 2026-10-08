@@ -1,13 +1,9 @@
 import { RESULT_PAGE_SIZE } from './cloud.ts'
 import { type BetaResult, isBetaResult } from './model.ts'
+import { sameCompletedResult } from './resultLedger.ts'
 
 const compareAttempts = (a: BetaResult, b: BetaResult) =>
   a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id)
-
-const sameAttempt = (a: BetaResult, b: BetaResult) =>
-  Object.keys(a).every(
-    (key) => JSON.stringify(a[key as keyof BetaResult]) === JSON.stringify(b[key as keyof BetaResult]),
-  )
 
 /** Read-only integrity gate shared by recent refreshes and explicit older-page loads. */
 export function assertSavedAttemptsMatch(
@@ -22,7 +18,7 @@ export function assertSavedAttemptsMatch(
   const checkCopy = (result: BetaResult, existing: unknown) => {
     if (!isBetaResult(existing))
       throw new Error('A stored completed score failed validation. Device records are unchanged.')
-    if (!sameAttempt(result, existing))
+    if (!sameCompletedResult(result, existing))
       throw new Error('An online score differs from this device’s record. Both copies are preserved.')
   }
   for (const result of results) {
@@ -47,7 +43,7 @@ export function distinctAttempts(results: readonly BetaResult[], childId: string
     if (!isBetaResult(result)) throw new Error('A completed attempt failed validation. Records were not changed.')
     if (result.childId !== childId) continue
     const existing = unique.get(result.id)
-    if (existing && !sameAttempt(existing, result))
+    if (existing && !sameCompletedResult(existing, result))
       throw new Error('Two copies of this completed attempt disagree. Neither was replaced.')
     unique.set(result.id, result)
   }

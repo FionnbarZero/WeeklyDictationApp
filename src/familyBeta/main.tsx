@@ -7,13 +7,15 @@ import { firebaseConfigReady, DEFAULT_SCHOOL_YEAR } from '../config.ts'
 import { subscribeAuth, signIn, signOut, type AuthState } from '../firebaseClient.ts'
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
-import { BETA_GRADES, isBetaResult, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
+import { BETA_GRADES, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import { ResultHistory } from './ResultHistory.tsx'
 import { assertSavedAttemptsMatch } from './resultHistory.ts'
 import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
 import { familyDeviceSyncRepository } from './deviceSync.ts'
+import { syncCompletedBeforePractice } from './syncProgress.ts'
+import { assertResultCopiesMatch } from './resultLedger.ts'
 import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import { channelCohort, latestEarlierTargets } from './gamePools.ts'
@@ -237,17 +239,18 @@ function FamilyPreview() {
     try {
       if (familyId && auth.user) {
         if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
-        await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
-          () => scopeRef.current === scope && !slotsRef.current.some(slot => slot.profile.id === child.id))
-        if (scopeRef.current !== scope) return
         const repository = familyResultRepository(familyId)
-        const pending = pendingResults()
-        for (const item of pending) {
-          if (!isBetaResult(item) || !profiles.some((p) => p.id === item.childId)) continue
-          await repository.save(item)
-          if (scopeRef.current !== scope) return
-          acknowledgeResult(item.id)
-        }
+        const current = () => scopeRef.current === scope && childRef.current === child.id
+        if (!await syncCompletedBeforePractice({
+          isCurrent: current,
+          pending: pendingResults,
+          belongsToFamily: item => profiles.some(p => p.id === item.childId),
+          validate: item => assertResultCopiesMatch(localStorage, RESULT_KEY, item),
+          save: repository.save,
+          acknowledge: acknowledgeResult,
+          syncPractice: () => familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
+            () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id)),
+        })) return
         const page = await repository.listPage(child.id)
         const saved = page.results
         if (scopeRef.current !== scope) return

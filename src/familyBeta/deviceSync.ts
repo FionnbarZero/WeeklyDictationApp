@@ -5,7 +5,7 @@ import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
 import { legacyPracticeKey, practiceWorkspaceKey } from './practiceWorkspaceStorage.ts'
 
-type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
+type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
 type Remote = { record: SyncRecord; updateTime: string }
 export function ownedPracticeRecord(key: string, raw: string, childId: string) {
@@ -19,6 +19,15 @@ export function ownedPracticeRecord(key: string, raw: string, childId: string) {
     }
   }
   return false
+}
+
+function acknowledgePractice(storage: StoragePort, baseKey: string, payload: string) {
+  storage.setItem(baseKey, payload)
+  if (storage.getItem(baseKey) !== payload) throw new Error('Practice acknowledgement could not be saved. Please retry.')
+  const pendingKey = `${baseKey}:pending`
+  // The baseline is durable first. Only release this exact confirmed retry
+  // copy, never another tab's newer upload or the actual practice checkpoint.
+  if (storage.getItem(pendingKey) === payload) storage.removeItem?.(pendingKey)
 }
 async function recordId(key: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
@@ -123,10 +132,10 @@ export function createDeviceSyncRepository(options: {
         // completes. Recognize that exact pending payload on the next readback.
         if (online !== null && online === storage.getItem(pendingKey)) {
           baseline = online
-          storage.setItem(baseKey, online)
+          acknowledgePractice(storage, baseKey, online)
         }
         if (online === local) {
-          if (online !== null) storage.setItem(baseKey, online)
+          if (online !== null) acknowledgePractice(storage, baseKey, online)
           continue
         }
         if (local === null || (baseline !== null && local === baseline)) {
@@ -139,7 +148,7 @@ export function createDeviceSyncRepository(options: {
             )
           // No await between checking the local base and adopting the confirmed remote.
           storage.setItem(key, online)
-          storage.setItem(baseKey, online)
+          acknowledgePractice(storage, baseKey, online)
           continue
         }
         if (online !== baseline)
@@ -182,7 +191,7 @@ export function createDeviceSyncRepository(options: {
           throw new Error('Practice upload could not be verified. Keep this device’s records and retry.')
         // A child may answer another prompt while this request is pending. Only
         // acknowledge the uploaded snapshot; never replace the newer local state.
-        storage.setItem(baseKey, local)
+        acknowledgePractice(storage, baseKey, local)
       }
     },
   }

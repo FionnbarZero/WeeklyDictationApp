@@ -1,7 +1,8 @@
 import { scopedActivityStorage } from '../activity/scopedStorage.ts'
 import type { FamilyWorkspaceWindow } from './workspaceOwner.ts'
-import { BETA_GRADES, isBetaResult, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
+import { BETA_GRADES, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
 import { isFamilyActivityContext } from './context.ts'
+import { RESULT_KEY, PENDING_KEY, readResultLedger, acknowledgeCompletedResult, assertResultCopiesMatch } from './resultLedger.ts'
 import '../activity/activityLifecycle.ts'
 
 function parentRole() {
@@ -16,8 +17,7 @@ export const familyPreview = isFamilyActivityContext({
   parentRole: parentRole(),
 })
 export const PROFILE_KEY = 'family-beta-preview-selected-v1'
-export const RESULT_KEY = 'family-beta-preview-results-v1'
-export const PENDING_KEY = 'family-beta-preview-pending-v1'
+export { RESULT_KEY, PENDING_KEY }
 if (familyPreview && window.parent !== window) document.documentElement.classList.add('family-beta-frame')
 
 export function previewProfile(): BetaProfile | null {
@@ -30,28 +30,9 @@ export function previewProfile(): BetaProfile | null {
     return null
   }
 }
-function readResults(key: string): BetaResult[] {
-  const parsed: unknown = JSON.parse(localStorage.getItem(key) || '[]')
-  if (!Array.isArray(parsed) || !parsed.every(isBetaResult))
-    throw new Error('Stored beta results could not be read safely.')
-  const results = new Map(parsed.map((r) => [r.id, r]))
-  for (let i = 0; i < localStorage.length; i++) {
-    const itemKey = localStorage.key(i)
-    if (!itemKey?.startsWith(`${key}:`)) continue
-    const result: unknown = JSON.parse(localStorage.getItem(itemKey) || 'null')
-    if (!isBetaResult(result) || itemKey !== `${key}:${result.id}`)
-      throw new Error('A stored result failed validation; nothing was discarded.')
-    results.set(result.id, result)
-  }
-  return [...results.values()]
-}
-export const previewResults = () => readResults(RESULT_KEY)
-export const pendingResults = () => readResults(PENDING_KEY)
-export function acknowledgeResult(id: string) {
-  localStorage.removeItem(`${PENDING_KEY}:${id}`)
-  const legacy = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]') as BetaResult[]
-  localStorage.setItem(PENDING_KEY, JSON.stringify(legacy.filter((r) => r.id !== id)))
-}
+export const previewResults = () => readResultLedger(localStorage, RESULT_KEY)
+export const pendingResults = () => readResultLedger(localStorage, PENDING_KEY)
+export const acknowledgeResult = (result: BetaResult) => acknowledgeCompletedResult(localStorage, result)
 export function savePreviewResult(input: ResultInput): BetaResult | null {
   const profile = previewProfile()
   if (!profile) {
@@ -62,6 +43,8 @@ export function savePreviewResult(input: ResultInput): BetaResult | null {
   const results = previewResults()
   const existing = input.id ? [...results, ...pendingResults()].find((r) => r.id === input.id) : undefined
   if (existing) {
+    assertResultCopiesMatch(localStorage, RESULT_KEY, existing)
+    assertResultCopiesMatch(localStorage, PENDING_KEY, existing)
     if (
       existing.childId !== profile.id ||
       existing.grade !== profile.grade ||
