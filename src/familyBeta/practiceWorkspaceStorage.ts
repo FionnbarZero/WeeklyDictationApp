@@ -48,6 +48,21 @@ function activityId(key: string) {
   return decodeURIComponent(key.slice(activityKeyPrefix.length))
 }
 
+function activityRevision(raw: string | undefined) {
+  if (!raw) return null
+  try {
+    const envelopes = (JSON.parse(raw) as { values?: { acquisitionProgressEnvelopes?: unknown } }).values
+      ?.acquisitionProgressEnvelopes
+    if (!Array.isArray(envelopes)) return null
+    const revisions = envelopes
+      .filter((item): item is { revision: number } => Boolean(item && typeof item === 'object' && Number.isInteger((item as { revision?: unknown }).revision)))
+      .map((item) => item.revision)
+    return revisions.length ? Math.max(...revisions) : null
+  } catch {
+    return null
+  }
+}
+
 function exposedRecordKeys(records: Record<string, string>) {
   const keys = Object.keys(records).filter((key) => !isInternalKey(key))
   if (records[historyKey] !== undefined && records[checkpointKey] !== undefined && !keys.includes(stateKey))
@@ -336,7 +351,12 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
         // A kept-alive frame can omit another frame's activity from its
         // stale AppState snapshot. Never interpret that omission as deletion;
         // reviewed progress is retired explicitly through its own marker.
-        if (next !== undefined) records[recordKey] = next
+        if (next !== undefined) {
+          const currentRevision = isActivityKey(recordKey) ? activityRevision(records[recordKey]) : null
+          const incomingRevision = isActivityKey(recordKey) ? activityRevision(next) : null
+          if (currentRevision !== null && incomingRevision !== null && currentRevision > incomingRevision) continue
+          records[recordKey] = next
+        }
       }
       write({ ...value, records }, raw)
       baselineRecords = records

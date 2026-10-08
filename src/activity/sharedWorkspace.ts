@@ -70,7 +70,7 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
         }
         storage.setItem(key, encoded)
         const confirmed = storage.getItem(key)
-        if (confirmed !== encoded && !equivalentJson(confirmed, encoded))
+        if (!confirmed || (!canMergeExternal && confirmed !== encoded && !equivalentJson(confirmed, encoded)))
           throw new Error('Browser saving could not be confirmed.')
         persisted = confirmed || encoded
         if (snapshot.state !== next || snapshot.error) {
