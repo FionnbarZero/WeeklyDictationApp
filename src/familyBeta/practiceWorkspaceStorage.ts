@@ -51,13 +51,14 @@ function activityId(key: string) {
 function activityRevision(raw: string | undefined) {
   if (!raw) return null
   try {
-    const envelopes = (JSON.parse(raw) as { values?: { acquisitionProgressEnvelopes?: unknown } }).values
+    const envelopes = (JSON.parse(raw) as { values?: { acquisitionProgressEnvelopes?: Array<{ revision?: unknown }> } }).values
       ?.acquisitionProgressEnvelopes
     if (!Array.isArray(envelopes)) return null
-    const revisions = envelopes
-      .filter((item): item is { revision: number } => Boolean(item && typeof item === 'object' && Number.isInteger((item as { revision?: unknown }).revision)))
-      .map((item) => item.revision)
-    return revisions.length ? Math.max(...revisions) : null
+    const revision = envelopes.reduce(
+      (max, item) => (Number.isInteger(item?.revision) ? Math.max(max, item.revision as number) : max),
+      -1,
+    )
+    return revision >= 0 ? revision : null
   } catch {
     return null
   }
