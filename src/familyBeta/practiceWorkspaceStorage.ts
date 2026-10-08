@@ -42,6 +42,8 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
   const legacyPrefix = `family-beta-activity:${childId}:`
   const write = (value: Workspace, expected: string | null) => {
     if (storage.getItem(key) !== expected) throw new Error(failure)
+    if (Object.keys(value.records).length > MAX_WORKSPACE_RECORDS)
+      throw new Error('Saved practice contains too many records for safe syncing. Existing device records are preserved.')
     const raw = JSON.stringify(value)
     if (new TextEncoder().encode(raw).byteLength > 700_000)
       throw new Error('Saved practice exceeds its safe syncing limit. Keep this page and the original device records.')

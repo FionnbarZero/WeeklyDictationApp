@@ -101,6 +101,16 @@ test('a workspace over the record ceiling fails closed without evicting legacy r
   assert.equal(storage.getItem(practiceWorkspaceKey('child')), null)
 })
 
+test('adding a record to a full workspace fails before writing an unreadable snapshot', () => {
+  const { storage } = fixture()
+  const records = Object.fromEntries(Array.from({ length: 500 }, (_, index) => [`weekly-dictation-record-${index}`, `record-${index}`]))
+  storage.setItem(practiceWorkspaceKey('child'), JSON.stringify({ schema: 1, childId: 'child', records }))
+  const before = storage.getItem(practiceWorkspaceKey('child'))
+  const app = practiceWorkspaceStorage(storage, 'child')
+  assert.throws(() => app.setItem('weekly-dictation-overflow', 'overflow'), /too many records/)
+  assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
+})
+
 test('state and journal writes share the latest atomic record; quota does not erase the previous snapshot', () => {
   const { storage } = fixture()
   const one = practiceWorkspaceStorage(storage, 'child')
