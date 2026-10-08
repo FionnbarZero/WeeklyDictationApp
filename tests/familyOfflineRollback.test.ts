@@ -88,3 +88,36 @@ for (const key of [
     assert.equal(values.size, 2)
   })
 }
+
+test('rollback guard preserves an oversized acquisition history without parsing or rewriting it', () => {
+  const key = 'family-beta-acquisition-v1:lesson'
+  const oversized = JSON.stringify({
+    sessionId: 'saved-lesson',
+    lessonSnapshot: { curriculumRevision: '2026-10-08' },
+    reviewedTrials: Array.from({ length: 501 }, (_, i) => ({ sessionId: 'saved-lesson', reviewedAt: `2026-10-08T00:00:${String(i % 60).padStart(2, '0')}.000Z` })),
+  })
+  const values = new Map([[key, oversized], ['weekly-dictation-auth-v1', 'never-read']])
+  let ready: (() => void) | undefined
+  const document = {
+    title: '',
+    body: { innerHTML: '' },
+    addEventListener: (_event: string, fn: () => void) => { ready = fn },
+  }
+  const window = { __dojoRollbackPreserve: false }
+  runInNewContext(rollbackGuard, {
+    document,
+    window,
+    localStorage: {
+      length: values.size,
+      key: (i: number) => [...values.keys()][i] ?? null,
+      getItem: (storedKey: string) => {
+        assert.notEqual(storedKey, 'weekly-dictation-auth-v1')
+        return values.get(storedKey)
+      },
+    },
+  })
+  assert.equal(window.__dojoRollbackPreserve, true)
+  ready!()
+  assert.match(document.body.innerHTML, /Your saved work is preserved/)
+  assert.equal(values.get(key), oversized)
+})
