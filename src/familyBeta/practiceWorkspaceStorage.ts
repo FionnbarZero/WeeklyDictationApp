@@ -17,6 +17,10 @@ export const legacyPracticeKey = (key: string, childId: string) =>
   key.startsWith(`family-beta-activity:${childId}:weekly-dictation-`)
 const failure =
   'Saved practice could not be safely opened. Both old and new records are preserved. Please report this problem.'
+const bounded = (value: unknown): boolean =>
+  !value ||
+  typeof value !== 'object' ||
+  Object.values(value).every((item) => !Array.isArray(item) || item.length <= MAX_WORKSPACE_RECORDS)
 
 type PartitionRecord = { schema: 1; childId: string; values: Record<string, unknown> }
 const partitionKeys = new Set([historyKey, checkpointKey])
@@ -101,7 +105,7 @@ function stateFromRecords(records: Record<string, string>, childId: string) {
     const merged = Object.fromEntries(
       WORKSPACE_STATE_FIELDS.filter((field) => field in values).map((field) => [field, values[field]]),
     )
-    if (!isAppState(merged)) throw new Error(failure)
+    if (!isAppState(merged) || !bounded(merged)) throw new Error(failure)
     return JSON.stringify(merged)
   }
   return records[stateKey] ?? null
@@ -123,6 +127,7 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
       throw new Error(failure)
     return { ...records, [stateKey]: raw }
   }
+  if (!bounded(parsed)) throw new Error(failure)
   const partition = partitionWorkspaceState(parsed as AppState)
   const activities = partitionActivityCheckpoints(parsed as AppState)
   if (activities.status !== 'ready') throw new Error(failure)

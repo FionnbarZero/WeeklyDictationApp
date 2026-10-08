@@ -10,6 +10,8 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 **Storage-safety update (October 8, unpublished):** Result-ledger reads now fail closed above 500 unique completed-score IDs without pruning or rewriting preserved copies. The final local gates pass: 815 unit tests, 15 Firestore emulator cases, 44/44 reconciliation browser cases, type checking, lint, format, the 549,987/550,000 initial-JavaScript-byte performance budget, and both dependency audits. Grade 2 embedded AppState collections remain unbounded, and broader all-grade rollback/package evidence remains incomplete. Nothing is pushed or published; smoke testing remains premature.
 
+**Embedded-state update (October 8, unpublished):** The atomic Grade 2 workspace now rejects any nested array collection above 500 entries before partitioning or writing, preserves the previous workspace unchanged, and rejects the same condition during reconstruction. The added regression and all final local gates pass (816 unit tests, 15 emulator cases, 44/44 reconciliation browser cases, 549,987/550,000 initial JavaScript bytes). Broader all-grade rollback/package evidence remains incomplete; nothing is pushed or published, and smoke testing remains premature.
+
 ## Live family beta
 
 | Grade | Permanent app | Verified release |

@@ -133,6 +133,31 @@ test('valid Grade 2 state is stored as separate history and checkpoint records a
   assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
 })
 
+test('oversized embedded state fails closed without rewriting the prior workspace', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const state = createInitialState()
+  state.results = Array.from({ length: 501 }, (_, index) => ({
+    id: `result-${index}`,
+    childId: 'child',
+    datasetId: 'dataset',
+    datasetDateRange: '2026-10-06-2026-10-12',
+    wordId: `word-${index}`,
+    grade: 'Grade 2',
+    phase: 'acquisition',
+    sessionId: 'session',
+    sessionDate: '2026-10-08',
+    completedAt: '2026-10-08T00:00:00.000Z',
+    correct: true,
+    revealMethod: 'timer',
+    scored: true,
+    completeSourceDatasetReviewed: true,
+  }))
+  const before = storage.getItem(practiceWorkspaceKey('child'))
+  assert.throws(() => app.setItem('weekly-dictation-state-v2', JSON.stringify(state)), /preserved/)
+  assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
+})
+
 test('Grade 2 acquisition checkpoints are stored per activity and reconstruct exactly', () => {
   const { storage } = fixture()
   const app = practiceWorkspaceStorage(storage, 'child')
@@ -149,7 +174,9 @@ test('Grade 2 acquisition checkpoints are stored per activity and reconstruct ex
   ]
   app.setItem('weekly-dictation-state-v2', JSON.stringify(state))
   const workspace = JSON.parse(storage.getItem(practiceWorkspaceKey('child'))!)
-  const activityKeys = Object.keys(workspace.records).filter((key) => key.startsWith('weekly-dictation-checkpoint-v1:activity:'))
+  const activityKeys = Object.keys(workspace.records).filter((key) =>
+    key.startsWith('weekly-dictation-checkpoint-v1:activity:'),
+  )
   assert.deepEqual(activityKeys, ['weekly-dictation-checkpoint-v1:activity:activity%2Fa'])
   assert.equal(app.getItem(activityKeys[0]), null)
   assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), state)
