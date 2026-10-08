@@ -207,7 +207,7 @@ export function createDeviceSyncRepository(options: {
           key === workspaceOuter &&
           workspace &&
           (workspaceSyncRemote ||
-            workspaceRemote === undefined ||
+            workspace.keys().length > 0 ||
             workspaceRemote === workspaceLocal ||
             workspaceRemote === workspaceBase)
         )

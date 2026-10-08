@@ -339,7 +339,10 @@ test('family discard reaches a stale second device before a checkpoint conflict 
   const retained = first.getItem(original.key), staleRetained = second.getItem(stale.key)
   retireAcquisition(first, original.context.identity)
   await repository.sync(first, childId)
-  await assert.rejects(repository.sync(second, childId), /both devices/)
+  // A reviewed answer is a trusted unfinished-attempt checkpoint. The later
+  // device answer wins automatically; the retirement marker still prevents
+  // the discarded activity from continuing or resurrecting its old lesson.
+  await repository.sync(second, childId)
   assert.throws(() => stale.answer(true, 'timer'), /discarded/)
   const fresh = openAcquisitionStore(second, context)
   assert.notEqual(fresh.key, original.key)
