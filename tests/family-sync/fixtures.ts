@@ -5,11 +5,26 @@ import type { AppState } from '../../src/domain.ts'
 /** Serialized by Playwright; keep this reader self-contained. */
 export function readGrade2Workspace(childId = 'synthetic-g2'): AppState | null {
   const protectedRaw = localStorage.getItem(`family-beta-activity:${childId}:lesson-workspace-v1`)
-  const stateRaw =
-    protectedRaw === null
-      ? localStorage.getItem(`family-beta-activity:${childId}:weekly-dictation-state-v2`)
-      : JSON.parse(protectedRaw).records['weekly-dictation-state-v2']
-  return JSON.parse(stateRaw || 'null')
+  if (protectedRaw === null)
+    return JSON.parse(localStorage.getItem(`family-beta-activity:${childId}:weekly-dictation-state-v2`) || 'null')
+  const records = JSON.parse(protectedRaw).records as Record<string, string>
+  const stateRaw = records['weekly-dictation-state-v2']
+  if (stateRaw) return JSON.parse(stateRaw)
+  const history = records['weekly-dictation-history-v1']
+  const checkpoint = records['weekly-dictation-checkpoint-v1']
+  if (!history || !checkpoint) return null
+  const values = { ...JSON.parse(history).values, ...JSON.parse(checkpoint).values } as Record<string, unknown>
+  const activities = Object.keys(records)
+    .filter((item) => item.startsWith('weekly-dictation-checkpoint-v1:activity:'))
+    .map((key) => JSON.parse(records[key]).values as Record<string, unknown>)
+  for (const field of [
+    'acquisitionProgressions',
+    'acquisitionProgressEnvelopes',
+    'acquisitionTransitionReceipts',
+    'acquisitionPendingCheckpoints',
+  ])
+    values[field] = activities.flatMap((activity) => (Array.isArray(activity[field]) ? activity[field] : []))
+  return values as AppState
 }
 
 export const grades = [

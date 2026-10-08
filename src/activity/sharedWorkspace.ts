@@ -15,7 +15,11 @@ function equivalentJson(left: string | null, right: string) {
       const bKeys = Object.keys(b)
       return (
         aKeys.length === bKeys.length &&
-        aKeys.every((key) => Object.hasOwn(b, key) && compare(a[key as keyof typeof a], b[key as keyof typeof b]))
+        aKeys.every(
+          (key) =>
+            Object.prototype.hasOwnProperty.call(b, key) &&
+            compare((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+        )
       )
     }
     return compare(left === null ? null : JSON.parse(left), JSON.parse(right))
