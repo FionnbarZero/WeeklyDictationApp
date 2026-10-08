@@ -993,7 +993,7 @@ export function cloudDataToAppState(
     for (const group of groups.values()) {
       if (group.length > 1) {
         acquisitionProgressQuarantine.push({
-          id: `acq-quarantine-${childId}-${dataset.id}`,
+          id: `acq-quarantine-${childId}-${dataset.id}-${group[0].id}`,
           childId,
           datasetId: dataset.id,
           reason: 'Conflict.',

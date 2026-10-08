@@ -200,6 +200,29 @@ test('cloud hydration keeps separate activity modules for the same dataset', () 
   assert.equal(hydrated.acquisitionProgressQuarantine?.length, 0)
 })
 
+test('cloud hydration gives same-dataset activity conflicts distinct quarantine identities', () => {
+  const cloudDataset = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'cloud-conflict-identities', text: 'Week 9/28-10/2\nMandarin\nTier 1: 需要、部分' }],
+  }, [], grade2DeckProfile).datasets[0]
+  const writing = prepareAcquisitionProgress({ ...createInitialState(), datasets: [cloudDataset] }, 'maya', cloudDataset, '2026-09-29T16:00:00.000Z', () => 0)
+  assert.equal(writing.status, 'ready')
+  if (writing.status !== 'ready') return
+  const alternateContext = acquisitionPersistenceContext('maya', cloudDataset, cloudDataset.grade, undefined, 'alternate-dojo')
+  const alternate = createAcquisitionProgressEnvelope(
+    alternateContext,
+    startAcquisition(alternateContext.targetSet, alternateContext.strategy, () => 0),
+    '2026-09-29T16:00:00.000Z',
+  )
+  const hydrated = cloudDataToAppState(
+    [cloudDataset], [], [], [], 'maya', 'Grade 2', undefined,
+    [writing.envelope, { ...writing.envelope, id: 'writing-conflict' }, alternate, { ...alternate, id: 'alternate-conflict' }], [], '2026–2027',
+  )
+  const ids = hydrated.acquisitionProgressQuarantine?.map((record) => record.id) || []
+  assert.equal(ids.length, 2)
+  assert.equal(new Set(ids).size, ids.length)
+})
+
 test('the local pending journal preserves malformed raw data and deduplicates exact retries', () => {
   const values = new Map<string, string>()
   const storage = {

@@ -47,7 +47,13 @@ function acquisitionConflictCandidate(payload: string) {
     if (typeof value.sessionId !== 'string' || !Array.isArray(value.reviewedTrials)) return null
     const reviewed = value.reviewedTrials
       .flatMap((trial) => {
-        if (!trial || typeof trial !== 'object' || typeof (trial as { reviewedAt?: unknown }).reviewedAt !== 'string') return []
+        if (
+          !trial ||
+          typeof trial !== 'object' ||
+          (trial as { sessionId?: unknown }).sessionId !== value.sessionId ||
+          typeof (trial as { reviewedAt?: unknown }).reviewedAt !== 'string'
+        )
+          return []
         const candidate = (trial as { reviewedAt: string }).reviewedAt
         return !Number.isNaN(Date.parse(candidate)) && new Date(candidate).toISOString() === candidate ? [candidate] : []
       })
@@ -180,8 +186,8 @@ export function createDeviceSyncRepository(options: {
         if (online !== baseline) {
           const localCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(local) : null
           const onlineCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(online || '') : null
-          const winner = localCandidate && onlineCandidate
-            ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: new Date().toISOString() })
+          const winner = localCandidate && onlineCandidate && server
+            ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
             : null
           if (!winner?.winner)
             throw new Error(
