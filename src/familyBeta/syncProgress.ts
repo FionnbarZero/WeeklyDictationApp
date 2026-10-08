@@ -1,4 +1,4 @@
-import { isBetaResult, type BetaResult } from './model.ts'
+import { type BetaResult, isBetaResult } from './model.ts'
 
 /** Completed facts must leave the outbox before unfinished checkpoints can be
  * reconciled. A failed practice sync cannot hold an already-confirmed score.

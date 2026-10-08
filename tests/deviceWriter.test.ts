@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { deviceWriter } from '../src/familyBeta/deviceWriter.ts'
 import { ownedPracticeRecord } from '../src/familyBeta/deviceSync.ts'
+import { deviceWriter } from '../src/familyBeta/deviceWriter.ts'
 
 test('installation identity is stable and excluded from uploaded child practice', () => {
   const records = new Map<string, string>()

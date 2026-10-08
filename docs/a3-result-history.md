@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for its historical artifact and acceptance. A3.2 subsequently merged in PR #60 as `490fe41` and was [published/live-verified](./a32-release-2026-10-07.md); A3.3 remains pending.
+Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for its historical artifact and acceptance. A3.2 subsequently merged in PR #60 as `490fe41` and was [published/live-verified](./a32-release-2026-10-07.md). A3.3's score-safety prerequisite is being implemented locally; automatic checkpoint selection and bounded history storage remain unfinished. Nothing in A3.3 is published.
 
 ## Scope and sequence
 
@@ -8,9 +8,32 @@ A3 is split at three architectural boundaries so a persistence migration is not 
 
 1. **A3.1, this change:** bounded online result-history reads and one graph point per distinct completed attempt.
 2. **A3.2, published as `490fe41`:** durable validated curriculum/strategy pinning, prompt-resume compatibility, corrected Grade 2 editions, confirmed discard, and an offline-aware preservation rollback. Independent review, final-head checks, exact merge-package checks, and live acceptance passed; [implementation evidence](./a3-curriculum-pinning.md) retains the staged history.
-3. **A3.3, pending:** whole-activity unfinished-checkpoint reconciliation, deterministic reviewed-answer time/skew/tie handling, separation of checkpoint data from accumulated history, and bounded durable storage. Completed attempts from either device must remain immutable and independent.
+3. **A3.3, in progress:** whole-activity unfinished-checkpoint reconciliation, deterministic reviewed-answer time/skew/tie handling, separation of checkpoint data from accumulated history, and bounded durable storage. Completed attempts from either device must remain immutable and independent. The prerequisite below must not be reported as completion of A3.3.
 
 Detailed per-target provenance and storage/retention integration still require their appropriate schema and compatibility work. E2's destructive historical cleanup remains separately authorized. This PR does not complete A3.
+
+## A3.3 score-safety prerequisite — October 7, unpublished
+
+Branch: `codex/a33-checkpoint-reconciliation`. This is the existing A3.3 workstream, not a new product plan or smoke-test milestone. The owner accepted the bounded A3.2 smoke check in chat; do not repeat it for these unpublished changes. Implementation and independent review remain assigned to **GPT-6 Astra · Extra High**.
+
+### Reproduced defects and repair
+
+- At regression-only commit `cf5722b`, all three desktop grade checks reproduced completed scores remaining in the device outbox because unfinished-practice sync failed first. `syncCompletedBeforePractice` now validates, uploads, reads back and acknowledges completed results before attempting mutable practice sync. Account/child changes stop stale acknowledgement and subsequent work. Failed upload/readback keeps the retry record; HTTP access-denial versus temporary-outage classifications remain available to the established offline-access policy.
+- Per-key results previously hid different legacy copies of the same ID. A shared ledger validator now rejects contradictory copies before uploading or acknowledging them. Exact duplicates remain idempotent; separate IDs remain separate points, even with identical completion times. A confirmed upload repairs an interrupted local result-ledger write before removing its outbox copy. No completed result is pruned.
+- Two installations could continue one saved ordinary acquisition session and later submit different completed scores under the same ID. An optional `writerId` on the saved ordinary acquisition record now distinguishes device continuations. Its random browser installation key is never synced; the checkpoint carries the writer ID. Merely opening a saved lesson leaves it unchanged. A different writer claims a new session ID atomically with its first reviewed answer, or before explicitly completing inherited scored work. Same-writer reloads and failed score retries retain that claimed ID; a stale same-device view cannot submit a conflicting score under the live attempt ID. Kindergarten/Grade 5 writing and all three ordinary reading paths consume the claimed identity. Grade 2 writing uses its existing engine session identities and is not converted by this change.
+- A verified practice upload no longer retains an unnecessary full-size `:pending` duplicate. The exact baseline is written and read back first; only a matching acknowledged retry copy is removed. A lost response or a different uploader's newer pending payload remains recoverable. Actual checkpoints, completed results, teacher sources and reports are not deleted.
+
+No production records, rules, authentication, hosting, teacher sources, curriculum behavior or game availability have changed. The result document schema and immutable cloud write/readback contract are unchanged. The existing opaque-practice conflict guard is deliberately still in place.
+
+### Required continuation within A3.3
+
+1. Separate each activity checkpoint from accumulated history before enabling newest-reviewed-checkpoint arbitration. Grade 2's `lesson-workspace-v1` currently bundles multiple progressions, immutable score/history facts, mastery projections and recovery journals; selecting one whole workspace is not an acceptable per-activity winner.
+2. Define and test deterministic reviewed-answer ordering, clock-skew handling and ties. Opening a lesson, starting a visit, syncing, or rotating an attempt ID must not count as a newer reviewed answer. Never combine phase/timer/queue fields from competing checkpoints.
+3. Preserve completed facts independently of whichever unfinished checkpoint wins. Grade 2 transition/fact identities also require compatibility analysis: two branches can share a progression/revision-derived transition ID. Do not silently relabel or overwrite older history to make a merge pass.
+4. Bound the active working set and history cache with verified archive/readback and bounded online reads. `reviewedTrials`, Grade 2 embedded state/journals, the result ledger, the 700,000-byte practice ceiling and the 500-record hydration ceiling are still outstanding. Removing a redundant acknowledged retry copy does not solve these limits. Pending offline work must not be silently evicted.
+5. Add all-grade, real two-context conflict, storage-growth, migration, older-client and guarded-rollback coverage before independent review and publication. No new owner smoke test until a coherent reviewed build is served and verified.
+
+Initial evidence: 777 unit tests and seven production-intended family-policy emulator checks passed. The first score-delivery package passed 44 desktop/tablet saving/history checks; the subsequent identity package passed ten focused checks. Full package acceptance at `18b8014` is still running. The final same-tab completion guard, formatting and expanded all-grade reading identity checks require their own exact-package run; earlier counts are not a substitute for final-source verification or independent review. Type/lint/repository-format/focused-format and production build budgets passed (549,840/550,000 initial JS bytes; 42,745/60,000 initial CSS bytes). The existing controlled upgrade/rollback browser rehearsal is explicitly based on retained A3.1 source `55e9189`, not an A3.2-to-A3.3 migration claim. Attempting to use the A3.2 package as that fixture was rejected by the rollback packager's older-script guard before tests ran; no hosting was changed.
 
 ## Reproduced issue
 

@@ -23,7 +23,8 @@ export function ownedPracticeRecord(key: string, raw: string, childId: string) {
 
 function acknowledgePractice(storage: StoragePort, baseKey: string, payload: string) {
   storage.setItem(baseKey, payload)
-  if (storage.getItem(baseKey) !== payload) throw new Error('Practice acknowledgement could not be saved. Please retry.')
+  if (storage.getItem(baseKey) !== payload)
+    throw new Error('Practice acknowledgement could not be saved. Please retry.')
   const pendingKey = `${baseKey}:pending`
   // The baseline is durable first. Only release this exact confirmed retry
   // copy, never another tab's newer upload or the actual practice checkpoint.

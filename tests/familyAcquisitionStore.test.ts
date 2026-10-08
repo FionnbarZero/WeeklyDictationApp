@@ -103,6 +103,17 @@ test('completing inherited reviewed work claims one stable result identity witho
   assert.equal(next.prepareResult().sessionId, claimed.sessionId)
   assert.equal(openAcquisitionStore(storage, ctx, { writerId: 'device-two' }).prepareResult().sessionId, claimed.sessionId)
 })
+
+test('a stale same-device view cannot finalize a different score under the live attempt identity', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'same-device', random: () => 0 })
+  for (let i = 0; i < 4; i++) first.answer(true, 'timer')
+  const stale = openAcquisitionStore(storage, ctx, { writerId: 'same-device', random: () => 0 })
+  first.answer(false, 'timer')
+  const before = storage.getItem(first.key)
+  assert.throws(() => stale.prepareResult(), /another tab/)
+  assert.equal(storage.getItem(first.key), before)
+})
 for (const strategy of [
   grade5AcquisitionStrategy,
   kindergartenAcquisitionStrategy,

@@ -4,6 +4,8 @@ Updated October 7, 2026. **A3.2 is merged as `490fe41`, published, and live-veri
 
 This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines priorities and required behavior; planned requirements are not evidence that a feature is implemented.
 
+**Unpublished work:** A3.3 has started on `codex/a33-checkpoint-reconciliation`. Its [score-safety prerequisite](./docs/a3-result-history.md#a33-score-safety-prerequisite--october-7-unpublished) separates completed-score delivery from practice conflicts, protects contradictory score copies, distinguishes device continuations and releases verified redundant retry copies. Automatic checkpoint conflict resolution and bounded history storage are **not implemented yet**. Full final-package verification and independent review are pending; this is not a smoke-test handoff. The owner accepted the short A3.2 check in chat, and the live build below is unchanged.
+
 ## Live family beta
 
 | Grade | Permanent app | Verified release |
@@ -62,7 +64,7 @@ October 5 family-sync release checks:
 
 ## Next work and release policy
 
-Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. A2, A3.1 and A3.2 are published. Next engineering work is **A3.3 with GPT-6 Astra · Extra High**: automatic unfinished-checkpoint conflicts and bounded durable storage. Prompt the owner before code. Do not start a new game/UI plan from routine smoke feedback. The owner handoff is five minutes on one grade using verified build `490fe41`, initially Grade 2; do not ask for another broad app audit. Game-subset coverage, retention policy, and physical-device quality remain separate.
+Follow the [roadmap execution queue](./ROADMAP.md#immediate-execution-order): shared reliability first, then Grade 5-specific issues, Kindergarten, and Grade 2, with incremental game releases. Target iMac and iPad; preserve free activity choice and Done for today. A2, A3.1 and A3.2 are published. Continue **A3.3 with GPT-6 Astra · Extra High**: automatic unfinished-checkpoint conflicts and bounded durable storage, after the score-safety prerequisite above. The owner has confirmed this stage's model and accepted the short A3.2 check; do not repeat either prompt during this stage or start a new game/UI plan from routine smoke feedback. No new smoke testing is ready. Game-subset coverage, retention policy, and physical-device quality remain separate.
 
 ### October 6 architecture audit baseline
 

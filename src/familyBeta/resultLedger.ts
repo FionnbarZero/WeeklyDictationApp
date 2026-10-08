@@ -1,4 +1,4 @@
-import { isBetaResult, type BetaResult } from './model.ts'
+import { type BetaResult, isBetaResult } from './model.ts'
 
 export const RESULT_KEY = 'family-beta-preview-results-v1'
 export const PENDING_KEY = 'family-beta-preview-pending-v1'

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
-import { documentValue, plainValue } from '../src/firestoreClient.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { documentValue, plainValue } from '../src/firestoreClient.ts'
 
 const key = 'family-beta-activity:child:checkpoint'
 const id = createHash('sha256').update(key).digest('hex')

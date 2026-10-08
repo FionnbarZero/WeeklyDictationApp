@@ -29,7 +29,10 @@ function fields(input: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(input).map(([key, entry]) => [key, value(entry)]))
 }
 
-export type SyntheticFamilyDocuments = Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>
+export type SyntheticFamilyDocuments = Map<
+  string,
+  { name: string; fields: Record<string, unknown>; updateTime?: string }
+>
 
 export async function installFamilyFixtures(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
   // This is the production-configured artifact. All external requests are

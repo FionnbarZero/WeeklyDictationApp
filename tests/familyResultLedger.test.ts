@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
+import { isConnectionFailure, isFamilyAccessDenied } from '../src/familyBeta/offlineFamily.ts'
 import {
-  RESULT_KEY,
-  PENDING_KEY,
   acknowledgeCompletedResult,
+  PENDING_KEY,
+  RESULT_KEY,
   readResultLedger,
 } from '../src/familyBeta/resultLedger.ts'
 import { syncCompletedBeforePractice } from '../src/familyBeta/syncProgress.ts'
-import { createResultRepository } from '../src/familyBeta/cloud.ts'
-import { isConnectionFailure, isFamilyAccessDenied } from '../src/familyBeta/offlineFamily.ts'
 
 function memory() {
   const records = new Map<string, string>()

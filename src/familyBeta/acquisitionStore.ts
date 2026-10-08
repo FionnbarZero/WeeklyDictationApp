@@ -128,6 +128,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     },
     prepareResult() {
       assertActive()
+      if (storage.getItem(key) !== raw)
+        throw new Error('This activity changed in another tab. Reopen the saved lesson before submitting its score; nothing was overwritten.')
       if (options.writerId && current.writerId !== options.writerId && current.assessments.some(a => a.countsTowardWeeklyScore)) {
         // Done for today can submit inherited reviewed work without another
         // answer. Claim once before scoring, so two completions stay distinct
