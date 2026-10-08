@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createInitialState } from '../src/domain.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
 import {
   practiceWorkspaceKey,
@@ -152,6 +153,29 @@ test('workspace adapter names records without exposing them through normal Stora
   assert.equal(keys.includes(practiceWorkspaceSyncKey(childId, 'weekly-dictation-history-v1')), true)
   assert.equal(store.key(0), workspace)
   assert.equal(adapter!.read(keys.find((key) => key.endsWith('%3Aactivity%3Aa')) || '')?.includes('a-0'), true)
+})
+
+test('legacy workspace normalization is deferred and cannot overwrite a newer snapshot', () => {
+  const store = device()
+  const state = createInitialState()
+  const legacy = JSON.stringify({
+    schema: 1,
+    childId,
+    records: { 'weekly-dictation-state-v2': JSON.stringify(state) },
+  })
+  store.setItem(workspace, legacy)
+  const adapter = practiceWorkspaceSyncAdapter(store, childId)
+  assert.ok(adapter)
+  assert.equal(store.getItem(workspace), legacy, 'opening the adapter must not write a migration')
+
+  const newer = JSON.stringify({
+    schema: 1,
+    childId,
+    records: { 'weekly-dictation-state-v2': JSON.stringify({ ...state, rotationCycles: { child: 1 } }) },
+  })
+  store.setItem(workspace, newer)
+  assert.throws(() => adapter!.commit(), /preserved/)
+  assert.equal(store.getItem(workspace), newer, 'a newer snapshot must survive a stale migration commit')
 })
 
 test('different activity checkpoints reconcile independently, while the same activity chooses newest reviewed work', async () => {

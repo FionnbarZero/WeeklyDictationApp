@@ -17,10 +17,17 @@ export const legacyPracticeKey = (key: string, childId: string) =>
   key.startsWith(`family-beta-activity:${childId}:weekly-dictation-`)
 const failure =
   'Saved practice could not be safely opened. Both old and new records are preserved. Please report this problem.'
-const bounded = (value: unknown): boolean =>
-  !value ||
-  typeof value !== 'object' ||
-  Object.values(value).every((item) => !Array.isArray(item) || item.length <= MAX_WORKSPACE_RECORDS)
+/**
+ * Every collection embedded in an AppState is durable workspace data. Checking
+ * only top-level fields lets nested journals (for example a warmup visit's
+ * queue or an adaptive projection's child states) grow without limit while the
+ * outer state still appears valid.
+ */
+const bounded = (value: unknown): boolean => {
+  if (value === null || typeof value !== 'object') return true
+  if (Array.isArray(value)) return value.length <= MAX_WORKSPACE_RECORDS && value.every(bounded)
+  return Object.values(value).every(bounded)
+}
 
 type PartitionRecord = { schema: 1; childId: string; values: Record<string, unknown> }
 const partitionKeys = new Set([historyKey, checkpointKey])
@@ -231,12 +238,12 @@ export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): P
     return null
   }
   if (value.records[stateKey] !== undefined && !value.records[historyKey] && !value.records[checkpointKey]) {
+    // Keep legacy normalization in memory until the adapter's normal
+    // compare-and-swap commit. Writing here would allow a newer workspace
+    // snapshot to be overwritten between the initial read and this migration.
     value = { ...value, records: stateRecords(value.records, childId, value.records[stateKey]) }
-    const migrated = JSON.stringify(value)
-    storage.setItem(key, migrated)
-    if (storage.getItem(key) !== migrated) throw new Error(failure)
   }
-  const initial = JSON.stringify(value)
+  const initial = raw
   const records = { ...value.records }
   const names = () => Object.keys(records).filter(isInternalKey).sort()
   const assertPayload = (name: string, payload: string) => {

@@ -158,6 +158,26 @@ test('oversized embedded state fails closed without rewriting the prior workspac
   assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
 })
 
+test('oversized nested embedded collections fail closed without rewriting the prior workspace', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const state = createInitialState()
+  state.warmupVisitsV1 = [
+    {
+      schemaVersion: 1,
+      contractId: 'adaptive-warmup-visit-v1',
+      id: 'visit-1',
+      childId: 'child',
+      queue: Array.from({ length: 501 }, (_, index) => ({ id: `queue-${index}` })) as never,
+      revision: 0,
+      status: 'complete',
+    } as never,
+  ]
+  const before = storage.getItem(practiceWorkspaceKey('child'))
+  assert.throws(() => app.setItem('weekly-dictation-state-v2', JSON.stringify(state)), /preserved/)
+  assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
+})
+
 test('Grade 2 acquisition checkpoints are stored per activity and reconstruct exactly', () => {
   const { storage } = fixture()
   const app = practiceWorkspaceStorage(storage, 'child')
