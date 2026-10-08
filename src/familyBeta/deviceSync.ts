@@ -3,6 +3,7 @@ import { getIdToken } from '../firebaseClient.ts'
 import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
+import { chooseCheckpointWinner } from './checkpointConflict.ts'
 import { legacyPracticeKey, practiceWorkspaceKey } from './practiceWorkspaceStorage.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
@@ -33,6 +34,30 @@ function acknowledgePractice(storage: StoragePort, baseKey: string, payload: str
 async function recordId(key: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
   return [...new Uint8Array(digest)].map((n) => n.toString(16).padStart(2, '0')).join('')
+}
+
+function acquisitionConflictCandidate(payload: string) {
+  if (!payload || !payload.startsWith('{')) return null
+  try {
+    const value = JSON.parse(payload) as {
+      sessionId?: unknown
+      writerId?: unknown
+      reviewedTrials?: unknown
+    }
+    if (typeof value.sessionId !== 'string' || !Array.isArray(value.reviewedTrials)) return null
+    const reviewed = value.reviewedTrials
+      .flatMap((trial) => {
+        if (!trial || typeof trial !== 'object' || typeof (trial as { reviewedAt?: unknown }).reviewedAt !== 'string') return []
+        const candidate = (trial as { reviewedAt: string }).reviewedAt
+        return !Number.isNaN(Date.parse(candidate)) && new Date(candidate).toISOString() === candidate ? [candidate] : []
+      })
+      .sort()
+    const reviewedAt = reviewed[reviewed.length - 1]
+    const writer = typeof value.writerId === 'string' ? value.writerId : 'legacy'
+    return { id: `${writer}:${value.sessionId}:${payload}`, reviewedAt }
+  } catch {
+    return null
+  }
 }
 
 export function createDeviceSyncRepository(options: {
@@ -152,10 +177,29 @@ export function createDeviceSyncRepository(options: {
           acknowledgePractice(storage, baseKey, online)
           continue
         }
-        if (online !== baseline)
-          throw new Error(
-            'Practice changed on both devices. Both copies are preserved. Finish on one device and report this conflict before continuing.',
-          )
+        if (online !== baseline) {
+          const localCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(local) : null
+          const onlineCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(online || '') : null
+          const winner = localCandidate && onlineCandidate
+            ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: new Date().toISOString() })
+            : null
+          if (!winner?.winner)
+            throw new Error(
+              'Practice changed on both devices. Both copies are preserved. Finish one reviewed response before continuing.',
+            )
+          if (winner.winner.id === onlineCandidate?.id) {
+            if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
+              throw new Error(
+                'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
+              )
+            storage.setItem(key, online!)
+            acknowledgePractice(storage, baseKey, online!)
+            continue
+          }
+          // The local checkpoint has the newest trusted reviewed response. The
+          // normal conditional upload below replaces the remote unfinished copy
+          // without combining either checkpoint's phase or queue fields.
+        }
         if (new TextEncoder().encode(local).length > 700_000)
           throw new Error(
             'This practice record is too large to sync safely. Download this device’s records; local data is preserved.',
