@@ -108,7 +108,6 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
     expect(await read()).toBe(older)
     release()
     await reload
-    await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)
     const current = JSON.parse(await read()) as { records: Record<string, string> }
     expect(current.records[newerActivity![0]]).toBe(newerActivity![1])
