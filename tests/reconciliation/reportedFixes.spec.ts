@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { expect, test } from '@playwright/test'
 
 test('Grade 5 cannot launch legacy activities while its validated activity rules are loading', async ({ page }) => {
   const snapshot = JSON.parse(
@@ -12,16 +12,24 @@ test('Grade 5 cannot launch legacy activities while its validated activity rules
   })
   await page.route('**/curriculum/beta/grade5.json', async (route) => {
     requests++
-    if (requests === 3) await held
+    // The family wrapper now fetches the authoritative snapshot once and
+    // passes that validated source into its embedded activity frame. Holding
+    // the first request exercises the real loading gate; waiting for a later
+    // request would let the current route reach Spirit Realm before the gate
+    // is engaged.
+    if (requests === 1) await held
     await route.fulfill({ json: snapshot })
   })
   try {
     await page.goto('/family-beta-preview.html?grade=grade5')
-    const frame = page.frameLocator('iframe:visible')
-    await expect(frame.getByText('Loading teacher activities…', { exact: true })).toBeVisible()
-    await expect(frame.getByRole('button', { name: /Enter the Spirit Realm/ })).toHaveCount(0)
+    // The wrapper now waits before creating an activity iframe at all. This
+    // keeps legacy activities unreachable while the authoritative snapshot is
+    // pending, rather than rendering a second loading shell inside a frame.
+    await expect(page.locator('iframe:visible')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Enter the Spirit Realm/ })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Report a problem', exact: true })).toBeVisible()
     release()
+    const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
     await expect(frame.getByRole('button', { name: 'Reading mastery warmup', exact: true })).toBeVisible()
     await expect(frame.getByRole('button', { name: 'Reading mastered-word games', exact: true })).toBeVisible()
@@ -56,7 +64,7 @@ test('Kindergarten path integrates games using previous relevant reading targets
   await frame.getByRole('button', { name: 'Listening Lily Pads', exact: true }).click()
   await expect(frame.locator('.k-word-choice')).toHaveText(['红色', '蓝色'])
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
-  page.once('dialog', dialog => dialog.accept())
+  page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
   await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
   await frame.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
@@ -71,7 +79,7 @@ test('Grade 5 Dojo provides complete stroke guides and both Boss rounds offer fu
   await frame.getByRole('button', { name: 'Stroke Order', exact: true }).click()
   await expect(frame.locator('.so-student-ink')).toBeAttached()
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
-  page.once('dialog', dialog => dialog.accept())
+  page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
   await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
   await expect(frame.getByRole('button', { name: 'Reenter the Dojo · writing', exact: true })).toBeVisible()
@@ -127,11 +135,14 @@ test('Shadow Strike inherits its computed aim and freezes targets without snappi
   // These targets intentionally sway continuously; click without waiting for
   // animation stability, then verify the actual selected/paused state below.
   await target.click({ force: true })
-  const geometry = await page.frameLocator('iframe:visible').locator('.lg-target-blast-playfield').evaluate((element) => ({
-    expected: (element as HTMLElement).style.getPropertyValue('--throw-x'),
-    actual: getComputedStyle(element.querySelector('.lg-shuriken-shot')!).getPropertyValue('--throw-x'),
-    targetAnimation: getComputedStyle(element.querySelector('.lg-world-choice')!).animationPlayState,
-  }))
+  const geometry = await page
+    .frameLocator('iframe:visible')
+    .locator('.lg-target-blast-playfield')
+    .evaluate((element) => ({
+      expected: (element as HTMLElement).style.getPropertyValue('--throw-x'),
+      actual: getComputedStyle(element.querySelector('.lg-shuriken-shot')!).getPropertyValue('--throw-x'),
+      targetAnimation: getComputedStyle(element.querySelector('.lg-world-choice')!).animationPlayState,
+    }))
   expect(geometry.expected).not.toBe('')
   expect(geometry.actual).toBe(geometry.expected)
   expect(geometry.targetAnimation).toBe('paused')
