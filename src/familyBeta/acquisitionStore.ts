@@ -142,7 +142,13 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       // Reading/resuming never forks. The first successfully reviewed answer
       // from a different installation claims its own score identity atomically
       // with that checkpoint. Inherited teaching progress remains unchanged.
-      const sessionId = options.writerId && current.writerId !== options.writerId ? uuid() : current.sessionId
+      // Show-and-copy is a teaching-only prompt and deliberately produces no
+      // assessment. It must not claim the checkpoint for a different writer;
+      // otherwise an unscored response could look like a newer reviewed visit.
+      const claimsReviewedAnswer = current.envelope.flow.prompt?.kind !== 'show-copy'
+      const sessionId = options.writerId && current.writerId !== options.writerId && claimsReviewedAnswer
+        ? uuid()
+        : current.sessionId
       const checkpoint = buildAcquisitionCheckpoint({
         envelope: current.envelope,
         context,
@@ -157,7 +163,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       return commit({
         ...current,
         sessionId,
-        ...(options.writerId ? { writerId: options.writerId } : {}),
+        ...(options.writerId && claimsReviewedAnswer ? { writerId: options.writerId } : {}),
         envelope: applied.envelope,
         reviewedTrials: checkpoint.assessment
           ? [

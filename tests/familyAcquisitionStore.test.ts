@@ -73,6 +73,24 @@ test('two devices continuing the same checkpoint produce distinct completed-atte
   assert.equal(reopened.current.sessionId, sameAttempt, 'same-device retry/reload does not create another result')
 })
 
+test('a cross-device show-copy response does not claim a newer reviewed attempt', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'device-one', random: () => 0 })
+  first.answer(true, 'timer')
+  first.answer(true, 'timer')
+  assert.equal(first.current.envelope.flow.prompt?.kind, 'show-copy')
+  const second = openAcquisitionStore(storage, ctx, { writerId: 'device-two', random: () => 0 })
+  const before = {
+    sessionId: second.current.sessionId,
+    writerId: second.current.writerId,
+    assessments: second.current.assessments.length,
+  }
+  second.answer(true, 'timer')
+  assert.equal(second.current.sessionId, before.sessionId)
+  assert.equal(second.current.writerId, before.writerId)
+  assert.equal(second.current.assessments.length, before.assessments)
+})
+
 test('a legacy unowned attempt is claimed only with a successfully saved reviewed answer', () => {
   const storage = memory(), ctx = context()
   const legacy = openAcquisitionStore(storage, ctx, { random: () => 0 })
