@@ -17,6 +17,7 @@ import { currentAcquisitionContext, isAcquisitionRetired } from './acquisitionRe
 import { validWriter } from './deviceWriter.ts'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
+const MAX_REVIEWED_TRIALS = 500
 export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
   schema: 1
   sessionId: string
@@ -53,6 +54,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       ('writerId' in saved && !validWriter(saved.writerId)) ||
       !Array.isArray(saved.assessments) ||
       !Array.isArray(saved.reviewedTrials) ||
+      saved.assessments.length > MAX_REVIEWED_TRIALS ||
+      saved.reviewedTrials.length > MAX_REVIEWED_TRIALS ||
       !validateAcquisitionProgressEnvelope(saved.envelope, validationContext).valid ||
       saved.assessments.some(
         (a) =>

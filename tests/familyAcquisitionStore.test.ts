@@ -197,6 +197,17 @@ test('legacy records with changed curricula fail without erasing earlier data', 
   assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
   assert.equal(storage.getItem(original.key), '{broken')
 })
+test('oversized reviewed history is rejected without erasing the saved lesson', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  store.answer(true, 'timer')
+  const oversized = JSON.parse(storage.getItem(store.key)!)
+  oversized.reviewedTrials = Array.from({ length: 501 }, () => oversized.reviewedTrials[0])
+  const encoded = JSON.stringify(oversized)
+  storage.setItem(store.key, encoded)
+  assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
+  assert.equal(storage.getItem(store.key), encoded)
+})
 for (const strategy of [grade5AcquisitionStrategy, kindergartenAcquisitionStrategy,
   grade2Tier2ReadingProfile.acquisitionStrategy, grade5Tier2ReadingProfile.acquisitionStrategy,
   kindergartenTier2ReadingProfile.acquisitionStrategy]) {
