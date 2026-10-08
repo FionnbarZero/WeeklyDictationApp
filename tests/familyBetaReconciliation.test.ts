@@ -7,6 +7,7 @@ import { extractGrade5Presentation } from '../src/curriculum/adapters/grade5Goog
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { documentValue } from '../src/firestoreClient.ts'
 import { sameCompletedResult } from '../src/familyBeta/resultLedger.ts'
+import { resultRetentionBucket } from '../src/familyBeta/resultRetention.ts'
 
 const child = { id: 'preview-child', nickname: 'Learner', grade: 'Grade 2' as const, active: true }
 const result = (id: string, at: string, correct = 2) =>
@@ -46,6 +47,15 @@ test('completed results carry optional school-year provenance without invalidati
   assert.equal(isBetaResult(current), true)
   assert.equal(sameCompletedResult(current, tagged), false)
   assert.equal(sameCompletedResult(tagged, current), false)
+})
+
+test('retention preview keeps current and previous school years detailed without deleting legacy records', () => {
+  const base = result('retention', '2026-10-05T18:00:00.000Z')
+  assert.equal(resultRetentionBucket({ ...base, schoolYear: '2026-27' }, '2026-27'), 'detail')
+  assert.equal(resultRetentionBucket({ ...base, schoolYear: '2025-26' }, '2026-27'), 'detail')
+  assert.equal(resultRetentionBucket({ ...base, schoolYear: '2024-25' }, '2026-27'), 'summary')
+  assert.equal(resultRetentionBucket(base, '2026-27'), 'unknown')
+  assert.equal(resultRetentionBucket({ ...base, schoolYear: 'unknown' }, '2026-27'), 'unknown')
 })
 
 test('teacher snapshots keep grade identities and writing/reading targets distinct', () => {
