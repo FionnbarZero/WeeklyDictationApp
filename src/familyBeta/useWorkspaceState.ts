@@ -12,7 +12,7 @@ export function useWorkspaceState(initialize: () => AppState) {
     const profile = previewProfile()
     const registry = (window.parent as FamilyWorkspaceWindow).familyWorkspaceOwner
     if (!profile || !registry) throw new Error('Open this activity from the family page.')
-    return registry.get(profile.id, initialize, activityStorage(), (window.frameElement as HTMLIFrameElement | null)?.id)
+    return registry.get(profile.id, initialize, activityStorage(), window.name)
   })
   const [local, setLocal] = useState(() => owner?.getSnapshot().state || initialize())
   const snapshot = useSyncExternalStore(owner?.subscribe || noSubscribe, owner?.getSnapshot || noSnapshot)
