@@ -155,16 +155,19 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
       return exposedRecordKeys(read().value.records).length
     },
     key: (index) => exposedRecordKeys(read().value.records)[index] ?? null,
-    getItem: (name) =>
-      name === stateKey ? stateFromRecords(read().value.records, childId) : (read().value.records[name] ?? null),
+    getItem: (name) => {
+      if (partitionKeys.has(name)) return null
+      return name === stateKey ? stateFromRecords(read().value.records, childId) : (read().value.records[name] ?? null)
+    },
     setItem: (name, item) => {
-      if (!name.startsWith('weekly-dictation-')) throw new Error(failure)
+      if (!name.startsWith('weekly-dictation-') || partitionKeys.has(name)) throw new Error(failure)
       const { raw, value } = read()
       const records =
         name === stateKey ? stateRecords(value.records, childId, item) : { ...value.records, [name]: item }
       write({ ...value, records }, raw)
     },
     removeItem: (name) => {
+      if (partitionKeys.has(name)) throw new Error(failure)
       const { raw, value } = read()
       const records = { ...value.records }
       if (name === stateKey) {
