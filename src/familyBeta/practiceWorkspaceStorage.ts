@@ -1,12 +1,8 @@
 /** A new, atomic workspace record keeps older clients from normalizing newer
  * datasets or replaying their journals. Legacy keys remain a recovery copy. */
-import { isAppState, type AppState } from '../domain.ts'
+import { type AppState, isAppState } from '../domain.ts'
 import { partitionActivityCheckpoints } from './workspaceActivityPartition.ts'
-import {
-  partitionWorkspaceState,
-  WORKSPACE_CHECKPOINT_FIELDS,
-  WORKSPACE_STATE_FIELDS,
-} from './workspacePartition.ts'
+import { partitionWorkspaceState, WORKSPACE_CHECKPOINT_FIELDS, WORKSPACE_STATE_FIELDS } from './workspacePartition.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
@@ -14,6 +10,7 @@ const stateKey = 'weekly-dictation-state-v2'
 const historyKey = 'weekly-dictation-history-v1'
 const checkpointKey = 'weekly-dictation-checkpoint-v1'
 const activityKeyPrefix = `${checkpointKey}:activity:`
+const syncRecordPrefix = 'record:'
 export const MAX_WORKSPACE_RECORDS = 500
 export const practiceWorkspaceKey = (childId: string) => `family-beta-activity:${childId}:lesson-workspace-v1`
 export const legacyPracticeKey = (key: string, childId: string) =>
@@ -31,6 +28,13 @@ const activityFields = new Set([
 ])
 const isActivityKey = (key: string) => key.startsWith(activityKeyPrefix)
 const isInternalKey = (key: string) => partitionKeys.has(key) || isActivityKey(key)
+
+export const practiceWorkspaceSyncKey = (childId: string, record: string) =>
+  `${practiceWorkspaceKey(childId)}:${syncRecordPrefix}${encodeURIComponent(record)}`
+
+export function isPracticeWorkspaceSyncKey(key: string, childId: string) {
+  return key.startsWith(`${practiceWorkspaceKey(childId)}:${syncRecordPrefix}`)
+}
 
 function activityKey(activityId: string) {
   return `${activityKeyPrefix}${encodeURIComponent(activityId)}`
@@ -142,13 +146,15 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
     const values = Object.fromEntries(
       WORKSPACE_CHECKPOINT_FIELDS.filter((field) => activityFields.has(field)).map((field) => [
         field,
-        activity[field === 'acquisitionProgressions'
-          ? 'progressions'
-          : field === 'acquisitionProgressEnvelopes'
-            ? 'envelopes'
-            : field === 'acquisitionTransitionReceipts'
-              ? 'transitionReceipts'
-              : 'pendingCheckpoints'],
+        activity[
+          field === 'acquisitionProgressions'
+            ? 'progressions'
+            : field === 'acquisitionProgressEnvelopes'
+              ? 'envelopes'
+              : field === 'acquisitionTransitionReceipts'
+                ? 'transitionReceipts'
+                : 'pendingCheckpoints'
+        ],
       ]),
     )
     next[activityKey(activity.activityId)] = JSON.stringify({
@@ -177,6 +183,67 @@ function parse(raw: string, childId: string): Workspace {
   )
     throw new Error(failure)
   return value
+}
+
+export type PracticeWorkspaceSyncAdapter = {
+  keys: () => readonly string[]
+  read: (key: string) => string | null
+  stage: (key: string, payload: string) => void
+  commit: () => void
+}
+
+/**
+ * Presents the atomic workspace's internal records as independently syncable
+ * cloud records. Changes are staged in memory and committed as one workspace
+ * write so the application never observes a half-reconstructed partition.
+ */
+export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): PracticeWorkspaceSyncAdapter | null {
+  const key = practiceWorkspaceKey(childId)
+  const raw = storage.getItem(key)
+  if (raw === null) return null
+  let value: Workspace
+  try {
+    value = parse(raw, childId)
+  } catch {
+    // The sync layer still has to preserve opaque legacy/current copies. The
+    // application adapter remains fail-closed when it is opened directly.
+    return null
+  }
+  if (value.records[stateKey] !== undefined && !value.records[historyKey] && !value.records[checkpointKey]) {
+    value = { ...value, records: stateRecords(value.records, childId, value.records[stateKey]) }
+    const migrated = JSON.stringify(value)
+    storage.setItem(key, migrated)
+    if (storage.getItem(key) !== migrated) throw new Error(failure)
+  }
+  const initial = JSON.stringify(value)
+  const records = { ...value.records }
+  const names = () => Object.keys(records).filter(isInternalKey).sort()
+  const assertPayload = (name: string, payload: string) => {
+    if (!isInternalKey(name)) throw new Error(failure)
+    if (name === historyKey || name === checkpointKey) partitionRecord(payload, childId)
+    else activityRecord(payload, childId, name)
+  }
+  return {
+    keys: () => names().map((name) => practiceWorkspaceSyncKey(childId, name)),
+    read: (syncKey) => {
+      const name = decodeURIComponent(syncKey.slice(`${key}:${syncRecordPrefix}`.length))
+      if (!isPracticeWorkspaceSyncKey(syncKey, childId) || !isInternalKey(name)) throw new Error(failure)
+      return records[name] ?? null
+    },
+    stage: (syncKey, payload) => {
+      if (!isPracticeWorkspaceSyncKey(syncKey, childId)) throw new Error(failure)
+      const name = decodeURIComponent(syncKey.slice(`${key}:${syncRecordPrefix}`.length))
+      assertPayload(name, payload)
+      records[name] = payload
+    },
+    commit: () => {
+      const next = JSON.stringify({ ...value, records })
+      if (next === initial) return
+      if (storage.getItem(key) !== initial) throw new Error(failure)
+      storage.setItem(key, next)
+      if (storage.getItem(key) !== next) throw new Error(failure)
+    },
+  }
 }
 
 /** Read-only lookup: never initialize/migrate while listing saved lessons. */

@@ -4,7 +4,13 @@ import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
 import { chooseCheckpointWinner } from './checkpointConflict.ts'
-import { legacyPracticeKey, practiceWorkspaceKey } from './practiceWorkspaceStorage.ts'
+import {
+  isPracticeWorkspaceSyncKey,
+  legacyPracticeKey,
+  practiceWorkspaceKey,
+  practiceWorkspaceStorage,
+  practiceWorkspaceSyncAdapter,
+} from './practiceWorkspaceStorage.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
@@ -20,6 +26,34 @@ export function ownedPracticeRecord(key: string, raw: string, childId: string) {
     }
   }
   return false
+}
+
+function workspaceConflictCandidate(payload: string) {
+  try {
+    const values = (JSON.parse(payload) as { values?: unknown }).values
+    const pending =
+      values &&
+      typeof values === 'object' &&
+      Array.isArray((values as { acquisitionPendingCheckpoints?: unknown }).acquisitionPendingCheckpoints)
+        ? (values as { acquisitionPendingCheckpoints: unknown[] }).acquisitionPendingCheckpoints
+        : []
+    const candidates = pending
+      .flatMap((checkpoint) => {
+        if (!checkpoint || typeof checkpoint !== 'object') return []
+        const value = checkpoint as { sessionId?: unknown; occurredAt?: unknown }
+        if (typeof value.sessionId !== 'string' || typeof value.occurredAt !== 'string') return []
+        if (Number.isNaN(Date.parse(value.occurredAt)) || new Date(value.occurredAt).toISOString() !== value.occurredAt)
+          return []
+        return [{ sessionId: value.sessionId, reviewedAt: value.occurredAt }]
+      })
+      .sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt))
+    const latest = candidates[candidates.length - 1]
+    return latest
+      ? { id: `workspace:${latest.sessionId}:${latest.reviewedAt}:${payload}`, reviewedAt: latest.reviewedAt }
+      : null
+  } catch {
+    return null
+  }
 }
 
 function acknowledgePractice(storage: StoragePort, baseKey: string, payload: string) {
@@ -55,7 +89,9 @@ function acquisitionConflictCandidate(payload: string) {
         )
           return []
         const candidate = (trial as { reviewedAt: string }).reviewedAt
-        return !Number.isNaN(Date.parse(candidate)) && new Date(candidate).toISOString() === candidate ? [candidate] : []
+        return !Number.isNaN(Date.parse(candidate)) && new Date(candidate).toISOString() === candidate
+          ? [candidate]
+          : []
       })
       .sort()
     const reviewedAt = reviewed[reviewed.length - 1]
@@ -135,11 +171,22 @@ export function createDeviceSyncRepository(options: {
     async sync(storage: StoragePort, childId: string, allowDownload: boolean | (() => boolean) = true) {
       if (!/^[\w-]+$/.test(childId)) throw new Error('Invalid child scope.')
       const remote = await list(childId)
+      let workspace = practiceWorkspaceSyncAdapter(storage, childId)
+      const remoteWorkspaceRecords = [...remote.keys()].filter((key) => isPracticeWorkspaceSyncKey(key, childId))
+      if (!workspace && remoteWorkspaceRecords.length > 0 && storage.getItem(practiceWorkspaceKey(childId)) === null) {
+        if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
+          throw new Error(
+            'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
+          )
+        practiceWorkspaceStorage(storage as Storage, childId)
+        workspace = practiceWorkspaceSyncAdapter(storage, childId)
+      }
       const keys = new Set(remote.keys())
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i)
         if (key && ownedPracticeRecord(key, storage.getItem(key) || '', childId)) keys.add(key)
       }
+      for (const key of workspace?.keys() || []) keys.add(key)
       // Propagate immutable retirements before a mutable checkpoint can block
       // on an ordinary two-device conflict. Old checkpoints remain history.
       for (const key of [...keys].sort(
@@ -149,6 +196,24 @@ export function createDeviceSyncRepository(options: {
           Number(isRetirementKey(a, childId)) * 2 -
           Number(a === practiceWorkspaceKey(childId)),
       )) {
+        const workspaceOuter = practiceWorkspaceKey(childId)
+        const workspaceRemote = remote.get(workspaceOuter)?.record.payload
+        const workspaceLocal = storage.getItem(workspaceOuter)
+        const workspaceSyncRemote = remoteWorkspaceRecords.length > 0
+        const workspaceSyncKey = key.startsWith(`${workspaceOuter}:record:`)
+        const workspaceBaseKey = `family-beta-sync-base-v1:${options.familyId}:${childId}:${await recordId(workspaceOuter)}`
+        const workspaceBase = storage.getItem(workspaceBaseKey)
+        if (
+          key === workspaceOuter &&
+          workspace &&
+          (workspaceSyncRemote ||
+            workspaceRemote === undefined ||
+            workspaceRemote === workspaceLocal ||
+            workspaceRemote === workspaceBase)
+        )
+          continue
+        if (workspaceSyncKey && !workspace)
+          throw new Error('Saved practice could not be safely opened. Existing device records were preserved.')
         // The upgraded workspace owns its state and journals as one record.
         // Older sites may keep updating legacy keys; preserve them separately,
         // without letting those writes replace or block the upgraded workspace.
@@ -156,7 +221,7 @@ export function createDeviceSyncRepository(options: {
         const id = await recordId(key)
         const baseKey = `family-beta-sync-base-v1:${options.familyId}:${childId}:${id}`
         let baseline = storage.getItem(baseKey)
-        const local = storage.getItem(key)
+        const local = workspaceSyncKey ? workspace?.read(key) || null : storage.getItem(key)
         const server = remote.get(key)
         const online = server?.record.payload ?? null
         const pendingKey = `${baseKey}:pending`
@@ -179,16 +244,23 @@ export function createDeviceSyncRepository(options: {
               'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
             )
           // No await between checking the local base and adopting the confirmed remote.
-          storage.setItem(key, online)
+          if (workspaceSyncKey) workspace?.stage(key, online)
+          else storage.setItem(key, online)
           acknowledgePractice(storage, baseKey, online)
           continue
         }
         if (online !== baseline) {
-          const localCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(local) : null
-          const onlineCandidate = key.startsWith('family-beta-acquisition-v1:') ? acquisitionConflictCandidate(online || '') : null
-          const winner = localCandidate && onlineCandidate && server
-            ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
-            : null
+          const candidate = key.startsWith('family-beta-acquisition-v1:')
+            ? acquisitionConflictCandidate
+            : workspaceSyncKey
+              ? workspaceConflictCandidate
+              : () => null
+          const localCandidate = candidate(local)
+          const onlineCandidate = candidate(online || '')
+          const winner =
+            localCandidate && onlineCandidate && server
+              ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
+              : null
           if (!winner?.winner)
             throw new Error(
               'Practice changed on both devices. Both copies are preserved. Finish one reviewed response before continuing.',
@@ -198,7 +270,8 @@ export function createDeviceSyncRepository(options: {
               throw new Error(
                 'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
               )
-            storage.setItem(key, online!)
+            if (workspaceSyncKey) workspace?.stage(key, online!)
+            else storage.setItem(key, online!)
             acknowledgePractice(storage, baseKey, online!)
             continue
           }
@@ -244,6 +317,7 @@ export function createDeviceSyncRepository(options: {
         // acknowledge the uploaded snapshot; never replace the newer local state.
         acknowledgePractice(storage, baseKey, local)
       }
+      workspace?.commit()
     },
   }
 }
