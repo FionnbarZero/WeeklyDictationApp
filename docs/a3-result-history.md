@@ -2,6 +2,8 @@
 
 Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for its historical artifact and acceptance. A3.2 subsequently merged in PR #60 as `490fe41` and was [published/live-verified](./a32-release-2026-10-07.md). A3.3's score-safety prerequisite is implemented and tested locally, pending independent review; automatic checkpoint selection and bounded history storage remain unfinished. Nothing in A3.3 is published.
 
+The October 8 local continuation is now at `0e0b501` (after `94cbd43` and `cecced5`). It characterizes Grade 2's bundled workspace into stable history and mutable checkpoint records, protects the internal partition keys, preserves the existing legacy workspace format, and groups progression-linked envelopes, receipts, and pending checkpoints by activity without selecting or merging a winner. The complete unit suite passes **796 tests**, with type checking and lint passing. This remains preparatory local work: cloud arbitration, full per-activity migration, bounded online history, and independent Astra review are still pending.
+
 ## Scope and sequence
 
 A3 is split at three architectural boundaries so a persistence migration is not hidden inside a display change:
