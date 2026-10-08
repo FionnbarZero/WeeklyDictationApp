@@ -38,7 +38,7 @@ async function answer(page: Page) {
     .toBe(true)
 }
 
-test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device download', async ({ page }) => {
+test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device download after reopening', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-24T12:00:00-07:00'))
   await startWriting(page, 'grade2')
   const frame = page.frameLocator('iframe:visible')
@@ -103,12 +103,12 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ documents }) })
   })
   try {
-    page.once('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+    const reload = page.reload()
     await expect.poll(() => requested).toBe(true)
-    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     expect(await read()).toBe(older)
     release()
+    await reload
+    await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)
     const current = JSON.parse(await read()) as { records: Record<string, string> }
     expect(current.records[newerActivity![0]]).toBe(newerActivity![1])
