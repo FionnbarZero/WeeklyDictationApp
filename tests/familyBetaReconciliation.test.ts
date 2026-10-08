@@ -56,6 +56,7 @@ test('retention preview keeps current and previous school years detailed without
   assert.equal(resultRetentionBucket({ ...base, schoolYear: '2024-25' }, '2026-27'), 'summary')
   assert.equal(resultRetentionBucket(base, '2026-27'), 'unknown')
   assert.equal(resultRetentionBucket({ ...base, schoolYear: 'unknown' }, '2026-27'), 'unknown')
+  assert.equal(resultRetentionBucket({ ...base, schoolYear: '2027-28' }, '2026-27'), 'unknown')
 })
 
 test('teacher snapshots keep grade identities and writing/reading targets distinct', () => {

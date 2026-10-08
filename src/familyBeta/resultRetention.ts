@@ -13,5 +13,6 @@ export function resultRetentionBucket(result: BetaResult, currentSchoolYear: str
   const resultStart = schoolYearStart(result.schoolYear)
   const currentStart = schoolYearStart(currentSchoolYear)
   if (resultStart === null || currentStart === null) return 'unknown'
+  if (resultStart > currentStart) return 'unknown'
   return resultStart >= currentStart - 1 ? 'detail' : 'summary'
 }
