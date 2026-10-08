@@ -37,7 +37,7 @@ function workspaceConflictCandidate(payload: string) {
       Array.isArray((values as { acquisitionPendingCheckpoints?: unknown }).acquisitionPendingCheckpoints)
         ? (values as { acquisitionPendingCheckpoints: unknown[] }).acquisitionPendingCheckpoints
         : []
-    const candidates = pending
+    const pendingCandidates = pending
       .flatMap((checkpoint) => {
         if (!checkpoint || typeof checkpoint !== 'object') return []
         const value = checkpoint as { sessionId?: unknown; occurredAt?: unknown }
@@ -46,7 +46,30 @@ function workspaceConflictCandidate(payload: string) {
           return []
         return [{ sessionId: value.sessionId, reviewedAt: value.occurredAt }]
       })
-      .sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt))
+    const envelopeCandidates =
+      values &&
+      typeof values === 'object' &&
+      Array.isArray((values as { acquisitionProgressEnvelopes?: unknown }).acquisitionProgressEnvelopes)
+        ? (values as { acquisitionProgressEnvelopes: unknown[] }).acquisitionProgressEnvelopes.flatMap((envelope) => {
+            if (!envelope || typeof envelope !== 'object') return []
+            const value = envelope as {
+              id?: unknown
+              lastAppliedTransition?: { operation?: unknown; appliedAt?: unknown }
+            }
+            const receipt = value.lastAppliedTransition
+            if (
+              typeof value.id !== 'string' ||
+              !receipt ||
+              receipt.operation !== 'answer' ||
+              typeof receipt.appliedAt !== 'string' ||
+              Number.isNaN(Date.parse(receipt.appliedAt)) ||
+              new Date(receipt.appliedAt).toISOString() !== receipt.appliedAt
+            )
+              return []
+            return [{ sessionId: value.id, reviewedAt: receipt.appliedAt }]
+          })
+        : []
+    const candidates = [...pendingCandidates, ...envelopeCandidates].sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt))
     const latest = candidates[candidates.length - 1]
     return latest
       ? { id: `workspace:${latest.sessionId}:${latest.reviewedAt}:${payload}`, reviewedAt: latest.reviewedAt }
