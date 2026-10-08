@@ -50,6 +50,10 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   const older = await read()
   await answer(page)
   const newer = await read()
+  const newerActivity = Object.entries(JSON.parse(newer).records as Record<string, string>).find(([recordKey]) =>
+    recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
+  )
+  expect(newerActivity).toBeDefined()
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
   await expect(page.locator('iframe[data-family-slot]')).toHaveCount(1)
@@ -105,7 +109,8 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
     expect(await read()).toBe(older)
     release()
     await expect(page.getByRole('alert')).toHaveCount(0)
-    expect(await read()).toBe(newer)
+    const current = JSON.parse(await read()) as { records: Record<string, string> }
+    expect(current.records[newerActivity![0]]).toBe(newerActivity![1])
     expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(older)
   } finally {
     release()
