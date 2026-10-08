@@ -1,6 +1,6 @@
 # A3.1 — bounded result history and attempt graphs
 
-Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for its historical artifact and acceptance. A3.2 subsequently merged in PR #60 as `490fe41` and was [published/live-verified](./a32-release-2026-10-07.md). A3.3's score-safety prerequisite is being implemented locally; automatic checkpoint selection and bounded history storage remain unfinished. Nothing in A3.3 is published.
+Status: October 7 review findings repaired, merged in PR #58 as `55e9189`, and published/live-verified October 7 on all three canonical grades. See the [A3.1 release record](./a3-release-2026-10-07.md) for its historical artifact and acceptance. A3.2 subsequently merged in PR #60 as `490fe41` and was [published/live-verified](./a32-release-2026-10-07.md). A3.3's score-safety prerequisite is implemented and tested locally, pending independent review; automatic checkpoint selection and bounded history storage remain unfinished. Nothing in A3.3 is published.
 
 ## Scope and sequence
 
@@ -14,7 +14,7 @@ Detailed per-target provenance and storage/retention integration still require t
 
 ## A3.3 score-safety prerequisite — October 7, unpublished
 
-Branch: `codex/a33-checkpoint-reconciliation`. This is the existing A3.3 workstream, not a new product plan or smoke-test milestone. The owner accepted the bounded A3.2 smoke check in chat; do not repeat it for these unpublished changes. Implementation and independent review remain assigned to **GPT-6 Astra · Extra High**.
+Branch: `codex/a33-checkpoint-reconciliation`, based on `b4056d6`. Latest tested code/test revision: `0d9f83db286d80e020ed00ddf95fd7b18dc01177`; subsequent changes to this acceptance record are documentation only. The branch is local, not pushed, merged or published. This is the existing A3.3 workstream, not a new product plan or smoke-test milestone. The owner accepted the bounded A3.2 smoke check in chat; do not repeat it for these unpublished changes. Implementation and independent review remain assigned to **GPT-6 Astra · Extra High**.
 
 ### Reproduced defects and repair
 
@@ -33,7 +33,16 @@ No production records, rules, authentication, hosting, teacher sources, curricul
 4. Bound the active working set and history cache with verified archive/readback and bounded online reads. `reviewedTrials`, Grade 2 embedded state/journals, the result ledger, the 700,000-byte practice ceiling and the 500-record hydration ceiling are still outstanding. Removing a redundant acknowledged retry copy does not solve these limits. Pending offline work must not be silently evicted.
 5. Add all-grade, real two-context conflict, storage-growth, migration, older-client and guarded-rollback coverage before independent review and publication. No new owner smoke test until a coherent reviewed build is served and verified.
 
-Initial evidence: 777 unit tests and seven production-intended family-policy emulator checks passed. The first score-delivery package passed 44 desktop/tablet saving/history checks; the subsequent identity package passed ten focused checks. Full package acceptance at `18b8014` is still running. The final same-tab completion guard, formatting and expanded all-grade reading identity checks require their own exact-package run; earlier counts are not a substitute for final-source verification or independent review. Type/lint/repository-format/focused-format and production build budgets passed (549,840/550,000 initial JS bytes; 42,745/60,000 initial CSS bytes). The existing controlled upgrade/rollback browser rehearsal is explicitly based on retained A3.1 source `55e9189`, not an A3.2-to-A3.3 migration claim. Attempting to use the A3.2 package as that fixture was rejected by the rollback packager's older-script guard before tests ran; no hosting was changed.
+### Local verification and review handoff
+
+- **777 unit tests and seven production-intended family-policy emulator checks passed.** Type/lint/repository-format/focused-format and production build budgets passed (549,840/550,000 initial JS bytes; 42,745/60,000 initial CSS bytes). JavaScript budget headroom is only 160 bytes; further work must preserve the existing budget, not quietly raise it.
+- **All 210 desktop/tablet package checks passed at `18b8014`**, including the existing controlled offline/rollback rehearsals. Its 138 manifest-listed files match tree `c0d7703f18fbf44b30002c367ac66cd63a5095446bd1413f15e8721c33076be9` in local artifact `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-nCCDcB`.
+- **All 26 final focused desktop/tablet package checks passed at `0d9f83d`**, covering score delivery despite practice conflict in all grades, Kindergarten/Grade 5 writing, and all three ordinary reading paths. Each two-context case shares an intercepted synthetic backend, verifies two distinct immutable result IDs, and verifies both outboxes are acknowledged. Both another reviewed response and immediate completion of inherited scored work are covered. This package includes the final same-tab completion guard and formatting changes. All 138 files match tree `baffbda284251a98a8f62d4bdaebdea2088bd24f160a15219f2b2660d14c25f3` at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-cmBdOK`.
+- The expanded reading test initially ended after an unscored familiar-DT response and incorrectly expected a score. That run was stopped after four fixture failures; the corrected fixture follows the actual teaching sequence until a scored target response exists. No teaching or scoring rule was changed to satisfy it. The full suite now contains 222 cases, but only the 26 focused cases have run on the final source; do not describe the earlier 210-case run as a final-head full-suite pass.
+
+The controlled upgrade/rollback browser rehearsal above is explicitly based on retained A3.1 source `55e9189`, not an A3.2-to-A3.3 migration claim. Attempting to use the A3.2 package as that fixture was rejected by the rollback packager's older-script guard before tests ran; no hosting was changed. Current-A3.2 compatibility/guarded-rollback evidence and the remaining A3.3 acceptance gates are still required before a release. Older clients do not implement the new writer-claim behavior; the optional field alone is not proof of old-client conflict safety.
+
+Next: independent **GPT-6 Astra · Extra High** review of the score-safety prerequisite against `b4056d6`, then continue the same A3.3 checkpoint/history separation and conflict/storage queue above. Do not mark A3.3 complete, merge or publish this as the finished stage, start game/UI work, or ask for owner smoke testing from these local-only checks.
 
 ## Reproduced issue
 
