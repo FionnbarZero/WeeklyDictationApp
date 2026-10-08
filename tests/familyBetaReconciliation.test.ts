@@ -6,6 +6,7 @@ import { inspectSnapshot, type CurriculumSnapshot } from '../src/familyBeta/curr
 import { extractGrade5Presentation } from '../src/curriculum/adapters/grade5GoogleSlides.ts'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { documentValue } from '../src/firestoreClient.ts'
+import { sameCompletedResult } from '../src/familyBeta/resultLedger.ts'
 
 const child = { id: 'preview-child', nickname: 'Learner', grade: 'Grade 2' as const, active: true }
 const result = (id: string, at: string, correct = 2) =>
@@ -43,6 +44,8 @@ test('completed results carry optional school-year provenance without invalidati
   assert.equal(isBetaResult(tagged), true)
   assert.equal(isBetaResult({ ...tagged, datasetIds: [123] }), false)
   assert.equal(isBetaResult(current), true)
+  assert.equal(sameCompletedResult(current, tagged), false)
+  assert.equal(sameCompletedResult(tagged, current), false)
 })
 
 test('teacher snapshots keep grade identities and writing/reading targets distinct', () => {

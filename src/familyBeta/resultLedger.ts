@@ -5,10 +5,10 @@ export const PENDING_KEY = 'family-beta-preview-pending-v1'
 type Reader = Pick<Storage, 'length' | 'key' | 'getItem'>
 type Writer = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 const invalid = 'Stored completed scores failed validation. Nothing was discarded.'
-const conflict = 'Two copies of this completed attempt disagree. Neither was replaced.'
+const conflict = 'Attempt copies disagree. Neither was replaced.'
 
 export function sameCompletedResult(a: BetaResult, b: BetaResult) {
-  return Object.keys(a).every(
+  return a.schoolYear === b.schoolYear && Object.keys(a).every(
     (key) => JSON.stringify(a[key as keyof BetaResult]) === JSON.stringify(b[key as keyof BetaResult]),
   )
 }

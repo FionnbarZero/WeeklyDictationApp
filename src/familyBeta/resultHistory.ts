@@ -44,7 +44,7 @@ export function distinctAttempts(results: readonly BetaResult[], childId: string
     if (result.childId !== childId) continue
     const existing = unique.get(result.id)
     if (existing && !sameCompletedResult(existing, result))
-      throw new Error('Two copies of this completed attempt disagree. Neither was replaced.')
+      throw new Error('Attempt copies disagree. Neither was replaced.')
     unique.set(result.id, result)
   }
   return [...unique.values()].sort(compareAttempts)
