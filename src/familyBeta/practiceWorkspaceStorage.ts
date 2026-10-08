@@ -1,13 +1,19 @@
 /** A new, atomic workspace record keeps older clients from normalizing newer
  * datasets or replaying their journals. Legacy keys remain a recovery copy. */
 import { isAppState, type AppState } from '../domain.ts'
-import { partitionWorkspaceState, WORKSPACE_STATE_FIELDS } from './workspacePartition.ts'
+import { partitionActivityCheckpoints } from './workspaceActivityPartition.ts'
+import {
+  partitionWorkspaceState,
+  WORKSPACE_CHECKPOINT_FIELDS,
+  WORKSPACE_STATE_FIELDS,
+} from './workspacePartition.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
 const stateKey = 'weekly-dictation-state-v2'
 const historyKey = 'weekly-dictation-history-v1'
 const checkpointKey = 'weekly-dictation-checkpoint-v1'
+const activityKeyPrefix = `${checkpointKey}:activity:`
 export const MAX_WORKSPACE_RECORDS = 500
 export const practiceWorkspaceKey = (childId: string) => `family-beta-activity:${childId}:lesson-workspace-v1`
 export const legacyPracticeKey = (key: string, childId: string) =>
@@ -17,9 +23,25 @@ const failure =
 
 type PartitionRecord = { schema: 1; childId: string; values: Record<string, unknown> }
 const partitionKeys = new Set([historyKey, checkpointKey])
+const activityFields = new Set([
+  'acquisitionProgressions',
+  'acquisitionProgressEnvelopes',
+  'acquisitionTransitionReceipts',
+  'acquisitionPendingCheckpoints',
+])
+const isActivityKey = (key: string) => key.startsWith(activityKeyPrefix)
+const isInternalKey = (key: string) => partitionKeys.has(key) || isActivityKey(key)
+
+function activityKey(activityId: string) {
+  return `${activityKeyPrefix}${encodeURIComponent(activityId)}`
+}
+
+function activityId(key: string) {
+  return decodeURIComponent(key.slice(activityKeyPrefix.length))
+}
 
 function exposedRecordKeys(records: Record<string, string>) {
-  const keys = Object.keys(records).filter((key) => !partitionKeys.has(key))
+  const keys = Object.keys(records).filter((key) => !isInternalKey(key))
   if (records[historyKey] !== undefined && records[checkpointKey] !== undefined && !keys.includes(stateKey))
     keys.push(stateKey)
   return keys
@@ -43,12 +65,35 @@ function partitionRecord(raw: string, childId: string): Record<string, unknown> 
   }
 }
 
+function activityRecord(raw: string, childId: string, key: string) {
+  try {
+    const value = JSON.parse(raw) as PartitionRecord & { activityId?: unknown }
+    if (value.activityId !== activityId(key)) throw new Error(failure)
+    return partitionRecord(JSON.stringify(value), childId)
+  } catch {
+    throw new Error(failure)
+  }
+}
+
 function stateFromRecords(records: Record<string, string>, childId: string) {
   const history = records[historyKey]
   const checkpoint = records[checkpointKey]
-  if ((history === undefined) !== (checkpoint === undefined)) throw new Error(failure)
+  const activityKeys = Object.keys(records).filter(isActivityKey).sort()
+  if (
+    (history === undefined) !== (checkpoint === undefined) ||
+    (activityKeys.length > 0 && (history === undefined || checkpoint === undefined))
+  )
+    throw new Error(failure)
   if (history !== undefined && checkpoint !== undefined) {
     const values = { ...partitionRecord(history, childId), ...partitionRecord(checkpoint, childId) }
+    const activities = activityKeys.map((key) => activityRecord(records[key], childId, key))
+    for (const field of activityFields) {
+      const legacy = values[field]
+      if (activities.length) {
+        if (legacy !== undefined) throw new Error(failure)
+        values[field] = activities.flatMap((activity) => (Array.isArray(activity[field]) ? activity[field] : []))
+      } else if (legacy === undefined) values[field] = []
+    }
     const merged = Object.fromEntries(
       WORKSPACE_STATE_FIELDS.filter((field) => field in values).map((field) => [field, values[field]]),
     )
@@ -66,10 +111,17 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
     parsed = null
   }
   if (!isAppState(parsed)) {
-    if (records[historyKey] !== undefined || records[checkpointKey] !== undefined) throw new Error(failure)
+    if (
+      records[historyKey] !== undefined ||
+      records[checkpointKey] !== undefined ||
+      Object.keys(records).some(isActivityKey)
+    )
+      throw new Error(failure)
     return { ...records, [stateKey]: raw }
   }
   const partition = partitionWorkspaceState(parsed as AppState)
+  const activities = partitionActivityCheckpoints(parsed as AppState)
+  if (activities.status !== 'ready') throw new Error(failure)
   const next = { ...records }
   delete next[stateKey]
   next[historyKey] = JSON.stringify({
@@ -80,8 +132,32 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
   next[checkpointKey] = JSON.stringify({
     schema: 1,
     childId,
-    values: { ...partition.metadata, ...partition.checkpoint },
+    values: {
+      ...partition.metadata,
+      ...Object.fromEntries(Object.entries(partition.checkpoint).filter(([field]) => !activityFields.has(field))),
+    },
   } satisfies PartitionRecord)
+  for (const key of Object.keys(next)) if (isActivityKey(key)) delete next[key]
+  for (const activity of activities.activities) {
+    const values = Object.fromEntries(
+      WORKSPACE_CHECKPOINT_FIELDS.filter((field) => activityFields.has(field)).map((field) => [
+        field,
+        activity[field === 'acquisitionProgressions'
+          ? 'progressions'
+          : field === 'acquisitionProgressEnvelopes'
+            ? 'envelopes'
+            : field === 'acquisitionTransitionReceipts'
+              ? 'transitionReceipts'
+              : 'pendingCheckpoints'],
+      ]),
+    )
+    next[activityKey(activity.activityId)] = JSON.stringify({
+      schema: 1,
+      childId,
+      activityId: activity.activityId,
+      values,
+    })
+  }
   return next
 }
 
@@ -156,24 +232,25 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     },
     key: (index) => exposedRecordKeys(read().value.records)[index] ?? null,
     getItem: (name) => {
-      if (partitionKeys.has(name)) return null
+      if (isInternalKey(name)) return null
       return name === stateKey ? stateFromRecords(read().value.records, childId) : (read().value.records[name] ?? null)
     },
     setItem: (name, item) => {
-      if (!name.startsWith('weekly-dictation-') || partitionKeys.has(name)) throw new Error(failure)
+      if (!name.startsWith('weekly-dictation-') || isInternalKey(name)) throw new Error(failure)
       const { raw, value } = read()
       const records =
         name === stateKey ? stateRecords(value.records, childId, item) : { ...value.records, [name]: item }
       write({ ...value, records }, raw)
     },
     removeItem: (name) => {
-      if (partitionKeys.has(name)) throw new Error(failure)
+      if (isInternalKey(name)) throw new Error(failure)
       const { raw, value } = read()
       const records = { ...value.records }
       if (name === stateKey) {
         delete records[stateKey]
         delete records[historyKey]
         delete records[checkpointKey]
+        for (const key of Object.keys(records)) if (isActivityKey(key)) delete records[key]
       } else delete records[name]
       write({ ...value, records }, raw)
     },

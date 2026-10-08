@@ -7,6 +7,7 @@ import {
   practiceWorkspaceStorage,
   readPracticeWorkspaceState,
 } from '../src/familyBeta/practiceWorkspaceStorage.ts'
+import { partitionWorkspaceState } from '../src/familyBeta/workspacePartition.ts'
 
 function fixture() {
   const records = new Map<string, string>()
@@ -130,6 +131,70 @@ test('valid Grade 2 state is stored as separate history and checkpoint records a
   assert.throws(() => app.removeItem('weekly-dictation-checkpoint-v1'), /preserved/)
   assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), state)
   assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
+})
+
+test('Grade 2 acquisition checkpoints are stored per activity and reconstruct exactly', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const state = createInitialState()
+  state.acquisitionProgressions = [
+    {
+      id: 'activity/a',
+      childId: 'child',
+      datasetId: 'week-a',
+      grade: 'Grade 2',
+      flow: {} as never,
+      updatedAt: '2026-10-08T00:00:00.000Z',
+    },
+  ]
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(state))
+  const workspace = JSON.parse(storage.getItem(practiceWorkspaceKey('child'))!)
+  const activityKeys = Object.keys(workspace.records).filter((key) => key.startsWith('weekly-dictation-checkpoint-v1:activity:'))
+  assert.deepEqual(activityKeys, ['weekly-dictation-checkpoint-v1:activity:activity%2Fa'])
+  assert.equal(app.getItem(activityKeys[0]), null)
+  assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), state)
+  assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
+})
+
+test('legacy bundled checkpoint arrays remain readable during activity migration', () => {
+  const { storage } = fixture()
+  const state = createInitialState()
+  state.acquisitionProgressions = [
+    {
+      id: 'legacy-activity',
+      childId: 'child',
+      datasetId: 'week-a',
+      grade: 'Grade 2',
+      flow: {} as never,
+      updatedAt: '2026-10-08T00:00:00.000Z',
+    },
+  ]
+  const partition = partitionWorkspaceState(state)
+  const records = {
+    'weekly-dictation-history-v1': JSON.stringify({
+      schema: 1,
+      childId: 'child',
+      values: { ...partition.metadata, ...partition.history },
+    }),
+    'weekly-dictation-checkpoint-v1': JSON.stringify({
+      schema: 1,
+      childId: 'child',
+      values: { ...partition.metadata, ...partition.checkpoint },
+    }),
+  }
+  storage.setItem(practiceWorkspaceKey('child'), JSON.stringify({ schema: 1, childId: 'child', records }))
+  assert.deepEqual(JSON.parse(practiceWorkspaceStorage(storage, 'child').getItem('weekly-dictation-state-v2')!), state)
+})
+
+test('malformed or orphaned activity checkpoint records fail closed', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(createInitialState()))
+  const key = practiceWorkspaceKey('child')
+  const workspace = JSON.parse(storage.getItem(key)!)
+  workspace.records['weekly-dictation-checkpoint-v1:activity:orphan'] = '{'
+  storage.setItem(key, JSON.stringify(workspace))
+  assert.throws(() => practiceWorkspaceStorage(storage, 'child').getItem('weekly-dictation-state-v2'), /preserved/)
 })
 
 test('partitioned state remains writable through the shared workspace after reconstruction', () => {
