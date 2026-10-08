@@ -44,7 +44,13 @@ No production records, rules, authentication, hosting, teacher sources, curricul
 
 The controlled upgrade/rollback browser rehearsal above is explicitly based on retained A3.1 source `55e9189`, not an A3.2-to-A3.3 migration claim. Attempting to use the A3.2 package as that fixture was rejected by the rollback packager's older-script guard before tests ran; no hosting was changed. Current-A3.2 compatibility/guarded-rollback evidence and the remaining A3.3 acceptance gates are still required before a release. Older clients do not implement the new writer-claim behavior; the optional field alone is not proof of old-client conflict safety.
 
-Next: complete the remaining cross-grade **GPT-6 Astra · Extra High** review of the repaired score-safety and per-activity cloud-sync diff, then complete embedded-state/result-ledger bounds and broader guarded rollback coverage. Do not mark A3.3 complete, merge or publish this as the finished stage, start game/UI work, or ask for owner smoke testing from these local-only checks.
+### Final Astra Extra High review — October 8, unpublished
+
+The independent review of local head `f58c940` is complete but **does not approve A3.3 for merge or publication**. The repaired score-safety, per-activity conflict arbitration, legacy compatibility, acquisition 500-entry fail-closed bound, 700,000-byte/500-record remote workspace guards, and guarded acquisition rollback preservation are internally consistent. The review verified 813 unit tests, 15 Firestore emulator cases, type checking, lint, format, production build/performance (549,998/550,000 initial JavaScript bytes), and both dependency audits (zero production vulnerabilities). No production records, authentication, security rules deployment, or hosting changed.
+
+Release blockers are the still-unbounded Grade 2 embedded state/result ledger histories, incomplete broader all-grade rollback/package evidence, and the known 43/44 reconciliation browser fixture mismatch. These must be resolved or explicitly accepted in a later review before merge, publication, or owner smoke testing. The result ledger remains untouched because silent pruning would risk losing historical scores and would require the separately authorized retention policy.
+
+Do not mark A3.3 complete, merge or publish this as the finished stage, start game/UI work, or ask for owner smoke testing from this local-only review.
 
 ## Reproduced issue
 
