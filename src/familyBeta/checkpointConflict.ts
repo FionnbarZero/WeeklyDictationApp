@@ -24,12 +24,18 @@ export type CheckpointWinner = {
   reason: CheckpointWinnerReason
 }
 
+function validateClockPolicy(options: CheckpointConflictOptions) {
+  const reference = Date.parse(options.referenceNow)
+  const maxFutureSkewMs = options.maxFutureSkewMs ?? DEFAULT_MAX_FUTURE_SKEW_MS
+  if (Number.isNaN(reference) || !Number.isFinite(maxFutureSkewMs) || maxFutureSkewMs < 0)
+    throw new Error('Checkpoint conflict clock policy is invalid.')
+  return { reference, maxFutureSkewMs }
+}
+
 function timestamp(value: string | undefined, options: CheckpointConflictOptions) {
   if (!value || Number.isNaN(Date.parse(value)) || new Date(value).toISOString() !== value) return null
   const parsed = Date.parse(value)
-  const reference = Date.parse(options.referenceNow)
-  const maxFutureSkewMs = options.maxFutureSkewMs ?? DEFAULT_MAX_FUTURE_SKEW_MS
-  if (Number.isNaN(reference) || !Number.isFinite(maxFutureSkewMs) || maxFutureSkewMs < 0) throw new Error('Checkpoint conflict clock policy is invalid.')
+  const { reference, maxFutureSkewMs } = validateClockPolicy(options)
   return parsed > reference + maxFutureSkewMs ? null : parsed
 }
 
@@ -42,19 +48,27 @@ function compareCandidates(a: CheckpointCandidate, b: CheckpointCandidate, optio
   return aTime === bTime ? a.id.localeCompare(b.id) : aTime - bTime
 }
 
-export function chooseCheckpointWinner(candidates: readonly CheckpointCandidate[], options: CheckpointConflictOptions): CheckpointWinner | null {
+export function chooseCheckpointWinner(
+  candidates: readonly CheckpointCandidate[],
+  options: CheckpointConflictOptions,
+): CheckpointWinner | null {
+  validateClockPolicy(options)
   if (candidates.length === 0) return null
-  if (candidates.some(candidate => !candidate.id)) throw new Error('Checkpoint conflict candidates require stable identities.')
-  const trusted = candidates.filter(candidate => timestamp(candidate.reviewedAt, options) !== null)
+  if (candidates.some((candidate) => !candidate.id))
+    throw new Error('Checkpoint conflict candidates require stable identities.')
+  const trusted = candidates.filter((candidate) => timestamp(candidate.reviewedAt, options) !== null)
   if (trusted.length === 0) return { winner: null, reason: 'no-reviewed-answer' }
   const ranked = [...candidates].sort((a, b) => compareCandidates(a, b, options))
   const winner = ranked[ranked.length - 1]
-  const reason: CheckpointWinnerReason = trusted.length === 0
-    ? 'no-reviewed-answer'
-    : trusted.length === 1
-      ? 'only-reviewed-answer'
-      : ranked.length > 1 && timestamp(ranked[ranked.length - 1].reviewedAt, options) === timestamp(ranked[ranked.length - 2].reviewedAt, options)
-        ? 'tie-break'
-        : 'reviewed-answer'
+  const reason: CheckpointWinnerReason =
+    trusted.length === 0
+      ? 'no-reviewed-answer'
+      : trusted.length === 1
+        ? 'only-reviewed-answer'
+        : ranked.length > 1 &&
+            timestamp(ranked[ranked.length - 1].reviewedAt, options) ===
+              timestamp(ranked[ranked.length - 2].reviewedAt, options)
+          ? 'tie-break'
+          : 'reviewed-answer'
   return { winner, reason }
 }
