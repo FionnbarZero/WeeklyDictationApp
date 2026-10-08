@@ -345,7 +345,7 @@ function KindergartenLearningLab() {
   }
 
   function finishWriting() {
-    try { acquisitionStore.current?.assertActive() }
+    try { if (acquisitionStore.current) attemptId.current = acquisitionStore.current.prepareResult().sessionId }
     catch (error) {
       setStatus(error instanceof Error ? error.message : 'This attempt cannot be submitted.'); setError(true)
       return

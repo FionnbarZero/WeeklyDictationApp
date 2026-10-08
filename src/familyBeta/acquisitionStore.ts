@@ -126,6 +126,16 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     get current() {
       return current
     },
+    prepareResult() {
+      assertActive()
+      if (options.writerId && current.writerId !== options.writerId && current.assessments.some(a => a.countsTowardWeeklyScore)) {
+        // Done for today can submit inherited reviewed work without another
+        // answer. Claim once before scoring, so two completions stay distinct
+        // and a failed score write retries the same claimed identity.
+        return commit({ ...current, sessionId: uuid(), writerId: options.writerId })
+      }
+      return current
+    },
     answer(correct: boolean, revealMethod: R) {
       // Reading/resuming never forks. The first successfully reviewed answer
       // from a different installation claims its own score identity atomically

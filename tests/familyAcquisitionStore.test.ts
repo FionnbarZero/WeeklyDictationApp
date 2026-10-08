@@ -88,6 +88,21 @@ test('a legacy unowned attempt is claimed only with a successfully saved reviewe
   upgraded.answer(true, 'timer')
   assert.notEqual(upgraded.current.sessionId, legacy.current.sessionId)
 })
+
+test('completing inherited reviewed work claims one stable result identity without changing its checkpoint', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'device-one', random: () => 0 })
+  for (let i = 0; i < 4; i++) first.answer(true, 'timer')
+  const next = openAcquisitionStore(storage, ctx, { writerId: 'device-two', random: () => 0 })
+  const before = JSON.parse(JSON.stringify(next.current))
+  const claimed = next.prepareResult()
+  assert.notEqual(claimed.sessionId, before.sessionId)
+  assert.deepEqual(claimed.envelope, before.envelope)
+  assert.deepEqual(claimed.assessments, before.assessments)
+  assert.deepEqual(claimed.reviewedTrials, before.reviewedTrials)
+  assert.equal(next.prepareResult().sessionId, claimed.sessionId)
+  assert.equal(openAcquisitionStore(storage, ctx, { writerId: 'device-two' }).prepareResult().sessionId, claimed.sessionId)
+})
 for (const strategy of [
   grade5AcquisitionStrategy,
   kindergartenAcquisitionStrategy,

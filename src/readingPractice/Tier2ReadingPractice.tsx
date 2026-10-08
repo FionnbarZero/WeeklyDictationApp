@@ -262,7 +262,12 @@ function ImmediateTier2ReadingPractice({
       : 'Mastery reading'
   const summary = { ...summaryFor(run), ...(savedStore ? { sessionId: savedStore.current.sessionId } : {}) }
   function finish() {
-    try { savedStore?.assertActive(); onComplete(summary) }
+    try {
+      savedStore?.assertActive()
+      onComplete(savedStore && summary.attempted > 0
+        ? { ...summary, sessionId: savedStore.prepareResult().sessionId }
+        : summary)
+    }
     catch (error) { setSaveError(error instanceof Error ? error.message : 'This attempt cannot be submitted.') }
   }
 

@@ -254,7 +254,8 @@ function leavePractice(message = 'Returned to the Grade 5 hub. This development-
 function recordWritingResult(correct: number, attempted: number) {
   if (!activeSession || !activeDataset) return false
   try {
-    if (activeSession.primaryPhase === 'acquisition') acquisitionStore?.assertActive()
+    if (activeSession.primaryPhase === 'acquisition' && acquisitionStore)
+      activeSession = { ...activeSession, id: acquisitionStore.prepareResult().sessionId }
     savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
     return true
   } catch {
