@@ -55,6 +55,14 @@ export function prepareOfflineRollback(sourceDirectory: string, compatibilityRev
       .replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/g, (_tag, attributes: string, body: string) => {
         const src = attributes.match(/\bsrc="([^"]+)"/)?.[1]
         if (src) {
+          // The packaged offline shell has one known non-entry helper. It only
+          // registers the scoped worker and never reads or writes family data;
+          // preserve that exact contract while guarding application modules.
+          if (src === './offline-registration.js') {
+            if (!/\bdefer\b/.test(attributes))
+              throw new Error('Unexpected offline registration script; rollback requires review.')
+            return '<script defer src="./offline-registration.js"></script>'
+          }
           if (!attributes.includes('type="module"') || !/^\.\/assets\/[\w.-]+\.js$/.test(src))
             throw new Error('Unexpected older entry script; rollback requires review.')
           return `<script type="module">if (!window.__dojoRollbackPreserve) await import(${JSON.stringify(src)});</script>`

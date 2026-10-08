@@ -21,7 +21,7 @@ test('rollback package validates its input, guards every older entry, and preser
   ])
     writeFileSync(
       join(original, name),
-      '<html><head><script>window.oldInline = true</script><script type="module" crossorigin src="./assets/old.js"></script></head><body>old</body></html>',
+      '<html><head><script>window.oldInline = true</script><script type="module" crossorigin src="./assets/old.js"></script><script defer src="./offline-registration.js"></script></head><body>old</body></html>',
     )
   const files = artifactFileRecords(original)
   const source = {
@@ -44,6 +44,7 @@ test('rollback package validates its input, guards every older entry, and preser
   assert.match(entry, /<head><script src="\.\/rollback-guard.js"/)
   assert.match(entry, /if \(!window.__dojoRollbackPreserve\) await import/)
   assert.match(entry, /if \(!window.__dojoRollbackPreserve\) \{window.oldInline/)
+  assert.match(entry, /<script defer src="\.\/offline-registration\.js"><\/script>/)
   assert.match(readFileSync(join(directory, 'family-offline-sw.js'), 'utf8'), /rollback-guard.js/)
   writeFileSync(join(original, 'assets', 'old.js'), 'changed')
   assert.throws(() => prepareOfflineRollback(original, 'b'.repeat(40)), /integrity/)
