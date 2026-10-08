@@ -8,6 +8,8 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 **Verification update (October 8, unpublished):** The stale Grade 5 loading-gate fixture was aligned with the current wrapper contract; the full reconciliation browser suite now passes 44/44. A3.3 remains blocked from merge/publication by unbounded Grade 2 embedded-state/result-ledger histories and incomplete broader all-grade rollback/package evidence. Nothing has been pushed or published, and smoke testing remains premature.
 
+**Storage-safety update (October 8, unpublished):** Result-ledger reads now fail closed above 500 unique completed-score IDs without pruning or rewriting preserved copies. The final local gates pass: 815 unit tests, 15 Firestore emulator cases, 44/44 reconciliation browser cases, type checking, lint, format, the 549,987/550,000 initial-JavaScript-byte performance budget, and both dependency audits. Grade 2 embedded AppState collections remain unbounded, and broader all-grade rollback/package evidence remains incomplete. Nothing is pushed or published; smoke testing remains premature.
+
 ## Live family beta
 
 | Grade | Permanent app | Verified release |

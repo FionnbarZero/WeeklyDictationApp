@@ -191,6 +191,8 @@ A3.3 is now in progress locally on `codex/a33-checkpoint-reconciliation`, starti
 
 **Verification update (October 8, unpublished):** The Grade 5 loading-gate fixture now matches the current pre-iframe wrapper contract and the rebuilt reconciliation browser suite passes 44/44. A3.3 remains blocked from merge/publication by unbounded Grade 2 embedded-state/result-ledger histories and incomplete broader all-grade rollback/package evidence. Do not start game/UI work or request smoke testing from this unpublished slice.
 
+**Storage-safety update (October 8, unpublished):** Result-ledger reads now fail closed above 500 unique completed-score IDs without pruning or rewriting preserved copies. The final local gates pass: 815 unit tests, 15 Firestore emulator cases, 44/44 reconciliation browser cases, type checking, lint, format, the 549,987/550,000 initial-JavaScript-byte performance budget, and both dependency audits. Grade 2 embedded AppState collections remain unbounded, and broader all-grade rollback/package evidence remains incomplete. Do not start game/UI work or request smoke testing from this unpublished slice.
+
 ### Model routing
 
 Choose the model at the start of each focused task or handoff. Use **GPT-6 Astra** for architecture, persistence, acquisition rules, security-sensitive review, and final cross-grade release review. Use **GPT-6.1 Sol** for bounded implementation after the governing contract is clear. Use **GPT-6 Luna** for documentation and mechanical inventory work. Model choice does not replace regression coverage or exact-artifact verification.

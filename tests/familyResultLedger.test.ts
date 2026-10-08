@@ -11,6 +11,8 @@ import {
 } from '../src/familyBeta/resultLedger.ts'
 import { syncCompletedBeforePractice } from '../src/familyBeta/syncProgress.ts'
 
+const MAX_RESULT_LEDGER_RESULTS = 500
+
 function memory() {
   const records = new Map<string, string>()
   return {
@@ -40,6 +42,27 @@ const result = makeResult(
   },
   new Date('2026-10-07T18:00:00.000Z'),
 )
+
+test('an oversized legacy result ledger fails closed without changing either copy', () => {
+  const storage = memory()
+  const oversized = Array.from({ length: MAX_RESULT_LEDGER_RESULTS + 1 }, (_, index) => ({
+    ...result,
+    id: `result-${index}`,
+  }))
+  storage.setItem(RESULT_KEY, JSON.stringify(oversized))
+  const before = [...storage.records]
+  assert.throws(() => readResultLedger(storage, RESULT_KEY), /Invalid scores/)
+  assert.deepEqual([...storage.records], before)
+})
+
+test('an oversized keyed result ledger fails closed without changing either copy', () => {
+  const storage = memory()
+  for (let index = 0; index <= MAX_RESULT_LEDGER_RESULTS; index++)
+    storage.setItem(`${RESULT_KEY}:result-${index}`, JSON.stringify({ ...result, id: `result-${index}` }))
+  const before = [...storage.records]
+  assert.throws(() => readResultLedger(storage, RESULT_KEY), /Invalid scores/)
+  assert.deepEqual([...storage.records], before)
+})
 
 for (const key of [RESULT_KEY, PENDING_KEY]) {
   test(`${key}: conflicting keyed and legacy copies cannot hide each other`, () => {

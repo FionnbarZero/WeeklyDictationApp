@@ -4,8 +4,8 @@ export const RESULT_KEY = 'family-beta-preview-results-v1'
 export const PENDING_KEY = 'family-beta-preview-pending-v1'
 type Reader = Pick<Storage, 'length' | 'key' | 'getItem'>
 type Writer = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
-const invalid = 'Stored completed scores failed validation. Nothing was discarded.'
-const conflict = 'Attempt copies disagree. Neither was replaced.'
+const invalid = 'Invalid scores; preserved.'
+const conflict = 'Score copies disagree. Neither was replaced.'
 
 export function sameCompletedResult(a: BetaResult, b: BetaResult) {
   return a.schoolYear === b.schoolYear && Object.keys(a).every(
@@ -31,6 +31,7 @@ export function readResultLedger(storage: Reader, key: string): BetaResult[] {
     const previous = results.get(result.id)
     if (previous) checkCopy(previous, result)
     results.set(result.id, result)
+    if (results.size > 500) throw new Error(invalid)
   }
   for (const result of legacyResults(storage, key)) add(result)
   for (let i = 0; i < storage.length; i++) {
