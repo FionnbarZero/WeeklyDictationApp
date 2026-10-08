@@ -562,7 +562,7 @@ function FamilyPreview() {
       {slots.map(slot => {
         const active = practiceReady && slot.id === selectedSlot && slot.workspace === workspace && (tab === 'activities' || tab === 'games')
         return <iframe key={slot.id} className="beta-grade-frame" title={slot.game?.pack.title || `${slot.profile.grade} activities`}
-          data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
+          id={slot.id} data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
           data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
           data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
