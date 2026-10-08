@@ -35,7 +35,10 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   }
   await select('previous')
   await page.goto('/?grade=grade2')
-  await expect(page.getByText('Beta build 55e9189')).toBeVisible()
+  const previousManifest = JSON.parse(await (await request.get('/family-beta-manifest.json')).text()) as {
+    sourceRevision: string
+  }
+  await expect(page.getByText(`Beta build ${previousManifest.sourceRevision.slice(0, 7)}`)).toBeVisible()
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   let frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
