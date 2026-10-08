@@ -59,7 +59,7 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
       }
       try {
         const current = storage.getItem(key)
-        const canMergeExternal = Boolean((storage as Pick<Storage, 'getItem' | 'setItem'> & { allowConcurrentMerge?: boolean }).allowConcurrentMerge)
+        const canMergeExternal = !!(storage as Storage & { merge?: boolean }).merge
         if (current !== persisted && current !== encoded && !canMergeExternal) {
           snapshot = {
             ...snapshot,
@@ -70,7 +70,7 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
         }
         storage.setItem(key, encoded)
         const confirmed = storage.getItem(key)
-        if (!confirmed || (!canMergeExternal && confirmed !== encoded && !equivalentJson(confirmed, encoded)))
+        if (!canMergeExternal && confirmed !== encoded && !equivalentJson(confirmed, encoded))
           throw new Error('Browser saving could not be confirmed.')
         persisted = confirmed || encoded
         if (snapshot.state !== next || snapshot.error) {

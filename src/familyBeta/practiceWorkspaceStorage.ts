@@ -324,7 +324,7 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     return stateRecords(initial.value.records, childId, state)
   })()
   return {
-    allowConcurrentMerge: true,
+    merge: true,
     get length() {
       return exposedRecordKeys(read().value.records).length
     },
