@@ -12,6 +12,8 @@ This is the current capability summary. [ROADMAP.md](./ROADMAP.md) defines prior
 
 **Embedded-state update (October 8, unpublished):** The atomic Grade 2 workspace now rejects any embedded AppState collection above 500 entries before partitioning or writing, preserves the previous workspace unchanged, and rejects the same condition during reconstruction. The added regression and all final local gates pass (816 unit tests, 15 emulator cases, 44/44 reconciliation browser cases, 549,987/550,000 initial JavaScript bytes). Broader all-grade rollback/package evidence remains incomplete; nothing is pushed or published, and smoke testing remains premature.
 
+**Canonical-workspace update (October 8, unpublished):** Partition reconstruction now confirms semantically equivalent JSON despite property-order canonicalization, then carries forward the confirmed canonical snapshot for later saves. The partition-aware synthetic reader now covers the current Grade 2 workspace format. The local unit suite passes 817/817; the focused Grade 2 regression file passes 6/10 because four older assertions still expect the pre-A3.3 conflict/continuation contract. No merge, push, publication, or smoke handoff is authorized.
+
 ## Live family beta
 
 | Grade | Permanent app | Verified release |

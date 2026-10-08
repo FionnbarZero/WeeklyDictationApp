@@ -195,6 +195,8 @@ A3.3 is now in progress locally on `codex/a33-checkpoint-reconciliation`, starti
 
 **Embedded-state update (October 8, unpublished):** The atomic Grade 2 workspace now rejects any embedded AppState collection above 500 entries before partitioning or writing, preserves the previous workspace unchanged, and rejects the same condition during reconstruction. The added regression and all final local gates pass (816 unit tests, 15 emulator cases, 44/44 reconciliation browser cases, 549,987/550,000 initial JavaScript bytes). Broader all-grade rollback/package evidence remains incomplete; do not start game/UI work or request smoke testing from this unpublished slice.
 
+**Canonical-workspace update (October 8, unpublished):** Partition reconstruction now confirms semantically equivalent JSON despite property-order canonicalization, then carries forward the confirmed canonical snapshot for later saves. The partition-aware synthetic reader now covers the current Grade 2 workspace format. The local unit suite passes 817/817; the focused Grade 2 regression file passes 6/10 because four older assertions still expect the pre-A3.3 conflict/continuation contract. Do not merge, publish, or request smoke testing from this slice.
+
 ### Model routing
 
 Choose the model at the start of each focused task or handoff. Use **GPT-6 Astra** for architecture, persistence, acquisition rules, security-sensitive review, and final cross-grade release review. Use **GPT-6.1 Sol** for bounded implementation after the governing contract is clear. Use **GPT-6 Luna** for documentation and mechanical inventory work. Model choice does not replace regression coverage or exact-artifact verification.
