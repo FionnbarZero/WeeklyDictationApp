@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
+import { createInitialState } from '../src/domain.ts'
 import {
   practiceWorkspaceKey,
   practiceWorkspaceStorage,
@@ -103,12 +105,48 @@ test('a workspace over the record ceiling fails closed without evicting legacy r
 
 test('adding a record to a full workspace fails before writing an unreadable snapshot', () => {
   const { storage } = fixture()
-  const records = Object.fromEntries(Array.from({ length: 500 }, (_, index) => [`weekly-dictation-record-${index}`, `record-${index}`]))
+  const records = Object.fromEntries(
+    Array.from({ length: 500 }, (_, index) => [`weekly-dictation-record-${index}`, `record-${index}`]),
+  )
   storage.setItem(practiceWorkspaceKey('child'), JSON.stringify({ schema: 1, childId: 'child', records }))
   const before = storage.getItem(practiceWorkspaceKey('child'))
   const app = practiceWorkspaceStorage(storage, 'child')
   assert.throws(() => app.setItem('weekly-dictation-overflow', 'overflow'), /too many records/)
   assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
+})
+
+test('valid Grade 2 state is stored as separate history and checkpoint records and reconstructs exactly', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const state = createInitialState()
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(state))
+  const workspace = JSON.parse(storage.getItem(practiceWorkspaceKey('child'))!)
+  assert.equal(workspace.records['weekly-dictation-state-v2'], undefined)
+  assert.ok(workspace.records['weekly-dictation-history-v1'])
+  assert.ok(workspace.records['weekly-dictation-checkpoint-v1'])
+  assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), state)
+  assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
+})
+
+test('partitioned state remains writable through the shared workspace after reconstruction', () => {
+  const { storage } = fixture()
+  const state = createInitialState()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  const owner = createSharedWorkspace(state, app, 'weekly-dictation-state-v2')
+  const first = { ...state, rotationCycles: { first: 1 } }
+  assert.equal(owner.save(state, first), true)
+  const second = { ...first, rotationCycles: { first: 2 } }
+  assert.equal(owner.save(first, second), true)
+  assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), second)
+})
+
+test('partition records count as one logical state record for the workspace ceiling', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(createInitialState()))
+  for (let index = 0; index < 498; index += 1) app.setItem(`weekly-dictation-extra-${index}`, `record-${index}`)
+  assert.equal(app.length, 500)
+  assert.throws(() => app.setItem('weekly-dictation-overflow', 'overflow'), /too many records/)
 })
 
 test('state and journal writes share the latest atomic record; quota does not erase the previous snapshot', () => {

@@ -38,6 +38,36 @@ export const WORKSPACE_CHECKPOINT_FIELDS = [
 
 export const WORKSPACE_METADATA_FIELDS = ['version'] as const satisfies readonly (keyof AppState)[]
 
+/** Stable reconstruction order keeps the Storage adapter compatible with the
+ * shared workspace's optimistic write comparison after partitioning. */
+export const WORKSPACE_STATE_FIELDS = [
+  'version',
+  'datasets',
+  'results',
+  'scores',
+  'warmupSessions',
+  'completedSessions',
+  'legacyRecords',
+  'childWordStates',
+  'monthlyRotationScores',
+  'rotationCycles',
+  'acquisitionProgressions',
+  'acquisitionProgressEnvelopes',
+  'acquisitionTransitionReceipts',
+  'acquisitionPendingCheckpoints',
+  'acquisitionProgressQuarantine',
+  'adaptiveWarmup',
+  'warmupVisitsV1',
+  'warmupAttemptsV1',
+  'warmupTransitionReceiptsV1',
+  'warmupGraphPointsV1',
+  'warmupPendingTransitionsV1',
+  'warmupMasteryRevisionsV1',
+  'warmupCloudQuarantineV1',
+  'distractorTargetObservations',
+  'datasetImportReferences',
+] as const satisfies readonly (keyof AppState)[]
+
 export type WorkspacePartition = {
   metadata: Pick<AppState, 'version'>
   history: Pick<AppState, (typeof WORKSPACE_HISTORY_FIELDS)[number]>
