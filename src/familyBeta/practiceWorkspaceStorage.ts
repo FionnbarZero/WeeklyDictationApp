@@ -3,6 +3,7 @@
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
 const stateKey = 'weekly-dictation-state-v2'
+export const MAX_WORKSPACE_RECORDS = 500
 export const practiceWorkspaceKey = (childId: string) => `family-beta-activity:${childId}:lesson-workspace-v1`
 export const legacyPracticeKey = (key: string, childId: string) =>
   key.startsWith(`family-beta-activity:${childId}:weekly-dictation-`)
@@ -18,6 +19,7 @@ function parse(raw: string, childId: string): Workspace {
     !value.records ||
     typeof value.records !== 'object' ||
     Array.isArray(value.records) ||
+    Object.keys(value.records).length > MAX_WORKSPACE_RECORDS ||
     Object.entries(value.records).some(
       ([key, item]) => !key.startsWith('weekly-dictation-') || typeof item !== 'string',
     )
@@ -50,6 +52,8 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i))
       .filter((name): name is string => !!name && legacyPracticeKey(name, childId))
       .sort()
+    if (keys.length > MAX_WORKSPACE_RECORDS)
+      throw new Error('Saved practice contains too many records for safe syncing. Existing device records are preserved.')
     const records: Record<string, string> = {}
     for (const name of keys) {
       const value = storage.getItem(name)
