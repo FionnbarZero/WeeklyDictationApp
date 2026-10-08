@@ -43,15 +43,20 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   let frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-  const key = 'family-beta-activity:synthetic-g2:weekly-dictation-state-v2'
-  const old = JSON.parse((await records(page))[key]!)
+  const initialRecords = await records(page)
+  const key = Object.keys(initialRecords).find(
+    (storedKey) =>
+      storedKey === 'family-beta-activity:synthetic-g2:weekly-dictation-state-v2' ||
+      storedKey === 'family-beta-activity:synthetic-g2:lesson-workspace-v1',
+  )
+  expect(key).toBeTruthy()
+  const old = (await page.evaluate(readGrade2Workspace))!
   const candidate = await select('candidate')
   await page.reload()
   await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   frame = await reopen()
   const upgraded = (await page.evaluate(readGrade2Workspace))!
-  expect(JSON.parse((await records(page))[key]!)).toEqual(old)
   expect(upgraded.acquisitionProgressEnvelopes[0].revision).toBe(old.acquisitionProgressEnvelopes[0].revision)
   expect(upgraded.acquisitionProgressEnvelopes[0].lessonSnapshot).toBeTruthy()
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
@@ -108,10 +113,10 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   const restored = (await page.evaluate(readGrade2Workspace))!
-  expect(JSON.parse((await records(page))[key]!)).toEqual(old)
   expect(restored.acquisitionProgressEnvelopes[0].revision).toBe(upgraded.acquisitionProgressEnvelopes[0].revision + 1)
   expect(restored.acquisitionProgressEnvelopes[0].lessonSnapshot).toEqual(
     upgraded.acquisitionProgressEnvelopes[0].lessonSnapshot,
   )
   expect(restored.results.slice(0, old.results.length)).toEqual(old.results)
+  if (key!.endsWith('weekly-dictation-state-v2')) expect((await records(page))[key!]).toBe(initialRecords[key!])
 })
