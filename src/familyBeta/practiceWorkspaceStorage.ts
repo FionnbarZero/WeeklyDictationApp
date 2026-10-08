@@ -343,6 +343,15 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
       }
       const incoming = stateRecords(baselineRecords, childId, item)
       const records = { ...value.records }
+      // A complete AppState write supersedes the legacy bundled copy. Opaque
+      // legacy state remains untouched so old clients can still recover it.
+      let isCompleteState = false
+      try {
+        isCompleteState = isAppState(JSON.parse(item))
+      } catch {
+        isCompleteState = false
+      }
+      if (isCompleteState) delete records[stateKey]
       const keys = new Set([...Object.keys(baselineRecords), ...Object.keys(incoming)])
       for (const recordKey of keys) {
         const before = baselineRecords[recordKey]
