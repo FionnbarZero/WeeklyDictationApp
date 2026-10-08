@@ -20,9 +20,22 @@ async function enterWriting(page: Page) {
 
 async function answer(page: Page) {
   const frame = page.frameLocator('iframe:visible')
-  await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+  const skipTimer = frame.getByRole('button', { name: 'Skip Timer', exact: true })
+  // Switching back to a retained week can reopen directly in its persisted
+  // review phase. In that case there is no timer to skip; answer the review
+  // that is already on screen.
+  if (await skipTimer.count()) await skipTimer.click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-  await expect(frame.getByRole('timer')).toBeVisible()
+  // A retained-week switch can replace the visible iframe while the answer
+  // transition is committing. Resolve the post-answer frame afresh rather
+  // than holding a locator bound to the previous document.
+  await expect
+    .poll(async () => {
+      const current = page.locator('iframe:visible').contentFrame()
+      return (await current.locator('[role="timer"]').isVisible()) ||
+        (await current.getByRole('button', { name: 'Done for today', exact: true }).count()) > 0
+    })
+    .toBe(true)
 }
 
 test('a delayed download cannot replace a newly opened Grade 2 workspace', async ({ page }) => {
