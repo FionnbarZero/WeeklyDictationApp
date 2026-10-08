@@ -87,7 +87,8 @@ function partitionRecord(raw: string, childId: string): Record<string, unknown> 
       value.childId !== childId ||
       !value.values ||
       typeof value.values !== 'object' ||
-      Array.isArray(value.values)
+      Array.isArray(value.values) ||
+      !bounded(value.values)
     )
       throw new Error(failure)
     return value.values

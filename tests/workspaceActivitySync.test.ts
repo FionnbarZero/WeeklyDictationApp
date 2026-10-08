@@ -178,6 +178,19 @@ test('legacy workspace normalization is deferred and cannot overwrite a newer sn
   assert.equal(store.getItem(workspace), newer, 'a newer snapshot must survive a stale migration commit')
 })
 
+test('sync adapter rejects oversized nested activity payloads before staging them', () => {
+  const store = device()
+  setWorkspace(store)
+  const adapter = practiceWorkspaceSyncAdapter(store, childId)
+  assert.ok(adapter)
+  const payload = JSON.parse(activity('a', 'a-oversized', '2026-10-08T00:05:00.000Z')) as {
+    values: { acquisitionPendingCheckpoints: unknown[] }
+  }
+  payload.values.acquisitionPendingCheckpoints = Array.from({ length: 501 }, (_, index) => ({ id: index }))
+  const key = practiceWorkspaceSyncKey(childId, 'weekly-dictation-checkpoint-v1:activity:a')
+  assert.throws(() => adapter!.stage(key, JSON.stringify(payload)), /preserved/)
+})
+
 test('different activity checkpoints reconcile independently, while the same activity chooses newest reviewed work', async () => {
   const first = device(),
     second = device()
