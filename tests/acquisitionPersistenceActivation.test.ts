@@ -9,6 +9,8 @@ import {
   recoverAcquisitionCheckpoints,
 } from '../src/application/acquisitionPersistence.ts'
 import { createInitialState, type AppState, type Dataset } from '../src/domain.ts'
+import { startAcquisition } from '../src/acquisition/engine.ts'
+import { createAcquisitionProgressEnvelope } from '../src/acquisition/persistence/migration.ts'
 import { acquisitionReceiptMatchesCheckpoint, buildCloudAcquisitionCheckpointWrites, cloudDataToAppState } from '../src/firestoreClient.ts'
 import { createApplicationBackup, restoreApplicationBackup } from '../src/persistence/applicationBackup.ts'
 import {
@@ -175,6 +177,27 @@ test('cloud hydration quarantines duplicate current progress instead of selectin
   assert.deepEqual(hydrated.acquisitionProgressQuarantine?.[0].raw, [fresh.envelope, duplicate])
   const reopened = prepareAcquisitionProgress(hydrated, 'maya', cloudDataset, '2026-09-29T16:05:00.000Z', () => 0)
   assert.equal(reopened.status, 'blocked')
+})
+
+test('cloud hydration keeps separate activity modules for the same dataset', () => {
+  const cloudDataset = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [{ objectId: 'cloud-separate-activities', text: 'Week 9/28-10/2\nMandarin\nTier 1: 需要、部分' }],
+  }, [], grade2DeckProfile).datasets[0]
+  const writing = prepareAcquisitionProgress({ ...createInitialState(), datasets: [cloudDataset] }, 'maya', cloudDataset, '2026-09-29T16:00:00.000Z', () => 0)
+  assert.equal(writing.status, 'ready')
+  if (writing.status !== 'ready') return
+  const alternateContext = acquisitionPersistenceContext('maya', cloudDataset, cloudDataset.grade, undefined, 'alternate-dojo')
+  const alternate = createAcquisitionProgressEnvelope(
+    alternateContext,
+    startAcquisition(alternateContext.targetSet, alternateContext.strategy, () => 0),
+    '2026-09-29T16:00:00.000Z',
+  )
+  const hydrated = cloudDataToAppState(
+    [cloudDataset], [], [], [], 'maya', 'Grade 2', undefined, [writing.envelope, alternate], [], '2026–2027',
+  )
+  assert.equal(hydrated.acquisitionProgressEnvelopes?.length, 2)
+  assert.equal(hydrated.acquisitionProgressQuarantine?.length, 0)
 })
 
 test('the local pending journal preserves malformed raw data and deduplicates exact retries', () => {

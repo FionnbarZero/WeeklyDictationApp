@@ -979,45 +979,61 @@ export function cloudDataToAppState(
     const candidates = rawProgressions.filter(
       (progression) => progression.childId === childId && progression.datasetId === dataset.id,
     )
-    const currentCandidates = candidates.filter((progression) => 'contractId' in progression)
-    if (currentCandidates.length > 1 || (currentCandidates.length === 0 && candidates.length > 1)) {
-      acquisitionProgressQuarantine.push({
-        id: `acq-quarantine-${childId}-${dataset.id}`,
-        childId,
-        datasetId: dataset.id,
-        reason: 'Conflicting cloud Acquisition records reuse the same child and dataset identity.',
-        quarantinedAt: new Date().toISOString(),
-        raw: candidates,
-      })
-      continue
+    const currentCandidates = candidates.filter(
+      (progression): progression is AcquisitionProgressEnvelope<Word> => 'contractId' in progression,
+    )
+    const groups = new Map<string, Array<AcquisitionProgressRecord | AcquisitionProgressEnvelope<Word>>>()
+    for (const candidate of currentCandidates) {
+      const activityKey = [candidate.grade, candidate.schoolYear, candidate.activityModule, candidate.tier].join('\u0000')
+      const group = groups.get(activityKey) || []
+      group.push(candidate)
+      groups.set(activityKey, group)
     }
-    const candidate = currentCandidates[0] || candidates[0]
-    if (!candidate) continue
-    try {
-      const context = acquisitionPersistenceContext(childId, dataset, dataset.grade,
-        'schemaVersion' in candidate ? candidate : undefined)
-      const migrated = migrateAcquisitionProgress(candidate, context)
-      if (migrated.status === 'quarantined') {
+    if (currentCandidates.length === 0 && candidates.length > 0) groups.set('legacy', candidates)
+    for (const group of groups.values()) {
+      if (group.length > 1) {
         acquisitionProgressQuarantine.push({
           id: `acq-quarantine-${childId}-${dataset.id}`,
           childId,
           datasetId: dataset.id,
-          reason: migrated.reason,
+          reason: 'Conflict.',
           quarantinedAt: new Date().toISOString(),
-          raw: migrated.raw,
+          raw: group,
         })
-      } else {
-        acquisitionProgressEnvelopes.push(migrated.envelope)
+        continue
       }
-    } catch (error) {
-      acquisitionProgressQuarantine.push({
-        id: `acq-quarantine-${childId}-${dataset.id}`,
-        childId,
-        datasetId: dataset.id,
-        reason: error instanceof Error ? error.message : 'No Acquisition profile was available.',
-        quarantinedAt: new Date().toISOString(),
-        raw: candidate,
-      })
+      const candidate = group[0]
+      try {
+        const context = acquisitionPersistenceContext(
+          childId,
+          dataset,
+          dataset.grade,
+          'schemaVersion' in candidate ? candidate : undefined,
+          'schemaVersion' in candidate ? candidate.activityModule : undefined,
+        )
+        const migrated = migrateAcquisitionProgress(candidate, context)
+        if (migrated.status === 'quarantined') {
+          acquisitionProgressQuarantine.push({
+            id: `acq-quarantine-${childId}-${dataset.id}-${candidate.id}`,
+            childId,
+            datasetId: dataset.id,
+            reason: migrated.reason,
+            quarantinedAt: new Date().toISOString(),
+            raw: migrated.raw,
+          })
+        } else {
+          acquisitionProgressEnvelopes.push(migrated.envelope)
+        }
+      } catch (error) {
+        acquisitionProgressQuarantine.push({
+          id: `acq-quarantine-${childId}-${dataset.id}-${candidate.id}`,
+          childId,
+          datasetId: dataset.id,
+          reason: error instanceof Error ? error.message : 'No Acquisition profile was available.',
+          quarantinedAt: new Date().toISOString(),
+          raw: candidate,
+        })
+      }
     }
   }
   const distractorTargetObservations = rawDtObservations
