@@ -297,7 +297,16 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     if (raw === null) throw new Error(failure)
     return { raw, value: parse(raw, childId) }
   }
-  read()
+  const initial = read()
+  // Each kept-alive activity gets its own wrapper. Remember the records it
+  // observed so a later write can overlay only the records changed by that
+  // activity, preserving another retained week's checkpoint in the same
+  // atomic workspace.
+  let baselineRecords = (() => {
+    if (!initial.value.records[stateKey]) return { ...initial.value.records }
+    const state = stateFromRecords(initial.value.records, childId)
+    return stateRecords(initial.value.records, childId, state)
+  })()
   return {
     get length() {
       return exposedRecordKeys(read().value.records).length
@@ -310,9 +319,24 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
     setItem: (name, item) => {
       if (!name.startsWith('weekly-dictation-') || isInternalKey(name)) throw new Error(failure)
       const { raw, value } = read()
-      const records =
-        name === stateKey ? stateRecords(value.records, childId, item) : { ...value.records, [name]: item }
+      if (name !== stateKey) {
+        const records = { ...value.records, [name]: item }
+        write({ ...value, records }, raw)
+        baselineRecords = records
+        return
+      }
+      const incoming = stateRecords(baselineRecords, childId, item)
+      const records = { ...value.records }
+      const keys = new Set([...Object.keys(baselineRecords), ...Object.keys(incoming)])
+      for (const recordKey of keys) {
+        const before = baselineRecords[recordKey]
+        const next = incoming[recordKey]
+        if (next === before) continue
+        if (next === undefined) delete records[recordKey]
+        else records[recordKey] = next
+      }
       write({ ...value, records }, raw)
+      baselineRecords = records
     },
     removeItem: (name) => {
       if (isInternalKey(name)) throw new Error(failure)
