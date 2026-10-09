@@ -3,8 +3,12 @@ import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import type { ContextGameRound } from '../../src/learningModules/context-gap-dash/runtime/contracts.ts'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, baseURL }) => {
   await installFamilyFixtures(page)
+  // Parallel exact-artifact runs may use a different loopback port. All
+  // external traffic remains under the synthetic family fixture above.
+  if (baseURL && new URL(baseURL).hostname === '127.0.0.1')
+    await page.route(`${baseURL}/**`, (route) => route.continue())
   await page.emulateMedia({ reducedMotion: 'reduce' })
 })
 
@@ -34,7 +38,8 @@ async function checkpoint(page: Page): Promise<GameCheckpoint> {
 }
 
 async function answer(frame: FrameLocator, round: ContextGameRound, mobile: boolean, correct = true) {
-  await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!)
+  // Match the existing policy test's allowance for the route transition.
+  await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!, { timeout: 10000 })
   const index = round.choices.findIndex((choice) => (choice.id === round.correctChoiceId) === correct)
   const choice = frame.locator(mobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button').nth(index)
   await expect(choice).toBeEnabled()

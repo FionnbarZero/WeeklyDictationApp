@@ -1,6 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { MemoryFlip } from '../learningModules/memory-lanterns/Game.tsx'
-import { SentenceScramble } from '../learningModules/sushi-scramble/Game.tsx'
 import type { LearningModulePack, PlayLearningModuleAudio } from '../ninjaSkills/contracts.ts'
 import { openGameSession, type GameSession } from '../ninjaSkills/gameSession.ts'
 import { completeGameCheckpoint } from '../ninjaSkills/progress.ts'
@@ -11,6 +9,12 @@ import { assertResultCopiesMatch, readResultLedger, RESULT_KEY, PENDING_KEY } fr
 import type { BetaResult } from './model.ts'
 import '../ninjaSkills/surface.css'
 
+const MemoryFlip = lazy(() =>
+  import('../learningModules/memory-lanterns/Game.tsx').then((module) => ({ default: module.MemoryFlip })),
+)
+const SentenceScramble = lazy(() =>
+  import('../learningModules/sushi-scramble/Game.tsx').then((module) => ({ default: module.SentenceScramble })),
+)
 const ContextGapDash = lazy(() =>
   import('../learningModules/context-gap-dash/Game.tsx').then((module) => ({ default: module.ContextGapDash })),
 )
@@ -117,19 +121,19 @@ export function SavedLearningGame({
     <div className="ninja-game-surface">
       <p>Reviewed turns save on this device. Game-detail syncing is not connected yet.</p>
       {error && <p role="alert">{error}</p>}
-      {initial.pack.moduleId === 'memory-flip' ? (
-        <MemoryFlip {...shared} pairs={initial.pack.pairs} />
-      ) : initial.pack.moduleId === 'sentence-scramble' ? (
-        <SentenceScramble {...shared} rounds={initial.pack.rounds} />
-      ) : initial.pack.moduleId === 'context-gap-dash' ? (
-        <Suspense fallback={<p role="status">Opening saved route…</p>}>
+      <Suspense fallback={<p role="status">Opening saved game…</p>}>
+        {initial.pack.moduleId === 'memory-flip' ? (
+          <MemoryFlip {...shared} pairs={initial.pack.pairs} />
+        ) : initial.pack.moduleId === 'sentence-scramble' ? (
+          <SentenceScramble {...shared} rounds={initial.pack.rounds} />
+        ) : initial.pack.moduleId === 'context-gap-dash' ? (
           <ContextGapDash
             {...shared}
             rounds={initial.pack.rounds}
             savedResults={initial.prompts.slice(0, initial.cleared.length).map((prompt) => prompt.correct === 1)}
           />
-        </Suspense>
-      ) : null}
+        ) : null}
+      </Suspense>
     </div>
   )
 }
