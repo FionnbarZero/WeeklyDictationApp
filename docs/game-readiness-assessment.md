@@ -1,6 +1,6 @@
 # EduGame readiness assessment
 
-Status: code-grounded inventory prepared after the local A3.3 final review (October 8, 2026). This document is a planning gate, not a claim that any game is student-ready or published.
+Status: the baseline inventory below was prepared after the local A3.3 final review (October 8, 2026). The [Stage B local evidence](#stage-b-policy-and-content-slice-local) records subsequent implementation and supersedes its matching missing-work descriptions. This is not a claim that any game is student-ready or published.
 
 ## Shared integration facts
 
@@ -39,17 +39,34 @@ The first bounded slice applies the approved selection contract in `src/ninjaSki
 
 `src/ninjaSkills/supplemental.ts` contains versioned generated meanings for 35 exact source targets and tokenized contexts for the 17 writing targets currently used by the three grades. Only matching authoritative document IDs receive this overlay. Teacher values win, the source fingerprints remain unchanged, and the pack retains the actual generated values/version. Other weeks with insufficient content remain unavailable; the catalog is not an automatic general-purpose language generator.
 
-Coverage is disclosed in each menu. Subsets rotate deterministically from distinct completed game attempts available in the device's validated ledger; wrong answers and upload retries do not advance the visit. This is not yet lifetime cross-device coverage tracking. Opening a round pins its terms, support content, policy version and visit. The round is not silently regenerated when a teacher document refreshes.
+Coverage is disclosed in each menu. Subsets rotate deterministically from distinct completed game attempts available in the device's validated ledger; individual answers and upload retries do not advance the visit. This is not yet lifetime cross-device coverage tracking. Opening a round pins its terms, support content, policy version and visit. The round is not silently regenerated when a teacher document refreshes.
 
 `src/ninjaSkills/review.ts` validates the pack at launch and recomputes matching/choice/token correctness before aggregate saving. The tested per-target projection includes only target/dataset IDs, tier and attempted/correct counts, plus game/policy/phase; raw responses are omitted. **The projection is not yet persisted.** Existing completed-score schema and production policy are unchanged. Do not append new fields to strict legacy score records without a compatibility design.
 
-Two additional reproduced defects are fixed: Context Gap's text clue no longer prints the missing target, and Sushi's displayed token order is deterministically scrambled. Sushi accepts interchangeable identical printed tokens and sentences longer than six pieces.
+Additional reproduced defects are fixed: Context Gap's text clue no longer prints the missing target, and Sushi's displayed token order is deterministically scrambled. Sushi accepts interchangeable identical printed tokens and sentences longer than six pieces. Mixed-tier rotation no longer permanently skips the slot replaced to include the other tier. Context Gap enables controls only when its scene accepts answers and exposes buttons on coarse-pointer tablets. The shared game surface restores readable heading contrast. Embedded completion stays open when child context is missing and retries the same completion after context returns. Spirit Realm's new Context/Sushi adapters remain “Coming soon” until full warmup behavior is verified; this slice does not introduce a second mastery policy.
 
-Local evidence: 832 unit tests passed, including 11 new all-grade selection/content/rotation/scoring regressions. Type, lint, scoped format and production build/performance passed (549,999/550,000 initial JS bytes; 42,745/60,000 CSS). Packaged browser verification is in progress. No new build has been published.
+### Verified local evidence
+
+- Branch: `codex/stage-b-game-policy`; Stage B review base `3491041` (do not mix in the already published A3.3 work). Runtime candidate `33c5efbb2729bd10f6356f40c3ba04188a88ff5c`; test-only follow-up `9807032a7f08f4236bd08afae830608e43d2a2ef`. Only `tests/family-sync/gamePolicy.spec.ts` changed between these two revisions.
+- **832/832 unit tests**, including 11 new all-grade selection/content/rotation/scoring regressions. Typecheck, lint, repository format check and focused formatting of the new policy/review/catalog-support/test files passed. Production build/performance: **549,999/550,000 initial JS bytes; 42,745/60,000 CSS**. Production dependency audit: **0 vulnerabilities**; tooling audit: the documented 11 firebase-tools-only exceptions, expiring November 4, 2026.
+- **8/8 reported-fix regressions** passed against the rebuilt reconciliation output: Grade 5 loading protection, Grade 2 September 21 reading targets, Kindergarten earlier targets, whole-set reentry, all-grade Spirit Realm and the unfinished Shadow Strike state.
+- The exact `33c5efb` family package ran **84 desktop/tablet checks: 83 passed, one failed**. All saving/navigation cases and all desktop policy play-throughs passed. The remaining Grade 5 Context Gap tablet failure was isolated to a test-tool side effect: before full-page capture, the frame reported `pointer: coarse = true`, `maxTouchPoints = 1`, and visible controls; immediately after capture, it reported `false`, `0`, and hidden controls. No app change was made to conceal this finding.
+- The test-only correction removes mid-journey full-page capture on tablets and uses actual tap events for game answers. Its exact `9807032` package passed **16/16 tablet policy cases**, covering all three grades, four complete game rounds per grade, both menus and embedded missing-context retry. This is a targeted rerun, not a claim that all 84 cases were rerun on the test-only revision.
+- Earlier candidate `19fd1cb` had a separate five-second Grade 2 Context readiness timeout; the focused desktop/tablet and missing-context rerun passed **4/4**, and the later full matrix and actual-tap rerun both passed that Grade 2 case. Keep this timing observation for review and eventual physical-device checking; its cause was not conclusively established.
+- Desktop Shuriken/Sushi and tablet Context images were inspected for the surface contrast repair. Browser emulation and synthetic audio are not physical iMac/iPad sound, microphone or performance acceptance.
+
+Both manifests' **140 file hashes** were recomputed and matched:
+
+| Candidate | Artifact tree SHA-256 | Local package |
+| --- | --- | --- |
+| Runtime `33c5efb` | `7d5127a4e0c6f9fdb03b2294d72ca27f17355ee4a8ea1b9a107e58728dc22335` | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-wImjdc` |
+| Test correction `9807032` | `739ce60087bdb78bf617389b51148009198a9e36abbade59cebd547bfbabc6fc` | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-XdvL2M` |
+
+No source has been pushed or merged, and no Stage B build has been published. Production policy, authentication and child records are unchanged. Tests use intercepted synthetic families. Durable game checkpoints, per-target persistence and cross-device coverage remain incomplete, so this is **central-policy review readiness, not release or smoke-test readiness**.
 
 Remaining gates in order:
 
-1. Finish exact-package three-grade desktop/tablet checks for the four games and existing aggregate saving/pause behavior.
-2. GPT-6 Astra · High central-policy review of this completed slice.
+1. GPT-6 Astra · High central-policy review of `3491041..9807032`, including generated supporting content, mixed-week selection, rotation, scoring and the recorded timing observation. The local selection/play-through/aggregate-save evidence above is complete for this bounded slice.
+2. Resolve any actionable review findings in the same Stage B scope; do not start Shadow Strike or acquisition-game work.
 3. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
 4. Exact-package offline/retry/reload/second-browser and guarded rollback evidence, followed by the roadmap's release review. Publish only when that game's complete acceptance gate passes; do not send the owner to the old live build to test these changes.
