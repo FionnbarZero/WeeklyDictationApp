@@ -3,6 +3,7 @@ import { learningModuleCapability } from './content.ts'
 import { GAME_POLICIES, GAME_POLICY_VERSION } from './policy.ts'
 import { NINJA_SKILLS_PROFILES } from './profiles.ts'
 import type { SupportedGrade } from '../config.ts'
+import { serializeGameRecord } from './serialization.ts'
 
 /** Rebuild against the pinned cohort, not today's source or a new language
  * catalog. The cohort contains the exact supporting content used at launch. */
@@ -14,8 +15,8 @@ export function assertGamePack(pack: LearningModulePack) {
   if (expected.status !== 'ready') throw new Error('This game’s required content is not ready.')
   const prompts = (value: LearningModulePack) => ('pairs' in value ? value.pairs : value.rounds)
   if (
-    JSON.stringify(prompts(expected.pack)) !== JSON.stringify(prompts(pack)) ||
-    JSON.stringify(expected.pack.selection) !== JSON.stringify(pack.selection)
+    serializeGameRecord(prompts(expected.pack)) !== serializeGameRecord(prompts(pack)) ||
+    serializeGameRecord(expected.pack.selection) !== serializeGameRecord(pack.selection)
   )
     throw new Error('This game’s targets do not match its validated selection.')
 }
@@ -64,6 +65,31 @@ function reviewedCorrect(pack: LearningModulePack, attempt: LearningModuleAttemp
   throw new Error('This game’s scoring adapter is coming soon.')
 }
 
+/** Validate while the response is in memory, then return only reviewed facts. */
+export function reviewGameAnswer(pack: LearningModulePack, attempt: LearningModuleAttempt) {
+  assertGamePack(pack)
+  return reviewedGameFact(pack, attempt)
+}
+
+function reviewedGameFact(pack: LearningModulePack, attempt: LearningModuleAttempt) {
+  const term = pack.cohort.terms.find((term) => term.occurrenceId === attempt.targetId)
+  if (
+    attempt.gameId !== pack.moduleId ||
+    attempt.assessmentMode !== 'automatic' ||
+    !term?.datasetId ||
+    !pack.cohort.provenance.some((source) => source.datasetId === term.datasetId) ||
+    reviewedCorrect(pack, attempt) !== attempt.correct
+  )
+    throw new Error('A game assessment could not be verified against its source target.')
+  return {
+    promptId: attempt.promptId,
+    targetId: term.occurrenceId,
+    datasetId: term.datasetId,
+    tier: term.tier,
+    correct: attempt.correct,
+  }
+}
+
 /** A privacy-safe reviewed projection, not a persistence schema. Callers must
  * never save module response strings, recordings, or unfinished choices. */
 export function reviewGameSummary(pack: LearningModulePack, summary: LearningModuleSummary) {
@@ -75,25 +101,17 @@ export function reviewGameSummary(pack: LearningModulePack, summary: LearningMod
     { targetId: string; datasetId: string; tier: string; attempted: number; correct: number }
   >()
   for (const attempt of summary.attempts) {
-    const term = pack.cohort.terms.find((term) => term.occurrenceId === attempt.targetId)
-    if (
-      attempt.gameId !== pack.moduleId ||
-      attempt.assessmentMode !== 'automatic' ||
-      !term?.datasetId ||
-      !pack.cohort.provenance.some((source) => source.datasetId === term.datasetId) ||
-      reviewedCorrect(pack, attempt) !== attempt.correct
-    )
-      throw new Error('A game assessment could not be verified against its source target.')
-    const target = targets.get(term.occurrenceId) || {
-      targetId: term.occurrenceId,
-      datasetId: term.datasetId,
-      tier: term.tier,
+    const reviewed = reviewedGameFact(pack, attempt)
+    const target = targets.get(reviewed.targetId) || {
+      targetId: reviewed.targetId,
+      datasetId: reviewed.datasetId,
+      tier: reviewed.tier,
       attempted: 0,
       correct: 0,
     }
     target.attempted++
     target.correct += Number(attempt.correct)
-    targets.set(term.occurrenceId, target)
+    targets.set(reviewed.targetId, target)
   }
   const correct = [...targets.values()].reduce((total, target) => total + target.correct, 0)
   if (summary.attempted !== summary.attempts.length || summary.correct !== correct)

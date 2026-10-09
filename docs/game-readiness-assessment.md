@@ -78,5 +78,25 @@ All **140 files** matched the package manifest. Source: `48fd4888036dbd26826139f
 
 Remaining gates in order:
 
-1. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. Confirm selection for this new persistence slice before application-code edits. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
+1. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. The owner confirmed this assignment October 9; continue without another model prompt. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
 2. Exact-package offline/retry/reload/second-browser and guarded rollback evidence, followed by the roadmap's release review. Publish only when that game's complete acceptance gate passes; do not send the owner to the old live build to test these changes. Shadow Strike and acquisition-game work remain later stages.
+
+## Stage B persistence foundation (local)
+
+October 9: the owner selected Astra · Extra High for this same Stage B persistence slice. This is a storage/protocol implementation, **not an activated game feature or a completed Stage B release**.
+
+- `src/ninjaSkills/progress.ts` defines versioned pinned packs, prompt/target counts, reviewed timestamps, cleared prompts, Shuriken remaining time/retry cycle and distinct continuation identities. Answer correctness is checked in memory before projecting reviewed facts. Unfinished selections and response strings are never copied. Completion includes the old aggregate shape, detailed targets, reinforcement phase and the pinned policy/curriculum. Completed checkpoints cannot be forked to manufacture another score.
+- `progressStore.ts` uses a separate family-scoped namespace, confirmed writes, stale-snapshot checks, immutable completion copies and a recoverable outbox-first completion sequence. Limits are 200,000 bytes per record, 64 checkpoints and 500 distinct completions per child; hitting a limit preserves data. This synchronous core **requires origin-wide serialized mutations in its browser adapter**; localStorage alone is not an atomic cross-tab compare-and-swap. That adapter is not implemented here.
+- `progressSync.ts` is an injected-backend coordinator, **not a Firestore transport**. It confirms queued completions before checkpoint work, guards ownership after awaits, avoids overwriting a newer local answer or an open game, and requires matching immutable detail before downloading a completed checkpoint. Whole-snapshot conflicts use reviewed-answer time with the existing future-skew limit; equal-time same-writer updates use revision ordering. Two never-reviewed starts resolve deterministically without losing an answer; competing untrusted future-dated answers fail closed. Backend version preconditions/readback are a required adapter contract, not yet real-backend evidence.
+- Saved JSON object order is now irrelevant to pack validation; array/target order remains significant. This fixes the reload rejection reproduced by serializing the pinned pack. Game serialization stays separate from the protected acquisition persistence boundary.
+
+The focused data-layer suite covers all twelve grade/game combinations, interrupted completion writes, immutable duplicates, two completed continuations, false assessments, out-of-order prompts, wrong Context answers, timer/retry semantics, record bounds, malformed records, foreign-family isolation, legacy namespace non-interference, offline retry, owner changes and answers arriving during a network wait. These tests use synthetic storage and an injected remote, not live accounts or real recordings.
+
+Remaining implementation within this slice:
+
+1. Origin-wide browser write ownership, all four module adapters and both menus; save before advancing, resume reviewed prompts after reload, and keep provisional material temporary. Finish discard/new-run transitions without retiring scores.
+2. A concrete bounded Firestore transport and additive policy proposal, emulator-tested for ownership, immutable details, conditional checkpoint writes, and old-client compatibility. No policy or security settings have been changed.
+3. Integrate immutable details with the existing aggregate outbox/graph, bounded history pagination and fresh-device subset coverage. Do not claim recent 50-score history proves lifetime coverage.
+4. Exact-package cross-device/offline/rollback evidence, independent Astra Extra High review and publication verification before owner smoke testing.
+
+No code here starts a later roadmap stage. The live source remains `e9c5a54`.
