@@ -123,27 +123,12 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
   })
 }
 
-test('Shadow Strike inherits its computed aim and freezes targets without snapping their animation', async ({
+test('unfinished Shadow Strike stays visible but unavailable until its dedicated stage', async ({
   page,
 }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  await page.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
-  const target = page.frameLocator('iframe:visible').locator('.lg-world-choice').first()
-  await expect(target).toBeVisible()
-  await expect(target).toBeEnabled()
-  // These targets intentionally sway continuously; click without waiting for
-  // animation stability, then verify the actual selected/paused state below.
-  await target.click({ force: true })
-  const geometry = await page
-    .frameLocator('iframe:visible')
-    .locator('.lg-target-blast-playfield')
-    .evaluate((element) => ({
-      expected: (element as HTMLElement).style.getPropertyValue('--throw-x'),
-      actual: getComputedStyle(element.querySelector('.lg-shuriken-shot')!).getPropertyValue('--throw-x'),
-      targetAnimation: getComputedStyle(element.querySelector('.lg-world-choice')!).animationPlayState,
-    }))
-  expect(geometry.expected).not.toBe('')
-  expect(geometry.actual).toBe(geometry.expected)
-  expect(geometry.targetAnimation).toBe('paused')
+  const card = page.getByRole('heading', { name: 'Shadow Strike Dojo', exact: true }).locator('..')
+  await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
+  await expect(card).toContainText('interaction rules are still being completed')
 })

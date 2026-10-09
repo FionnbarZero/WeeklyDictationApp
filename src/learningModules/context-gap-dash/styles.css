@@ -229,6 +229,8 @@
   .lg-dash-context-clue > strong { grid-column: 1/-1; grid-row: 2; font-size: .72rem; }
   .lg-dash-context-clue > button { min-height: 34px; padding: 7px 10px; }
   .lg-dash-context-clue > span { font-size: .75rem; }
+}
+@media (max-width: 700px), (pointer: coarse) {
   .lg-mobile-gate-choices { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 10px 2px 0; }
   .lg-mobile-feedback { display: block; grid-column: 1 / -1; min-height: 1.3em; color: #eafffb; font-size: .8rem; text-align: center; }
   .lg-canvas-access { display: none !important; }
@@ -237,6 +239,8 @@
   .lg-mobile-gate-choices button:disabled { opacity: .58; filter: saturate(.55); cursor: default; }
   .lg-mobile-gate-choices small { position: absolute; top: 6px; left: 7px; display: grid; place-items: center; width: 20px; aspect-ratio: 1; border-radius: 6px; color: #123832; background: #d8fff3; font: 900 .75rem/1 Inter,sans-serif; }
   .lg-mobile-gate-choices strong { font: 950 1.8rem/1 "Arial Rounded MT Bold","Avenir Next",sans-serif; }
+}
+@media (max-width: 700px) {
   .lg-phaser-help { display: none; }
   .lg-phaser-finish-actions { margin-top: 9px; border-radius: 14px; }
   .lg-phaser-finish-actions strong { display: none; }

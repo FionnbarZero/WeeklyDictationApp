@@ -164,16 +164,17 @@ export function SpiritRealmPractice({
                   const entry = learningModuleCatalogEntry(
                     capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId,
                   )
+                  const needsWarmupAdapter = ['context-gap-dash', 'sentence-scramble'].includes(entry.id)
                   return (
                     <article className="lg-card" key={entry.id}>
                       <h2>{entry.title}</h2>
-                      {capability.status === 'ready' ? (
+                      {capability.status === 'ready' && !needsWarmupAdapter ? (
                         <button className="lg-primary" onClick={() => setGame(capability.pack)}>
                           Start {entry.title}
                         </button>
                       ) : (
                         <>
-                          <p>{capability.reason}</p>
+                          <p>{needsWarmupAdapter ? 'Coming soon: this game’s full warmup repetitions and correction flow are still being connected.' : capability.status === 'unavailable' ? capability.reason : ''}</p>
                           <button className="lg-primary" disabled>
                             Coming soon
                           </button>
