@@ -43,9 +43,13 @@ for (const [slug, grade, childId] of grades) {
     const faces = await frame.locator('.lg-card-face b').allTextContents()
     const names = [...new Set(faces)]
     const pair = (name: string) => faces.flatMap((face, i) => (face === name ? [i] : []))
+    // Kindergarten may contain only two pairs: review the mismatch before
+    // matching either, without inventing a third curriculum target.
+    await choose(frame, [pair(names[0])[0], pair(names[1])[0]], isMobile)
+    await expect(frame.locator('.lg-stat-row')).toContainText('1 turns')
+    await expect(frame.locator('.lg-feedback')).toHaveCount(0)
     await choose(frame, pair(names[0]), isMobile)
     await expect(frame.locator('.is-matched')).toHaveCount(2)
-    await choose(frame, [pair(names[1])[0], pair(names[2])[0]], isMobile)
     await expect(frame.locator('.lg-stat-row')).toContainText('2 turns')
     await expect(frame.locator('.lg-feedback')).toHaveCount(0)
     const saved = await checkpoint(page)
@@ -107,7 +111,7 @@ for (const [slug, grade, childId] of grades) {
     const faces = await frame.locator('.lg-card-face b').allTextContents()
     const indices = faces.flatMap((face, i) => (face === faces[0] ? [i] : []))
     await choose(frame, indices, isMobile)
-    await expect(frame.getByRole('alert')).toContainText('This turn has not advanced')
+    await expect(frame.getByRole('alert').filter({ hasText: 'This turn has not advanced' })).toBeVisible()
     await expect(frame.locator('.is-matched')).toHaveCount(0)
     expect(await checkpoint(page)).toEqual(before)
     await owner.evaluate(() => (window as Window & { restoreSaving?: () => void }).restoreSaving?.())

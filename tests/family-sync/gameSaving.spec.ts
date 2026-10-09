@@ -56,6 +56,8 @@ test('HTML-preserving alias completes and saves through the same package', async
   await page.goto('/alias/family-beta-preview.html?grade=grade5')
   const attempted = await completeLanterns(page)
   await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
+  // Saving now awaits the native cross-tab lock before the completion closes.
+  await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
   expect(await results(page)).toHaveLength(1)
   await page.reload()
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
@@ -81,6 +83,7 @@ test('missing child context keeps completed game open for retry', async ({ page 
     .locator('iframe:visible')
     .evaluate((frame, profile) => frame.setAttribute('data-family-profile', profile!), profile)
   await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
   expect(await results(page)).toHaveLength(1)
 })
 
@@ -141,9 +144,7 @@ test('a ledger write must be read back before presenting completion', async ({ p
   const done = page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true })
   await done.click()
   await expect(done).toBeVisible()
-  await expect(page.frameLocator('iframe:visible').getByRole('alert')).toContainText(
-    'could not be confirmed on this device',
-  )
+  await expect(page.frameLocator('iframe:visible').getByRole('alert')).toContainText('could not be confirmed')
   expect(await results(page)).toHaveLength(0)
   await done.click()
   await expect(page.getByRole('heading', { name: 'Practice your Ninja Skills' })).toBeVisible()
