@@ -93,7 +93,10 @@ export function rotatingGameTerms(
   if (!Number.isSafeInteger(visit) || visit < 0 || !Number.isSafeInteger(limit) || limit < 1)
     throw new Error('Invalid game selection.')
   if (!terms.length) return []
-  const start = ((visit % terms.length) * Math.min(limit, terms.length)) % terms.length
+  // Mixed rounds reserve a slot for the other tier. A whole-window stride can
+  // permanently skip that replaced slot when pool length is divisible by limit.
+  const stride = id === 'speed-match' ? 1 : Math.min(limit, terms.length)
+  const start = ((visit % terms.length) * stride) % terms.length
   const rotated = [...terms.slice(start), ...terms.slice(0, start)]
   const selected = rotated.slice(0, limit)
   if (id === 'speed-match') {

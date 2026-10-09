@@ -213,19 +213,21 @@ test('validated subsets rotate across completed attempts, deduplicate retries, a
 })
 
 test('mixed Shuriken subsets keep both tiers even with an uneven pool', () => {
-  const terms = Array.from({ length: 13 }, (_, index) => ({
-    occurrenceId: String(index),
-    text: String(index),
-    tier: index ? ('tier-2' as const) : ('tier-1' as const),
-  }))
-  const reached = new Set<string>()
-  for (let visit = 0; visit < 13; visit++) {
-    const selected = rotatingGameTerms('speed-match', terms, 8, visit)
-    assert.deepEqual(new Set(selected.map((t) => t.tier)), new Set(['tier-1', 'tier-2']))
-    for (const term of selected) reached.add(term.occurrenceId)
+  for (const length of [13, 16]) {
+    const terms = Array.from({ length }, (_, index) => ({
+      occurrenceId: String(index),
+      text: String(index),
+      tier: index ? ('tier-2' as const) : ('tier-1' as const),
+    }))
+    const reached = new Set<string>()
+    for (let visit = 0; visit < length; visit++) {
+      const selected = rotatingGameTerms('speed-match', terms, 8, visit)
+      assert.deepEqual(new Set(selected.map((t) => t.tier)), new Set(['tier-1', 'tier-2']))
+      for (const term of selected) reached.add(term.occurrenceId)
+    }
+    assert.equal(reached.size, terms.length)
+    assert.throws(() => rotatingGameTerms('memory-flip', terms, 8, -1))
   }
-  assert.equal(reached.size, terms.length)
-  assert.throws(() => rotatingGameTerms('memory-flip', terms, 8, -1))
 })
 
 test('Sushi supports longer sentences and interchangeable identical printed tokens', () => {

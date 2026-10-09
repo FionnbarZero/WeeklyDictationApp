@@ -53,6 +53,7 @@ type DashSceneOptions = {
   readonly onAttempt: (roundIndex: number, choiceId: string, correct: boolean) => void
   readonly onProgress: (completed: number, correct: number, streak: number, bestStreak: number) => void
   readonly onRoundChange: (roundIndex: number) => void
+  readonly onInputReady: (ready: boolean) => void
   readonly onFeedback: (feedback: FeedbackState) => void
   readonly onChoicePreview: (choiceLabel: string) => void
   readonly onFinish: () => void
@@ -202,6 +203,7 @@ class ContextDashScene extends Phaser.Scene {
 
     this.clearRoundObjects()
     this.acceptingInput = false
+    this.options.onInputReady(false)
     const round = this.options.rounds[this.roundIndex]
     const scrollX = AREA_SCROLL[this.roundIndex] ?? AREA_SCROLL[AREA_SCROLL.length - 1]
     const choices = round.choices.slice(0, 3)
@@ -225,7 +227,10 @@ class ContextDashScene extends Phaser.Scene {
     this.gates = choices.map((choice, index) => this.createGate(choice.id, choice.label, index, positions[index]))
 
     this.time.delayedCall(450, () => {
-      if (!this.finaleStarted) this.acceptingInput = true
+      if (!this.finaleStarted) {
+        this.acceptingInput = true
+        this.options.onInputReady(true)
+      }
     })
   }
 
@@ -305,6 +310,7 @@ class ContextDashScene extends Phaser.Scene {
     if (!this.acceptingInput || !gate || !round) return
 
     this.acceptingInput = false
+    this.options.onInputReady(false)
     this.gates.forEach((view) => view.container.disableInteractive())
     const correct = gate.choiceId === round.correctChoiceId
     const safeGate = this.gates.find((view) => view.choiceId === round.correctChoiceId)
@@ -759,10 +765,11 @@ export function ContextGapDash({
         setBestStreak(nextBest)
       },
       onRoundChange: setRoundIndex,
+      onInputReady: setSceneReady,
       onFeedback: setFeedback,
       onChoicePreview: previewChoice,
       onFinish: () => setFinished(true),
-      registerChoiceHandler: (handler) => { choiceHandlerRef.current = handler; setSceneReady(true) },
+      registerChoiceHandler: (handler) => { choiceHandlerRef.current = handler },
     })
     const game = new Phaser.Game({
       type: Phaser.AUTO, width: GAME_WIDTH, height: GAME_HEIGHT, parent: hostRef.current,

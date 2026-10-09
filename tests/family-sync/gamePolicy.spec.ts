@@ -53,7 +53,7 @@ for (const [slug, grade, childId] of grades) {
         }
       } else if (pack.moduleId === 'context-gap-dash') {
         for (const round of pack.rounds) {
-          await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!)
+          await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!, { timeout: 10000 })
           const index = round.choices.findIndex((choice) => choice.id === round.correctChoiceId)
           const choice = frame.locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button').nth(index)
           await expect(choice).toBeEnabled()
