@@ -225,7 +225,7 @@ An Astra review means reviewing the completed diff, tests, packaged behavior, da
 
 Routine documentation and status-only updates use **GPT-6 Luna · Medium**. Straightforward regression-test repairs and small UI defects with an established contract use **GPT-6.1 Sol · Medium**. The final release review across all affected grades uses **GPT-6 Astra · Extra High**.
 
-Before game implementation, produce a code-grounded readiness assessment for each game: existing capabilities, missing content/behavior, dependencies, and shortest student-ready path. Effort estimates are provisional.
+Before game implementation, produce a code-grounded readiness assessment for each game: existing capabilities, missing content/behavior, dependencies, and shortest student-ready path. The current assessment is [docs/game-readiness-assessment.md](./docs/game-readiness-assessment.md). Effort estimates are provisional.
 
 For each confirmed failure, add a meaningful regression, implement the repair, and verify the exact package. Cover all three affected grades and desktop/iPad layouts with synthetic records. Report physical audio/performance checks automation cannot establish. Passing unrelated tests does not complete an acceptance gate.
 
