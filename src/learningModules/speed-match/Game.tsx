@@ -23,6 +23,14 @@ type StrikeQuality = 'lightning' | 'clean' | 'miss' | null
 const MISSION_SECONDS = 60
 const LIGHTNING_SECONDS = 3
 
+type SavedSpeedMatchProps = Omit<PairGameProps, 'onAttempt'> & {
+  readonly savedProgress?: { cleared: readonly string[]; attempted: number; correct: number }
+  readonly remainingMs?: number
+  readonly onAttempt?: (attempt: LearningGameAttempt) => void | Promise<void>
+  readonly onTimer?: (remainingMs: number) => Promise<void>
+  readonly onRestart?: () => Promise<void>
+}
+
 function shuffled<T>(values: readonly T[]) {
   const next = [...values]
   for (let index = next.length - 1; index > 0; index -= 1) {
@@ -63,7 +71,11 @@ export function SpeedMatch({
   onExit,
   onAttempt,
   onComplete,
-}: PairGameProps) {
+  savedProgress,
+  remainingMs = MISSION_SECONDS * 1000,
+  onTimer,
+  onRestart,
+}: SavedSpeedMatchProps) {
   const initialCards = useMemo<readonly SpeedMatchCard[]>(() => shuffled([
     ...pairs.map((pair) => ({
       id: pair.left.id,
@@ -86,23 +98,71 @@ export function SpeedMatch({
   ]), [pairs])
   const [cards, setCards] = useState(initialCards)
   const [selectedCardIds, setSelectedCardIds] = useState<readonly string[]>([])
-  const [matchedPairIds, setMatchedPairIds] = useState<readonly string[]>([])
+  const [matchedPairIds, setMatchedPairIds] = useState<readonly string[]>(savedProgress?.cleared ?? [])
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
   const [feedback, setFeedback] = useState<MatchFeedback>(null)
   const [strikeQuality, setStrikeQuality] = useState<StrikeQuality>(null)
   const [lastMessage, setLastMessage] = useState('Tap a word seal to begin the rooftop mission.')
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(MISSION_SECONDS)
-  const [missionStarted, setMissionStarted] = useState(false)
-  const [timedOut, setTimedOut] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(Math.ceil(remainingMs / 1000))
+  const [missionStarted, setMissionStarted] = useState(remainingMs > 0 && remainingMs < MISSION_SECONDS * 1000)
+  const [timedOut, setTimedOut] = useState(remainingMs === 0)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const pending = useRef<{ save: () => void | Promise<void>; apply: () => void } | null>(null)
+  const busy = useRef(false)
+  const writing = useRef(false)
+  const mounted = useRef(true)
+  const deferred = useRef<ReturnType<typeof activityClock.setTimeout> | null>(null)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (deferred.current !== null) activityClock.clearTimeout(deferred.current)
+    }
+  }, [])
+  // Timer, answer and restart writes share one slot. A partial write must be
+  // retried verbatim before any other operation can change the checkpoint.
+  async function savePending() {
+    const turn = pending.current
+    if (!turn || writing.current) return
+    writing.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      await turn.save()
+      if (!mounted.current) return
+      // Reporting pauses visual feedback too, including saves completed while
+      // the report window is open. No raw choice enters durable storage.
+      deferred.current = activityClock.setTimeout(() => {
+        turn.apply()
+        pending.current = null
+        busy.current = false
+        writing.current = false
+        setSaving(false)
+      }, 0)
+    } catch (error) {
+      if (!mounted.current) return
+      writing.current = false
+      setSaving(false)
+      setSaveError(`The mission is paused until this change saves. ${error instanceof Error ? error.message : ''}`)
+    }
+  }
+  function saveChange(save: () => void | Promise<void>, apply: () => void) {
+    if (busy.current) return
+    busy.current = true
+    pending.current = { save, apply }
+    void savePending()
+  }
   const selectionStartedAt = useRef(0)
   const valid = validGamePairs(pairs)
   const missionFinished = valid && matchedPairIds.length === pairs.length
   const complete = missionFinished && !feedback
   const strike = strikeCoordinates(cards, selectedCardIds)
-  const correctAttempts = attempts.filter((attempt) => attempt.correct).length
-  const accuracy = attempts.length ? correctAttempts / attempts.length : 1
+  const correctAttempts = (savedProgress?.correct ?? 0) + attempts.filter((attempt) => attempt.correct).length
+  const attempted = (savedProgress?.attempted ?? 0) + attempts.length
+  const accuracy = attempted ? correctAttempts / attempted : 1
   const rank = missionRank(accuracy, timeLeft, bestStreak)
   const stageStyle = {
     '--shuriken-progress': `${pairs.length ? (matchedPairIds.length / pairs.length) * 79 : 0}%`,
@@ -110,9 +170,13 @@ export function SpeedMatch({
 
   useEffect(() => {
     if (!missionStarted || timedOut || missionFinished) return
-    const timer = activityClock.setInterval(() => setTimeLeft((current) => Math.max(0, current - 1)), 1000)
+    const timer = activityClock.setInterval(() => {
+      if (busy.current) return
+      const next = Math.max(0, timeLeft - 1)
+      saveChange(() => onTimer?.(next * 1000), () => setTimeLeft(next))
+    }, 1000)
     return () => activityClock.clearInterval(timer)
-  }, [missionFinished, missionStarted, timedOut])
+  }, [missionFinished, missionStarted, timedOut, timeLeft, onTimer])
 
   useEffect(() => {
     if (timeLeft > 0 || !missionStarted || missionFinished) return
@@ -136,18 +200,20 @@ export function SpeedMatch({
   }, [feedback, matchedPairIds])
 
   function resetMission() {
-    setCards(shuffled(initialCards))
-    setSelectedCardIds([])
-    setMatchedPairIds([])
-    setFeedback(null)
-    setStrikeQuality(null)
-    setLastMessage('Tap a word seal to begin the rooftop mission.')
-    setStreak(0)
-    setBestStreak(0)
-    setTimeLeft(MISSION_SECONDS)
-    setMissionStarted(false)
-    setTimedOut(false)
-    selectionStartedAt.current = 0
+    saveChange(() => onRestart?.(), () => {
+      setCards(shuffled(initialCards))
+      setSelectedCardIds([])
+      setMatchedPairIds([])
+      setFeedback(null)
+      setStrikeQuality(null)
+      setLastMessage('Tap a word seal to begin the rooftop mission.')
+      setStreak(0)
+      setBestStreak(0)
+      setTimeLeft(MISSION_SECONDS)
+      setMissionStarted(false)
+      setTimedOut(false)
+      selectionStartedAt.current = 0
+    })
   }
 
   function resolve(first: SpeedMatchCard, second: SpeedMatchCard, spoken: Promise<void>) {
@@ -164,30 +230,31 @@ export function SpeedMatch({
       response: [first.id, second.id],
       assessmentMode: 'automatic',
     }
-    setAttempts((current) => [...current, attempt])
-    onAttempt?.(attempt)
-    setFeedback(correct ? 'correct' : 'incorrect')
-    setStrikeQuality(correct ? (lightning ? 'lightning' : 'clean') : 'miss')
-    void spoken.then(() => playGameSound(correct ? 'correct' : 'incorrect'))
+    saveChange(() => onAttempt?.(attempt), () => {
+      setAttempts((current) => [...current, attempt])
+      setFeedback(correct ? 'correct' : 'incorrect')
+      setStrikeQuality(correct ? (lightning ? 'lightning' : 'clean') : 'miss')
+      void spoken.then(() => playGameSound(correct ? 'correct' : 'incorrect'))
 
-    if (correct) {
-      setMatchedPairIds((current) => current.includes(pair.id) ? current : [...current, pair.id])
-      setStreak((current) => {
-        const next = current + 1
-        setBestStreak((best) => Math.max(best, next))
-        return next
-      })
-      setLastMessage(lightning
-        ? `Lightning strike! ${first.label} matches ${second.label}.`
-        : `Clean strike! ${first.label} matches ${second.label}.`)
-    } else {
-      setStreak(0)
-      setLastMessage('Decoy seals! Watch the smoke—they are changing positions.')
-    }
+      if (correct) {
+        setMatchedPairIds((current) => current.includes(pair.id) ? current : [...current, pair.id])
+        setStreak((current) => {
+          const next = current + 1
+          setBestStreak((best) => Math.max(best, next))
+          return next
+        })
+        setLastMessage(lightning
+          ? `Lightning strike! ${first.label} matches ${second.label}.`
+          : `Clean strike! ${first.label} matches ${second.label}.`)
+      } else {
+        setStreak(0)
+        setLastMessage('Decoy seals! Watch the smoke—they are changing positions.')
+      }
+    })
   }
 
   function choose(card: SpeedMatchCard, spoken: Promise<void>) {
-    if (feedback || timedOut || matchedPairIds.includes(card.pairId) || selectedCardIds.includes(card.id)) return
+    if (busy.current || feedback || timedOut || matchedPairIds.includes(card.pairId) || selectedCardIds.includes(card.id)) return
     if (!missionStarted) setMissionStarted(true)
     const next = [...selectedCardIds, card.id]
     setSelectedCardIds(next)
@@ -200,7 +267,7 @@ export function SpeedMatch({
     if (first) resolve(first, card, spoken)
   }
 
-  const summary = summarizeLearningGame('speed-match', attempts)
+  const summary = { ...summarizeLearningGame('speed-match', attempts), attempted, correct: correctAttempts }
   return <LearningGameShell
     gameId="speed-match"
     title={title}
@@ -210,9 +277,12 @@ export function SpeedMatch({
   >
     {!valid ? <LearningGameEmpty onExit={onExit} /> : complete ? <LearningGameComplete
       summary={summary}
-      message={`${rank} rank earned with ${timeLeft} seconds remaining and a ${bestStreak}× best streak.`}
+      message={`${rank} rank earned with ${timeLeft} seconds remaining and a ${bestStreak}× best streak this visit.`}
       onDone={() => onComplete(summary)}
     /> : <section className="lg-card lg-speed-card">
+      {saving && <p role="status">Saving mission…</p>}
+      {saveError && <div role="alert"><p>{saveError}</p><button type="button" disabled={saving} onClick={() => { void savePending() }}>Retry saving mission</button></div>}
+      {savedProgress && <p>Reviewed matches, accuracy and the saved whole-second clock resume here. Stealth streaks restart each visit.</p>}
       <div className={`lg-shuriken-stage${feedback ? ` is-${feedback}` : ''}${strikeQuality === 'lightning' ? ' is-lightning' : ''}`} style={stageStyle}>
         <div className="lg-shuriken-sky" aria-hidden="true"><i /><i /><i /></div>
         <div className="lg-shuriken-moon" aria-hidden="true" />
@@ -245,7 +315,7 @@ export function SpeedMatch({
             key={card.id}
             type="button"
             className={`lg-choice lg-word-seal is-${card.kind}${selectedCardIds.includes(card.id) ? ' is-selected' : ''}${matchedPairIds.includes(card.pairId) ? ' is-matched' : ''}`}
-            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut}
+            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut || saving || Boolean(saveError)}
             aria-label={`${card.accessibleLabel || card.label}. Click to hear and select.`}
             onClick={() => {
               const spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(() => undefined, () => undefined)
@@ -268,7 +338,7 @@ export function SpeedMatch({
           <span>Moon gate closed</span>
           <strong>{matchedPairIds.length} of {pairs.length} targets cleared</strong>
           <p>Your word knowledge is safe. Reset the clock and try a faster route.</p>
-          <button type="button" className="lg-primary" onClick={resetMission}><RotateCcw size={17} /> Restart mission</button>
+          <button type="button" className="lg-primary" disabled={saving || Boolean(saveError)} onClick={resetMission}><RotateCcw size={17} /> Restart mission</button>
         </div>}
       </div>
 

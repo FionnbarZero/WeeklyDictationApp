@@ -153,6 +153,74 @@ test('game session holds a failed turn for exact retry and rejects a replacement
   assert.equal(session.checkpoint().prompts[0].attempted, 1)
 })
 
+test('timed sessions restore the saved clock, retain counts across expiry and retry, and finish once', async () => {
+  const { store, values } = memory()
+  const checkpoint = fixture('speed-match')
+  const options = { ...sessionOptions(store), scope: checkpoint.scope, pack: checkpoint.pack }
+  let session = await openGameSession(options)
+  const turns = answers(session.initial.pack)
+  await session.review(turns[0])
+  const reviewedAt = session.checkpoint().reviewedAt
+  await session.timer(1000)
+  assert.equal(session.checkpoint().reviewedAt, reviewedAt)
+  session = await openGameSession(options)
+  assert.equal(session.initial.remainingMs, 1000)
+  await session.timer(0)
+  await assert.rejects(session.review(turns[1]))
+  await session.restartTimed()
+  assert.equal(session.checkpoint().remainingMs, 60000)
+  assert.equal(session.checkpoint().cycle, 1)
+  assert.deepEqual(session.checkpoint().cleared, [])
+  assert.equal(session.checkpoint().prompts[0].attempted, 1)
+  for (const turn of turns) await session.review(turn)
+  await assert.rejects(session.timer(0))
+  await assert.rejects(session.restartTimed())
+  assert.equal(store.completions('child').length, 1)
+  assert.equal(store.completions('child')[0].result.attempted, turns.length + 1)
+  assert.equal(store.completions('child')[0].targets[0].correct, 2)
+  for (const raw of values.values()) assert.ok(!raw.includes('"response"'))
+})
+
+test('timer partial writes require exact retry before answers or restart', async () => {
+  const { store, storage } = memory()
+  const checkpoint = fixture('speed-match')
+  const session = await openGameSession({ ...sessionOptions(store), scope: checkpoint.scope, pack: checkpoint.pack })
+  const original = storage.setItem
+  storage.setItem = (key, value) => {
+    original(key, value)
+    throw new Error('Interrupted readback')
+  }
+  await assert.rejects(session.timer(50000), /Interrupted/)
+  await assert.rejects(session.timer(49000), /pending turn/)
+  await assert.rejects(session.review(answers(checkpoint.pack)[0]), /pending turn/)
+  await assert.rejects(session.restartTimed(), /pending turn/)
+  storage.setItem = original
+  await session.timer(50000)
+  assert.equal(session.checkpoint().revision, 1)
+  assert.equal(session.checkpoint().reviewedAt, null)
+  await session.review(answers(checkpoint.pack)[0])
+  assert.equal(session.checkpoint().revision, 2)
+})
+
+test('a timer write in flight excludes an answer and an expiry restart retries exactly once', async () => {
+  const { store, storage } = memory()
+  const checkpoint = fixture('speed-match')
+  const session = await openGameSession({ ...sessionOptions(store), scope: checkpoint.scope, pack: checkpoint.pack })
+  const ticking = session.timer(0)
+  await assert.rejects(session.review(answers(checkpoint.pack)[0]), /not available/)
+  await ticking
+  const original = storage.setItem
+  storage.setItem = () => {
+    throw new Error('quota')
+  }
+  await assert.rejects(session.restartTimed(), /quota/)
+  assert.equal(session.checkpoint().remainingMs, 0)
+  storage.setItem = original
+  await session.restartTimed()
+  assert.equal(session.checkpoint().cycle, 1)
+  assert.equal(session.checkpoint().revision, 2)
+})
+
 test('game session recovers completion written before interrupted final checkpoint', async () => {
   const { store, storage } = memory()
   const options = sessionOptions(store)

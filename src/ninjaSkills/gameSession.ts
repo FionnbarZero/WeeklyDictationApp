@@ -1,9 +1,11 @@
 import type { LearningModuleAttempt, LearningModulePack } from './contracts.ts'
 import {
   checkpointGameAnswer,
+  checkpointGameTimer,
   continueGameCheckpoint,
   gameCheckpointComplete,
   serializeGameRecord,
+  retryTimedGame,
   startGameCheckpoint,
   type GameCheckpoint,
   type GameScope,
@@ -50,34 +52,37 @@ export async function openGameSession(options: {
   await store.saveCheckpoint(current, saved)
   const initial = current
   let pending: GameCheckpoint | null = null
-  let pendingAnswer = ''
+  let pendingKey = ''
   let busy = false
   let discarded = false
+  async function transition(key: string, candidate: () => GameCheckpoint) {
+    if (busy || discarded) throw new Error('The saved game is not available for another answer.')
+    busy = true
+    try {
+      // The screen retries the same pending turn; it cannot replace it with a
+      // different answer after a partial write.
+      if (pending && pendingKey !== key) throw new Error('Retry the pending turn before answering again.')
+      if (!pending) {
+        pending = candidate()
+        pendingKey = key
+      }
+      if (gameCheckpointComplete(pending)) await store.finishCheckpoint(pending, current)
+      else await store.saveCheckpoint(pending, current)
+      current = pending
+      pending = null
+      pendingKey = ''
+      return current
+    } finally {
+      busy = false
+    }
+  }
   return {
     initial,
     checkpoint: () => current,
-    async review(attempt: LearningModuleAttempt) {
-      if (busy || discarded) throw new Error('The saved game is not available for another answer.')
-      busy = true
-      try {
-        // The screen retries the same pending turn; it cannot replace it with a
-        // different answer after a partial write.
-        if (pending && pendingAnswer !== serializeGameRecord(attempt))
-          throw new Error('Retry the pending turn before answering again.')
-        if (!pending) {
-          pending = checkpointGameAnswer(current, attempt, now())
-          pendingAnswer = serializeGameRecord(attempt)
-        }
-        if (gameCheckpointComplete(pending)) await store.finishCheckpoint(pending, current)
-        else await store.saveCheckpoint(pending, current)
-        current = pending
-        pending = null
-        pendingAnswer = ''
-        return current
-      } finally {
-        busy = false
-      }
-    },
+    review: (attempt: LearningModuleAttempt) =>
+      transition(`answer:${serializeGameRecord(attempt)}`, () => checkpointGameAnswer(current, attempt, now())),
+    timer: (remainingMs: number) => transition(`timer:${remainingMs}`, () => checkpointGameTimer(current, remainingMs)),
+    restartTimed: () => transition('restart', () => retryTimedGame(current)),
     async discard() {
       if (busy) throw new Error('Wait for this turn to finish saving before discarding it.')
       await store.discardCheckpoint(current)

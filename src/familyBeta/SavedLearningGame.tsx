@@ -18,6 +18,9 @@ const SentenceScramble = lazy(() =>
 const ContextGapDash = lazy(() =>
   import('../learningModules/context-gap-dash/Game.tsx').then((module) => ({ default: module.ContextGapDash })),
 )
+const SpeedMatch = lazy(() =>
+  import('../learningModules/speed-match/Game.tsx').then((module) => ({ default: module.SpeedMatch })),
+)
 
 export function SavedLearningGame({
   pack,
@@ -25,7 +28,10 @@ export function SavedLearningGame({
   onExit,
   onComplete,
 }: {
-  pack: Extract<LearningModulePack, { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' }>
+  pack: Extract<
+    LearningModulePack,
+    { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' | 'speed-match' }
+  >
   playAudio: PlayLearningModuleAudio
   onExit: () => void
   onComplete: (result: BetaResult) => void
@@ -131,6 +137,18 @@ export function SavedLearningGame({
             {...shared}
             rounds={initial.pack.rounds}
             savedResults={initial.prompts.slice(0, initial.cleared.length).map((prompt) => prompt.correct === 1)}
+          />
+        ) : initial.pack.moduleId === 'speed-match' ? (
+          <SpeedMatch
+            {...shared}
+            pairs={initial.pack.pairs}
+            remainingMs={initial.remainingMs!}
+            onTimer={async (remainingMs) => {
+              await session.timer(remainingMs)
+            }}
+            onRestart={async () => {
+              await session.restartTimed()
+            }}
           />
         ) : null}
       </Suspense>

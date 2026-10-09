@@ -34,7 +34,7 @@ function FamilyGame() {
   return (
     <div data-report-activity={game.pack.title} data-report-phase="game">
       {error && <p role="alert">{error}</p>}
-      {game.pack.moduleId === 'memory-flip' || game.pack.moduleId === 'sentence-scramble' || game.pack.moduleId === 'context-gap-dash' ? <SavedLearningGame pack={game.pack}
+      {game.pack.moduleId === 'memory-flip' || game.pack.moduleId === 'sentence-scramble' || game.pack.moduleId === 'context-gap-dash' || game.pack.moduleId === 'speed-match' ? <SavedLearningGame pack={game.pack}
         onExit={() => { pauseToFamilyHub() }}
         playAudio={(text, language = 'zh-CN', rate = 0.65) => promptAudioCompleted(playAudioPlan([
           { text, language: language as 'zh-CN', rate, storagePath: kindergartenAudioForText(text)?.storagePath },
