@@ -164,11 +164,6 @@ export function SpiritRealmPractice({
                   const entry = learningModuleCatalogEntry(
                     capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId,
                   )
-                  if (
-                    (channel === 'reading' && entry.id === 'dictation-streak') ||
-                    (channel === 'writing' && ['context-gap-dash', 'sentence-scramble'].includes(entry.id))
-                  )
-                    return null
                   return (
                     <article className="lg-card" key={entry.id}>
                       <h2>{entry.title}</h2>
@@ -180,7 +175,7 @@ export function SpiritRealmPractice({
                         <>
                           <p>{capability.reason}</p>
                           <button className="lg-primary" disabled>
-                            Needs teacher-approved content
+                            Coming soon
                           </button>
                         </>
                       )}

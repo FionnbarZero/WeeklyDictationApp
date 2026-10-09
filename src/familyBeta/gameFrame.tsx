@@ -5,6 +5,7 @@ import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import { LearningModuleHost } from '../ninjaSkills/LearningModuleHost.tsx'
+import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import type { FamilyActivitySlot } from './activitySlots.ts'
 import { familyPreview, previewProfile, savePreviewResult } from './runtime.ts'
 import '../styles.css'
@@ -15,6 +16,7 @@ function readGame() {
     const game = JSON.parse(
       window.frameElement?.getAttribute('data-family-game') || 'null',
     ) as FamilyActivitySlot['game']
+    if (game) assertGamePack(game.pack)
     return game && /^[\w-]{1,160}$/.test(game.attemptId) && game.pack.cohort.grade === previewProfile()?.grade
       ? game
       : null
@@ -45,14 +47,15 @@ function FamilyGame() {
         }
         onComplete={(summary) => {
           try {
+            const reviewed = reviewGameSummary(game.pack, summary)
             const saved = savePreviewResult({
               id: game.attemptId,
               activity: game.pack.title,
               channel: 'game',
               datasetIds: game.pack.cohort.provenance.map((p) => p.datasetId),
               schoolYear: game.pack.cohort.schoolYear,
-              correct: summary.correct,
-              attempted: summary.attempted,
+              correct: reviewed.correct,
+              attempted: reviewed.attempted,
             })
             if (!saved) throw new Error('The completed game could not be saved for this child.')
             parent.postMessage({ type: 'family-beta-game-completed', attemptId: saved.id }, location.origin)

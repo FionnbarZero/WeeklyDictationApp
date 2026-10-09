@@ -32,3 +32,24 @@ Status: code-grounded inventory prepared after the local A3.3 final review (Octo
 4. Reserve GPT-6 Astra · Extra High for Whispering Scrolls, Stroke Order Slay, security-sensitive work, and the final cross-grade release review.
 
 Every game slice must prove target selection, lifecycle placement, per-target results, pause/report behavior, save/reload, and exact artifact identity across the affected grades before a smoke-test handoff.
+
+## Stage B policy and content slice (local)
+
+The first bounded slice applies the approved selection contract in `src/ninjaSkills/policy.ts`, pack preparation, and both family menus. Each tier resolves its own previous relevant week, so Grade 2 can combine September 29 writing with September 21 reading without importing September 21 writing. Tier 3 never enters these four games. Later-stage Shadow Strike and Dictation Streak remain visible but unavailable; this is not a claim that their missing rules are fixed.
+
+`src/ninjaSkills/supplemental.ts` contains versioned generated meanings for 35 exact source targets and tokenized contexts for the 17 writing targets currently used by the three grades. Only matching authoritative document IDs receive this overlay. Teacher values win, the source fingerprints remain unchanged, and the pack retains the actual generated values/version. Other weeks with insufficient content remain unavailable; the catalog is not an automatic general-purpose language generator.
+
+Coverage is disclosed in each menu. Subsets rotate deterministically from distinct completed game attempts available in the device's validated ledger; wrong answers and upload retries do not advance the visit. This is not yet lifetime cross-device coverage tracking. Opening a round pins its terms, support content, policy version and visit. The round is not silently regenerated when a teacher document refreshes.
+
+`src/ninjaSkills/review.ts` validates the pack at launch and recomputes matching/choice/token correctness before aggregate saving. The tested per-target projection includes only target/dataset IDs, tier and attempted/correct counts, plus game/policy/phase; raw responses are omitted. **The projection is not yet persisted.** Existing completed-score schema and production policy are unchanged. Do not append new fields to strict legacy score records without a compatibility design.
+
+Two additional reproduced defects are fixed: Context Gap's text clue no longer prints the missing target, and Sushi's displayed token order is deterministically scrambled. Sushi accepts interchangeable identical printed tokens and sentences longer than six pieces.
+
+Local evidence: 832 unit tests passed, including 11 new all-grade selection/content/rotation/scoring regressions. Type, lint, scoped format and production build/performance passed (549,999/550,000 initial JS bytes; 42,745/60,000 CSS). Packaged browser verification is in progress. No new build has been published.
+
+Remaining gates in order:
+
+1. Finish exact-package three-grade desktop/tablet checks for the four games and existing aggregate saving/pause behavior.
+2. GPT-6 Astra · High central-policy review of this completed slice.
+3. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
+4. Exact-package offline/retry/reload/second-browser and guarded rollback evidence, followed by the roadmap's release review. Publish only when that game's complete acceptance gate passes; do not send the owner to the old live build to test these changes.

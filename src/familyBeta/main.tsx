@@ -16,10 +16,8 @@ import { deviceExport } from './deviceExport.ts'
 import { familyDeviceSyncRepository } from './deviceSync.ts'
 import { syncCompletedBeforePractice } from './syncProgress.ts'
 import { assertResultCopiesMatch } from './resultLedger.ts'
-import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
-import { channelCohort, latestEarlierTargets } from './gamePools.ts'
-import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
+import { latestEarlierTargets, reinforcementGames } from './gamePools.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
@@ -376,19 +374,12 @@ function FamilyPreview() {
 
   const earlierWriting = latestEarlierTargets(available, dataset?.startDate || today, 'writing')
   const earlierReading = latestEarlierTargets(available, dataset?.startDate || today, 'reading')
-  const writingCapabilities = learningModuleCapabilities(
-    channelCohort(earlierWriting, 'writing', 'Earlier writing targets'),
-    NINJA_SKILLS_PROFILES[currentGrade],
-  )
-  const capabilities = learningModuleCapabilities(
-    channelCohort(earlierReading, 'reading', 'Earlier reading targets'),
-    NINJA_SKILLS_PROFILES[currentGrade],
-  ).map((capability) => {
-    const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
-    return id === 'dictation-streak'
-      ? writingCapabilities.find((c) => (c.status === 'ready' ? c.pack.moduleId : c.moduleId) === id)!
-      : capability
-  })
+  let completedGames: BetaResult[] | null = null
+  try { completedGames = previewResults() } catch { /* Preserve an unreadable history; do not start a replacement round. */ }
+  const capabilities = reinforcementGames(available, dataset?.startDate || today, currentGrade, completedGames || [], child?.id)
+    .map(game => completedGames ? game.capability : { status: 'unavailable' as const,
+      moduleId: game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId,
+      reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.' })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
 
   function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack) {
@@ -592,24 +583,24 @@ function FamilyPreview() {
             <div className="beta-game-grid">
               {capabilities.map((c) =>
                 c.status === 'ready' ? (
-                  <button className="primary-button" key={c.pack.moduleId} onClick={() => {
+                  <article key={c.pack.moduleId}><button className="primary-button" onClick={() => {
                     setActivityError('')
                     const paused = slots.find(slot => slot.workspace === workspace && slot.game?.pack.moduleId === c.pack.moduleId)
                     if (paused) setSelectedSlots(current => ({ ...current, [`${workspace}:games`]: paused.id }))
                     else newSlot('game', c.pack)
                   }}>
                     {c.pack.title}
-                  </button>
+                  </button><p>{c.pack.scopeNote}</p></article>
                 ) : (
                   <article key={c.moduleId}>
                     <h2>{learningModuleCatalogEntry(c.moduleId).title}</h2>
                     <p>{c.reason}</p>
-                    <button disabled>Needs teacher-approved content</button>
+                    <button disabled>Coming soon</button>
                   </article>
                 ),
               )}
             </div>
-            <p>Additional games will appear when their required teacher-approved content is available.</p>
+            <p>Coming-soon activities unlock when their required content and game rules are ready.</p>
           </section>
         )}
       {child && tab === 'progress' && <ResultHistory

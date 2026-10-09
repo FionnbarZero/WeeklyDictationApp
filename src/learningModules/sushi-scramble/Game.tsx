@@ -55,7 +55,7 @@ function SushiWord({
 export function SentenceScramble({
   rounds,
   title = 'Sushi Scramble',
-  eyebrow = 'Tier 2 · Reading',
+  eyebrow = 'Tier 1 · Writing targets',
   onExit,
   onAttempt,
   onComplete,
@@ -172,7 +172,7 @@ export function SentenceScramble({
   return <LearningGameShell gameId="sentence-scramble" title={title} eyebrow={eyebrow} progress={`${Math.min(index + (correct ? 1 : 0), rounds.length)}/${rounds.length} completed`} onExit={onExit}>
     {!valid ? <LearningGameEmpty onExit={onExit} /> : complete ? <LearningGameComplete
       summary={summary}
-      message="You rebuilt every approved sentence."
+      message="You rebuilt every sentence in this practice round."
       onDone={() => onComplete(summary)}
     /> : round ? <section className="lg-card lg-scramble-card">
       <p className="lg-round-label">Sentence {index + 1} of {rounds.length}</p>

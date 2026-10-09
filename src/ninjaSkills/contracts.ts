@@ -78,9 +78,11 @@ export type LearningModuleSummary = {
 
 export type LearningModuleTerm = {
   readonly occurrenceId: string
+  readonly datasetId?: string
   readonly text: string
   readonly tier: 'tier-1' | 'tier-2' | 'tier-3'
   readonly meaning?: string
+  readonly supplementalVersion?: string
   readonly pinyinText?: string
   readonly pinyinSteps?: readonly {
     readonly pinyin: string
@@ -110,6 +112,13 @@ type LearningModulePackBase = {
   readonly title: string
   readonly cohort: LearningModuleCohort
   readonly scopeNote?: string
+  readonly selection?: {
+    readonly policyVersion: string
+    readonly visit: number
+    readonly available: number
+    readonly eligible: number
+    readonly included: number
+  }
 }
 
 export type LearningModulePack =

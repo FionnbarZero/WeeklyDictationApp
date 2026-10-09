@@ -2,16 +2,15 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import type { Dataset } from '../domain/contracts.ts'
-import { familyPreview, savePreviewResult } from './runtime.ts'
+import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
 import { fetchCurriculum } from './curriculum.ts'
 import type { BetaGrade } from './model.ts'
 import { localDateKey } from '../domain.ts'
-import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
-import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import {
-  channelCohort,
+  reinforcementGames,
   channelWords,
   latestEarlierTargets,
   sectionDatasets,
@@ -32,7 +31,7 @@ const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
 type ExtraLaunch =
-  | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel; datasets: Dataset[] }
+  | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel | 'mixed'; datasets: Dataset[] }
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
 
@@ -224,29 +223,16 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
               launch: { previewAction: 'sky', channel: 'writing', datasets: writing },
             },
           })
-        const writingCapabilities = learningModuleCapabilities(
-          channelCohort(writing, 'writing', 'Earlier writing targets'),
-          NINJA_SKILLS_PROFILES[grade],
-        )
-        const readingCapabilities = learningModuleCapabilities(
-          channelCohort(reading, 'reading', 'Earlier reading targets'),
-          NINJA_SKILLS_PROFILES[grade],
-        )
-        for (const readingCapability of readingCapabilities) {
-          const id = readingCapability.status === 'ready' ? readingCapability.pack.moduleId : readingCapability.moduleId
-          const channel = id === 'dictation-streak' ? 'writing' : 'reading'
-          const capability =
-            channel === 'writing'
-              ? writingCapabilities.find((c) => (c.status === 'ready' ? c.pack.moduleId : c.moduleId) === id)!
-              : readingCapability
+        for (const { capability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, previewResults(), previewProfile()?.id)) {
+          const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
           const entry = learningModuleCatalogEntry(id)
           activities.push({
             id: `preview-game-${id}`,
             title: entry.title,
-            eyebrow: `${channel} · ${(channel === 'writing' ? writing : reading)[0]?.dateRange || 'No earlier targets'}`,
+            eyebrow: `${entry.eyebrow} · ${datasets.map(dataset => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
             description: entry.description,
             icon: entry.icon,
-            ...(capability.status === 'unavailable' ? { note: capability.reason } : {}),
+            note: capability.status === 'unavailable' ? capability.reason : capability.pack.scopeNote,
             action:
               capability.status === 'ready'
                 ? {
@@ -256,10 +242,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                       previewAction: 'game',
                       pack: capability.pack,
                       channel,
-                      datasets: channel === 'writing' ? writing : reading,
+                      datasets,
                     },
                   }
-                : { kind: 'disabled', label: 'Needs teacher-approved content', reason: capability.reason },
+                : { kind: 'disabled', label: 'Coming soon', reason: capability.reason },
           })
         }
         if (section.id === 'ninja-skills')
@@ -311,6 +297,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           hideUnavailable={false}
           onLaunch={(launch, context) => {
             if (launch && typeof launch === 'object' && 'previewAction' in launch) {
+              if ((launch as ExtraLaunch).previewAction === 'game') {
+                try { assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack) }
+                catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
+              }
               setSessionId(crypto.randomUUID())
               setActive(launch as ExtraLaunch)
             } else props.onLaunch(launch as Launch, context)
@@ -323,7 +313,12 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
             pack={active.pack}
             playAudio={audio}
             onExit={exit}
-            onComplete={(summary) => complete(summary.correct, summary.attempted)}
+            onComplete={(summary) => {
+              try {
+                const reviewed = reviewGameSummary(active.pack, summary)
+                complete(reviewed.correct, reviewed.attempted)
+              } catch (e) { setError(e instanceof Error ? e.message : 'The game result could not be verified.') }
+            }}
           />
         </Suspense>
       )}
