@@ -207,6 +207,7 @@
 .lg-canvas-access { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .lg-phaser-stage canvas:focus-visible { outline: 5px solid #fff2a5; outline-offset: -6px; }
 .lg-phaser-dash-card .lg-phaser-meta > span,.lg-phaser-dash-card .lg-phaser-meta > button { border-color: rgb(102 236 211 / 26%); background: rgb(7 26 36 / 86%); }
+.lg-phaser-dash-card { left: 50%; transform: translateX(-50%); }
 .lg-phaser-dash-card .lg-phaser-meta > button { color: #d5fff6; }
 .lg-phaser-dash-card .lg-phaser-meta > button:hover { border-color: #81efd8; background: #123c42; }
 .lg-dash-context-clue { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px 16px; margin: 0 auto 12px; padding: 13px 15px; border: 1px solid rgb(102 236 211 / 32%); border-radius: 18px; color: #effffb; background: linear-gradient(135deg,rgb(7 31 42 / 94%),rgb(15 58 61 / 91%)); box-shadow: 0 13px 35px rgb(0 0 0 / 18%); }
