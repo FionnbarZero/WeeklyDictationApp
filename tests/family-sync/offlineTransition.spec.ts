@@ -99,7 +99,9 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
     await expect
       .poll(
         async () => {
-          for (const worker of context.serviceWorkers()) {
+          const workers = context.serviceWorkers()
+          if (workers.length === 0) return true
+          for (const worker of workers) {
             try {
               const ready = await worker.evaluate(
                 async () => !(await self.registration.waiting) && !self.registration.installing,
@@ -182,7 +184,9 @@ test('a game-only Stage B checkpoint blocks the older engine without reading cre
     await expect
       .poll(
         async () => {
-          for (const worker of context.serviceWorkers()) {
+          const workers = context.serviceWorkers()
+          if (workers.length === 0) return true
+          for (const worker of workers) {
             try {
               if (
                 await worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing)
