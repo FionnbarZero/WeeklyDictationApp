@@ -697,6 +697,7 @@ export function ContextGapDash({
   const [roundIndex, setRoundIndex] = useState(0)
   const [feedback, setFeedback] = useState<FeedbackState>(null)
   const [finished, setFinished] = useState(false)
+  const [sceneReady, setSceneReady] = useState(false)
   const valid = playableRounds.length <= JOURNEY_LENGTH
     && validContextRounds(playableRounds)
     && playableRounds.every((round) => round.choices.length >= 3)
@@ -761,7 +762,7 @@ export function ContextGapDash({
       onFeedback: setFeedback,
       onChoicePreview: previewChoice,
       onFinish: () => setFinished(true),
-      registerChoiceHandler: (handler) => { choiceHandlerRef.current = handler },
+      registerChoiceHandler: (handler) => { choiceHandlerRef.current = handler; setSceneReady(true) },
     })
     const game = new Phaser.Game({
       type: Phaser.AUTO, width: GAME_WIDTH, height: GAME_HEIGHT, parent: hostRef.current,
@@ -782,7 +783,7 @@ export function ContextGapDash({
     onComplete(summarizeLearningGame('context-gap-dash', attemptsRef.current))
   }, [onComplete])
 
-  const busy = Boolean(feedback) || finished
+  const busy = !sceneReady || Boolean(feedback) || finished
   const stageStyle = { '--dash-progress': (playableRounds.length ? (completed / playableRounds.length) * 100 : 0) + '%' } as CSSProperties
 
   return <LearningGameShell

@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
 for (const [slug, grade, childId] of grades) {
   for (const title of ['Memory Lanterns', 'Shuriken Match', 'Context Gap Dash', 'Sushi Scramble']) {
-    test(`${grade}: ${title} uses the published policy boundary and saves its reviewed round`, async ({ page }) => {
+    test(`${grade}: ${title} follows the approved policy and saves its reviewed round`, async ({ page, isMobile }) => {
       test.setTimeout(120000)
       await page.goto(`/?grade=${slug}`)
       await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
@@ -54,12 +54,11 @@ for (const [slug, grade, childId] of grades) {
       } else if (pack.moduleId === 'context-gap-dash') {
         for (const round of pack.rounds) {
           await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!)
-          const choice = frame
-            .getByRole('group', { name: 'Touch-friendly answer gates', exact: true })
-            .getByRole('button')
-            .nth(round.choices.findIndex((choice) => choice.id === round.correctChoiceId))
+          const index = round.choices.findIndex((choice) => choice.id === round.correctChoiceId)
+          const choice = frame.locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button').nth(index)
           await expect(choice).toBeEnabled()
-          await choice.click()
+          if (isMobile) await choice.click()
+          else await frame.locator('canvas').press(String(index + 1))
         }
       } else if (pack.moduleId === 'sentence-scramble') {
         for (const [roundIndex, round] of pack.rounds.entries()) {
