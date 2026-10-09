@@ -20,7 +20,11 @@ import {
   type GameCheckpoint,
   type GameCompletion,
 } from '../src/ninjaSkills/progress.ts'
-import { createGameProgressStore } from '../src/ninjaSkills/progressStore.ts'
+import {
+  createGameProgressStore,
+  createLockedGameProgressStore,
+  type GameWriteLock,
+} from '../src/ninjaSkills/progressStore.ts'
 import { syncGameProgress, type GameProgressRemote } from '../src/ninjaSkills/progressSync.ts'
 
 const now = '2026-10-09T01:00:00.000Z'
@@ -102,6 +106,51 @@ function memory() {
   return { values, storage, store: createGameProgressStore(storage, 'family') }
 }
 
+function testWriteLock(): GameWriteLock {
+  let tail: Promise<unknown> = Promise.resolve()
+  return (_name, operation) => {
+    const next = tail.then(operation)
+    tail = next.catch(() => {})
+    return next
+  }
+}
+
+test('browser write adapter serializes simultaneous tabs and rechecks ownership inside its lock', async () => {
+  const f = memory()
+  const initial = fixture()
+  f.store.saveCheckpoint(initial, null)
+  const lock = testWriteLock()
+  const one = createLockedGameProgressStore(f.storage, 'family', () => true, lock)
+  const two = createLockedGameProgressStore(f.storage, 'family', () => true, lock)
+  const first = checkpointGameAnswer(initial, answers(initial.pack)[0], later)
+  const second = checkpointGameAnswer(initial, answers(initial.pack)[1], later)
+  const results = await Promise.allSettled([one.saveCheckpoint(first, initial), two.saveCheckpoint(second, initial)])
+  assert.deepEqual(
+    results.map((result) => result.status),
+    ['fulfilled', 'rejected'],
+  )
+  assert.deepEqual(f.store.checkpoint(initial.scope), first)
+  let owner = true
+  const owned = createLockedGameProgressStore(f.storage, 'family', () => owner, lock)
+  const write = owned.saveCheckpoint(second, first)
+  owner = false
+  await assert.rejects(Promise.resolve(write), /owner changed/)
+  assert.deepEqual(f.store.checkpoint(initial.scope), first)
+})
+
+test('a game opened while hydration waits for the write lock cannot be replaced', async () => {
+  const f = memory()
+  const initial = fixture()
+  f.store.saveCheckpoint(initial, null)
+  const reviewed = checkpointGameAnswer(initial, answers(initial.pack)[0], later)
+  let replace = true
+  const store = createLockedGameProgressStore(f.storage, 'family', () => true, testWriteLock())
+  const write = store.saveCheckpoint(reviewed, initial, () => replace)
+  replace = false
+  await assert.rejects(Promise.resolve(write), /no longer allowed/)
+  assert.deepEqual(f.store.checkpoint(initial.scope), initial)
+})
+
 for (const grade of grades)
   for (const game of games)
     test(`${grade[1]} ${game}: reload retains pinned reviewed progress and private per-target completion`, () => {
@@ -147,6 +196,9 @@ test('rejects dishonest scores, duplicate reviews, skipped prompts and unsupport
   const nested = structuredClone(value)
   Object.assign(nested.pack.cohort.terms[0], { meaning: { response: 'secret' } })
   assert.throws(() => validateGameCheckpoint(nested), /text/)
+  const missingSource = structuredClone(value)
+  Reflect.deleteProperty(missingSource.pack.cohort.provenance[0].source, 'sourceDocumentId')
+  assert.throws(() => validateGameCheckpoint(missingSource), /text/)
   assert.throws(
     () => validateGameCheckpoint({ ...first, prompts: first.prompts.map((p) => ({ ...p, attempted: 100001 })) }),
     /pinned prompts/,
@@ -205,6 +257,24 @@ test('record size and structural bounds fail before changing stored data', () =>
   forged.revision = 1
   assert.throws(() => validateGameCheckpoint(forged), /cleared prompts/)
   assert.deepEqual([...f.values], before)
+})
+
+test('checkpoint-count limits preserve existing records instead of pruning older work', () => {
+  const f = memory()
+  const original = fixture()
+  for (let day = 0; day < 64; day++) {
+    const date = new Date('2026-10-05T00:00:00Z')
+    date.setUTCDate(date.getUTCDate() + day)
+    const value = { ...original, scope: { ...original.scope, week: date.toISOString().slice(0, 10) } }
+    f.store.saveCheckpoint(value, null)
+  }
+  const before = [...f.values]
+  assert.throws(
+    () => f.store.saveCheckpoint({ ...original, scope: { ...original.scope, week: '2027-01-01' } }, null),
+    /Too many/,
+  )
+  assert.deepEqual([...f.values], before)
+  assert.equal(f.store.checkpoints('child').length, 64)
 })
 
 test('new writers fork completion identities; whole newest-reviewed checkpoints win without merging', () => {

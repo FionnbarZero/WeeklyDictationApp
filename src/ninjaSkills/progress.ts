@@ -129,10 +129,11 @@ function validatePack(pack: LearningModulePack) {
     keys(source.source, ['sourceType', 'sourceDocumentId', 'sourceUnitId', 'adapterId'])
     if (!['google-sheets', 'google-slides'].includes(source.source.sourceType))
       throw new Error('Invalid curriculum source type.')
-    Object.values(source.source).forEach((value) => text(value))
+    for (const value of [source.source.sourceDocumentId, source.source.sourceUnitId, source.source.adapterId])
+      text(value)
     if (
       typeof source.datasetId !== 'string' ||
-      !source.datasetId ||
+      !/^[A-Za-z0-9_:-]{1,300}$/.test(source.datasetId) ||
       typeof source.contentFingerprint !== 'string' ||
       !source.contentFingerprint
     )

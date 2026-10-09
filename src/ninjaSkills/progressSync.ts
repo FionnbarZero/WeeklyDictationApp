@@ -41,7 +41,7 @@ export async function syncGameProgress(options: {
     if (!stillOwner()) return
     if (serializeGameRecord(saved) !== serializeGameRecord(pending))
       throw new Error('Cloud game confirmation differs. This completed attempt remains queued.')
-    store.acknowledgeCompletion(pending)
+    await store.acknowledgeCompletion(pending)
   }
   if (options.scopes.length > 64) throw new Error('Too many game activities requested for syncing.')
   const seen = new Set<string>()
@@ -80,14 +80,15 @@ export async function syncGameProgress(options: {
             serializeGameRecord(validateGameCompletion(completion).checkpoint) !== serializeGameRecord(winner)
           )
             throw new Error('The completed checkpoint has no matching immutable result. Local work was preserved.')
-          store.saveCompletion(completion, false)
+          await store.saveCompletion(completion, false)
+          if (!stillOwner()) return
           if (
             !canReplaceCheckpoint(scope) ||
             serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local)
           )
             continue
         }
-        store.saveCheckpoint(winner, local)
+        await store.saveCheckpoint(winner, local, () => stillOwner() && canReplaceCheckpoint(scope))
       }
       continue
     }

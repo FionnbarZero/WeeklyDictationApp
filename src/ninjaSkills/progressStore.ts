@@ -105,7 +105,8 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
     if (queue) confirm(`${pendingPrefix(value.result.childId)}${safeId(value.result.id)}`, value)
     confirm(`${completedPrefix(value.result.childId)}${safeId(value.result.id)}`, value)
   }
-  function saveCheckpoint(value: GameCheckpoint, expected: GameCheckpoint | null) {
+  function saveCheckpoint(value: GameCheckpoint, expected: GameCheckpoint | null, allowed: () => boolean = () => true) {
+    if (!allowed()) throw new Error('Game checkpoint replacement is no longer allowed.')
     validateGameCheckpoint(value)
     const current = checkpoint(value.scope)
     if (serializeGameRecord(current) !== serializeGameRecord(expected))
@@ -147,4 +148,49 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
   }
 }
 
-export type GameProgressStore = ReturnType<typeof createGameProgressStore>
+type LocalGameStore = ReturnType<typeof createGameProgressStore>
+export type GameProgressStore = Omit<
+  LocalGameStore,
+  'saveCheckpoint' | 'saveCompletion' | 'acknowledgeCompletion' | 'finishCheckpoint'
+> & {
+  saveCheckpoint: (...args: Parameters<LocalGameStore['saveCheckpoint']>) => void | Promise<void>
+  saveCompletion: (...args: Parameters<LocalGameStore['saveCompletion']>) => void | Promise<void>
+  acknowledgeCompletion: (value: GameCompletion) => void | Promise<void>
+  finishCheckpoint: (
+    ...args: Parameters<LocalGameStore['finishCheckpoint']>
+  ) => GameCompletion | Promise<GameCompletion>
+}
+
+export type GameWriteLock = <T>(name: string, operation: () => T | Promise<T>) => Promise<T>
+export const browserGameWriteLock: GameWriteLock = (name, operation) => {
+  if (typeof navigator === 'undefined' || !navigator.locks)
+    return Promise.reject(
+      new Error('This browser cannot safely coordinate saved games across tabs. No records were changed.'),
+    )
+  return navigator.locks.request(name, { mode: 'exclusive' }, operation)
+}
+
+/** Only this serialized adapter should be connected to browser game screens.
+ * Check the current owner inside the lock, not merely before waiting for it. */
+export function createLockedGameProgressStore(
+  storage: GameStorage,
+  familyId: string,
+  stillOwner: () => boolean,
+  lock: GameWriteLock = browserGameWriteLock,
+): GameProgressStore {
+  const store = createGameProgressStore(storage, familyId)
+  const write = <T>(operation: () => T) =>
+    lock(`ninja-game-storage-v1:${safeId(familyId)}`, () => {
+      if (!stillOwner()) throw new Error('The game storage owner changed. Saved work was preserved.')
+      return operation()
+    })
+  return {
+    checkpoint: store.checkpoint,
+    checkpoints: store.checkpoints,
+    completions: store.completions,
+    saveCheckpoint: (...args) => write(() => store.saveCheckpoint(...args)),
+    saveCompletion: (...args) => write(() => store.saveCompletion(...args)),
+    finishCheckpoint: (...args) => write(() => store.finishCheckpoint(...args)),
+    acknowledgeCompletion: (...args) => write(() => store.acknowledgeCompletion(...args)),
+  }
+}
