@@ -64,9 +64,19 @@ Both manifests' **140 file hashes** were recomputed and matched:
 
 No source has been pushed or merged, and no Stage B build has been published. Production policy, authentication and child records are unchanged. Tests use intercepted synthetic families. Durable game checkpoints, per-target persistence and cross-device coverage remain incomplete, so this is **central-policy review readiness, not release or smoke-test readiness**.
 
+### Central-policy review repair
+
+The review of `3491041..9807032` reproduced one actionable failure: `PreviewLearningHub` read the result ledger without guarding render failures. An unreadable synthetic score entry introduced before completion removed the open game after the save-error rerender in all three grades. Kindergarten and Grade 5 became blank; Grade 2 showed its application reload fallback. Existing records were preserved, but the game's in-memory completion and retry were lost.
+
+Repair `48fd4888036dbd26826139f793c41b65c8985b4d` reads history once behind a guard, retains the active game and completion retry, disables fresh ready-game rounds when history is unverified, and checks history again when launching from an already rendered menu. A user-controlled history recheck restores availability after recovery without changing stored records. Later-stage activities retain their “Coming soon” state.
+
+Verification passed **832/832 unit tests**, typecheck, lint, repository format and focused test formatting, build/performance (**549,999/550,000 initial JS bytes; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing tooling exception (**11 firebase-tools findings**, expires November 4, 2026). The exact package passed **20/20 embedded browser cases** across desktop/tablet and all three grades: preserved completion and one saved attempt after recovery (6), blocked stale-menu launches and history recheck (6), ordinary four-game menus (6), and the existing missing-child-context completion/retry (2). Tests restore only their deliberately injected synthetic fault, never real family history. The broader four-game play-through suite was not rerun for this guarded-history repair.
+
+All **140 files** matched the package manifest. Source: `48fd4888036dbd26826139f793c41b65c8985b4d`; tree: `640acae60930bdfa62e1412c15d0b5526f87bbbb94d8c406bd0d3691f31ccbf5`; local package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-yQ9YJI`. Browser log: `/private/tmp/ninja-stage-b-history-repair-browser.log`. This repair remains local, pending required re-review; no production publication or smoke-test handoff occurred.
+
 Remaining gates in order:
 
-1. GPT-6 Astra · High central-policy review of `3491041..9807032`, including generated supporting content, mixed-week selection, rotation, scoring and the recorded timing observation. The local selection/play-through/aggregate-save evidence above is complete for this bounded slice.
+1. GPT-6 Astra · High central-policy re-review of `3491041..48fd488`, including the guarded-history repair, generated supporting content, mixed-week selection, rotation, scoring and the recorded timing observation. The local selection/play-through/aggregate-save evidence above is complete for this bounded slice.
 2. Resolve any actionable review findings in the same Stage B scope; do not start Shadow Strike or acquisition-game work.
 3. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
 4. Exact-package offline/retry/reload/second-browser and guarded rollback evidence, followed by the roadmap's release review. Publish only when that game's complete acceptance gate passes; do not send the owner to the old live build to test these changes.
