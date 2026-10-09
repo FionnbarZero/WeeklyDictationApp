@@ -31,6 +31,7 @@ import type { ChildMasteryState } from '../src/warmup/adaptive/contracts.ts'
 import { encodeChangedCloudWarmupQueueEntry, encodeCloudWarmupVisit } from '../src/persistence/warmup/cloudCodec.ts'
 
 let environment: RulesTestEnvironment
+const candidateFamilyGameRules = process.env.FAMILY_SYNC_RULES_FILE?.endsWith('firestore-family-sync.rules') ?? false
 
 before(async () => {
   environment = await initializeTestEnvironment({
@@ -116,7 +117,9 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
 })
 
-test('family game progress is private, conditional, immutable when completed, and permanently retired per run', async () => {
+test('family game progress is private, conditional, immutable when completed, and permanently retired per run', {
+  skip: candidateFamilyGameRules ? false : 'The published root policy does not include the candidate Stage B game collections.',
+}, async () => {
   const datasets = inspectSnapshot(
     JSON.parse(await readFile(new URL('../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
   ).datasets
