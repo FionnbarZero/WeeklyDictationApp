@@ -451,7 +451,7 @@ function FamilyPreview() {
     if (!confirmActivityDiscard()) return
     try {
       const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(item => item.dataset.familySlot === slot.id)
-      if (slot.game?.pack.moduleId === 'memory-flip' && !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession)
+      if ((slot.game?.pack.moduleId === 'memory-flip' || slot.game?.pack.moduleId === 'sentence-scramble') && !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession)
         throw new Error('Wait for the saved game to open before discarding it.')
       await (frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession?.discard()
       if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)

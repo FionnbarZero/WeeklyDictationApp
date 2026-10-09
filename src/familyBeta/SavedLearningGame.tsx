@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MemoryFlip } from '../learningModules/memory-lanterns/Game.tsx'
+import { SentenceScramble } from '../learningModules/sushi-scramble/Game.tsx'
 import type { LearningModulePack, PlayLearningModuleAudio } from '../ninjaSkills/contracts.ts'
 import { openGameSession, type GameSession } from '../ninjaSkills/gameSession.ts'
 import { completeGameCheckpoint } from '../ninjaSkills/progress.ts'
@@ -10,13 +11,13 @@ import { assertResultCopiesMatch, readResultLedger, RESULT_KEY, PENDING_KEY } fr
 import type { BetaResult } from './model.ts'
 import '../ninjaSkills/surface.css'
 
-export function SavedMemoryGame({
+export function SavedLearningGame({
   pack,
   playAudio,
   onExit,
   onComplete,
 }: {
-  pack: Extract<LearningModulePack, { moduleId: 'memory-flip' }>
+  pack: Extract<LearningModulePack, { moduleId: 'memory-flip' | 'sentence-scramble' }>
   playAudio: PlayLearningModuleAudio
   onExit: () => void
   onComplete: (result: BetaResult) => void
@@ -33,7 +34,7 @@ export function SavedMemoryGame({
       const store = createLockedGameProgressStore(localStorage, owner.familyId, () => !cancelled && owner.stillOwner())
       const session = await openGameSession({
         store,
-        scope: { childId: owner.profile.id, grade: owner.profile.grade, week: owner.week, gameId: 'memory-flip' },
+        scope: { childId: owner.profile.id, grade: owner.profile.grade, week: owner.week, gameId: pack.moduleId },
         pack,
         writerId: owner.writerId,
         uuid: () => crypto.randomUUID(),
@@ -76,43 +77,47 @@ export function SavedMemoryGame({
     )
   const { session, owner } = loaded
   const initial = session.initial
-  if (initial.pack.moduleId !== 'memory-flip') throw new Error('Saved game type does not match.')
+  if (initial.pack.moduleId !== pack.moduleId) throw new Error('Saved game type does not match.')
+  const shared = {
+    title: initial.pack.title,
+    playAudio,
+    onExit,
+    savedProgress: {
+      cleared: initial.cleared,
+      attempted: initial.prompts.reduce((sum, p) => sum + p.attempted, 0),
+      correct: initial.prompts.reduce((sum, p) => sum + p.correct, 0),
+    },
+    onAttempt: async (attempt: Parameters<GameSession['review']>[0]) => {
+      await session.review(attempt)
+    },
+    onComplete: () => {
+      void browserGameWriteLock(`ninja-game-storage-v1:${owner.familyId}`, () => {
+        if (!owner.stillOwner()) throw new Error('The family account changed. Saved work was preserved.')
+        return saveGameAggregate(
+          localStorage,
+          completeGameCheckpoint(session.checkpoint(), session.checkpoint().reviewedAt!),
+        )
+      })
+        .then((result) => {
+          parent.postMessage({ type: 'family-beta-result-ready' }, location.origin)
+          onComplete(result)
+        })
+        .catch((e) =>
+          setError(
+            `This game result could not be saved. ${e instanceof Error ? e.message : ''} Keep the game open and retry completion.`,
+          ),
+        )
+    },
+  }
   return (
     <div className="ninja-game-surface">
       <p>Reviewed turns save on this device. Game-detail syncing is not connected yet.</p>
       {error && <p role="alert">{error}</p>}
-      <MemoryFlip
-        pairs={initial.pack.pairs}
-        title={initial.pack.title}
-        playAudio={playAudio}
-        onExit={onExit}
-        savedProgress={{
-          cleared: initial.cleared,
-          attempted: initial.prompts.reduce((sum, p) => sum + p.attempted, 0),
-          correct: initial.prompts.reduce((sum, p) => sum + p.correct, 0),
-        }}
-        onAttempt={async (attempt) => {
-          await session.review(attempt)
-        }}
-        onComplete={() => {
-          void browserGameWriteLock(`ninja-game-storage-v1:${owner.familyId}`, () => {
-            if (!owner.stillOwner()) throw new Error('The family account changed. Saved work was preserved.')
-            return saveGameAggregate(
-              localStorage,
-              completeGameCheckpoint(session.checkpoint(), session.checkpoint().reviewedAt!),
-            )
-          })
-            .then((result) => {
-              parent.postMessage({ type: 'family-beta-result-ready' }, location.origin)
-              onComplete(result)
-            })
-            .catch((e) =>
-              setError(
-                `This game result could not be saved. ${e instanceof Error ? e.message : ''} Keep the game open and retry completion.`,
-              ),
-            )
-        }}
-      />
+      {initial.pack.moduleId === 'memory-flip' ? (
+        <MemoryFlip {...shared} pairs={initial.pack.pairs} />
+      ) : initial.pack.moduleId === 'sentence-scramble' ? (
+        <SentenceScramble {...shared} rounds={initial.pack.rounds} />
+      ) : null}
     </div>
   )
 }

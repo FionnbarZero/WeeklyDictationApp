@@ -58,16 +58,21 @@ export function SentenceScramble({
   eyebrow = 'Tier 1 · Writing targets',
   onExit,
   onAttempt,
+  savedProgress,
   onComplete,
   playAudio,
 }: LearningGameBaseProps & {
   readonly rounds: readonly SequenceGameRound[]
   readonly playAudio?: PlayLearningAudio
 }) {
-  const [index, setIndex] = useState(0)
+  const [index, setIndex] = useState(savedProgress?.cleared.length || 0)
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([])
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
   const [checked, setChecked] = useState(false)
+  const pending = useRef<LearningGameAttempt | null>(null)
+  const saving = useRef(false)
+  const [saveError, setSaveError] = useState('')
+  const [awaitingSave, setAwaitingSave] = useState(false)
   const [carryingId, setCarryingId] = useState<string | null>(null)
   const [promptPlaying, setPromptPlaying] = useState(false)
   const playAudioRef = useRef(playAudio)
@@ -125,7 +130,7 @@ export function SentenceScramble({
   }, [checked, correct])
 
   function select(tokenId: string) {
-    if (checked || promptPlaying || carryingId || selectedIds.includes(tokenId)) return
+    if (pending.current || checked || promptPlaying || carryingId || selectedIds.includes(tokenId)) return
     const next = [...selectedIds, tokenId]
     setCarryingId(tokenId)
     playGameSound('select')
@@ -137,17 +142,17 @@ export function SentenceScramble({
   }
 
   function remove(tokenId: string) {
-    if (checked || promptPlaying || carryingId) return
+    if (pending.current || checked || promptPlaying || carryingId) return
     setSelectedIds((current) => current.filter((id) => id !== tokenId))
   }
 
   function undo() {
-    if (checked || promptPlaying || carryingId) return
+    if (pending.current || checked || promptPlaying || carryingId) return
     setSelectedIds((current) => current.slice(0, -1))
   }
 
   function reset() {
-    if (checked || promptPlaying || carryingId) return
+    if (pending.current || checked || promptPlaying || carryingId) return
     setSelectedIds([])
   }
 
@@ -162,13 +167,30 @@ export function SentenceScramble({
       response,
       assessmentMode: 'automatic',
     }
-    setAttempts((current) => [...current, attempt])
-    setChecked(true)
-    playGameSound(isCorrect ? 'correct' : 'incorrect')
-    onAttempt?.(attempt)
+    pending.current = attempt
+    setAwaitingSave(true)
+    void saveTurn()
   }
 
-  const summary = summarizeLearningGame('sentence-scramble', attempts)
+  async function saveTurn() {
+    const attempt = pending.current
+    if (!attempt || saving.current) return
+    saving.current = true
+    setSaveError('')
+    try {
+      await onAttempt?.(attempt)
+      setAttempts((current) => [...current, attempt])
+      pending.current = null
+      setAwaitingSave(false)
+      setChecked(true)
+      playGameSound(attempt.correct ? 'correct' : 'incorrect')
+    } catch (error) {
+      setSaveError(`${error instanceof Error ? error.message : 'Saving failed.'} This turn has not advanced. Retry saving.`)
+    } finally { saving.current = false }
+  }
+
+  const reviewed = summarizeLearningGame('sentence-scramble', attempts)
+  const summary = { ...reviewed, attempted: reviewed.attempted + (savedProgress?.attempted || 0), correct: reviewed.correct + (savedProgress?.correct || 0) }
   return <LearningGameShell gameId="sentence-scramble" title={title} eyebrow={eyebrow} progress={`${Math.min(index + (correct ? 1 : 0), rounds.length)}/${rounds.length} completed`} onExit={onExit}>
     {!valid ? <LearningGameEmpty onExit={onExit} /> : complete ? <LearningGameComplete
       summary={summary}
@@ -176,6 +198,8 @@ export function SentenceScramble({
       onDone={() => onComplete(summary)}
     /> : round ? <section className="lg-card lg-scramble-card">
       <p className="lg-round-label">Sentence {index + 1} of {rounds.length}</p>
+      {saveError && <div role="alert"><p>{saveError}</p><button onClick={() => void saveTurn()}>Retry saving turn</button></div>}
+      {awaitingSave && !saveError && <p role="status">Saving this turn…</p>}
       <div className="lg-sushi-listen-panel">
         <div>
           <span><Volume2 size={16} aria-hidden="true" /> Listen first</span>
@@ -213,7 +237,7 @@ export function SentenceScramble({
                 className="is-plated"
                 position={position + 1}
                 action="remove"
-                disabled={checked || promptPlaying || Boolean(carryingId)}
+                disabled={awaitingSave || checked || promptPlaying || Boolean(carryingId)}
                 onClick={() => remove(id)}
               /> : null
             })}
@@ -222,8 +246,8 @@ export function SentenceScramble({
         </div>
 
         <div className="lg-sushi-tools">
-          <button type="button" disabled={checked || promptPlaying || Boolean(carryingId) || selectedIds.length === 0} onClick={undo}><Undo2 size={15} /> Undo</button>
-          <button type="button" disabled={checked || promptPlaying || Boolean(carryingId) || selectedIds.length === 0} onClick={reset}><RotateCcw size={15} /> Clear plate</button>
+          <button type="button" disabled={awaitingSave || checked || promptPlaying || Boolean(carryingId) || selectedIds.length === 0} onClick={undo}><Undo2 size={15} /> Undo</button>
+          <button type="button" disabled={awaitingSave || checked || promptPlaying || Boolean(carryingId) || selectedIds.length === 0} onClick={reset}><RotateCcw size={15} /> Clear plate</button>
         </div>
 
         <div className="lg-sushi-bar" aria-label="Available sushi words">
@@ -235,7 +259,7 @@ export function SentenceScramble({
               type={SUSHI_TYPES[tokenIndex % SUSHI_TYPES.length]}
               className={carryingId === token.id ? 'is-being-picked' : unavailable ? 'is-unavailable' : ''}
               position={selectedIds.length + 1}
-              disabled={checked || promptPlaying || Boolean(carryingId) || unavailable}
+              disabled={awaitingSave || checked || promptPlaying || Boolean(carryingId) || unavailable}
               onClick={() => select(token.id)}
             />
           })}

@@ -8,7 +8,7 @@ import { LearningModuleHost } from '../ninjaSkills/LearningModuleHost.tsx'
 import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import type { FamilyActivitySlot } from './activitySlots.ts'
 import { familyPreview, previewProfile, savePreviewResult } from './runtime.ts'
-import { SavedMemoryGame } from './SavedMemoryGame.tsx'
+import { SavedLearningGame } from './SavedLearningGame.tsx'
 import '../styles.css'
 
 function readGame() {
@@ -34,7 +34,7 @@ function FamilyGame() {
   return (
     <div data-report-activity={game.pack.title} data-report-phase="game">
       {error && <p role="alert">{error}</p>}
-      {game.pack.moduleId === 'memory-flip' ? <SavedMemoryGame pack={game.pack}
+      {game.pack.moduleId === 'memory-flip' || game.pack.moduleId === 'sentence-scramble' ? <SavedLearningGame pack={game.pack}
         onExit={() => { pauseToFamilyHub() }}
         playAudio={(text, language = 'zh-CN', rate = 0.65) => promptAudioCompleted(playAudioPlan([
           { text, language: language as 'zh-CN', rate, storagePath: kindergartenAudioForText(text)?.storagePath },
