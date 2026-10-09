@@ -46,7 +46,14 @@ for (const [slug, grade, childId] of grades) {
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
       await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'false')
       expect(await page.locator('iframe:visible').getAttribute('data-family-game')).toBe(raw)
-      if (grade === 'Grade 5') await page.screenshot({ path: test.info().outputPath('game.png'), fullPage: true })
+      // This Chromium build resets touch emulation during full-page capture.
+      // Keep tablet visual capture in a separate context, not inside its tap journey.
+      if (grade === 'Grade 5' && !isMobile)
+        await page.screenshot({ path: test.info().outputPath('game.png'), fullPage: true })
+      const choose = async (control: ReturnType<typeof frame.locator>) => {
+        if (isMobile) await control.tap()
+        else await control.click()
+      }
 
       if (pack.moduleId === 'memory-flip') {
         const cards = frame.locator('.lg-memory-card')
@@ -54,8 +61,8 @@ for (const [slug, grade, childId] of grades) {
         const unique = [...new Set(faces)]
         for (const face of unique) {
           const indices = faces.flatMap((text, index) => (text === face ? [index] : []))
-          await cards.nth(indices[0]).click()
-          await cards.nth(indices[1]).click()
+          await choose(cards.nth(indices[0]))
+          await choose(cards.nth(indices[1]))
           if (face !== unique[unique.length - 1]) await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
         }
       } else if (pack.moduleId === 'speed-match') {
@@ -65,8 +72,8 @@ for (const [slug, grade, childId] of grades) {
             name: `${pair.right.label}. Click to hear and select.`,
             exact: true,
           })
-          await word.click()
-          await meaning.click()
+          await choose(word)
+          await choose(meaning)
           // Correct feedback unlocks the next pair; the last pair opens completion.
           if (pair !== pack.pairs[pack.pairs.length - 1]) await expect(word).toHaveClass(/is-matched/)
         }
@@ -78,7 +85,7 @@ for (const [slug, grade, childId] of grades) {
             .locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button')
             .nth(index)
           await expect(choice).toBeEnabled()
-          if (isMobile) await choice.click()
+          if (isMobile) await choose(choice)
           else await frame.locator('canvas').press(String(index + 1))
         }
       } else if (pack.moduleId === 'sentence-scramble') {
@@ -93,7 +100,7 @@ for (const [slug, grade, childId] of grades) {
               .getByRole('button', { name: `Place ${token.label} in sentence position ${index + 1}`, exact: true })
               .and(frame.locator('button:enabled'))
               .first()
-            await piece.click()
+            await choose(piece)
           }
         }
       }
