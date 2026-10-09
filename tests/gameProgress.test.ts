@@ -2,15 +2,23 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { inspectSnapshot } from '../src/familyBeta/curriculum.ts'
-import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
 import { ownedPracticeRecord } from '../src/familyBeta/deviceSync.ts'
+import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
+import { saveGameAggregate } from '../src/familyBeta/gameResultBridge.ts'
+import { PENDING_KEY, RESULT_KEY, readResultLedger } from '../src/familyBeta/resultLedger.ts'
 import type { LearningModuleAttempt, LearningModulePack } from '../src/ninjaSkills/contracts.ts'
+import { type GameHistoryRemote, reconcileGameHistory } from '../src/ninjaSkills/gameHistory.ts'
+import { openGameSession } from '../src/ninjaSkills/gameSession.ts'
 import {
   checkpointGameAnswer,
   checkpointGameTimer,
   completeGameCheckpoint,
   continueGameCheckpoint,
+  type GameCheckpoint,
+  type GameCompletion,
+  type GameRetirement,
   gameCheckpointComplete,
+  gameScopeKey,
   reconcileGameCheckpoints,
   retireGameCheckpoint,
   retryTimedGame,
@@ -18,20 +26,13 @@ import {
   startGameCheckpoint,
   validateGameCheckpoint,
   validateGameCompletion,
-  type GameCheckpoint,
-  type GameCompletion,
-  type GameRetirement,
 } from '../src/ninjaSkills/progress.ts'
 import {
   createGameProgressStore,
   createLockedGameProgressStore,
   type GameWriteLock,
 } from '../src/ninjaSkills/progressStore.ts'
-import { syncGameProgress, type GameProgressRemote } from '../src/ninjaSkills/progressSync.ts'
-import { reconcileGameHistory, type GameHistoryRemote } from '../src/ninjaSkills/gameHistory.ts'
-import { openGameSession } from '../src/ninjaSkills/gameSession.ts'
-import { saveGameAggregate } from '../src/familyBeta/gameResultBridge.ts'
-import { readResultLedger, RESULT_KEY, PENDING_KEY } from '../src/familyBeta/resultLedger.ts'
+import { type GameProgressRemote, syncGameProgress } from '../src/ninjaSkills/progressSync.ts'
 
 const now = '2026-10-09T01:00:00.000Z'
 const later = '2026-10-09T01:01:00.000Z'
@@ -292,14 +293,50 @@ test('an interrupted discard retries the identical durable retirement before rem
     if (!key.includes(':checkpoint:')) originalRemove(key)
   }
   await assert.rejects(session.discard(), /could not be confirmed/)
-  const retirement = f.store.retirement(options.scope)
+  const retirement = f.store.retirement(options.scope, session.checkpoint().runId)
   assert.ok(retirement)
   assert.equal(retirement.retiredAt, later)
   assert.equal(f.store.checkpoint(options.scope), null, 'the interrupted checkpoint remains hidden')
   f.storage.removeItem = originalRemove
   await session.discard()
-  assert.deepEqual(f.store.retirement(options.scope), retirement, 'retry does not invent a new retirement')
+  assert.deepEqual(
+    f.store.retirement(options.scope, session.checkpoint().runId),
+    retirement,
+    'retry does not invent a new retirement',
+  )
   assert.equal(f.store.checkpoint(options.scope), null)
+})
+
+test('a hidden checkpoint from an interrupted discard cannot block a fresh run', () => {
+  const f = memory()
+  const first = fixture()
+  f.store.saveCheckpoint(first, null)
+  const originalRemove = f.storage.removeItem
+  f.storage.removeItem = () => {}
+  assert.throws(() => f.store.discardCheckpoint(first, retireGameCheckpoint(first, later)), /could not be confirmed/)
+  assert.equal(f.store.checkpoint(first.scope), null)
+  f.storage.removeItem = originalRemove
+
+  const second = startGameCheckpoint(first.scope, first.pack, 'attempt-two', first.writerId, later)
+  f.store.saveCheckpoint(second, null)
+  assert.deepEqual(f.store.checkpoint(first.scope), second)
+  assert.ok(f.store.retirement(first.scope, first.runId))
+})
+
+test('legacy one-per-scope retirements remain enforceable and can be acknowledged', () => {
+  const f = memory()
+  const checkpoint = fixture()
+  f.store.saveCheckpoint(checkpoint, null)
+  const retired = retireGameCheckpoint(checkpoint, later)
+  const scope = encodeURIComponent(gameScopeKey(checkpoint.scope))
+  const legacyKey = `family-beta-games-v1:family:retirement:${scope}`
+  f.storage.setItem(legacyKey, JSON.stringify(retired))
+
+  assert.equal(f.store.checkpoint(checkpoint.scope), null)
+  assert.deepEqual(f.store.retirements(checkpoint.scope.childId), [retired])
+  f.store.acknowledgeRetirement(retired)
+  assert.equal(f.storage.getItem(legacyKey), null)
+  assert.equal(f.store.retirement(checkpoint.scope, checkpoint.runId), null)
 })
 
 test('completed rounds reopen until delivered, then use a distinct immutable attempt', async () => {
@@ -605,7 +642,7 @@ test('cross-device retirement prevents a discarded run from returning after a ne
   }
   await syncGameProgress(options)
   assert.deepEqual(cloud.retirements.get(initial.runId), retirement)
-  assert.equal(discardedDevice.store.retirement(initial.scope), null)
+  assert.equal(discardedDevice.store.retirement(initial.scope, initial.runId), null)
 
   const staleDevice = memory()
   staleDevice.store.saveCheckpoint(initial, null)
@@ -628,6 +665,41 @@ test('cross-device retirement prevents a discarded run from returning after a ne
   await syncGameProgress({ ...options, store: oldAgain.store })
   assert.equal(oldAgain.store.checkpoint(initial.scope), null)
   assert.deepEqual(cloud.current(), next, 'the old discarded run cannot replace the newer cloud run')
+})
+
+test('multiple offline discards for one game retain and sync every retired run', async () => {
+  const offline = memory()
+  const first = fixture()
+  offline.store.saveCheckpoint(first, null)
+  const firstRetirement = retireGameCheckpoint(first, later)
+  offline.store.discardCheckpoint(first, firstRetirement)
+
+  const second = startGameCheckpoint(first.scope, first.pack, 'attempt-two', first.writerId, later)
+  offline.store.saveCheckpoint(second, null)
+  const secondRetirement = retireGameCheckpoint(second, '2026-10-09T01:02:00.000Z')
+  offline.store.discardCheckpoint(second, secondRetirement)
+  assert.deepEqual(offline.store.retirements('child'), [firstRetirement, secondRetirement])
+
+  const cloud = remoteFixture(first)
+  const options = {
+    store: offline.store,
+    remote: cloud.remote,
+    childId: 'child',
+    scopes: [first.scope],
+    stillOwner: () => true,
+    canReplaceCheckpoint: () => true,
+  }
+  await syncGameProgress(options)
+  assert.deepEqual(cloud.retirements.get(first.runId), firstRetirement)
+  assert.deepEqual(cloud.retirements.get(second.runId), secondRetirement)
+  assert.deepEqual(offline.store.retirements('child'), [])
+
+  for (const retired of [first, second]) {
+    const stale = memory()
+    stale.store.saveCheckpoint(retired, null)
+    await syncGameProgress({ ...options, store: stale.store })
+    assert.equal(stale.store.checkpoint(first.scope), null)
+  }
 })
 
 test('discarding a run completed elsewhere preserves its immutable completion', async () => {
@@ -715,9 +787,7 @@ test('failed or repeated cloud history pages leave the existing device cache unc
     ...cloud.remote,
     listCheckpointPage: async () => ({ checkpoints: [], nextPageToken: '' }),
     listCompletionPage: async (_childId, cursor = '') =>
-      cursor
-        ? { completions: [completion], nextPageToken: '' }
-        : { completions: [completion], nextPageToken: 'next' },
+      cursor ? { completions: [completion], nextPageToken: '' } : { completions: [completion], nextPageToken: 'next' },
   }
   await assert.rejects(
     reconcileGameHistory({

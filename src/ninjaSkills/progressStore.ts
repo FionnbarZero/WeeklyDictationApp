@@ -1,16 +1,16 @@
 import {
   completeGameCheckpoint,
+  GAME_PROGRESS_BYTES,
+  type GameCheckpoint,
+  type GameCompletion,
+  type GameRetirement,
+  type GameScope,
   gameCheckpointComplete,
   gameScopeKey,
   serializeGameRecord,
   validateGameCheckpoint,
   validateGameCompletion,
   validateGameRetirement,
-  GAME_PROGRESS_BYTES,
-  type GameCheckpoint,
-  type GameCompletion,
-  type GameScope,
-  type GameRetirement,
 } from './progress.ts'
 
 export type GameStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem' | 'key' | 'length'>
@@ -28,7 +28,9 @@ const safeId = (id: string) => {
 export function createGameProgressStore(storage: GameStorage, familyId: string) {
   const prefix = `family-beta-games-v1:${safeId(familyId)}:`
   const checkpointKey = (scope: GameScope) => `${prefix}checkpoint:${encodeURIComponent(gameScopeKey(scope))}`
-  const retirementKey = (scope: GameScope) => `${prefix}retirement:${encodeURIComponent(gameScopeKey(scope))}`
+  const legacyRetirementKey = (scope: GameScope) => `${prefix}retirement:${encodeURIComponent(gameScopeKey(scope))}`
+  const retirementPrefix = (scope: GameScope) => `${prefix}retirement:${encodeURIComponent(gameScopeKey(scope))}:`
+  const retirementKey = (scope: GameScope, runId: string) => `${retirementPrefix(scope)}${safeId(runId)}`
   const completedPrefix = (childId: string) => `${prefix}completed:${safeId(childId)}:`
   const pendingPrefix = (childId: string) => `${prefix}pending:${safeId(childId)}:`
   function read<T>(key: string, validate: (value: T) => T): T | null {
@@ -58,15 +60,36 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
       throw new Error('Saved game belongs to a different activity.')
     return value
   }
-  function retirement(scope: GameScope) {
-    const value = read(retirementKey(scope), validateGameRetirement)
-    if (value && gameScopeKey(value.scope) !== gameScopeKey(scope))
-      throw new Error('Saved game retirement belongs to a different activity.')
+  function retirement(scope: GameScope, runId: string) {
+    const value =
+      read(retirementKey(scope, runId), validateGameRetirement) ||
+      read(legacyRetirementKey(scope), validateGameRetirement)
+    if (value && (gameScopeKey(value.scope) !== gameScopeKey(scope) || value.runId !== runId)) return null
     return value
   }
   function checkpoint(scope: GameScope) {
     const value = rawCheckpoint(scope)
-    return value && retirement(scope)?.runId === value.runId ? null : value
+    return value && retirement(scope, value.runId) ? null : value
+  }
+  function retirements(childId: string) {
+    safeId(childId)
+    const values = new Map<string, GameRetirement>()
+    for (const key of storageKeys().filter((key) => key.startsWith(`${prefix}retirement:`))) {
+      const value = read(key, validateGameRetirement)
+      if (value && key !== retirementKey(value.scope, value.runId) && key !== legacyRetirementKey(value.scope))
+        throw new Error('Saved game retirement has an invalid identity.')
+      if (value?.scope.childId !== childId) continue
+      if (value) {
+        const identity = `${gameScopeKey(value.scope)}:${value.runId}`
+        const existing = values.get(identity)
+        if (existing && serializeGameRecord(existing) !== serializeGameRecord(value))
+          throw new Error('Saved game retirement records disagree. Existing records were preserved.')
+        values.set(identity, value)
+      }
+      if (values.size > GAME_CHECKPOINT_LIMIT)
+        throw new Error('Too many retained game retirements. Saved work was preserved.')
+    }
+    return [...values.values()].sort((left, right) => left.runId.localeCompare(right.runId))
   }
   function checkpoints(childId: string) {
     safeId(childId)
@@ -122,10 +145,8 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
     if (!allowed()) throw new Error('Game checkpoint replacement is no longer allowed.')
     validateGameCheckpoint(value)
     const raw = rawCheckpoint(value.scope)
-    const retired = retirement(value.scope)
-    const current = raw && retired?.runId === raw.runId ? null : raw
-    if (retired?.runId === value.runId)
-      throw new Error('This discarded game run cannot be restored.')
+    const current = raw && retirement(value.scope, raw.runId) ? null : raw
+    if (retirement(value.scope, value.runId)) throw new Error('This discarded game run cannot be restored.')
     if (
       serializeGameRecord(current) !== serializeGameRecord(expected) &&
       serializeGameRecord(current) !== serializeGameRecord(value)
@@ -148,20 +169,7 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
     checkpoint,
     checkpoints,
     retirement,
-    retirements(childId: string) {
-      safeId(childId)
-      const values: GameRetirement[] = []
-      for (const key of storageKeys().filter((key) => key.startsWith(`${prefix}retirement:`))) {
-        const scope = JSON.parse(decodeURIComponent(key.slice(`${prefix}retirement:`.length))) as GameScope
-        gameScopeKey(scope)
-        if (scope.childId !== childId) continue
-        const value = retirement(scope)
-        if (value) values.push(value)
-        if (values.length > GAME_CHECKPOINT_LIMIT)
-          throw new Error('Too many retained game retirements. Saved work was preserved.')
-      }
-      return values
-    },
+    retirements,
     completions,
     saveCompletion,
     saveCheckpoint,
@@ -169,36 +177,52 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
       const key = checkpointKey(expected.scope)
       const current = rawCheckpoint(expected.scope)
       validateGameRetirement(retirementValue)
-      if (gameScopeKey(retirementValue.scope) !== gameScopeKey(expected.scope) || retirementValue.runId !== expected.runId)
+      if (
+        gameScopeKey(retirementValue.scope) !== gameScopeKey(expected.scope) ||
+        retirementValue.runId !== expected.runId
+      )
         throw new Error('Game retirement does not match the discarded run.')
       if (!current) {
-        const existing = retirement(expected.scope)
+        const existing = retirement(expected.scope, expected.runId)
         if (serializeGameRecord(existing) !== serializeGameRecord(retirementValue))
           throw new Error('The discarded game changed. Existing records were preserved.')
         return
       }
       if (serializeGameRecord(current) !== serializeGameRecord(expected))
         throw new Error('This game changed in another tab. No saved work was discarded.')
+      if (
+        !retirement(expected.scope, expected.runId) &&
+        retirements(expected.scope.childId).length >= GAME_CHECKPOINT_LIMIT
+      )
+        throw new Error('Too many retained game retirements. No saved work was discarded.')
       // Persist the retirement first. A crash before removing the checkpoint
       // leaves the old run hidden and queued for cloud confirmation.
-      confirm(retirementKey(expected.scope), retirementValue)
+      confirm(retirementKey(expected.scope, expected.runId), retirementValue)
       storage.removeItem(key)
       if (storage.getItem(key) !== null) throw new Error('Discarding the game could not be confirmed.')
     },
     acknowledgeRetirement(value: GameRetirement) {
       validateGameRetirement(value)
-      const key = retirementKey(value.scope)
-      if (serializeGameRecord(retirement(value.scope)) !== serializeGameRecord(value)) return
+      const key = retirementKey(value.scope, value.runId)
+      if (serializeGameRecord(retirement(value.scope, value.runId)) !== serializeGameRecord(value)) return
       const current = rawCheckpoint(value.scope)
       if (current?.runId === value.runId) storage.removeItem(checkpointKey(value.scope))
       storage.removeItem(key)
+      const legacyKey = legacyRetirementKey(value.scope)
+      const legacy = read(legacyKey, validateGameRetirement)
+      if (legacy?.runId === value.runId) storage.removeItem(legacyKey)
     },
     applyRemoteRetirement(value: GameRetirement) {
       validateGameRetirement(value)
       const current = rawCheckpoint(value.scope)
       if (current && current.runId === value.runId) storage.removeItem(checkpointKey(value.scope))
-      const local = retirement(value.scope)
-      if (local?.runId === value.runId) storage.removeItem(retirementKey(value.scope))
+      const local = retirement(value.scope, value.runId)
+      if (local) {
+        storage.removeItem(retirementKey(value.scope, value.runId))
+        const legacyKey = legacyRetirementKey(value.scope)
+        const legacy = read(legacyKey, validateGameRetirement)
+        if (legacy?.runId === value.runId) storage.removeItem(legacyKey)
+      }
     },
     finishCheckpoint(value: GameCheckpoint, expected: GameCheckpoint | null) {
       // Last reviewed-answer time gives retries the identical completion time.
@@ -221,7 +245,13 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
 type LocalGameStore = ReturnType<typeof createGameProgressStore>
 export type GameProgressStore = Omit<
   LocalGameStore,
-  'saveCheckpoint' | 'saveCompletion' | 'acknowledgeCompletion' | 'acknowledgeRetirement' | 'applyRemoteRetirement' | 'finishCheckpoint' | 'discardCheckpoint'
+  | 'saveCheckpoint'
+  | 'saveCompletion'
+  | 'acknowledgeCompletion'
+  | 'acknowledgeRetirement'
+  | 'applyRemoteRetirement'
+  | 'finishCheckpoint'
+  | 'discardCheckpoint'
 > & {
   discardCheckpoint: (...args: Parameters<LocalGameStore['discardCheckpoint']>) => void | Promise<void>
   saveCheckpoint: (...args: Parameters<LocalGameStore['saveCheckpoint']>) => void | Promise<void>

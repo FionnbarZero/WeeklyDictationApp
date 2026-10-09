@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type { LearningModulePack, PlayLearningModuleAudio } from '../ninjaSkills/contracts.ts'
-import { openGameSession, type GameSession } from '../ninjaSkills/gameSession.ts'
+import { type GameSession, openGameSession } from '../ninjaSkills/gameSession.ts'
 import { completeGameCheckpoint } from '../ninjaSkills/progress.ts'
 import { browserGameWriteLock, createLockedGameProgressStore } from '../ninjaSkills/progressStore.ts'
-import { saveGameAggregate } from './gameResultBridge.ts'
 import type { FamilyGameOwner, FamilyGameWindow } from './gameOwner.ts'
-import { assertResultCopiesMatch, readResultLedger, RESULT_KEY, PENDING_KEY } from './resultLedger.ts'
+import { saveGameAggregate } from './gameResultBridge.ts'
 import type { BetaResult } from './model.ts'
+import { assertResultCopiesMatch, PENDING_KEY, RESULT_KEY, readResultLedger } from './resultLedger.ts'
 import '../ninjaSkills/surface.css'
 
 const MemoryFlip = lazy(() =>
@@ -125,7 +125,7 @@ export function SavedLearningGame({
   }
   return (
     <div className="ninja-game-surface">
-      <p>Reviewed turns save on this device. Game-detail syncing is not connected yet.</p>
+      <p>Reviewed turns save on this device and sync with the parent’s family account when connected.</p>
       {error && <p role="alert">{error}</p>}
       <Suspense fallback={<p role="status">Opening saved game…</p>}>
         {initial.pack.moduleId === 'memory-flip' ? (
