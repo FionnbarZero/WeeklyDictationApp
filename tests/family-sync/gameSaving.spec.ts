@@ -151,6 +151,86 @@ test('a ledger write must be read back before presenting completion', async ({ p
   expect(await results(page)).toHaveLength(1)
 })
 
+test('an unfinished game becomes resumable on another parent-authenticated device', async ({ browser }) => {
+  const documents = new Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>()
+  const firstContext = await browser.newContext()
+  const page = await firstContext.newPage()
+  await installFamilyFixtures(page, documents)
+  await page.goto('http://127.0.0.1:5193/family-beta-preview?grade=grade5')
+  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  const cards = page.frameLocator('iframe:visible').locator('.lg-memory-card')
+  await expect(cards.first()).toBeVisible()
+  const faces = await cards.locator('.lg-card-face b').allTextContents()
+  const first = faces[0]
+  const indices = faces.flatMap((text, index) => (text === first ? [index] : []))
+  await cards.nth(indices[0]).click()
+  await cards.nth(indices[1]).click()
+  await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
+  await page.getByRole('button', { name: 'Progress', exact: true }).click()
+  await expect.poll(() => [...documents.keys()].filter((name) => name.includes('/betaGameCheckpoints/')).length).toBe(1)
+
+  const secondContext = await browser.newContext()
+  const second = await secondContext.newPage()
+  await installFamilyFixtures(second, documents)
+  await second.goto('http://127.0.0.1:5193/family-beta-preview?grade=grade5')
+  await second.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await expect(second.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
+  await second.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
+  await expect(second.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(2)
+  await secondContext.close()
+  await firstContext.close()
+})
+
+test('discarding on one device permanently retires that unfinished run on another device', async ({ browser }) => {
+  const documents = new Map<
+    string,
+    { name: string; fields: Record<string, unknown>; updateTime?: string }
+  >()
+  const firstContext = await browser.newContext()
+  const first = await firstContext.newPage()
+  await installFamilyFixtures(first, documents)
+  await first.goto('http://127.0.0.1:5193/family-beta-preview?grade=grade5')
+  await first.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await first.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  const cards = first.frameLocator('iframe:visible').locator('.lg-memory-card')
+  await expect(cards.first()).toBeVisible()
+  const faces = await cards.locator('.lg-card-face b').allTextContents()
+  const indices = faces.flatMap((text, index) => (text === faces[0] ? [index] : []))
+  await cards.nth(indices[0]).click()
+  await cards.nth(indices[1]).click()
+  await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
+  await first.getByRole('button', { name: 'Progress', exact: true }).click()
+  await expect
+    .poll(() => [...documents.keys()].filter(name => name.includes('/betaGameCheckpoints/')).length)
+    .toBe(1)
+
+  const secondContext = await browser.newContext()
+  const second = await secondContext.newPage()
+  await installFamilyFixtures(second, documents)
+  await second.goto('http://127.0.0.1:5193/family-beta-preview?grade=grade5')
+  await second.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await expect(second.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
+
+  await first.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await first.frameLocator('iframe:visible').getByRole('button', { name: 'Exit learning module', exact: true }).click()
+  first.once('dialog', dialog => dialog.accept())
+  await first.getByRole('button', { name: 'Discard unfinished Memory Lanterns', exact: true }).click()
+  await first.getByRole('button', { name: 'Progress', exact: true }).click()
+  await expect
+    .poll(() => [...documents.keys()].filter(name => name.includes('/betaGameRetirements/')).length)
+    .toBe(1)
+
+  await second.getByRole('button', { name: 'Progress', exact: true }).click()
+  await second.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await expect(second.getByRole('button', { name: 'Memory Lanterns', exact: true })).toBeVisible()
+  await expect(second.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toHaveCount(0)
+  await second.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  await expect(second.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(0)
+  await secondContext.close()
+  await firstContext.close()
+})
+
 for (const [entry, slug, childId] of [
   ['/kindergarten-learning-lab.html', 'kindergarten', 'synthetic-k'],
   ['/index.html?grade=grade2', 'grade2', 'synthetic-g2'],

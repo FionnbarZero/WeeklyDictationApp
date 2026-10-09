@@ -5,9 +5,11 @@ import {
   serializeGameRecord,
   validateGameCheckpoint,
   validateGameCompletion,
+  validateGameRetirement,
   type GameCheckpoint,
   type GameCompletion,
   type GameScope,
+  type GameRetirement,
 } from './progress.ts'
 import type { GameProgressStore } from './progressStore.ts'
 
@@ -17,11 +19,17 @@ import type { GameProgressStore } from './progressStore.ts'
 export type GameProgressRemote = {
   saveCompletion(value: GameCompletion): Promise<GameCompletion>
   readCompletion(childId: string, attemptId: string): Promise<GameCompletion | null>
-  readCheckpoint(scope: GameScope): Promise<{ value: GameCheckpoint; version: string; serverTime: string } | null>
+  readCheckpoint(scope: GameScope): Promise<{
+    value: GameCheckpoint
+    version: string
+    serverTime: string
+  } | null>
   writeCheckpoint(
     value: GameCheckpoint,
     expectedVersion: string | null,
   ): Promise<{ value: GameCheckpoint; version: string }>
+  saveRetirement(value: GameRetirement): Promise<GameRetirement>
+  readRetirement(scope: GameScope, runId: string): Promise<GameRetirement | null>
 }
 
 export async function syncGameProgress(options: {
@@ -52,6 +60,7 @@ export async function syncGameProgress(options: {
     seen.add(scopeKey)
     if (!stillOwner()) return
     const local = store.checkpoint(scope)
+    const localRetirement = store.retirement(scope)
     const online = await remote.readCheckpoint(scope)
     if (!stillOwner()) return
     if (online) {
@@ -65,12 +74,79 @@ export async function syncGameProgress(options: {
     }
     // The network wait may overlap another answer, timer update or tab write.
     // Never acknowledge or apply the stale snapshot from before that wait.
+    if (
+      serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local) ||
+      serializeGameRecord(store.retirement(scope)) !== serializeGameRecord(localRetirement)
+    ) continue
+    // Retirement records are immutable and per run. They remain enforceable
+    // after a newer run replaces the scope's current checkpoint.
+    if (localRetirement) {
+      if (online?.value.runId === localRetirement.runId && gameCheckpointComplete(online.value)) {
+        const completion = await remote.readCompletion(childId, online.value.attemptId)
+        if (!stillOwner()) return
+        if (
+          !completion ||
+          serializeGameRecord(validateGameCompletion(completion).checkpoint) !== serializeGameRecord(online.value)
+        )
+          throw new Error('The completed checkpoint has no matching immutable result. The discard remains queued.')
+        await store.saveCompletion(completion, false)
+      }
+      if (
+        !stillOwner() ||
+        serializeGameRecord(store.retirement(scope)) !== serializeGameRecord(localRetirement)
+      )
+        continue
+      const saved = validateGameRetirement(await remote.saveRetirement(localRetirement))
+      if (!stillOwner()) return
+      if (serializeGameRecord(saved) !== serializeGameRecord(localRetirement))
+        throw new Error('Cloud game retirement differs. The discarded run remains queued.')
+      await store.acknowledgeRetirement(localRetirement)
+      continue
+    }
+
+    let localCheckpoint = local
+    if (localCheckpoint) {
+      const retirement = await remote.readRetirement(scope, localCheckpoint.runId)
+      if (!stillOwner()) return
+      if (retirement) {
+        validateGameRetirement(retirement)
+        if (
+          gameScopeKey(retirement.scope) !== scopeKey ||
+          retirement.runId !== localCheckpoint.runId
+        )
+          throw new Error('Online game retirement identity failed validation.')
+        if (
+          serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local) ||
+          !canReplaceCheckpoint(scope)
+        )
+          continue
+        await store.applyRemoteRetirement(retirement)
+        continue
+      }
+    }
+
+    let onlineCheckpoint = online?.value
+    if (onlineCheckpoint && onlineCheckpoint.runId !== localCheckpoint?.runId) {
+      const retirement = await remote.readRetirement(scope, onlineCheckpoint.runId)
+      if (!stillOwner()) return
+      if (retirement) {
+        validateGameRetirement(retirement)
+        if (
+          gameScopeKey(retirement.scope) !== scopeKey ||
+          retirement.runId !== onlineCheckpoint.runId
+        )
+          throw new Error('Online game retirement identity failed validation.')
+        onlineCheckpoint = undefined
+      }
+    }
     if (serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local)) continue
     const winner =
-      local && online ? reconcileGameCheckpoints(local, online.value, online.serverTime) : local || online?.value
+      localCheckpoint && onlineCheckpoint
+        ? reconcileGameCheckpoints(localCheckpoint, onlineCheckpoint, online!.serverTime)
+        : localCheckpoint || onlineCheckpoint
     if (!winner) continue
-    if (online && serializeGameRecord(winner) === serializeGameRecord(online.value)) {
-      if (serializeGameRecord(local) !== serializeGameRecord(winner)) {
+    if (online && serializeGameRecord(winner) === serializeGameRecord(onlineCheckpoint)) {
+      if (serializeGameRecord(localCheckpoint) !== serializeGameRecord(winner)) {
         if (!canReplaceCheckpoint(scope)) continue
         if (gameCheckpointComplete(winner)) {
           const completion = await remote.readCompletion(childId, winner.attemptId)
@@ -84,11 +160,11 @@ export async function syncGameProgress(options: {
           if (!stillOwner()) return
           if (
             !canReplaceCheckpoint(scope) ||
-            serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local)
+            serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(localCheckpoint)
           )
             continue
         }
-        await store.saveCheckpoint(winner, local, () => stillOwner() && canReplaceCheckpoint(scope))
+        await store.saveCheckpoint(winner, localCheckpoint, () => stillOwner() && canReplaceCheckpoint(scope))
       }
       continue
     }

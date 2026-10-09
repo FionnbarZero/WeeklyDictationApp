@@ -18,26 +18,41 @@ service cloud.firestore {
       return request.resource.data.status in ['in_progress', 'partial', 'completed', 'skipped', 'abandoned'];
     }
     function validAttempt(familyId, childId, sessionId, attemptId) {
-      return request.resource.data.id is string
+      let session = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data;
+      return request.resource.data.keys().hasAll([
+          'id', 'sessionId', 'wordId', 'sourceDatasetId', 'phase', 'correct', 'reviewedAt', 'completionStatus'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'id', 'sessionId', 'wordId', 'sourceDatasetId', 'phase', 'reviewCycle', 'correct',
+          'reviewedAt', 'completionStatus', 'countsTowardWeeklyScore', 'acquisitionKind', 'transitionId'
+        ])
         && request.resource.data.id == attemptId
         && request.resource.data.sessionId is string
         && request.resource.data.sessionId == sessionId
         && request.resource.data.wordId is string
         && request.resource.data.sourceDatasetId is string
-        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId))
+        && session.id == sessionId
+        && session.childId == childId
+        && session.familyId == familyId
         && exists(/databases/$(database)/documents/datasets/$(request.resource.data.sourceDatasetId)/words/$(request.resource.data.wordId))
+        && (request.resource.data.sourceDatasetId == session.datasetId
+          || ('datasetIds' in session && request.resource.data.sourceDatasetId in session.datasetIds))
         && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && (request.resource.data.phase == 'warmup' || request.resource.data.phase == session.primaryPhase)
         && (!('reviewCycle' in request.resource.data)
           || (request.resource.data.phase == 'test-review'
             && request.resource.data.reviewCycle is int
             && request.resource.data.reviewCycle > 0))
         && (request.resource.data.phase != 'test-review'
           || ((!('reviewCycle' in request.resource.data)
-                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data))
-            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId)).data.reviewCycle)))
+                && !('reviewCycle' in session))
+            || (request.resource.data.reviewCycle == session.reviewCycle)))
         && request.resource.data.correct is bool
         && request.resource.data.reviewedAt is string
-        && request.resource.data.completionStatus in ['temporary', 'complete'];
+        && request.resource.data.completionStatus in ['temporary', 'complete']
+        && (!('countsTowardWeeklyScore' in request.resource.data) || request.resource.data.countsTowardWeeklyScore is bool)
+        && (!('acquisitionKind' in request.resource.data) || request.resource.data.acquisitionKind is string)
+        && (!('transitionId' in request.resource.data) || request.resource.data.transitionId is string);
     }
     function validTier2ReadingProgress(childId, progressId) {
       return request.resource.data.keys().hasAll([
@@ -386,31 +401,85 @@ service cloud.firestore {
             && request.resource.data.lastAppliedTransition.masteryStateId == masteryStateId
             && request.resource.data.lastAppliedTransition.appliedMasteryRevision == request.resource.data.revision));
     }
-    function validScore(familyId, childId) {
-      return request.resource.data.childId is string
+    function validScore(familyId, childId, scoreId) {
+      let session = getAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data;
+      let dataset = get(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId)).data;
+      return request.resource.data.keys().hasAll([
+          'id', 'childId', 'datasetId', 'datasetDateRange', 'phase', 'sessionId',
+          'sessionDate', 'percent', 'correct', 'wordCount'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'id', 'childId', 'datasetId', 'datasetDateRange', 'phase', 'sessionId',
+          'sessionDate', 'percent', 'correct', 'wordCount', 'warmupSessionId', 'reviewCycle'
+        ])
+        && request.resource.data.id == scoreId
         && request.resource.data.childId == childId
         && request.resource.data.datasetId is string
         && request.resource.data.sessionId is string
-        && exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId))
-        && exists(/databases/$(database)/documents/datasets/$(request.resource.data.datasetId))
+        && session.id == request.resource.data.sessionId
+        && session.childId == childId
+        && session.familyId == familyId
+        && session.status == 'completed'
+        && dataset.id == request.resource.data.datasetId
+        && (request.resource.data.datasetId == session.datasetId
+          || ('datasetIds' in session && request.resource.data.datasetId in session.datasetIds))
+        && request.resource.data.datasetDateRange is string
+        && request.resource.data.datasetDateRange == dataset.dateRange
         && request.resource.data.sessionDate is string
-        && request.resource.data.phase in ['warmup', 'acquisition', 'test-review']
+        && request.resource.data.sessionDate == session.localDate
+        && request.resource.data.phase == session.primaryPhase
+        && (!('warmupSessionId' in request.resource.data) || request.resource.data.warmupSessionId is string)
         && (!('reviewCycle' in request.resource.data)
           || (request.resource.data.phase == 'test-review'
             && request.resource.data.reviewCycle is int
             && request.resource.data.reviewCycle > 0))
         && (request.resource.data.phase != 'test-review'
           || ((!('reviewCycle' in request.resource.data)
-                && !('reviewCycle' in get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data))
-            || (request.resource.data.reviewCycle == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(request.resource.data.sessionId)).data.reviewCycle)))
+                && !('reviewCycle' in session))
+            || (request.resource.data.reviewCycle == session.reviewCycle)))
         && request.resource.data.percent is number
         && request.resource.data.percent >= 0
         && request.resource.data.percent <= 100
-        && request.resource.data.correct is number
-        && request.resource.data.wordCount is number
+        && request.resource.data.correct is int
+        && request.resource.data.wordCount is int
         && request.resource.data.wordCount > 0
         && request.resource.data.correct >= 0
-        && request.resource.data.correct <= request.resource.data.wordCount;
+        && request.resource.data.correct <= request.resource.data.wordCount
+        && (2 * request.resource.data.percent - 1) * request.resource.data.wordCount
+          <= 200 * request.resource.data.correct
+        && 200 * request.resource.data.correct
+          < (2 * request.resource.data.percent + 1) * request.resource.data.wordCount;
+    }
+    function validGamePayload() {
+      return request.resource.data.payload is string
+        && request.resource.data.payload.size() > 0
+        && request.resource.data.payload.size() <= 200000
+        && !request.resource.data.payload.matches('.*"response".*')
+        && !request.resource.data.payload.matches('.*"recording".*')
+        && !request.resource.data.payload.matches('.*"recordingUrl".*')
+        && !request.resource.data.payload.matches('.*"handwritingImage".*')
+        && !request.resource.data.payload.matches('.*"audioBlob".*')
+        && !request.resource.data.payload.matches('.*"mimeType".*')
+        && !request.resource.data.payload.matches('.*blob:.*')
+        && !request.resource.data.payload.matches('.*data:audio.*');
+    }
+    function validGameBase(familyId, childId, recordId, kind) {
+      return request.resource.data.schema == 1
+        && request.resource.data.kind == kind
+        && request.resource.data.childId == childId
+        && request.resource.data.grade in ['Kindergarten', 'Grade 2', 'Grade 5']
+        && request.resource.data.grade == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)).data.grade
+        && request.resource.data.recordId == recordId
+        && validGamePayload();
+    }
+    function validGameScoped(familyId, childId, recordId, kind) {
+      return request.resource.data.keys().hasAll(['schema', 'kind', 'childId', 'grade', 'scopeId', 'runId', 'recordId', 'payload'])
+        && request.resource.data.keys().hasOnly(['schema', 'kind', 'childId', 'grade', 'scopeId', 'runId', 'recordId', 'payload'])
+        && validGameBase(familyId, childId, recordId, kind)
+        && request.resource.data.scopeId is string
+        && request.resource.data.scopeId.matches('^[a-f0-9]{64}$')
+        && request.resource.data.runId is string
+        && request.resource.data.runId.matches('^[A-Za-z0-9_-]{1,160}$');
     }
 
     match /users/{parentId} {
@@ -453,7 +522,15 @@ service cloud.firestore {
             && (!('reviewCycle' in request.resource.data)
               || (request.resource.data.primaryPhase == 'test-review'
                 && request.resource.data.reviewCycle is int
-                && request.resource.data.reviewCycle > 0));
+                && request.resource.data.reviewCycle > 0))
+            && (!exists(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/sessions/$(sessionId))
+              || ((!('startedAt' in resource.data) || request.resource.data.startedAt == resource.data.startedAt)
+                && (!('id' in resource.data) || request.resource.data.id == resource.data.id)
+                && request.resource.data.childId == resource.data.childId
+                && request.resource.data.familyId == resource.data.familyId
+                && request.resource.data.primaryPhase == resource.data.primaryPhase
+                && ((!('reviewCycle' in resource.data) && !('reviewCycle' in request.resource.data))
+                  || (request.resource.data.reviewCycle == resource.data.reviewCycle))));
           allow delete: if false;
 
           match /attempts/{attemptId} {
@@ -517,10 +594,44 @@ service cloud.firestore {
           allow delete: if false;
         }
 
+        // Candidate Stage B game contract. This source is tested locally but
+        // must not be activated without a separate production-policy approval.
+        match /betaGameCheckpoints/{recordId} {
+          function validCheckpoint() {
+            return validGameScoped(familyId, childId, recordId, 'checkpoint')
+              && request.resource.data.recordId == request.resource.data.scopeId
+              && !existsAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/betaGameRetirements/$(request.resource.data.scopeId + '_' + request.resource.data.runId));
+          }
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId) && validCheckpoint();
+          allow update: if ownsActiveChild(familyId, childId)
+            && validCheckpoint()
+            && request.resource.data.scopeId == resource.data.scopeId;
+          allow delete: if false;
+        }
+
+        match /betaGameRetirements/{retirementId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validGameScoped(familyId, childId, retirementId, 'retirement')
+            && retirementId == request.resource.data.scopeId + '_' + request.resource.data.runId;
+          allow update, delete: if false;
+        }
+
+        match /betaGameCompletions/{completionId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && request.resource.data.keys().hasAll(['schema', 'kind', 'childId', 'grade', 'recordId', 'payload'])
+            && request.resource.data.keys().hasOnly(['schema', 'kind', 'childId', 'grade', 'recordId', 'payload'])
+            && validGameBase(familyId, childId, completionId, 'completion')
+            && completionId.matches('^[A-Za-z0-9_-]{1,160}$');
+          allow update, delete: if false;
+        }
+
         match /scores/{scoreId} {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
-            && validScore(familyId, childId);
+            && validScore(familyId, childId, scoreId);
           allow update: if ownsActiveChild(familyId, childId)
             && request.resource.data == resource.data;
           allow delete: if false;

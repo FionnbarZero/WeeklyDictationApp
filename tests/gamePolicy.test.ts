@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { inspectSnapshot } from '../src/familyBeta/curriculum.ts'
-import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
+import { reinforcementGames, resumableGameCheckpoints } from '../src/familyBeta/gamePools.ts'
 import type { BetaGrade, BetaResult } from '../src/familyBeta/model.ts'
 import { learningModuleCapability } from '../src/ninjaSkills/content.ts'
 import type {
@@ -16,6 +16,7 @@ import { NINJA_SKILLS_PROFILES } from '../src/ninjaSkills/profiles.ts'
 import { assertGamePack, reviewGameSummary } from '../src/ninjaSkills/review.ts'
 import { withSupplementalContent } from '../src/ninjaSkills/supplemental.ts'
 import { sequenceIsCorrect } from '../src/learningModules/sushi-scramble/runtime/model.ts'
+import { checkpointGameAnswer, completeGameCheckpoint, startGameCheckpoint } from '../src/ninjaSkills/progress.ts'
 
 const grades = [
   ['kindergarten', 'Kindergarten'],
@@ -142,6 +143,25 @@ test('missing source content stays unavailable; an unsupported week never borrow
     learningModuleCapability('context-gap-dash', noMeanings, NINJA_SKILLS_PROFILES['Grade 5']).status,
     'unavailable',
   )
+})
+
+test('saved game menu keeps unfinished and undelivered rounds but hides delivered completions', () => {
+  const pack = ready('context-gap-dash')
+  const scope = { childId: 'child', grade: 'Grade 5' as const, week: '2026-09-28', gameId: pack.moduleId }
+  const started = startGameCheckpoint(scope, pack, 'attempt-one', 'writer-one', '2026-10-05T12:00:00.000Z')
+  const first = pack.rounds[0]
+  const answer = (round: typeof first) => ({ gameId: pack.moduleId, promptId: round.id, targetId: round.targetId,
+    correct: true, assessmentMode: 'automatic' as const, response: round.correctChoiceId })
+  const unfinished = checkpointGameAnswer(started, answer(first), '2026-10-05T12:01:00.000Z')
+  let finished = unfinished
+  for (const round of pack.rounds.slice(1))
+    finished = checkpointGameAnswer(finished, answer(round), new Date(Date.parse(finished.reviewedAt!) + 60_000).toISOString())
+  const completion = completeGameCheckpoint(finished, '2026-10-05T13:00:00.000Z')
+
+  assert.equal(resumableGameCheckpoints([unfinished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId, 'attempt-one')
+  assert.equal(resumableGameCheckpoints([finished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId, 'attempt-one')
+  assert.equal(resumableGameCheckpoints([finished], [completion.result], 'child', 'Grade 5').has(pack.moduleId), false)
+  assert.equal(resumableGameCheckpoints([finished], [{ ...completion.result, childId: 'other-child' }], 'child', 'Grade 5').has(pack.moduleId), true)
 })
 
 test('generated support never adds targets, changes tiers, overwrites existing content, or claims teacher authorship', () => {

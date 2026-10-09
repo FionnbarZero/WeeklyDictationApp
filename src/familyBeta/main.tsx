@@ -17,8 +17,9 @@ import { familyDeviceSyncRepository } from './deviceSync.ts'
 import { syncCompletedBeforePractice } from './syncProgress.ts'
 import { assertResultCopiesMatch } from './resultLedger.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
-import { latestEarlierTargets, reinforcementGames } from './gamePools.ts'
+import { latestEarlierTargets, reinforcementGames, resumableGameCheckpoints } from './gamePools.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import type { FamilyGameWindow } from './gameOwner.ts'
 import { deviceWriter } from './deviceWriter.ts'
@@ -91,6 +92,11 @@ function FamilyPreview() {
   const [savedLessonsOpen, setSavedLessonsOpen] = useState(false)
   const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
   const [resumeRefresh, setResumeRefresh] = useState(0)
+  const [savedGames, setSavedGames] = useState<{
+    owner: string
+    checkpoints: GameCheckpoint[]
+    warning: string
+  }>({ owner: '', checkpoints: [], warning: '' })
   const resumeInFlight = useRef(false)
   const slotsRef = useRef(slots)
   slotsRef.current = slots
@@ -221,6 +227,32 @@ function FamilyPreview() {
   }, [child?.id, child?.grade, practiceReady, resumeRefresh])
 
   useEffect(() => {
+    if (!child || !practiceReady) {
+      setSavedGames({ owner: '', checkpoints: [], warning: '' })
+      return
+    }
+    let cancelled = false
+    const owner = `${scope}:${child.id}:${child.grade}`
+    void import('../ninjaSkills/progressStore.ts')
+      .then(({ createGameProgressStore }) => {
+        const checkpoints = createGameProgressStore(localStorage, familyId || 'device-preview')
+          .checkpoints(child.id)
+          .filter(value => value.scope.grade === child.grade)
+        if (!cancelled && scopeRef.current === scope && childRef.current === child.id)
+          setSavedGames({ owner, checkpoints, warning: '' })
+      })
+      .catch(e => {
+        if (!cancelled && scopeRef.current === scope && childRef.current === child.id)
+          setSavedGames({
+            owner,
+            checkpoints: [],
+            warning: `Saved games could not be checked. ${message(e)} Existing records were preserved.`,
+          })
+      })
+    return () => { cancelled = true }
+  }, [child?.id, child?.grade, familyId, practiceReady, resumeRefresh, scope])
+
+  useEffect(() => {
     const controller = new AbortController()
     setCurriculumError('')
     const refresh = () => {
@@ -255,6 +287,7 @@ function FamilyPreview() {
         if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
         const repository = familyResultRepository(familyId)
         const current = () => scopeRef.current === scope && childRef.current === child.id
+        const gameSync: { source: 'device' | 'cloud' | 'device-and-cloud' } = { source: 'device' }
         if (!await syncCompletedBeforePractice({
           isCurrent: current,
           pending: pendingResults,
@@ -262,8 +295,26 @@ function FamilyPreview() {
           validate: item => assertResultCopiesMatch(localStorage, RESULT_KEY, item),
           save: repository.save,
           acknowledge: acknowledgeResult,
-          syncPractice: () => familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
-            () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id)),
+          syncPractice: async () => {
+            await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
+              () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id))
+            const [{ reconcileGameHistory }, { createLockedGameProgressStore }, { familyGameHistoryRepository }] =
+              await Promise.all([
+                import('../ninjaSkills/gameHistory.ts'),
+                import('../ninjaSkills/progressStore.ts'),
+                import('./gameSync.ts'),
+              ])
+            const game = await reconcileGameHistory({
+              store: createLockedGameProgressStore(localStorage, familyId, current),
+              remote: familyGameHistoryRepository(familyId, current),
+              childId: child.id,
+              stillOwner: current,
+              canReplaceCheckpoint: gameScope => current() && !slotsRef.current.some(slot =>
+                slot.profile.id === gameScope.childId && slot.profile.grade === gameScope.grade &&
+                slot.week === gameScope.week && slot.game?.pack.moduleId === gameScope.gameId),
+            })
+            gameSync.source = game.source
+          },
         })) return
         const page = await repository.listPage(child.id)
         const saved = page.results
@@ -281,7 +332,10 @@ function FamilyPreview() {
         // results remain in the outbox and appear after their confirmed refresh.
         setResults(saved)
         setHistoryCursor({ owner: `${scope}:${child.id}`, token: page.nextPageToken })
-        setStatus('Scores and saved practice confirmed in your private family account. Use the same parent account on your other device.')
+        setStatus(`Scores, saved practice, and game detail confirmed in your private family account${
+          gameSync.source === 'cloud' ? ' from this family’s online history' :
+            gameSync.source === 'device-and-cloud' ? ' from this device and the family’s online history' : ''
+        }. Use the same parent account on your other device.`)
       } else {
         setResults(previewResults())
         setStatus('Saved in this browser on this device. Online syncing is not enabled; use the same grade link and browser next time.')
@@ -294,13 +348,15 @@ function FamilyPreview() {
         localStorage.removeItem(offlineFamilyKey(auth.user.uid))
         setReadyChildren(new Set())
       }
+      const restoredOffline = !navigator.onLine && Boolean(familyId)
       if (auth.user && isConnectionFailure(e)) {
         const cached = readOfflineFamily(localStorage, auth.user.uid)
-        if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade))
+        if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade)) {
           setReadyChildren(current => new Set([...current, child.id]))
+        }
       }
       setError(message(e))
-      setStatus(accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus(accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : restoredOffline ? 'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())
@@ -393,27 +449,46 @@ function FamilyPreview() {
   const earlierReading = latestEarlierTargets(available, dataset?.startDate || today, 'reading')
   let completedGames: BetaResult[] | null = null
   try { completedGames = previewResults() } catch { /* Preserve an unreadable history; do not start a replacement round. */ }
+  const savedOwner = child ? `${scope}:${child.id}:${child.grade}` : ''
+  const savedByModule = savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
+    ? resumableGameCheckpoints(savedGames.checkpoints, completedGames, child.id, child.grade)
+    : new Map<string, GameCheckpoint>()
   const capabilities = reinforcementGames(available, dataset?.startDate || today, currentGrade, completedGames || [], child?.id)
-    .map(game => completedGames ? game.capability : { status: 'unavailable' as const,
-      moduleId: game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId,
-      reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.' })
+    .map(game => {
+      const moduleId = game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId
+      if (savedGames.owner === savedOwner && savedGames.warning)
+        return { status: 'unavailable' as const, moduleId, reason: savedGames.warning }
+      if (!completedGames) return { status: 'unavailable' as const, moduleId,
+        reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.' }
+      const saved = savedByModule.get(moduleId)
+      return saved ? { status: 'ready' as const, pack: saved.pack } : game.capability
+    })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
 
-  function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack) {
-    if (!child || !curriculum || curriculum.snapshot.grade !== currentGrade || !dataset || !practiceReady) return
-    try { cacheLessonSource(localStorage, child.id, curriculum.snapshot) }
-    catch (e) { setActivityError(message(e)); return }
+  function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack, savedWeek?: string) {
+    if (!child || !practiceReady) return
+    const savedGame = kind === 'game' && gamePack && savedWeek
+    if (!savedGame && (!curriculum || curriculum.snapshot.grade !== currentGrade || !dataset)) return
+    if (!savedGame) {
+      try { cacheLessonSource(localStorage, child.id, curriculum!.snapshot) }
+      catch (e) { setActivityError(message(e)); return }
+    }
     const id = crypto.randomUUID()
+    const launchWeek = savedWeek || dataset!.startDate || week
+    const launchWorkspace = activityWorkspace(child, launchWeek)
     const slot: FamilyActivitySlot = {
-      id, workspace, profile: { ...child }, week: dataset?.startDate || week,
-      curriculumVersion: curriculum.snapshot.contentSha256,
-      source: curriculum.snapshot,
+      id, workspace: launchWorkspace, profile: { ...child }, week: launchWeek,
+      curriculumVersion: savedGame
+        ? gamePack.cohort.provenance.map(item => item.contentFingerprint).join(':') || gamePack.cohort.id
+        : curriculum!.snapshot.contentSha256,
+      ...(!savedGame ? { source: curriculum!.snapshot } : {}),
       teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
       kind, src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
       ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
     }
     setSlots(current => [...current, slot])
-    setSelectedSlots(current => ({ ...current, [`${workspace}:${kind === 'game' ? 'games' : 'activities'}`]: id }))
+    if (savedWeek) setWeek(savedWeek)
+    setSelectedSlots(current => ({ ...current, [`${launchWorkspace}:${kind === 'game' ? 'games' : 'activities'}`]: id }))
   }
 
   useEffect(() => {
@@ -608,10 +683,12 @@ function FamilyPreview() {
                     setActivityError('')
                     const paused = slots.find(slot => slot.workspace === workspace && slot.game?.pack.moduleId === c.pack.moduleId)
                     if (paused) setSelectedSlots(current => ({ ...current, [`${workspace}:games`]: paused.id }))
-                    else newSlot('game', c.pack)
+                    else newSlot('game', c.pack, savedByModule.get(c.pack.moduleId)?.scope.week)
                   }}>
-                    {c.pack.title}
-                  </button><p>{c.pack.scopeNote}</p></article>
+                    {savedByModule.has(c.pack.moduleId) ? `Resume ${c.pack.title}` : c.pack.title}
+                  </button><p>{savedByModule.has(c.pack.moduleId)
+                    ? `Resume the saved ${savedByModule.get(c.pack.moduleId)!.scope.week} round with its pinned targets.`
+                    : c.pack.scopeNote}</p></article>
                 ) : (
                   <article key={c.moduleId}>
                     <h2>{learningModuleCatalogEntry(c.moduleId).title}</h2>

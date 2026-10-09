@@ -6,8 +6,10 @@ import {
   gameCheckpointComplete,
   serializeGameRecord,
   retryTimedGame,
+  retireGameCheckpoint,
   startGameCheckpoint,
   type GameCheckpoint,
+  type GameRetirement,
   type GameScope,
 } from './progress.ts'
 import type { GameProgressStore } from './progressStore.ts'
@@ -53,6 +55,7 @@ export async function openGameSession(options: {
   const initial = current
   let pending: GameCheckpoint | null = null
   let pendingKey = ''
+  let pendingRetirement: GameRetirement | null = null
   let busy = false
   let discarded = false
   async function transition(key: string, candidate: () => GameCheckpoint) {
@@ -84,9 +87,18 @@ export async function openGameSession(options: {
     timer: (remainingMs: number) => transition(`timer:${remainingMs}`, () => checkpointGameTimer(current, remainingMs)),
     restartTimed: () => transition('restart', () => retryTimedGame(current)),
     async discard() {
-      if (busy) throw new Error('Wait for this turn to finish saving before discarding it.')
-      await store.discardCheckpoint(current)
-      discarded = true
+      if (busy || discarded) throw new Error('Wait for this turn to finish saving before discarding it.')
+      busy = true
+      try {
+        // A partial local write must retry the exact retirement identity and
+        // timestamp so the run cannot be revived or become undiscardable.
+        pendingRetirement ||= retireGameCheckpoint(current, now())
+        await store.discardCheckpoint(current, pendingRetirement)
+        discarded = true
+        pendingRetirement = null
+      } finally {
+        busy = false
+      }
     },
   }
 }

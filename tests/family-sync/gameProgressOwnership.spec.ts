@@ -4,7 +4,7 @@ import { installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures
 async function launch(page: Page) {
   await page.goto('/?grade=grade5')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  await page.getByRole('button', { name: /^(Resume )?Memory Lanterns$/ }).click()
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.locator('.lg-memory-card').first()).toBeVisible()
   return frame
@@ -91,6 +91,32 @@ test('explicit Lantern discard removes only its owned unfinished checkpoint', as
   await expect(page.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(0)
 })
 
+test('an unfinished Lantern round reopens from device storage after an offline cold start', async ({ page, context }) => {
+  await installFamilyFixtures(page)
+  await page.goto('/?grade=grade5')
+  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', { timeout: 120_000 })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true)
+  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  const cards = page.frameLocator('iframe:visible').locator('.lg-memory-card')
+  await expect(cards.first()).toBeVisible()
+  const faces = await cards.locator('.lg-card-face b').allTextContents()
+  const indices = faces.flatMap((value, index) => (value === faces[0] ? [index] : []))
+  await cards.nth(indices[0]).click()
+  await cards.nth(indices[1]).click()
+  await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
+
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.getByText(/Offline: using this parent’s previously confirmed device records/)).toBeVisible()
+  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
+  await expect(page.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(2)
+  await context.setOffline(false)
+})
+
 test('offline Lantern completion queues graph and detail separately and only acknowledges the graph on reconnect', async ({
   page,
   context,
@@ -131,6 +157,7 @@ test('offline Lantern completion queues graph and detail separately and only ack
   })
   await context.setOffline(false)
   await expect.poll(async () => (await pending()).graph).toBe(0)
-  expect((await pending()).detail).toBe(1)
+  await expect.poll(async () => (await pending()).detail).toBe(0)
   expect([...documents.keys()].filter((key) => key.includes('/betaResults/'))).toHaveLength(1)
+  expect([...documents.keys()].filter((key) => key.includes('/betaGameCompletions/'))).toHaveLength(1)
 })

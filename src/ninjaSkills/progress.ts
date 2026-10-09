@@ -36,6 +36,13 @@ export type GameCompletion = {
   result: BetaResult
   targets: { targetId: string; datasetId: string; tier: string; attempted: number; correct: number }[]
 }
+export type GameRetirement = {
+  schema: 'ninja-game-retirement-v1'
+  scope: GameScope
+  runId: string
+  writerId: string
+  retiredAt: string
+}
 
 const supported = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble']
 const id = (value: unknown): value is string => typeof value === 'string' && /^[\w-]{1,160}$/.test(value)
@@ -469,6 +476,32 @@ export function validateGameCompletion(value: GameCompletion) {
   bounded(value)
   if (!same(value, completeGameCheckpoint(value.checkpoint, value.result.completedAt)))
     throw new Error('The detailed game result differs from its reviewed checkpoint.')
+  return value
+}
+
+/** A retirement targets one run, not the whole scope. A later fresh run may
+ * use the same grade/week/game without reviving any unfinished fork of the
+ * explicitly discarded run. Completed results remain separate and immutable. */
+export function retireGameCheckpoint(value: GameCheckpoint, retiredAt: string): GameRetirement {
+  validateGameCheckpoint(value)
+  if (gameCheckpointComplete(value)) throw new Error('A completed game cannot be discarded.')
+  const retirement = {
+    schema: 'ninja-game-retirement-v1' as const,
+    scope: value.scope,
+    runId: value.runId,
+    writerId: value.writerId,
+    retiredAt,
+  }
+  return validateGameRetirement(retirement)
+}
+
+export function validateGameRetirement(value: GameRetirement) {
+  bounded(value)
+  keys(value, ['schema', 'scope', 'runId', 'writerId', 'retiredAt'])
+  if (value.schema !== 'ninja-game-retirement-v1') throw new Error('Unsupported game retirement record.')
+  gameScopeKey(value.scope)
+  if (!id(value.runId) || !id(value.writerId) || !iso(value.retiredAt))
+    throw new Error('Invalid game retirement identity.')
   return value
 }
 

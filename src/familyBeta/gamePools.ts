@@ -6,6 +6,7 @@ import { learningModuleCapability, learningModuleCohortFromDatasets } from '../n
 import { GAME_POLICIES } from '../ninjaSkills/policy.ts'
 import { LEARNING_MODULE_CATALOG } from '../ninjaSkills/catalog.ts'
 import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
+import { gameCheckpointComplete, type GameCheckpoint } from '../ninjaSkills/progress.ts'
 import type { BetaGrade, BetaResult } from './model.ts'
 
 export type PracticeChannel = 'writing' | 'reading'
@@ -23,6 +24,25 @@ export function channelCohort(datasets: Dataset[], channel: PracticeChannel, lab
   return cohort
     ? { ...cohort, terms: cohort.terms.filter((term) => term.tier === (channel === 'writing' ? 'tier-1' : 'tier-2')) }
     : null
+}
+
+/** Keep the newest resumable round for each module. A completed checkpoint is
+ * retained until its immutable aggregate score is visible in the result
+ * ledger, so a storage or sync interruption can retry delivery safely. */
+export function resumableGameCheckpoints(
+  checkpoints: readonly GameCheckpoint[], completed: readonly BetaResult[], childId: string, grade: BetaGrade,
+) {
+  const delivered = (checkpoint: GameCheckpoint) => gameCheckpointComplete(checkpoint) && completed.some(result =>
+    result.id === checkpoint.attemptId && result.childId === childId && result.grade === grade &&
+    result.channel === 'game' && result.activity === checkpoint.pack.title &&
+    result.datasetIds.length === checkpoint.pack.cohort.provenance.length &&
+    checkpoint.pack.cohort.provenance.every(source => result.datasetIds.includes(source.datasetId)))
+  const selected = new Map<string, GameCheckpoint>()
+  for (const checkpoint of [...checkpoints]
+    .filter(value => value.scope.childId === childId && value.scope.grade === grade && !delivered(value))
+    .sort((a, b) => (b.reviewedAt || b.startedAt).localeCompare(a.reviewedAt || a.startedAt)))
+    if (!selected.has(checkpoint.scope.gameId)) selected.set(checkpoint.scope.gameId, checkpoint)
+  return selected
 }
 /** Resolve each tier's earlier relevant week independently; never borrow targets
  * from the current week or the other channel of an older week's dataset. */

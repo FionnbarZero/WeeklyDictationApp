@@ -12,6 +12,7 @@ import {
   continueGameCheckpoint,
   gameCheckpointComplete,
   reconcileGameCheckpoints,
+  retireGameCheckpoint,
   retryTimedGame,
   serializeGameRecord,
   startGameCheckpoint,
@@ -19,6 +20,7 @@ import {
   validateGameCompletion,
   type GameCheckpoint,
   type GameCompletion,
+  type GameRetirement,
 } from '../src/ninjaSkills/progress.ts'
 import {
   createGameProgressStore,
@@ -26,6 +28,7 @@ import {
   type GameWriteLock,
 } from '../src/ninjaSkills/progressStore.ts'
 import { syncGameProgress, type GameProgressRemote } from '../src/ninjaSkills/progressSync.ts'
+import { reconcileGameHistory, type GameHistoryRemote } from '../src/ninjaSkills/gameHistory.ts'
 import { openGameSession } from '../src/ninjaSkills/gameSession.ts'
 import { saveGameAggregate } from '../src/familyBeta/gameResultBridge.ts'
 import { readResultLedger, RESULT_KEY, PENDING_KEY } from '../src/familyBeta/resultLedger.ts'
@@ -274,6 +277,29 @@ test('competing mounted games cannot overwrite each other or discard the newer t
   await first.discard()
   assert.equal(store.checkpoint(options.scope), null)
   await assert.rejects(first.review(turns[1]), /not available/)
+})
+
+test('an interrupted discard retries the identical durable retirement before removing the checkpoint', async () => {
+  const f = memory()
+  let clock = 0
+  const options = {
+    ...sessionOptions(f.store),
+    now: () => (clock++ === 0 ? now : later),
+  }
+  const session = await openGameSession(options)
+  const originalRemove = f.storage.removeItem
+  f.storage.removeItem = (key) => {
+    if (!key.includes(':checkpoint:')) originalRemove(key)
+  }
+  await assert.rejects(session.discard(), /could not be confirmed/)
+  const retirement = f.store.retirement(options.scope)
+  assert.ok(retirement)
+  assert.equal(retirement.retiredAt, later)
+  assert.equal(f.store.checkpoint(options.scope), null, 'the interrupted checkpoint remains hidden')
+  f.storage.removeItem = originalRemove
+  await session.discard()
+  assert.deepEqual(f.store.retirement(options.scope), retirement, 'retry does not invent a new retirement')
+  assert.equal(f.store.checkpoint(options.scope), null)
 })
 
 test('completed rounds reopen until delivered, then use a distinct immutable attempt', async () => {
@@ -533,6 +559,7 @@ function remoteFixture(initial: GameCheckpoint | null = null) {
   let checkpoint = initial
   let version = initial ? 1 : 0
   const completions = new Map<string, GameCompletion>()
+  const retirements = new Map<string, GameRetirement>()
   const remote: GameProgressRemote = {
     saveCompletion: async (value) => {
       const old = completions.get(value.result.id)
@@ -543,15 +570,167 @@ function remoteFixture(initial: GameCheckpoint | null = null) {
     readCompletion: async (_, id) => completions.get(id) || null,
     readCheckpoint: async () =>
       checkpoint ? { value: structuredClone(checkpoint), version: String(version), serverTime: later } : null,
+    saveRetirement: async (value) => {
+      const old = retirements.get(value.runId)
+      if (old && serializeGameRecord(old) !== serializeGameRecord(value)) throw new Error('immutable retirement')
+      retirements.set(value.runId, structuredClone(value))
+      return structuredClone(value)
+    },
+    readRetirement: async (_, runId) => structuredClone(retirements.get(runId) || null),
     writeCheckpoint: async (value, expectedVersion) => {
       assert.equal(expectedVersion, version ? String(version) : null)
+      if (retirements.has(value.runId)) throw new Error('retired')
       checkpoint = structuredClone(value)
       version++
       return { value: structuredClone(value), version: String(version) }
     },
   }
-  return { remote, completions, current: () => checkpoint }
+  return { remote, completions, retirements, current: () => checkpoint }
 }
+
+test('cross-device retirement prevents a discarded run from returning after a newer run starts', async () => {
+  const discardedDevice = memory()
+  const initial = fixture()
+  discardedDevice.store.saveCheckpoint(initial, null)
+  const retirement = retireGameCheckpoint(initial, later)
+  discardedDevice.store.discardCheckpoint(initial, retirement)
+  const cloud = remoteFixture(initial)
+  const options = {
+    store: discardedDevice.store,
+    remote: cloud.remote,
+    childId: 'child',
+    scopes: [initial.scope],
+    stillOwner: () => true,
+    canReplaceCheckpoint: () => true,
+  }
+  await syncGameProgress(options)
+  assert.deepEqual(cloud.retirements.get(initial.runId), retirement)
+  assert.equal(discardedDevice.store.retirement(initial.scope), null)
+
+  const staleDevice = memory()
+  staleDevice.store.saveCheckpoint(initial, null)
+  await syncGameProgress({ ...options, store: staleDevice.store })
+  assert.equal(staleDevice.store.checkpoint(initial.scope), null)
+
+  const freshDevice = memory()
+  await syncGameProgress({ ...options, store: freshDevice.store })
+  assert.equal(freshDevice.store.checkpoint(initial.scope), null)
+
+  const next = continueGameCheckpoint(initial, 'writer-two', 'run-two')
+  next.runId = 'run-two'
+  next.attemptId = 'attempt-two'
+  freshDevice.store.saveCheckpoint(next, null)
+  await syncGameProgress({ ...options, store: freshDevice.store })
+  assert.deepEqual(cloud.current(), next)
+
+  const oldAgain = memory()
+  oldAgain.store.saveCheckpoint(initial, null)
+  await syncGameProgress({ ...options, store: oldAgain.store })
+  assert.equal(oldAgain.store.checkpoint(initial.scope), null)
+  assert.deepEqual(cloud.current(), next, 'the old discarded run cannot replace the newer cloud run')
+})
+
+test('discarding a run completed elsewhere preserves its immutable completion', async () => {
+  const local = memory()
+  const initial = fixture()
+  local.store.saveCheckpoint(initial, null)
+  const retirement = retireGameCheckpoint(initial, later)
+  local.store.discardCheckpoint(initial, retirement)
+  const done = finish(initial)
+  const completion = completeGameCheckpoint(done, later)
+  const cloud = remoteFixture(done)
+  cloud.completions.set(completion.result.id, completion)
+  await syncGameProgress({
+    store: local.store,
+    remote: cloud.remote,
+    childId: 'child',
+    scopes: [initial.scope],
+    stillOwner: () => true,
+    canReplaceCheckpoint: () => true,
+  })
+  assert.deepEqual(local.store.completions('child'), [completion])
+  assert.deepEqual(cloud.retirements.get(initial.runId), retirement)
+  assert.equal(local.store.checkpoint(initial.scope), null)
+})
+
+test('bounded cloud history discovers a saved game and caches acknowledged detail before reconciliation', async () => {
+  const fresh = memory()
+  const done = finish(fixture())
+  const completion = completeGameCheckpoint(done, later)
+  const cloud = remoteFixture(done)
+  cloud.completions.set(completion.result.id, completion)
+  const remote: GameHistoryRemote = {
+    ...cloud.remote,
+    listCheckpointPage: async (_childId, cursor = '') => {
+      assert.equal(cursor, '')
+      return { checkpoints: [done], nextPageToken: '' }
+    },
+    listCompletionPage: async (_childId, cursor = '') => {
+      assert.equal(cursor, '')
+      return { completions: [completion], nextPageToken: '' }
+    },
+  }
+  const result = await reconcileGameHistory({
+    store: fresh.store,
+    remote,
+    childId: 'child',
+    stillOwner: () => true,
+    canReplaceCheckpoint: () => true,
+  })
+  assert.equal(result.source, 'cloud')
+  assert.deepEqual(fresh.store.checkpoint(done.scope), done)
+  assert.deepEqual(fresh.store.completions('child'), [completion])
+  assert.equal(fresh.store.completions('child', true).length, 0)
+})
+
+test('failed or repeated cloud history pages leave the existing device cache unchanged', async () => {
+  const local = memory()
+  const initial = fixture()
+  local.store.saveCheckpoint(initial, null)
+  const cloud = remoteFixture()
+  const offline: GameHistoryRemote = {
+    ...cloud.remote,
+    listCheckpointPage: async () => {
+      throw new Error('offline')
+    },
+    listCompletionPage: async () => {
+      throw new Error('offline')
+    },
+  }
+  await assert.rejects(
+    reconcileGameHistory({
+      store: local.store,
+      remote: offline,
+      childId: 'child',
+      stillOwner: () => true,
+      canReplaceCheckpoint: () => true,
+    }),
+    /offline/,
+  )
+  assert.deepEqual(local.store.checkpoint(initial.scope), initial)
+
+  const staged = memory()
+  const completion = completeGameCheckpoint(finish(initial), later)
+  const repeated: GameHistoryRemote = {
+    ...cloud.remote,
+    listCheckpointPage: async () => ({ checkpoints: [], nextPageToken: '' }),
+    listCompletionPage: async (_childId, cursor = '') =>
+      cursor
+        ? { completions: [completion], nextPageToken: '' }
+        : { completions: [completion], nextPageToken: 'next' },
+  }
+  await assert.rejects(
+    reconcileGameHistory({
+      store: staged.store,
+      remote: repeated,
+      childId: 'child',
+      stillOwner: () => true,
+      canReplaceCheckpoint: () => true,
+    }),
+    /duplicate/,
+  )
+  assert.deepEqual(staged.store.completions('child'), [])
+})
 
 test('sync confirms completed results before a checkpoint failure and recovers a fresh device', async () => {
   const f = memory()

@@ -110,7 +110,13 @@ export function SpeedMatch({
   const [timedOut, setTimedOut] = useState(remainingMs === 0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const pending = useRef<{ save: () => void | Promise<void>; apply: () => void } | null>(null)
+  const pending = useRef<{
+    kind: 'timer' | 'answer' | 'restart'
+    save: () => void | Promise<void>
+    apply: () => void
+  } | null>(null)
+  const queuedChoices = useRef<{ card: SpeedMatchCard; spoken: Promise<void> }[]>([])
+  const chooseRef = useRef<(card: SpeedMatchCard, spoken: Promise<void>) => void>(() => {})
   const busy = useRef(false)
   const writing = useRef(false)
   const mounted = useRef(true)
@@ -119,6 +125,7 @@ export function SpeedMatch({
     mounted.current = true
     return () => {
       mounted.current = false
+      queuedChoices.current = []
       if (deferred.current !== null) activityClock.clearTimeout(deferred.current)
     }
   }, [])
@@ -138,9 +145,14 @@ export function SpeedMatch({
       deferred.current = activityClock.setTimeout(() => {
         turn.apply()
         pending.current = null
-        busy.current = false
         writing.current = false
         setSaving(false)
+        activityClock.requestAnimationFrame(() => {
+          if (!mounted.current) return
+          busy.current = false
+          if (turn.kind === 'timer') drainQueuedChoice()
+          else if (turn.kind === 'restart') queuedChoices.current = []
+        })
       }, 0)
     } catch (error) {
       if (!mounted.current) return
@@ -149,10 +161,10 @@ export function SpeedMatch({
       setSaveError(`The mission is paused until this change saves. ${error instanceof Error ? error.message : ''}`)
     }
   }
-  function saveChange(save: () => void | Promise<void>, apply: () => void) {
+  function saveChange(kind: 'timer' | 'answer' | 'restart', save: () => void | Promise<void>, apply: () => void) {
     if (busy.current) return
     busy.current = true
-    pending.current = { save, apply }
+    pending.current = { kind, save, apply }
     void savePending()
   }
   const selectionStartedAt = useRef(0)
@@ -173,7 +185,7 @@ export function SpeedMatch({
     const timer = activityClock.setInterval(() => {
       if (busy.current) return
       const next = Math.max(0, timeLeft - 1)
-      saveChange(() => onTimer?.(next * 1000), () => setTimeLeft(next))
+      saveChange('timer', () => onTimer?.(next * 1000), () => setTimeLeft(next))
     }, 1000)
     return () => activityClock.clearInterval(timer)
   }, [missionFinished, missionStarted, timedOut, timeLeft, onTimer])
@@ -195,12 +207,13 @@ export function SpeedMatch({
       setSelectedCardIds([])
       setFeedback(null)
       setStrikeQuality(null)
+      activityClock.requestAnimationFrame(drainQueuedChoice)
     }, feedback === 'correct' ? 520 : 650)
     return () => activityClock.clearTimeout(timer)
   }, [feedback, matchedPairIds])
 
   function resetMission() {
-    saveChange(() => onRestart?.(), () => {
+    saveChange('restart', () => onRestart?.(), () => {
       setCards(shuffled(initialCards))
       setSelectedCardIds([])
       setMatchedPairIds([])
@@ -230,7 +243,7 @@ export function SpeedMatch({
       response: [first.id, second.id],
       assessmentMode: 'automatic',
     }
-    saveChange(() => onAttempt?.(attempt), () => {
+    saveChange('answer', () => onAttempt?.(attempt), () => {
       setAttempts((current) => [...current, attempt])
       setFeedback(correct ? 'correct' : 'incorrect')
       setStrikeQuality(correct ? (lightning ? 'lightning' : 'clean') : 'miss')
@@ -254,7 +267,12 @@ export function SpeedMatch({
   }
 
   function choose(card: SpeedMatchCard, spoken: Promise<void>) {
-    if (busy.current || feedback || timedOut || matchedPairIds.includes(card.pairId) || selectedCardIds.includes(card.id)) return
+    if (busy.current) {
+      if (queuedChoices.current.length < 2 && !queuedChoices.current.some(item => item.card.id === card.id))
+        queuedChoices.current.push({ card, spoken })
+      return
+    }
+    if (feedback || timedOut || matchedPairIds.includes(card.pairId) || selectedCardIds.includes(card.id)) return
     if (!missionStarted) setMissionStarted(true)
     const next = [...selectedCardIds, card.id]
     setSelectedCardIds(next)
@@ -265,6 +283,15 @@ export function SpeedMatch({
     }
     const first = cards.find((candidate) => candidate.id === next[0])
     if (first) resolve(first, card, spoken)
+  }
+  chooseRef.current = choose
+
+  function drainQueuedChoice() {
+    if (busy.current) return
+    const queued = queuedChoices.current.shift()
+    if (!queued) return
+    chooseRef.current(queued.card, queued.spoken)
+    activityClock.requestAnimationFrame(drainQueuedChoice)
   }
 
   const summary = { ...summarizeLearningGame('speed-match', attempts), attempted, correct: correctAttempts }

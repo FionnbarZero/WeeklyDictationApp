@@ -21,7 +21,7 @@ async function open(page: Page, slug: string, embedded = false) {
       .click()
   else await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await (embedded ? page.frameLocator('iframe:visible') : page)
-    .getByRole('button', { name: 'Context Gap Dash', exact: true })
+    .getByRole('button', { name: /^(Resume )?Context Gap Dash$/ })
     .click()
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('heading', { name: 'Context Gap Dash', exact: true })).toBeVisible()

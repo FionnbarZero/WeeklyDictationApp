@@ -10,7 +10,17 @@ import { createHash } from 'node:crypto'
 import { openAcquisitionStore } from '../src/familyBeta/acquisitionStore.ts'
 import { retireAcquisition } from '../src/familyBeta/acquisitionRetirement.ts'
 import { listSavedLessons, rememberLessonLaunch } from '../src/familyBeta/lessonLaunch.ts'
-import { validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import { inspectSnapshot, validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
+import { createGameCloudRepository } from '../src/ninjaSkills/gameCloud.ts'
+import {
+  checkpointGameAnswer,
+  completeGameCheckpoint,
+  gameScopeKey,
+  retireGameCheckpoint,
+  serializeGameRecord,
+  startGameCheckpoint,
+} from '../src/ninjaSkills/progress.ts'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
 import type { AcquisitionPersistenceContext } from '../src/acquisition/persistence/contracts.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
@@ -104,6 +114,122 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/number`), { ...result, id: 'number', datasetIds: [123] }))
   await assertFails(setDoc(doc(owner, `${path}/grade`), { ...result, id: 'grade', grade: 'Grade 5' }))
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
+})
+
+test('family game progress is private, conditional, immutable when completed, and permanently retired per run', async () => {
+  const datasets = inspectSnapshot(
+    JSON.parse(await readFile(new URL('../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
+  ).datasets
+  const capability = reinforcementGames(datasets, '2026-10-05', 'Grade 2').find(
+    ({ capability: value }) => value.status === 'ready' && value.pack.moduleId === 'memory-flip',
+  )!.capability
+  if (capability.status !== 'ready') throw new Error('Missing emulator game fixture.')
+  const checkpoint = startGameCheckpoint(
+    { childId: 'maya', grade: 'Grade 2', week: '2026-10-05', gameId: 'memory-flip' },
+    capability.pack,
+    'game-attempt-one',
+    'game-writer-one',
+    '2026-10-09T01:00:00.000Z',
+  )
+  const host = process.env.FIRESTORE_EMULATOR_HOST!
+  const config = {
+    projectId: 'weekly-dictation-test',
+    familyId: 'family-parent',
+    endpoint: `http://${host}`,
+    token: async () => mockToken('parent'),
+    stillOwner: () => true,
+  }
+  const first = createGameCloudRepository(config)
+  const second = createGameCloudRepository(config)
+  const created = await first.writeCheckpoint(checkpoint, null)
+  assert.deepEqual((await second.readCheckpoint(checkpoint.scope))?.value, checkpoint)
+
+  const pair = 'pairs' in checkpoint.pack ? checkpoint.pack.pairs[0] : null
+  if (!pair) throw new Error('Expected memory pair.')
+  const reviewed = checkpointGameAnswer(
+    checkpoint,
+    {
+      gameId: 'memory-flip',
+      promptId: pair.id,
+      targetId: pair.targetId,
+      correct: true,
+      assessmentMode: 'automatic',
+      response: [`${pair.id}:left`, `${pair.id}:right`],
+    },
+    '2026-10-09T01:01:00.000Z',
+  )
+  const updated = await first.writeCheckpoint(reviewed, created.version)
+  await assert.rejects(first.writeCheckpoint(checkpoint, created.version))
+
+  const retirement = retireGameCheckpoint(reviewed, '2026-10-09T01:02:00.000Z')
+  await first.saveRetirement(retirement)
+  await first.saveRetirement(retirement)
+  assert.deepEqual(await second.readRetirement(checkpoint.scope, checkpoint.runId), retirement)
+  await assert.rejects(first.writeCheckpoint(reviewed, updated.version), /discarded game run/)
+
+  const intruder = createGameCloudRepository({ ...config, token: async () => mockToken('intruder') })
+  await assert.rejects(intruder.readCheckpoint(checkpoint.scope))
+  await assert.rejects(intruder.saveRetirement({ ...retirement, runId: 'intruder-run' }))
+
+  const owner = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  const scopeId = createHash('sha256').update(gameScopeKey(checkpoint.scope)).digest('hex')
+  const checkpointPath = `families/family-parent/children/maya/betaGameCheckpoints/${scopeId}`
+  const retirementPath = `families/family-parent/children/maya/betaGameRetirements/${scopeId}_${checkpoint.runId}`
+  await assertFails(getDoc(doc(anonymous, checkpointPath)))
+  await assertFails(deleteDoc(doc(owner, retirementPath)))
+  await assertFails(
+    setDoc(doc(owner, checkpointPath), {
+      schema: 1,
+      kind: 'checkpoint',
+      childId: 'maya',
+      grade: 'Grade 2',
+      scopeId,
+      runId: 'fresh-run',
+      recordId: scopeId,
+      payload: '{"response":"must-not-be-stored"}',
+    }),
+  )
+
+  let completed = startGameCheckpoint(
+    { ...checkpoint.scope, week: '2026-09-28' },
+    capability.pack,
+    'game-attempt-two',
+    'game-writer-one',
+    '2026-10-09T01:03:00.000Z',
+  )
+  if (!('pairs' in completed.pack)) throw new Error('Expected memory pack.')
+  for (const item of completed.pack.pairs) {
+    completed = checkpointGameAnswer(
+      completed,
+      {
+        gameId: 'memory-flip',
+        promptId: item.id,
+        targetId: item.targetId,
+        correct: true,
+        assessmentMode: 'automatic',
+        response: [`${item.id}:left`, `${item.id}:right`],
+      },
+      '2026-10-09T01:04:00.000Z',
+    )
+  }
+  const completion = completeGameCheckpoint(completed, '2026-10-09T01:04:00.000Z')
+  await first.saveCompletion(completion)
+  await first.saveCompletion(completion)
+  assert.deepEqual(await second.readCompletion('maya', completion.result.id), completion)
+  await first.writeCheckpoint(completed, null)
+  const completionPath = `families/family-parent/children/maya/betaGameCompletions/${completion.result.id}`
+  await assertFails(
+    setDoc(doc(owner, completionPath), {
+      schema: 1,
+      kind: 'completion',
+      childId: 'maya',
+      grade: 'Grade 2',
+      recordId: completion.result.id,
+      payload: serializeGameRecord({ ...completion, targets: [] }),
+    }),
+  )
+  await assertFails(deleteDoc(doc(owner, completionPath)))
 })
 
 test('family result history paginates by completion and stable identity without dropping same-time attempts', async () => {

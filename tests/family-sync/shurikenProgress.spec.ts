@@ -73,7 +73,7 @@ async function open(page: Page, slug: string, embedded = false) {
       .click()
   else await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await (embedded ? page.frameLocator('iframe:visible') : page)
-    .getByRole('button', { name: 'Shuriken Match', exact: true })
+    .getByRole('button', { name: /^(Resume )?Shuriken Match$/ })
     .click()
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('heading', { name: 'Shuriken Match', exact: true })).toBeVisible()
@@ -145,6 +145,14 @@ for (const [slug, grade, childId] of grades) {
     await expect.poll(async () => (await checkpoint(page)).cycle).toBe(1)
     expect((await checkpoint(page)).prompts).toEqual(paused.prompts)
     frame = await open(page, slug, true)
+    const active = await page.locator('iframe:visible').evaluate((element) => {
+      const session = ((element as HTMLIFrameElement).contentWindow as Window & {
+        familyGameSession?: { checkpoint: () => GameCheckpoint }
+      }).familyGameSession
+      return session?.checkpoint()
+    })
+    expect(active?.runId).toBe(initial.runId)
+    expect(active?.pack).toEqual(initial.pack)
     await expect(frame.locator('.lg-moon-timer')).toHaveAttribute('aria-label', '60 seconds remaining')
     for (const pair of pairs) {
       await seal(frame, pair.left.label, isMobile)

@@ -87,7 +87,19 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
       return respond(selected.slice(0, query.limit).map((document) => ({ document })))
     }
     if (url.pathname.endsWith('/documents:commit')) {
-      for (const write of request.postDataJSON().writes) {
+      const writes = request.postDataJSON().writes as {
+        update: { name: string; fields: Record<string, unknown> }
+        currentDocument?: { exists?: boolean; updateTime?: string }
+      }[]
+      const stale = writes.some((write) => {
+        const previous = documents.get(write.update.name)
+        return (
+          (write.currentDocument?.exists === false && Boolean(previous)) ||
+          (write.currentDocument?.updateTime && previous?.updateTime !== write.currentDocument.updateTime)
+        )
+      })
+      if (stale) return route.fulfill({ status: 412, contentType: 'application/json', body: '{}' })
+      for (const write of writes) {
         const update = write.update
         documents.set(update.name, { ...update, updateTime: new Date().toISOString() })
       }
@@ -95,12 +107,24 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
     }
     if (url.pathname.endsWith('/documents:batchGet')) {
       const names = request.postDataJSON().documents as string[]
+      const readTime = new Date().toISOString()
       return respond(
         names.map((id) => {
-          const data = id.endsWith('/users/synthetic-parent')
-            ? { familyId: 'family-synthetic-parent', role: 'parent' }
-            : { id: 'family-synthetic-parent', ownerParentId: 'synthetic-parent' }
-          return { found: { name: id, fields: fields(data) } }
+          if (id.endsWith('/users/synthetic-parent'))
+            return {
+              found: { name: id, fields: fields({ familyId: 'family-synthetic-parent', role: 'parent' }) },
+              readTime,
+            }
+          if (id.endsWith('/families/family-synthetic-parent'))
+            return {
+              found: {
+                name: id,
+                fields: fields({ id: 'family-synthetic-parent', ownerParentId: 'synthetic-parent' }),
+              },
+              readTime,
+            }
+          const saved = documents.get(id)
+          return saved ? { found: saved, readTime } : { missing: id, readTime }
         }),
       )
     }
@@ -123,6 +147,18 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
       return respond({ documents: [...documents.values()].filter((doc) => doc.name.startsWith(`${name}/`)) })
     if (/\/betaPractice$/.test(name))
       return respond({ documents: [...documents.values()].filter((doc) => doc.name.startsWith(`${name}/`)) })
+    if (/\/betaGame(?:Checkpoints|Retirements|Completions)$/.test(name)) {
+      const pageSize = Number(url.searchParams.get('pageSize') || 10)
+      const offset = Number(url.searchParams.get('pageToken') || 0)
+      const matching = [...documents.values()]
+        .filter((doc) => doc.name.startsWith(`${name}/`))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      const next = offset + pageSize
+      return respond({
+        documents: matching.slice(offset, next),
+        ...(next < matching.length ? { nextPageToken: String(next) } : {}),
+      })
+    }
     if (documents.has(name)) return respond(documents.get(name))
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
   })

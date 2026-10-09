@@ -68,6 +68,13 @@ for (const [slug, grade, childId] of grades) {
     }
     await frame.getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
     await expect(frame.locator('.lg-complete')).toHaveCount(0)
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-games-v1:') && key.includes(':pending:')).length,
+        ),
+      )
+      .toBe(0)
     const records = await page.evaluate(() =>
       Object.fromEntries(
         Object.keys(localStorage)
@@ -87,7 +94,7 @@ for (const [slug, grade, childId] of grades) {
       names.length + 1,
     )
     expect(JSON.stringify(records)).not.toContain('"response"')
-    expect(Object.keys(records).some((key) => key.includes(':pending:'))).toBe(true)
+    expect(Object.keys(records).some((key) => key.includes(':pending:'))).toBe(false)
   })
 
   test(`${grade}: failed Lantern turn stays still and retries under the native browser lock`, async ({
