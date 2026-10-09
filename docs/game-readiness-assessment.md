@@ -204,4 +204,22 @@ Final repaired evidence:
 - Typecheck, lint, format, build/performance (**549,990/550,000 initial JavaScript; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing time-bounded firebase-tools-only exception passed.
 - All **145 manifest files** match source `11c66897c073d475211c6db9c3b8da7df64f2936`; tree `b7edcefb2f14ef545e1f491002c1ed8498f40a91dc8d32d742494006b886127e`; exact tested package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Mozinl`.
 
-The persistence review has no remaining actionable finding. The next bounded implementation slice is the recorded Context family-frame clipping repair using GPT-6.1 Sol · High. Guarded predecessor/candidate rollback evidence and the final Astra Extra High cross-grade release review still follow. No push, merge, deployment, production-policy change or child-data action occurred; the live source remains A3.3 `e9c5a54`, so smoke testing is premature.
+The persistence review has no remaining actionable finding. The next bounded implementation slice was the recorded Context family-frame clipping repair using GPT-6.1 Sol · High. Its result and the guarded predecessor/candidate evidence are recorded below. No push, merge, deployment, production-policy change or child-data action occurred; the live source remains A3.3 `e9c5a54`, so smoke testing is premature.
+
+### Context containment and guarded rollback gate
+
+The desktop reproduction showed the Context scene reaching 1,338px inside a 1,256px iframe viewport for Kindergarten, Grade 2 and Grade 5; tablet layouts stayed contained. Commit `f26849d` keeps the intended wide game card but centers it inside the family frame. The final exact-package Context matrix passes **18/18** across all three grades and desktop/tablet: scene and replay controls stay within the viewport without horizontal overflow, reviewed mistakes and completed gates reload, and failed writes retain an exact retry.
+
+The rollback review found that the older-engine guard recognized newer lesson records but not the new `family-beta-games-v1` namespace. Commit `768f8cb` recognizes that namespace before the older application can read credentials or write storage. Its unit coverage proves the guard's no-read/no-write contract directly. The browser rehearsal used the actual published predecessor, reconstructed read-only from `https://ninjadojo.meghangames.com`; all **138 predecessor files** match published tree `67008aacbc2946151a661f2212b7fc47725edd2bdbf4398e26dd009b17a57e6d`.
+
+The final predecessor/candidate rehearsal passes **4/4** on desktop and tablet. The ordinary path upgrades A3.3 Grade 2 records, activates the guarded older engine, confirms every record is unchanged offline, then restores the Stage B candidate and resumes the original lesson. The Stage B-specific path retains only a reviewed `family-beta-games-v1` Lantern checkpoint, confirms the older engine reads no credential and writes no storage, then restores the candidate and resumes the matched pair. Test-only commits `d141185`, `c92ce9a`, `1022ec5` and `ba9abcd` align the status assertion, bound service-worker activation, add the game-only proof and recognize a legitimately dormant worker process; they do not change application behavior.
+
+Final Sol-stage evidence at `ba9abcd4e4dbf7355d9b60f2375b1badcf980c78`:
+
+- **878/878 unit tests**; typecheck, lint and format pass.
+- **134/134** previously recorded broad game desktop/tablet checks, plus the final **18/18 Context** and **4/4 guarded rollback** matrices.
+- Published policy: **16 applicable checks**, with one intentional Stage B-only skip. Additive candidate policy: **17/17**.
+- Build/performance passes at **549,990/550,000 initial JavaScript bytes** and **42,745/60,000 CSS bytes**. Production audit reports **0 vulnerabilities**; the documented firebase-tools-only exception remains 11 findings and expires November 4, 2026.
+- All **145 files** match the current candidate manifest. Tree SHA-256: `8944b978a756e8f84c1d80b8e314e9dfcc384b7116b98bea8eebabd100f5f77c`; exact package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-XrlM3g`.
+
+The bounded Sol implementation and rollback gate are complete. The next required gate is the independent GPT-6 Astra · Extra High cross-grade release review. The additive Firestore policy remains a proposal and needs separate explicit approval before production application; application publication also remains separately gated. No push, merge, deployment, production-policy change or child-data action occurred. A3.3 `e9c5a54` remains live, so owner smoke testing is premature.
