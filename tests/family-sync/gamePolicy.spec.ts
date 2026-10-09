@@ -23,6 +23,98 @@ for (const [slug, grade, childId] of grades) {
     await expect(frame.locator('.lg-sushi-bar button').first()).toBeVisible()
     await expect(frame.getByRole('heading', { name: 'Sushi Scramble', exact: true })).toBeVisible()
   })
+  test(`${grade}: unreadable score history preserves embedded completion and retries once`, async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto(`/?grade=${slug}`)
+    const frame = page.frameLocator('iframe:visible')
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+    await frame.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+    const cards = frame.locator('.lg-memory-card')
+    await expect(cards.first()).toBeVisible()
+    const faces = await cards.locator('.lg-card-face b').allTextContents()
+    const unique = [...new Set(faces)]
+    for (const face of unique) {
+      const indices = faces.flatMap((value, index) => (value === face ? [index] : []))
+      for (const index of indices) {
+        if (isMobile) await cards.nth(index).tap()
+        else await cards.nth(index).click()
+      }
+      if (face !== unique[unique.length - 1]) await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
+    }
+    const done = frame.getByRole('button', { name: 'Back to Ninja Skills', exact: true })
+    await expect(done).toBeVisible()
+    const completedRound = await frame.locator('.lg-complete').innerText()
+    const before = await page.evaluate(() =>
+      Object.fromEntries(Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])),
+    )
+    const brokenKey = 'family-beta-preview-results-v1:synthetic-unreadable-history'
+    await page.evaluate((key) => localStorage.setItem(key, '{}'), brokenKey)
+    await done.click()
+    await expect(frame.getByRole('alert').filter({ hasText: 'This game result could not be saved' })).toBeVisible()
+    await expect(done).toBeVisible()
+    expect(await frame.locator('.lg-complete').innerText()).toBe(completedRound)
+    expect(await page.evaluate((key) => localStorage.getItem(key), brokenKey)).toBe('{}')
+    const results = () =>
+      page.evaluate(() =>
+        Object.keys(localStorage)
+          .filter(
+            (key) =>
+              key.startsWith('family-beta-preview-results-v1:') &&
+              key !== 'family-beta-preview-results-v1:synthetic-unreadable-history',
+          )
+          .map((key) => JSON.parse(localStorage.getItem(key)!)),
+      )
+    expect(await results()).toEqual([])
+    const afterFailure = await page.evaluate(() =>
+      Object.fromEntries(Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])),
+    )
+    for (const [key, value] of Object.entries(before)) expect(afterFailure[key]).toBe(value)
+
+    // Restore only this test's injected fault; real score history is never reset.
+    await page.evaluate((key) => localStorage.removeItem(key), brokenKey)
+    await done.click()
+    await expect(done).toHaveCount(0)
+    expect(await results()).toEqual([
+      expect.objectContaining({
+        childId,
+        grade,
+        activity: 'Memory Lanterns',
+        correct: unique.length,
+        attempted: unique.length,
+      }),
+    ])
+    await page.getByRole('button', { name: 'Progress', exact: true }).click()
+    await expect(page.getByRole('cell', { name: `${unique.length} / ${unique.length}`, exact: true })).toBeVisible()
+    expect(await results()).toHaveLength(1)
+    expect(errors).toEqual([])
+  })
+  test(`${grade}: embedded new rounds fail closed when history changes after menu rendering`, async ({ page }) => {
+    await page.goto(`/?grade=${slug}`)
+    const frame = page.frameLocator('iframe:visible')
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+    const launch = frame.getByRole('button', { name: 'Memory Lanterns', exact: true })
+    await expect(launch).toBeEnabled()
+    const brokenKey = 'family-beta-preview-results-v1:synthetic-unreadable-history'
+    await page.evaluate((key) => localStorage.setItem(key, '{}'), brokenKey)
+    await launch.click()
+    await expect(frame.locator('.lg-memory-card')).toHaveCount(0)
+    await expect(frame.getByRole('button', { name: 'Temporarily unavailable', exact: true })).toHaveCount(4)
+    await expect(frame.getByRole('button', { name: 'Coming soon', exact: true })).toHaveCount(2)
+    expect(await page.evaluate((key) => localStorage.getItem(key), brokenKey)).toBe('{}')
+    await page.evaluate((key) => localStorage.removeItem(key), brokenKey)
+    await frame.getByRole('button', { name: 'Check saved history again', exact: true }).click()
+    await expect(launch).toBeEnabled()
+    await expect(frame.getByRole('button', { name: 'Temporarily unavailable', exact: true })).toHaveCount(0)
+    await launch.click()
+    await expect(frame.locator('.lg-memory-card').first()).toBeVisible()
+    expect(errors).toEqual([])
+  })
   for (const title of ['Memory Lanterns', 'Shuriken Match', 'Context Gap Dash', 'Sushi Scramble']) {
     test(`${grade}: ${title} follows the approved policy and saves its reviewed round`, async ({ page, isMobile }) => {
       test.setTimeout(120000)

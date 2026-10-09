@@ -4,7 +4,7 @@ import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/c
 import type { Dataset } from '../domain/contracts.ts'
 import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
 import { fetchCurriculum } from './curriculum.ts'
-import type { BetaGrade } from './model.ts'
+import type { BetaGrade, BetaResult } from './model.ts'
 import { localDateKey } from '../domain.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
@@ -35,6 +35,8 @@ type ExtraLaunch =
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
 
+const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
+
 export function PreviewLearningHub<Launch>(props: LearningHubProps<Launch>) {
   return familyPreview ? <EnhancedHub {...props} /> : <LearningHub {...props} />
 }
@@ -46,6 +48,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
   const [sessionId, setSessionId] = useState('')
+  const [, refreshHistory] = useState(0)
   useEffect(() => {
     if (active) window.scrollTo(0, 0)
   }, [active])
@@ -118,6 +121,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
         )}
       </section>
     )
+  // A history read must not unmount an active game or its completion retry.
+  // Unverified history also cannot become a fresh round's rotation cursor.
+  let completedGames: BetaResult[] | null = null
+  try { completedGames = previewResults() } catch { /* Preserve stored records and the active game. */ }
   const model: LearningHubViewModel<Launch | ExtraLaunch> = {
     ...props.model,
     sections: props.model.sections.map((section) => {
@@ -224,7 +231,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
               launch: { previewAction: 'sky', channel: 'writing', datasets: writing },
             },
           })
-        for (const { capability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, previewResults(), previewProfile()?.id)) {
+        for (const { capability: availableCapability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)) {
+          const capability = completedGames === null && availableCapability.status === 'ready'
+            ? { status: 'unavailable' as const, moduleId: availableCapability.pack.moduleId, reason: gameHistoryWarning }
+            : availableCapability
           const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
           const entry = learningModuleCatalogEntry(id)
           activities.push({
@@ -246,7 +256,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                       datasets,
                     },
                   }
-                : { kind: 'disabled', label: 'Coming soon', reason: capability.reason },
+                : { kind: 'disabled', label: capability.reason === gameHistoryWarning ? 'Temporarily unavailable' : 'Coming soon', reason: capability.reason },
           })
         }
         if (section.id === 'ninja-skills')
@@ -291,6 +301,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   return (
     <>
       {error && <p role="alert">{error}</p>}
+      {completedGames === null && <div role="alert">
+        <p>{gameHistoryWarning}</p>
+        <button onClick={() => { setError(''); refreshHistory(value => value + 1) }}>Check saved history again</button>
+      </div>}
       <div hidden={Boolean(active)}>
         <LearningHub
           {...props}
@@ -299,7 +313,12 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           onLaunch={(launch, context) => {
             if (launch && typeof launch === 'object' && 'previewAction' in launch) {
               if ((launch as ExtraLaunch).previewAction === 'game') {
-                try { assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack) }
+                try {
+                  // History can change after the menu renders (for example in
+                  // another tab). Check again before starting an unsaved round.
+                  previewResults()
+                  assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack)
+                }
                 catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
               }
               setSessionId(crypto.randomUUID())
