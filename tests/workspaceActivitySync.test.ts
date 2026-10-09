@@ -191,6 +191,18 @@ test('sync adapter rejects oversized nested activity payloads before staging the
   assert.throws(() => adapter!.stage(key, JSON.stringify(payload)), /preserved/)
 })
 
+test('sync adapter rejects an oversized nested activity already on the device', () => {
+  const store = device()
+  const payload = JSON.parse(activity('a', 'a-oversized', '2026-10-08T00:05:00.000Z')) as {
+    values: { acquisitionPendingCheckpoints: unknown[] }
+  }
+  payload.values.acquisitionPendingCheckpoints = Array.from({ length: 501 }, (_, index) => ({ id: index }))
+  const raw = JSON.parse(initialPayload())
+  raw.records['weekly-dictation-checkpoint-v1:activity:a'] = JSON.stringify(payload)
+  setWorkspace(store, JSON.stringify(raw))
+  assert.throws(() => practiceWorkspaceSyncAdapter(store, childId), /preserved/)
+})
+
 test('different activity checkpoints reconcile independently, while the same activity chooses newest reviewed work', async () => {
   const first = device(),
     second = device()

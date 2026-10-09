@@ -252,6 +252,9 @@ export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): P
     if (name === historyKey || name === checkpointKey) partitionRecord(payload, childId)
     else activityRecord(payload, childId, name)
   }
+  // Validate records already present before exposing them to the sync layer;
+  // malformed or oversized local partitions must never become upload payloads.
+  for (const name of Object.keys(records).filter(isInternalKey)) assertPayload(name, records[name])
   return {
     keys: () => names().map((name) => practiceWorkspaceSyncKey(childId, name)),
     read: (syncKey) => {
