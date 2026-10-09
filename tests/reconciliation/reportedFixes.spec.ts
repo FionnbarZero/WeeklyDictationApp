@@ -60,7 +60,7 @@ test('Kindergarten path integrates games using previous relevant reading targets
   await expect(frame.getByRole('button', { name: 'Memory Lanterns', exact: true })).toBeVisible()
   await expect(frame.getByText('红色', { exact: true })).toBeVisible()
   await expect(frame.getByText('蓝色', { exact: true })).toBeVisible()
-  await expect(frame.getByRole('button', { name: 'Needs teacher-approved content' }).first()).toBeDisabled()
+  await expect(frame.getByRole('button', { name: 'Coming soon', exact: true }).first()).toBeDisabled()
   await frame.getByRole('button', { name: 'Listening Lily Pads', exact: true }).click()
   await expect(frame.locator('.k-word-choice')).toHaveText(['红色', '蓝色'])
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()

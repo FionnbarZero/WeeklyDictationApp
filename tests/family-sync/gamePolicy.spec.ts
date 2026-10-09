@@ -6,6 +6,23 @@ import { grades, installFamilyFixtures } from './fixtures.ts'
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
 for (const [slug, grade, childId] of grades) {
+  test(`${grade}: embedded Ninja Skills menu shares the same four-game policy`, async ({ page }) => {
+    await page.goto(`/?grade=${slug}`)
+    const frame = page.frameLocator('iframe:visible')
+    await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+    for (const title of ['Memory Lanterns', 'Shuriken Match', 'Context Gap Dash', 'Sushi Scramble']) {
+      const button = frame.getByRole('button', { name: title, exact: true })
+      await expect(button).toBeEnabled()
+      await expect(button.locator('..')).toContainText('source targets')
+    }
+    for (const title of ['Shadow Strike Dojo', 'Dictation Streak']) {
+      const card = frame.getByRole('heading', { name: title, exact: true }).locator('..')
+      await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
+    }
+    await frame.getByRole('button', { name: 'Sushi Scramble', exact: true }).click()
+    await expect(frame.locator('.lg-sushi-bar button').first()).toBeVisible()
+    await expect(frame.getByRole('heading', { name: 'Sushi Scramble', exact: true })).toBeVisible()
+  })
   for (const title of ['Memory Lanterns', 'Shuriken Match', 'Context Gap Dash', 'Sushi Scramble']) {
     test(`${grade}: ${title} follows the approved policy and saves its reviewed round`, async ({ page, isMobile }) => {
       test.setTimeout(120000)
@@ -28,6 +45,7 @@ for (const [slug, grade, childId] of grades) {
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
       await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'false')
       expect(await page.locator('iframe:visible').getAttribute('data-family-game')).toBe(raw)
+      if (grade === 'Grade 5') await page.screenshot({ path: test.info().outputPath('game.png'), fullPage: true })
 
       if (pack.moduleId === 'memory-flip') {
         const cards = frame.locator('.lg-memory-card')
@@ -55,7 +73,9 @@ for (const [slug, grade, childId] of grades) {
         for (const round of pack.rounds) {
           await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!, { timeout: 10000 })
           const index = round.choices.findIndex((choice) => choice.id === round.correctChoiceId)
-          const choice = frame.locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button').nth(index)
+          const choice = frame
+            .locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button')
+            .nth(index)
           await expect(choice).toBeEnabled()
           if (isMobile) await choice.click()
           else await frame.locator('canvas').press(String(index + 1))
