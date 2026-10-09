@@ -2,6 +2,8 @@
 
 Updated October 7, 2026. Start with the [immediate execution order](#immediate-execution-order). [ADR 0009](./docs/decisions/0009-activity-reliability-and-staged-delivery.md) records the approved architecture repair decisions and overrides conflicting older sequencing below. [STATUS.md](./STATUS.md) states what is implemented, tested, and published. Programs A–C retain their historical evidence and outstanding dependencies; completed Program A work does not establish reliability of the newer family wrapper.
 
+**Publication update (October 9, 2026):** A3.3 is now published and live-verified from `e9c5a547031c65c00cce45616ec581bcec111ac7` as Cloudflare version `4043b2d7-9869-42b5-87b1-e0dc04a1f8fc`. The next roadmap stage is **B — first student-ready games**; use GPT-6.1 Sol · High for bounded implementation and wait for its Astra · High policy/release review before publication. Smoke testing is appropriate for the published A3.3 build; do not use the older Firebase/Pages aliases for this release.
+
 This roadmap separates three programs with independent finish lines:
 
 - **Program A — codebase cleanup and refactoring**
