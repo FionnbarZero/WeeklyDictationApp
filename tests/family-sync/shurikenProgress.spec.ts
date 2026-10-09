@@ -4,6 +4,66 @@ import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
+test('Shuriken holds a confirmed answer behind reporting, then retries a failed answer without losing time', async ({
+  page,
+  isMobile,
+}) => {
+  const frame = await open(page, 'grade5')
+  const initial = await checkpoint(page)
+  if (initial.pack.moduleId !== 'speed-match') throw new Error('Wrong game')
+  const pairs = initial.pack.pairs
+  await page.evaluate(() => {
+    const target = window as Window & { releaseGameLock?: () => void; gameLockReady?: boolean }
+    void navigator.locks.request('ninja-game-storage-v1:family-synthetic-parent', async () => {
+      target.gameLockReady = true
+      await new Promise<void>((resolve) => {
+        target.releaseGameLock = resolve
+      })
+    })
+  })
+  await expect
+    .poll(() => page.evaluate(() => (window as Window & { gameLockReady?: boolean }).gameLockReady))
+    .toBe(true)
+  await seal(frame, pairs[0].left.label, isMobile)
+  await seal(frame, pairs[0].right.label, isMobile)
+  await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+  await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
+  await page.evaluate(() => (window as Window & { releaseGameLock?: () => void }).releaseGameLock?.())
+  await expect.poll(async () => (await checkpoint(page)).cleared).toEqual([pairs[0].id])
+  await expect(frame.locator('.lg-word-seal.is-matched')).toHaveCount(0)
+  await expect(frame.locator('.lg-shuriken-stage.is-correct')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+  await expect(frame.locator('.lg-word-seal.is-matched')).toHaveCount(2)
+  await seal(frame, pairs[1].left.label, isMobile)
+  const owner = page.frames().find((frame) => frame.url().includes('family-game.html'))!
+  // Fail only answer writes, not periodic timer saves, to exercise this boundary deterministically.
+  await owner.evaluate(() => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key, value) {
+      if (
+        key.startsWith('family-beta-games-v1:') &&
+        key.includes(':checkpoint:') &&
+        JSON.parse(value).prompts.reduce((sum: number, prompt: { attempted: number }) => sum + prompt.attempted, 0) > 1
+      )
+        throw new Error('Synthetic answer fault')
+      return original.call(this, key, value)
+    }
+    ;(window as Window & { restoreSaving?: () => void }).restoreSaving = () => {
+      Storage.prototype.setItem = original
+    }
+  })
+  await seal(frame, pairs[1].right.label, isMobile)
+  await expect(frame.getByRole('alert').filter({ hasText: 'mission is paused' })).toBeVisible()
+  const failed = await checkpoint(page)
+  await page.waitForTimeout(1800)
+  expect(await checkpoint(page)).toEqual(failed)
+  expect(failed.prompts[1].attempted).toBe(0)
+  await owner.evaluate(() => (window as Window & { restoreSaving?: () => void }).restoreSaving?.())
+  await frame.getByRole('button', { name: 'Retry saving mission' }).click()
+  await expect.poll(async () => (await checkpoint(page)).prompts[1].attempted).toBe(1)
+  await expect(frame.locator('.lg-word-seal.is-matched')).toHaveCount(4)
+})
+
 async function open(page: Page, slug: string, embedded = false) {
   await page.goto(`/?grade=${slug}`)
   if (embedded)
@@ -88,7 +148,11 @@ for (const [slug, grade, childId] of grades) {
     await expect(frame.locator('.lg-moon-timer')).toHaveAttribute('aria-label', '60 seconds remaining')
     for (const pair of pairs) {
       await seal(frame, pair.left.label, isMobile)
+      await expect(
+        frame.getByRole('button', { name: `${pair.left.label}. Click to hear and select.`, exact: true }),
+      ).toHaveClass(/is-selected/)
       await seal(frame, pair.right.label, isMobile)
+      await expect.poll(async () => (await checkpoint(page)).cleared).toContain(pair.id)
     }
     await frame.getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
     await expect(frame.locator('.lg-complete')).toHaveCount(0)

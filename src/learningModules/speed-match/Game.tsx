@@ -280,7 +280,7 @@ export function SpeedMatch({
       message={`${rank} rank earned with ${timeLeft} seconds remaining and a ${bestStreak}× best streak this visit.`}
       onDone={() => onComplete(summary)}
     /> : <section className="lg-card lg-speed-card">
-      {saving && <p role="status">Saving mission…</p>}
+      <p role="status" style={{ minHeight: '1.5em' }}>{saving ? 'Saving mission…' : '\u00a0'}</p>
       {saveError && <div role="alert"><p>{saveError}</p><button type="button" disabled={saving} onClick={() => { void savePending() }}>Retry saving mission</button></div>}
       {savedProgress && <p>Reviewed matches, accuracy and the saved whole-second clock resume here. Stealth streaks restart each visit.</p>}
       <div className={`lg-shuriken-stage${feedback ? ` is-${feedback}` : ''}${strikeQuality === 'lightning' ? ' is-lightning' : ''}`} style={stageStyle}>
