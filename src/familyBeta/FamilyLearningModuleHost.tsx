@@ -8,7 +8,9 @@ const SavedLearningGame = lazy(() => import('./SavedLearningGame.tsx').then((m) 
 export function FamilyLearningModuleHost(
   props: LearningModuleHostProps & { onSavedComplete: (result: BetaResult) => void },
 ) {
-  return props.pack.moduleId === 'memory-flip' || props.pack.moduleId === 'sentence-scramble' ? (
+  return props.pack.moduleId === 'memory-flip' ||
+    props.pack.moduleId === 'sentence-scramble' ||
+    props.pack.moduleId === 'context-gap-dash' ? (
     <SavedLearningGame
       pack={props.pack}
       playAudio={props.playAudio}

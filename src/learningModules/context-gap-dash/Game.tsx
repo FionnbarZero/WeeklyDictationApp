@@ -50,7 +50,9 @@ type FeedbackState = null | {
 type DashSceneOptions = {
   readonly rounds: readonly ContextGameRound[]
   readonly reducedMotion: boolean
-  readonly onAttempt: (roundIndex: number, choiceId: string, correct: boolean) => void
+  readonly onAttempt: (roundIndex: number, choiceId: string, correct: boolean) => Promise<void>
+  readonly savedResults: readonly boolean[]
+  readonly onSaveState: (error: string, retry: (() => void) | null) => void
   readonly onProgress: (completed: number, correct: number, streak: number, bestStreak: number) => void
   readonly onRoundChange: (roundIndex: number) => void
   readonly onInputReady: (ready: boolean) => void
@@ -93,10 +95,20 @@ class ContextDashScene extends Phaser.Scene {
   private bestStreak = 0
   private acceptingInput = false
   private finaleStarted = false
+  private disposed = false
+  private saveBusy = false
+  private confirmedTimer?: number
 
   constructor(options: DashSceneOptions) {
     super({ key: 'ContextGapDashJourney' })
     this.options = options
+    this.results = [...options.savedResults]
+    this.roundIndex = this.results.length
+    for (const correct of this.results) {
+      this.correctCount += Number(correct)
+      this.streak = correct ? this.streak + 1 : 0
+      this.bestStreak = Math.max(this.bestStreak, this.streak)
+    }
   }
 
   private addMotionTween(config: Phaser.Types.Tweens.TweenBuilderConfig) {
@@ -126,7 +138,8 @@ class ContextDashScene extends Phaser.Scene {
       if (activityClock.paused) this.scene.pause()
     })
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, GAME_HEIGHT)
-    this.cameras.main.scrollX = AREA_SCROLL[0]
+    const startArea = Math.min(this.roundIndex, this.options.rounds.length - 1)
+    this.cameras.main.scrollX = AREA_SCROLL[startArea]
 
     ;['dash-riverfront', 'dash-skybridge', 'dash-stadium'].forEach((key, regionIndex) => {
       this.add.image(regionIndex * REGION_WIDTH, -480, key)
@@ -142,7 +155,7 @@ class ContextDashScene extends Phaser.Scene {
     this.createTrackGlints()
     this.createHud()
 
-    const startX = this.startXForArea(0)
+    const startX = this.startXForArea(startArea)
     this.runnerShadow = this.add.ellipse(startX, START_Y + 8, 105, 24, 0x07131b, 0.48).setDepth(28)
     this.runner = this.add.image(startX, START_Y, 'kai-ready').setDepth(31)
     this.setRunnerPose('ready')
@@ -154,11 +167,18 @@ class ContextDashScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-NUMPAD_TWO', () => this.chooseGate(1))
     this.input.keyboard?.on('keydown-NUMPAD_THREE', () => this.chooseGate(2))
     this.options.registerChoiceHandler((choiceIndex) => this.chooseGate(choiceIndex))
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.options.registerChoiceHandler(null))
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.disposed = true
+      if (this.confirmedTimer !== undefined) activityClock.clearTimeout(this.confirmedTimer)
+      this.options.registerChoiceHandler(null)
+      this.options.onSaveState('', null)
+    })
 
     this.game.canvas.setAttribute('aria-label', `Context Gap Dash with ${this.options.rounds.length} gates. Listen to the Mandarin sentence, hover over a gate to hear its word, then guide Kai through the best answer.`)
     this.game.canvas.setAttribute('tabindex', '0')
-    this.renderRound()
+    this.options.onProgress(this.results.length, this.correctCount, this.streak, this.bestStreak)
+    if (this.roundIndex === this.options.rounds.length) this.playJourneyFinale()
+    else this.renderRound()
   }
 
   private startXForArea(areaIndex: number) {
@@ -313,11 +333,32 @@ class ContextDashScene extends Phaser.Scene {
     this.options.onInputReady(false)
     this.gates.forEach((view) => view.container.disableInteractive())
     const correct = gate.choiceId === round.correctChoiceId
+    const save = async () => {
+      if (this.saveBusy || this.disposed || activityClock.paused) return
+      this.saveBusy = true
+      this.options.onSaveState('', null)
+      try {
+        await this.options.onAttempt(this.roundIndex, gate.choiceId, correct)
+        if (this.disposed) return
+        // Report/navigation pause also holds the confirmed feedback and movement.
+        this.confirmedTimer = activityClock.setTimeout(() => {
+          if (!this.disposed) this.applyReviewedGate(gate, round, correct)
+        }, 0)
+      } catch (error) {
+        if (!this.disposed) this.options.onSaveState(
+          `${error instanceof Error ? error.message : 'Saving failed.'} This turn has not advanced. Retry saving.`,
+          () => { void save() },
+        )
+      } finally { this.saveBusy = false }
+    }
+    void save()
+  }
+
+  private applyReviewedGate(gate: GateView, round: ContextGameRound, correct: boolean) {
     const safeGate = this.gates.find((view) => view.choiceId === round.correctChoiceId)
     const safeAnswer = safeGate?.choiceLabel || round.targetText
     this.sentenceText.setText(round.sentenceBefore + safeAnswer + round.sentenceAfter)
 
-    this.options.onAttempt(this.roundIndex, gate.choiceId, correct)
     this.results.push(correct)
     if (correct) {
       this.correctCount += 1
@@ -686,21 +727,28 @@ export function ContextGapDash({
   onExit,
   onAttempt,
   onComplete,
+  savedResults = [],
 }: LearningGameBaseProps & {
   readonly rounds: readonly ContextGameRound[]
   readonly playAudio?: PlayLearningAudio
+  readonly savedResults?: readonly boolean[]
 }) {
   const playableRounds = rounds
   const hostRef = useRef<HTMLDivElement>(null)
   const attemptsRef = useRef<LearningGameAttempt[]>([])
   const choiceHandlerRef = useRef<((choiceIndex: number) => void) | null>(null)
   const playAudioRef = useRef(playAudio)
+  const onAttemptRef = useRef(onAttempt)
+  onAttemptRef.current = onAttempt
+  const initialResults = useRef(savedResults).current
+  const retrySaveRef = useRef<(() => void) | null>(null)
+  const [saveError, setSaveError] = useState('')
   const lastChoicePreviewRef = useRef({ label: '', time: 0 })
-  const [completed, setCompleted] = useState(0)
-  const [correct, setCorrect] = useState(0)
+  const [completed, setCompleted] = useState(initialResults.length)
+  const [correct, setCorrect] = useState(initialResults.filter(Boolean).length)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
-  const [roundIndex, setRoundIndex] = useState(0)
+  const [roundIndex, setRoundIndex] = useState(initialResults.length)
   const [feedback, setFeedback] = useState<FeedbackState>(null)
   const [finished, setFinished] = useState(false)
   const [sceneReady, setSceneReady] = useState(false)
@@ -741,16 +789,16 @@ export function ContextGapDash({
     return () => activityClock.clearTimeout(timer)
   }, [contextAudioText, finished, playAudio, playLearningText])
 
-  const handleAttempt = useCallback((index: number, choiceId: string, wasCorrect: boolean) => {
+  const handleAttempt = useCallback(async (index: number, choiceId: string, wasCorrect: boolean) => {
     const round = playableRounds[index]
     if (!round) return
     const attempt: LearningGameAttempt = {
       gameId: 'context-gap-dash', promptId: round.id, targetId: round.targetId,
       correct: wasCorrect, response: choiceId, assessmentMode: 'automatic',
     }
+    await onAttemptRef.current?.(attempt)
     attemptsRef.current.push(attempt)
-    onAttempt?.(attempt)
-  }, [onAttempt, playableRounds])
+  }, [playableRounds])
 
   useEffect(() => {
     if (!valid || !hostRef.current) return
@@ -758,6 +806,8 @@ export function ContextGapDash({
       rounds: playableRounds,
       reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       onAttempt: handleAttempt,
+      savedResults: initialResults,
+      onSaveState: (error, retry) => { setSaveError(error); retrySaveRef.current = retry },
       onProgress: (nextCompleted, nextCorrect, nextStreak, nextBest) => {
         setCompleted(nextCompleted)
         setCorrect(nextCorrect)
@@ -784,11 +834,13 @@ export function ContextGapDash({
     const unsubscribe = activityClock.subscribe(pauseScene)
     game.events.once('ready', () => pauseScene(activityClock.paused))
     return () => { unsubscribe(); game.destroy(true) }
-  }, [handleAttempt, playableRounds, previewChoice, valid])
+  }, [handleAttempt, playableRounds, previewChoice, valid, initialResults])
 
   const finish = useCallback(() => {
-    onComplete(summarizeLearningGame('context-gap-dash', attemptsRef.current))
-  }, [onComplete])
+    const reviewed = summarizeLearningGame('context-gap-dash', attemptsRef.current)
+    onComplete({ ...reviewed, attempted: reviewed.attempted + initialResults.length,
+      correct: reviewed.correct + initialResults.filter(Boolean).length })
+  }, [onComplete, initialResults])
 
   const busy = !sceneReady || Boolean(feedback) || finished
   const stageStyle = { '--dash-progress': (playableRounds.length ? (completed / playableRounds.length) * 100 : 0) + '%' } as CSSProperties
@@ -801,6 +853,7 @@ export function ContextGapDash({
     onExit={onExit}
   >
     {!valid ? <LearningGameEmpty onExit={onExit} message={`Context Gap Dash requires 1–${JOURNEY_LENGTH} rounds with at least three choices each.`} /> : <section className="lg-phaser-lily-card lg-phaser-dash-card" style={stageStyle}>
+      {saveError && <div role="alert"><p>{saveError}</p><button onClick={() => retrySaveRef.current?.()}>Retry saving turn</button></div>}
       <div className="lg-phaser-meta" aria-live="polite">
         <span><strong>{correct}</strong> first-try gates</span>
         <span><strong>{streak}</strong> momentum</span>

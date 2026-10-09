@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { MemoryFlip } from '../learningModules/memory-lanterns/Game.tsx'
 import { SentenceScramble } from '../learningModules/sushi-scramble/Game.tsx'
 import type { LearningModulePack, PlayLearningModuleAudio } from '../ninjaSkills/contracts.ts'
@@ -11,13 +11,17 @@ import { assertResultCopiesMatch, readResultLedger, RESULT_KEY, PENDING_KEY } fr
 import type { BetaResult } from './model.ts'
 import '../ninjaSkills/surface.css'
 
+const ContextGapDash = lazy(() =>
+  import('../learningModules/context-gap-dash/Game.tsx').then((module) => ({ default: module.ContextGapDash })),
+)
+
 export function SavedLearningGame({
   pack,
   playAudio,
   onExit,
   onComplete,
 }: {
-  pack: Extract<LearningModulePack, { moduleId: 'memory-flip' | 'sentence-scramble' }>
+  pack: Extract<LearningModulePack, { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' }>
   playAudio: PlayLearningModuleAudio
   onExit: () => void
   onComplete: (result: BetaResult) => void
@@ -117,6 +121,14 @@ export function SavedLearningGame({
         <MemoryFlip {...shared} pairs={initial.pack.pairs} />
       ) : initial.pack.moduleId === 'sentence-scramble' ? (
         <SentenceScramble {...shared} rounds={initial.pack.rounds} />
+      ) : initial.pack.moduleId === 'context-gap-dash' ? (
+        <Suspense fallback={<p role="status">Opening saved route…</p>}>
+          <ContextGapDash
+            {...shared}
+            rounds={initial.pack.rounds}
+            savedResults={initial.prompts.slice(0, initial.cleared.length).map((prompt) => prompt.correct === 1)}
+          />
+        </Suspense>
       ) : null}
     </div>
   )
