@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
@@ -130,6 +130,38 @@ test('family result history paginates by completion and stable identity without 
   assert.deepEqual([...first.results, ...second.results].map(r => r.id), expected.map(r => r.id).reverse())
   assert.equal((await repository.listPage(childId)).results[0].id, 'new-arrival')
   await assert.rejects(createResultRepository({ ...config, token: async () => mockToken('intruder') }).listPage(childId, first.nextPageToken))
+})
+
+test('family school-year scores save and retry across all grades while remaining private and immutable', async () => {
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent', endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }
+  const first = createResultRepository(config), second = createResultRepository(config)
+  const intruder = createResultRepository({ ...config, token: async () => mockToken('intruder') })
+  const owner = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  for (const [index, grade] of (['Kindergarten', 'Grade 2', 'Grade 5'] as const).entries()) {
+    const child = { id: `school-year-child-${index}`, nickname: 'Synthetic', grade, active: true }
+    await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), `families/family-parent/children/${child.id}`), child))
+    for (const channel of ['writing', 'reading', 'game'] as const) {
+      const result = makeResult(child, { id: `school-year-${channel}`, activity: 'Policy regression', channel, datasetIds: ['dataset-1'], schoolYear: '2026-27', correct: 1, attempted: 2 })
+      const path = `families/family-parent/children/${child.id}/betaResults`
+      await first.save(result)
+      await first.save(result)
+      assert.deepEqual((await second.list(child.id)).filter(r => r.id === result.id), [result])
+      await assert.rejects(first.save({ ...result, schoolYear: '2025-26' }))
+      await assert.rejects(intruder.save({ ...result, id: `unauthorized-${channel}` }))
+      await assertFails(getDoc(doc(anonymous, `${path}/${result.id}`)))
+      await assertFails(deleteDoc(doc(owner, `${path}/${result.id}`)))
+      for (const [valueIndex, schoolYear] of [null, 123, '', 'x'.repeat(33), [], {}].entries()) {
+        const id = `invalid-${channel}-${valueIndex}`
+        await assertFails(setDoc(doc(owner, `${path}/${id}`), { ...result, id, schoolYear }))
+      }
+      for (const field of ['recording', 'handwritingImage', 'response']) {
+        const id = `forbidden-${channel}-${field}`
+        await assertFails(setDoc(doc(owner, `${path}/${id}`), { ...result, id, [field]: 'forbidden' }))
+      }
+    }
+    await assert.rejects(intruder.list(child.id))
+  }
 })
 
 test('family practice sync hydrates another device, preserves conflicts, and rejects cross-family and anonymous access', async () => {

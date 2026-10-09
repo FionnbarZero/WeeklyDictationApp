@@ -7,7 +7,9 @@ Status: code-grounded inventory prepared after the local A3.3 final review (Octo
 - `src/ninjaSkills/content.ts` already resolves authoritative cohort terms and emits explicit unavailable reasons. It can materialize bounded subsets, target IDs, meanings, pinyin steps, context sentences, ordered tokens, and separate lifecycle inputs.
 - `src/ninjaSkills/LearningModuleHost.tsx` owns the adapter boundary. The game components emit observations; the owning activity must apply Acquisition, Correction, Adaptive Mastery, audio provenance, attempt identity, persistence, and scoring policy.
 - `src/learningModules` contains reusable interaction components, but the harness is synthetic and does not prove curriculum selection, lifecycle placement, persistence, or results.
-- A3.3 now supplies bounded workspace records, conflict-safe unfinished checkpoints, completed-attempt preservation, and guarded rollback evidence locally. It is not published yet, so no game release can be treated as live.
+- A3.3 is published at source `e9c5a54`. Its school-year policy repair passed live three-grade saving, failed-upload/reload recovery, and fresh-browser acceptance on October 8 Pacific. This establishes the shared saving prerequisite; each game's learning policy and per-target coverage still require their own acceptance.
+- The family wrapper is a second target-selection boundary: `src/familyBeta/main.tsx` builds game capabilities from earlier reading targets, substituting writing capabilities only for Dictation Streak. Updating pack tier filters alone will not make Tier 1 Context Gap Dash/Sushi Scramble or mixed-tier Shuriken Match usable. Stage B must align `src/familyBeta/gamePools.ts`, the wrapper, and the central policy.
+- `src/familyBeta/gameFrame.tsx` currently saves aggregate scores. Stage B must connect reviewed per-target results without persisting the reusable module's raw `response` values; any additional production schema/security change remains a separate concrete review and approval.
 
 ## Readiness by game
 
@@ -24,7 +26,7 @@ Status: code-grounded inventory prepared after the local A3.3 final review (Octo
 
 ## Release order and gates
 
-1. Resolve owner approval to merge/publish A3.3; no smoke test is valid before its canonical release is verified.
+1. A3.3 publication and authenticated score-policy repair are verified. Preserve that baseline and its protected recovery path as Stage B begins; source merge/push remains separate from the completed publication.
 2. Use GPT-6.1 Sol · High for the bounded first-game implementation, beginning with the smallest validated policy slices (Lanterns, Shuriken Match, Context Gap Dash, Sushi Scramble).
 3. Keep Shadow Strike separate for performance work; use GPT-6 Astra · High for Dictation Streak review.
 4. Reserve GPT-6 Astra · Extra High for Whispering Scrolls, Stroke Order Slay, security-sensitive work, and the final cross-grade release review.
