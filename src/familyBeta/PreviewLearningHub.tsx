@@ -66,7 +66,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   function complete(correct: number, attempted: number) {
     if (!active) return
     try {
-      savePreviewResult({
+      const saved = savePreviewResult({
         id: sessionId,
         activity:
           active.previewAction === 'game'
@@ -82,6 +82,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
         correct,
         attempted,
       })
+      if (!saved) throw new Error('The completed game could not be saved for this child.')
       setError('')
       exit()
     } catch {

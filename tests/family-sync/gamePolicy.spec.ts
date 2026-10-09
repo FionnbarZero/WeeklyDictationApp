@@ -39,6 +39,7 @@ for (const [slug, grade, childId] of grades) {
       expect(new Set(selected.map((term) => term.tier))).toEqual(new Set(GAME_POLICIES[pack.moduleId].tiers))
       const frame = page.frameLocator('iframe:visible')
       await expect(frame.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      await expect(frame.locator('.ninja-game-surface')).toHaveCSS('background-color', 'rgb(27, 32, 52)')
       // Opening reporting keeps the exact same pinned game and pauses its clock.
       await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
       await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
@@ -126,3 +127,36 @@ for (const [slug, grade, childId] of grades) {
     })
   }
 }
+
+test('embedded completion stays open when its child context disappears, then retries once', async ({ page }) => {
+  await page.goto('/?grade=kindergarten')
+  const frame = page.frameLocator('iframe:visible')
+  await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+  await frame.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
+  const cards = frame.locator('.lg-memory-card')
+  await expect(cards).toHaveCount(4)
+  const faces = await cards.locator('.lg-card-face b').allTextContents()
+  const unique = [...new Set(faces)]
+  for (const face of unique) {
+    const indices = faces.flatMap((value, index) => (value === face ? [index] : []))
+    await cards.nth(indices[0]).click()
+    await cards.nth(indices[1]).click()
+    if (face !== unique[unique.length - 1]) await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
+  }
+  const done = frame.getByRole('button', { name: 'Back to Ninja Skills', exact: true })
+  await expect(done).toBeVisible()
+  const profile = await page.locator('iframe:visible').getAttribute('data-family-profile')
+  await page.evaluate(() => sessionStorage.removeItem('family-beta-preview-selected-v1'))
+  await page.locator('iframe:visible').evaluate((node) => node.removeAttribute('data-family-profile'))
+  await done.click()
+  await expect(done).toBeVisible()
+  const results = () =>
+    page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-preview-results-v1:')))
+  expect(await results()).toHaveLength(0)
+  await page
+    .locator('iframe:visible')
+    .evaluate((node, value) => node.setAttribute('data-family-profile', value!), profile)
+  await done.click()
+  await expect(done).toHaveCount(0)
+  expect(await results()).toHaveLength(1)
+})
