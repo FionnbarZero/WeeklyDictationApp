@@ -26,6 +26,9 @@ import {
   type GameWriteLock,
 } from '../src/ninjaSkills/progressStore.ts'
 import { syncGameProgress, type GameProgressRemote } from '../src/ninjaSkills/progressSync.ts'
+import { openGameSession } from '../src/ninjaSkills/gameSession.ts'
+import { saveGameAggregate } from '../src/familyBeta/gameResultBridge.ts'
+import { readResultLedger, RESULT_KEY, PENDING_KEY } from '../src/familyBeta/resultLedger.ts'
 
 const now = '2026-10-09T01:00:00.000Z'
 const later = '2026-10-09T01:01:00.000Z'
@@ -105,6 +108,120 @@ function memory() {
   }
   return { values, storage, store: createGameProgressStore(storage, 'family') }
 }
+
+function sessionOptions(store: ReturnType<typeof memory>['store']) {
+  const checkpoint = fixture()
+  let id = 0
+  return {
+    store,
+    scope: checkpoint.scope,
+    pack: checkpoint.pack,
+    writerId: checkpoint.writerId,
+    uuid: () => `new-attempt-${++id}`,
+    now: () => now,
+    delivered: () => false,
+  }
+}
+
+test('game session resumes reviewed turns and pinned pack without retaining answers', async () => {
+  const { store, values } = memory()
+  const options = sessionOptions(store)
+  const first = await openGameSession(options)
+  const answer = answers(first.initial.pack)[0]
+  await first.review(answer)
+  const reopened = await openGameSession(options)
+  assert.deepEqual(reopened.initial, first.checkpoint())
+  assert.equal(reopened.initial.attemptId, first.initial.attemptId)
+  assert.equal(reopened.initial.prompts[0].attempted, 1)
+  for (const raw of values.values()) assert.ok(!raw.includes('"response"'))
+})
+
+test('game session holds a failed turn for exact retry and rejects a replacement answer', async () => {
+  const { store, storage } = memory()
+  const session = await openGameSession(sessionOptions(store))
+  const original = storage.setItem
+  storage.setItem = () => {
+    throw new Error('quota')
+  }
+  const turns = answers(session.initial.pack)
+  await assert.rejects(session.review(turns[0]), /quota/)
+  assert.equal(session.checkpoint().revision, 0)
+  await assert.rejects(session.review(turns[1]), /pending turn/)
+  storage.setItem = original
+  await session.review(turns[0])
+  assert.equal(session.checkpoint().revision, 1)
+  assert.equal(session.checkpoint().prompts[0].attempted, 1)
+})
+
+test('game session recovers completion written before interrupted final checkpoint', async () => {
+  const { store, storage } = memory()
+  const options = sessionOptions(store)
+  const session = await openGameSession(options)
+  const turns = answers(session.initial.pack)
+  for (const turn of turns.slice(0, -1)) await session.review(turn)
+  const original = storage.setItem
+  storage.setItem = (key, value) => {
+    if (key.includes(':checkpoint:')) throw new Error('quota')
+    original(key, value)
+  }
+  await assert.rejects(session.review(turns.at(-1)!), /quota/)
+  assert.equal(store.completions('child', true).length, 1)
+  storage.setItem = original
+  const recovered = await openGameSession(options)
+  assert.ok(gameCheckpointComplete(recovered.initial))
+  assert.deepEqual(recovered.initial, store.completions('child')[0].checkpoint)
+})
+
+test('game aggregate bridge retries exact totals and timestamps without duplicate graph points', async () => {
+  const { store, storage } = memory()
+  const session = await openGameSession(sessionOptions(store))
+  for (const turn of answers(session.initial.pack)) await session.review(turn)
+  const completion = store.completions('child')[0]
+  const original = storage.setItem
+  storage.setItem = (key, value) => {
+    if (key.startsWith(RESULT_KEY)) throw new Error('quota')
+    original(key, value)
+  }
+  assert.throws(() => saveGameAggregate(storage, completion), /quota/)
+  assert.deepEqual(readResultLedger(storage, PENDING_KEY), [completion.result])
+  storage.setItem = original
+  saveGameAggregate(storage, completion)
+  saveGameAggregate(storage, completion)
+  assert.deepEqual(readResultLedger(storage, RESULT_KEY), [completion.result])
+  assert.equal(store.completions('child', true).length, 1, 'aggregate delivery never acknowledges detailed outbox')
+  storage.setItem(`${RESULT_KEY}:${completion.result.id}`, JSON.stringify({ ...completion.result, correct: 0 }))
+  assert.throws(() => saveGameAggregate(storage, completion), /disagree/)
+})
+
+test('competing mounted games cannot overwrite each other or discard the newer turn', async () => {
+  const { store } = memory()
+  const options = sessionOptions(store)
+  const first = await openGameSession(options)
+  const second = await openGameSession(options)
+  const turns = answers(first.initial.pack)
+  await first.review(turns[0])
+  await assert.rejects(second.review(turns[1]), /another tab/)
+  await assert.rejects(second.discard(), /another tab/)
+  assert.deepEqual(store.checkpoint(options.scope), first.checkpoint())
+  await first.discard()
+  assert.equal(store.checkpoint(options.scope), null)
+  await assert.rejects(first.review(turns[1]), /not available/)
+})
+
+test('completed rounds reopen until delivered, then use a distinct immutable attempt', async () => {
+  const { store, storage } = memory()
+  const options = sessionOptions(store)
+  const first = await openGameSession(options)
+  for (const turn of answers(first.initial.pack)) await first.review(turn)
+  const completion = store.completions('child')[0]
+  const recovery = await openGameSession(options)
+  assert.equal(recovery.initial.attemptId, completion.result.id)
+  saveGameAggregate(storage, completion)
+  const next = await openGameSession({ ...options, delivered: () => true })
+  assert.notEqual(next.initial.attemptId, completion.result.id)
+  assert.equal(next.initial.revision, 0)
+  assert.deepEqual(store.completions('child')[0], completion)
+})
 
 function testWriteLock(): GameWriteLock {
   let tail: Promise<unknown> = Promise.resolve()

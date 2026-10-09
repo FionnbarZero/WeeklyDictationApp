@@ -20,6 +20,8 @@ import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import { latestEarlierTargets, reinforcementGames } from './gamePools.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
+import type { FamilyGameWindow } from './gameOwner.ts'
+import { deviceWriter } from './deviceWriter.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
@@ -114,6 +116,20 @@ function FamilyPreview() {
   scopeRef.current = scope
   const childRef = useRef(child?.id)
   childRef.current = child?.id
+  const profilesRef = useRef(profiles)
+  profilesRef.current = profiles
+  ;(window as FamilyGameWindow).familyGameOwner = source => {
+    const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(item => item.contentWindow === source)
+    const slot = slotsRef.current.find(item => item.id === frame?.dataset.familySlot)
+    if (!slot || !practiceReady || (firebaseConfigReady && (!familyId || !auth.user)))
+      throw new Error('The saved game has no active family owner.')
+    return { familyId: familyId || 'device-preview', writerId: deviceWriter(localStorage), profile: slot.profile, week: slot.week,
+      stillOwner: () => scopeRef.current === scope && Boolean(frame?.isConnected) &&
+        frame?.getAttribute('data-family-profile') === JSON.stringify(slot.profile) &&
+        slotsRef.current.some(item => item.id === slot.id) &&
+        profilesRef.current.some(item => item.id === slot.profile.id && item.grade === slot.profile.grade && item.active),
+    }
+  }
 
   useEffect(() => subscribeAuth(setAuth), [])
   useEffect(() => {
@@ -314,8 +330,9 @@ function FamilyPreview() {
         setSelectedSlots(current => ({ ...current, [key]: undefined }))
       }
       if (event.data?.type === 'family-beta-game-completed' && slot.game?.attemptId === event.data.attemptId) {
+        const resultId = event.data.resultId || slot.game?.attemptId
         let confirmed = false
-        try { confirmed = previewResults().some(result => result.id === slot.game?.attemptId && result.childId === slot.profile.id && result.grade === slot.profile.grade) } catch { /* Keep this game open when its ledger cannot be read. */ }
+        try { confirmed = previewResults().some(result => result.id === resultId && result.childId === slot.profile.id && result.grade === slot.profile.grade && result.channel === 'game' && result.activity === slot.game?.pack.title) } catch { /* Keep this game open when its ledger cannot be read. */ }
         if (!confirmed) { setActivityError('The game result is not confirmed. Keep it open and retry.'); return }
         setSlots(current => current.filter(item => item.id !== slot.id))
         setSelectedSlots(current => ({ ...current, [`${slot.workspace}:games`]: undefined }))
@@ -430,9 +447,13 @@ function FamilyPreview() {
     finally { resumeInFlight.current = false }
   }
 
-  function discardSlot(slot: FamilyActivitySlot) {
+  async function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
     try {
+      const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(item => item.dataset.familySlot === slot.id)
+      if (slot.game?.pack.moduleId === 'memory-flip' && !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession)
+        throw new Error('Wait for the saved game to open before discarding it.')
+      await (frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession?.discard()
       if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)
       const removed = slots.filter(item => item.id === slot.id || (slot.savedLesson && item.profile.id === slot.profile.id && item.savedLesson?.progressionId === slot.savedLesson.progressionId))
       if (removed.some(item => item.id === resumingId)) setResumingId(null)

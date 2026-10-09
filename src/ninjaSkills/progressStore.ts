@@ -109,7 +109,10 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
     if (!allowed()) throw new Error('Game checkpoint replacement is no longer allowed.')
     validateGameCheckpoint(value)
     const current = checkpoint(value.scope)
-    if (serializeGameRecord(current) !== serializeGameRecord(expected))
+    if (
+      serializeGameRecord(current) !== serializeGameRecord(expected) &&
+      serializeGameRecord(current) !== serializeGameRecord(value)
+    )
       throw new Error('This game changed in another tab. The newer checkpoint was preserved.')
     if (!current && checkpoints(value.scope.childId).length >= GAME_CHECKPOINT_LIMIT)
       throw new Error('Too many retained game activities. No work was discarded.')
@@ -130,6 +133,15 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
     completions,
     saveCompletion,
     saveCheckpoint,
+    discardCheckpoint(expected: GameCheckpoint) {
+      const key = checkpointKey(expected.scope)
+      const current = checkpoint(expected.scope)
+      if (!current) return
+      if (serializeGameRecord(current) !== serializeGameRecord(expected))
+        throw new Error('This game changed in another tab. No saved work was discarded.')
+      storage.removeItem(key)
+      if (storage.getItem(key) !== null) throw new Error('Discarding the game could not be confirmed.')
+    },
     finishCheckpoint(value: GameCheckpoint, expected: GameCheckpoint | null) {
       // Last reviewed-answer time gives retries the identical completion time.
       const completion = completeGameCheckpoint(value, value.reviewedAt!)
@@ -151,8 +163,9 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
 type LocalGameStore = ReturnType<typeof createGameProgressStore>
 export type GameProgressStore = Omit<
   LocalGameStore,
-  'saveCheckpoint' | 'saveCompletion' | 'acknowledgeCompletion' | 'finishCheckpoint'
+  'saveCheckpoint' | 'saveCompletion' | 'acknowledgeCompletion' | 'finishCheckpoint' | 'discardCheckpoint'
 > & {
+  discardCheckpoint: (value: GameCheckpoint) => void | Promise<void>
   saveCheckpoint: (...args: Parameters<LocalGameStore['saveCheckpoint']>) => void | Promise<void>
   saveCompletion: (...args: Parameters<LocalGameStore['saveCompletion']>) => void | Promise<void>
   acknowledgeCompletion: (value: GameCompletion) => void | Promise<void>
@@ -188,6 +201,7 @@ export function createLockedGameProgressStore(
     checkpoint: store.checkpoint,
     checkpoints: store.checkpoints,
     completions: store.completions,
+    discardCheckpoint: (...args) => write(() => store.discardCheckpoint(...args)),
     saveCheckpoint: (...args) => write(() => store.saveCheckpoint(...args)),
     saveCompletion: (...args) => write(() => store.saveCompletion(...args)),
     finishCheckpoint: (...args) => write(() => store.finishCheckpoint(...args)),

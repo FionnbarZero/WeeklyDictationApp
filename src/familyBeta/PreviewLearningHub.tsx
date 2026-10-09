@@ -25,7 +25,7 @@ import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
 
 const ModuleHost = lazy(() =>
-  import('../ninjaSkills/LearningModuleHost.tsx').then((m) => ({ default: m.LearningModuleHost })),
+  import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
@@ -331,6 +331,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost
             pack={active.pack}
+            onSavedComplete={exit}
             playAudio={audio}
             onExit={exit}
             onComplete={(summary) => {

@@ -12,6 +12,7 @@ const prefixes = [
   'family-beta-acquisition-v1:',
   'family-beta-activity:',
   'family-beta-mastery-v1:',
+  'family-beta-games-v1:',
   'family-beta-problem-report-v1:',
 ]
 

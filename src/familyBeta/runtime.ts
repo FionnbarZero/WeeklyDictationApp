@@ -42,6 +42,7 @@ export function savePreviewResult(input: ResultInput): BetaResult | null {
   if (input.attempted === 0) return null
   const results = previewResults()
   const existing = input.id ? [...results, ...pendingResults()].find((r) => r.id === input.id) : undefined
+  let result: BetaResult
   if (existing) {
     assertResultCopiesMatch(localStorage, RESULT_KEY, existing)
     assertResultCopiesMatch(localStorage, PENDING_KEY, existing)
@@ -55,14 +56,12 @@ export function savePreviewResult(input: ResultInput): BetaResult | null {
       existing.attempted !== input.attempted
     )
       throw new Error('This attempt conflicts with an existing result. Nothing was overwritten.')
-    localStorage.setItem(`${RESULT_KEY}:${existing.id}`, JSON.stringify(existing))
-    confirmResult(existing)
-    return existing
+    result = existing
+  } else {
+    result = makeResult(profile, input)
+    // Queue new facts first; retries preserve already-acknowledged results.
+    localStorage.setItem(`${PENDING_KEY}:${result.id}`, JSON.stringify(result))
   }
-  const result = makeResult(profile, input)
-  // The durable outbox is written before presenting completion. No recordings or answers enter it.
-  // One key per immutable result prevents simultaneous tabs from losing each other's writes.
-  localStorage.setItem(`${PENDING_KEY}:${result.id}`, JSON.stringify(result))
   localStorage.setItem(`${RESULT_KEY}:${result.id}`, JSON.stringify(result))
   confirmResult(result)
   return result
