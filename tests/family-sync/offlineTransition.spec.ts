@@ -83,7 +83,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   // First installation does not claim the old document: reload makes it controlled.
   await page.reload()
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   const beforeRollback = await records(page)
 
   async function activateReplacement(version: 'rollback' | 'candidate') {
