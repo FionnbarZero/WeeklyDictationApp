@@ -1,6 +1,6 @@
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
-import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
+import { expect, type FrameLocator, type Page, test } from '@playwright/test'
 import type { ContextGameRound } from '../../src/learningModules/context-gap-dash/runtime/contracts.ts'
+import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page, baseURL }) => {
@@ -48,6 +48,28 @@ async function answer(frame: FrameLocator, round: ContextGameRound, mobile: bool
 }
 
 for (const [slug, grade, childId] of grades) {
+  test(`${grade}: Context stage and replay control stay inside the family frame`, async ({ page, isMobile }) => {
+    if (!isMobile) await page.setViewportSize({ width: 1280, height: 900 })
+    const frame = await open(page, slug)
+    const bounds = await frame.locator('.lg-phaser-dash-card').evaluate((card) => {
+      const stage = card.getBoundingClientRect()
+      const replay = card.querySelector('button')?.getBoundingClientRect()
+      return {
+        viewport: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        stageLeft: stage.left,
+        stageRight: stage.right,
+        replayLeft: replay?.left ?? -1,
+        replayRight: replay?.right ?? Number.POSITIVE_INFINITY,
+      }
+    })
+    expect(bounds.stageLeft).toBeGreaterThanOrEqual(0)
+    expect(bounds.stageRight).toBeLessThanOrEqual(bounds.viewport)
+    expect(bounds.replayLeft).toBeGreaterThanOrEqual(0)
+    expect(bounds.replayRight).toBeLessThanOrEqual(bounds.viewport)
+    expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.viewport)
+  })
+
   test(`${grade}: Context restores a reviewed mistake and completed gates without replaying them`, async ({
     page,
     isMobile,
