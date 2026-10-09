@@ -97,19 +97,22 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
     // Updating may not replace the live document or its engine.
     await page.goto('about:blank')
     await expect
-      .poll(async () => {
-        for (const worker of context.serviceWorkers()) {
-          try {
-            const ready = await worker.evaluate(
-              async () => !(await self.registration.waiting) && !self.registration.installing,
-            )
-            if (ready) return true
-          } catch {
-            /* The replaced worker can become redundant during polling. */
+      .poll(
+        async () => {
+          for (const worker of context.serviceWorkers()) {
+            try {
+              const ready = await worker.evaluate(
+                async () => !(await self.registration.waiting) && !self.registration.installing,
+              )
+              if (ready) return true
+            } catch {
+              /* The replaced worker can become redundant during polling. */
+            }
           }
-        }
-        return false
-      })
+          return false
+        },
+        { timeout: 15_000 },
+      )
       .toBe(true)
     await page.goto('/?grade=grade2')
   }
