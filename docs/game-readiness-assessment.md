@@ -190,4 +190,18 @@ Verification against the exact `9880e8a` package:
 - The packaged desktop/tablet matrix passes **134/134**: Context 12, Lanterns 12, ownership/discard 8, Shuriken 14, Sushi 12, shared saving 32 and central policy 44. It covers all three grades, both menus, offline cold start, reconnect delivery, second-device resume/discard, failed-write retry, report pause and rapid Shuriken input.
 - All **145 package files** match their manifest. Package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-0iug0N`; tree SHA-256: `8eca7919de64929e6ce038b5475e0cbbbe0bf1b49a475343c1ca5b8545163e70`.
 
-Remaining gates: independent Astra Extra High review of the complete persistence diff; bounded repair and verification of the recorded Context frame clipping; guarded predecessor/candidate rollback evidence; then explicit approval before any policy deployment, merge, push or publication. Real-child records, authentication and production security were untouched. A3.3 `e9c5a54` remains the verified live source, so owner smoke testing is still premature.
+Remaining gates at that checkpoint were the independent persistence review, bounded repair and verification of the recorded Context frame clipping, guarded predecessor/candidate rollback evidence, and explicit approval before any policy deployment, merge, push or publication. The review result and repairs are recorded below. Real-child records, authentication and production security were untouched. A3.3 `e9c5a54` remains the verified live source, so owner smoke testing is still premature.
+
+### Persistence review repair
+
+The independent GPT-6 Astra · Extra High persistence review found one release-blocking data-lifecycle defect: the first candidate kept only one unsynced retirement for each child/week/game scope. Discarding a second offline run could overwrite the first retirement and allow a stale device to revive the older run. Commit `11c6689` stores each retirement by scope and run, synchronizes every retained retirement, and keeps completed attempts immutable. The same repair ensures that a checkpoint left behind by an interrupted discard cannot block a fresh run and preserves compatibility with the earlier one-retirement preview format. The student-facing status now accurately says reviewed turns sync through the parent family account when connected.
+
+Final repaired evidence:
+
+- **877/877 unit tests**, including multiple offline discards, interrupted-discard recovery and earlier-format acknowledgement.
+- **134/134 exact-package desktop/tablet checks** across Context, Lanterns, ownership/discard, Shuriken, Sushi, shared saving and central policy.
+- Published policy: **16 applicable emulator checks passed**, with the Stage B-only collection case intentionally skipped. Candidate additive policy: **17/17 passed**.
+- Typecheck, lint, format, build/performance (**549,990/550,000 initial JavaScript; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing time-bounded firebase-tools-only exception passed.
+- All **145 manifest files** match source `11c66897c073d475211c6db9c3b8da7df64f2936`; tree `b7edcefb2f14ef545e1f491002c1ed8498f40a91dc8d32d742494006b886127e`; exact tested package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Mozinl`.
+
+The persistence review has no remaining actionable finding. The next bounded implementation slice is the recorded Context family-frame clipping repair using GPT-6.1 Sol · High. Guarded predecessor/candidate rollback evidence and the final Astra Extra High cross-grade release review still follow. No push, merge, deployment, production-policy change or child-data action occurred; the live source remains A3.3 `e9c5a54`, so smoke testing is premature.
