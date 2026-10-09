@@ -55,6 +55,7 @@ for (const key of [
   'family-beta-activity:child:weekly-dictation-state-v2',
   'family-beta-activity:child:lesson-retirement-v1:lesson',
   'family-beta-activity:child:lesson-workspace-v1',
+  'family-beta-games-v1:family:checkpoint:scope',
 ]) {
   test(`rollback guard preserves newer records without reading credentials or writing storage: ${key}`, () => {
     const values = new Map([
@@ -95,14 +96,22 @@ test('rollback guard preserves an oversized acquisition history without parsing 
   const oversized = JSON.stringify({
     sessionId: 'saved-lesson',
     lessonSnapshot: { curriculumRevision: '2026-10-08' },
-    reviewedTrials: Array.from({ length: 501 }, (_, i) => ({ sessionId: 'saved-lesson', reviewedAt: `2026-10-08T00:00:${String(i % 60).padStart(2, '0')}.000Z` })),
+    reviewedTrials: Array.from({ length: 501 }, (_, i) => ({
+      sessionId: 'saved-lesson',
+      reviewedAt: `2026-10-08T00:00:${String(i % 60).padStart(2, '0')}.000Z`,
+    })),
   })
-  const values = new Map([[key, oversized], ['weekly-dictation-auth-v1', 'never-read']])
+  const values = new Map([
+    [key, oversized],
+    ['weekly-dictation-auth-v1', 'never-read'],
+  ])
   let ready: (() => void) | undefined
   const document = {
     title: '',
     body: { innerHTML: '' },
-    addEventListener: (_event: string, fn: () => void) => { ready = fn },
+    addEventListener: (_event: string, fn: () => void) => {
+      ready = fn
+    },
   }
   const window = { __dojoRollbackPreserve: false }
   runInNewContext(rollbackGuard, {
