@@ -103,9 +103,13 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
           if (workers.length === 0) return true
           for (const worker of workers) {
             try {
-              const ready = await worker.evaluate(
-                async () => !(await self.registration.waiting) && !self.registration.installing,
-              )
+              // A retired worker can leave evaluate pending forever instead of
+              // rejecting. Bound that probe so it cannot hide the new worker;
+              // the outer activation deadline and served-build checks remain.
+              const ready = await Promise.race([
+                worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing),
+                new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 250)),
+              ])
               if (ready) return true
             } catch {
               /* The replaced worker can become redundant during polling. */
@@ -189,7 +193,10 @@ test('a game-only Stage B checkpoint blocks the older engine without reading cre
           for (const worker of workers) {
             try {
               if (
-                await worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing)
+                await Promise.race([
+                  worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing),
+                  new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 250)),
+                ])
               )
                 return true
             } catch {
