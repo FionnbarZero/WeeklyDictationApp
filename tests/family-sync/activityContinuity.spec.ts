@@ -165,9 +165,14 @@ test('a game feedback delay stays paused behind reporting and navigation', async
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
   await expect(cards.nth(0)).not.toHaveAttribute('class', before!)
   await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
+  // Durable round discovery also supplies a resume button in the game grid.
+  // This check specifically exercises the still-mounted, paused activity.
+  const pausedWork = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Your paused work', exact: true }) })
+  await expect(pausedWork.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Activities', exact: true }).click()
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  await page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
+  await pausedWork.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
   await expect(cards.first()).toBeVisible()
 })

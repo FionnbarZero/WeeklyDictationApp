@@ -175,7 +175,7 @@ test('offline token renewal preserves the initialized activity and retries later
   await expect(frame.getByRole('timer')).toHaveText(remaining)
   offline = false
   await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(frame.locator('body')).toHaveAttribute('data-review-probe', 'original')
 })
 

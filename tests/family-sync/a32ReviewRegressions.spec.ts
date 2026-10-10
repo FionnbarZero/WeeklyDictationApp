@@ -60,7 +60,7 @@ for (const [slug, , childId] of grades) {
       expect((await checkpoint()).revision).toBe(before.revision + 1)
       await page.unroute('**/documents:batchGet')
       await page.reload()
-      await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+      await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
       expect((await checkpoint()).revision).toBe(before.revision + 1)
     })
   }
@@ -69,7 +69,7 @@ for (const [slug, , childId] of grades) {
 test('a confirmed bootstrap denial still revokes the offline grant', async ({ page }) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await page.route('**/documents:batchGet', (route) => route.fulfill({ status: 403, body: '{}' }))
   await page.reload()
   await expect(page.getByText(/Firestore error/)).toBeVisible()
@@ -138,7 +138,7 @@ test('an exact saved completed Grade 2 edition cannot advance a newer unfinished
   )
   await page.goto('/?grade=grade2')
   for (let visit = 0; visit < 2; visit++) {
-    await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+    await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
     await page.getByText('Saved lessons', { exact: true }).click()
     await expect(page.getByRole('button', { name: /Resume saved writing/ })).toHaveCount(2)
     const index = await page.evaluate(
