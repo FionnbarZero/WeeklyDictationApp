@@ -170,8 +170,11 @@ for (const [slug, grade, childId] of grades) {
           if (pair !== pack.pairs[pack.pairs.length - 1]) await expect(word).toHaveClass(/is-matched/)
         }
       } else if (pack.moduleId === 'context-gap-dash') {
-        for (const round of pack.rounds) {
-          await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!, { timeout: 10000 })
+        for (const [roundIndex, round] of pack.rounds.entries()) {
+          // Software-rendered CI can take longer than ten seconds to complete
+          // the normal-motion route. Keep animation enabled and verify saving
+          // separately so this allowance cannot hide a dropped answer.
+          await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!, { timeout: 30000 })
           const index = round.choices.findIndex((choice) => choice.id === round.correctChoiceId)
           const choice = frame
             .locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button')
@@ -179,6 +182,18 @@ for (const [slug, grade, childId] of grades) {
           await expect(choice).toBeEnabled()
           if (isMobile) await choose(choice)
           else await frame.locator('canvas').press(String(index + 1))
+          await expect
+            .poll(() =>
+              page.evaluate(
+                (id) =>
+                  Object.keys(localStorage)
+                    .filter((key) => key.startsWith('family-beta-games-v1:') && key.includes(':checkpoint:'))
+                    .map((key) => JSON.parse(localStorage.getItem(key)!))
+                    .find((value) => value.scope.childId === id && value.scope.gameId === 'context-gap-dash')?.cleared,
+                childId,
+              ),
+            )
+            .toEqual(pack.rounds.slice(0, roundIndex + 1).map((prompt) => prompt.id))
         }
       } else if (pack.moduleId === 'sentence-scramble') {
         for (const [roundIndex, round] of pack.rounds.entries()) {
