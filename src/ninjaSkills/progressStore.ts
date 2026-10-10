@@ -212,9 +212,12 @@ export function createGameProgressStore(storage: GameStorage, familyId: string) 
       const legacy = read(legacyKey, validateGameRetirement)
       if (legacy?.runId === value.runId) storage.removeItem(legacyKey)
     },
-    applyRemoteRetirement(value: GameRetirement) {
+    applyRemoteRetirement(value: GameRetirement, expected: GameCheckpoint, allowed: () => boolean) {
       validateGameRetirement(value)
       const current = rawCheckpoint(value.scope)
+      // The locked adapter runs this check after acquiring its write lease.
+      // Opening a game or recording an answer while waiting must defer removal.
+      if (!allowed() || serializeGameRecord(current) !== serializeGameRecord(expected)) return
       if (current && current.runId === value.runId) storage.removeItem(checkpointKey(value.scope))
       const local = retirement(value.scope, value.runId)
       if (local) {
@@ -258,7 +261,7 @@ export type GameProgressStore = Omit<
   saveCompletion: (...args: Parameters<LocalGameStore['saveCompletion']>) => void | Promise<void>
   acknowledgeCompletion: (value: GameCompletion) => void | Promise<void>
   acknowledgeRetirement: (value: GameRetirement) => void | Promise<void>
-  applyRemoteRetirement: (value: GameRetirement) => void | Promise<void>
+  applyRemoteRetirement: (...args: Parameters<LocalGameStore['applyRemoteRetirement']>) => void | Promise<void>
   finishCheckpoint: (
     ...args: Parameters<LocalGameStore['finishCheckpoint']>
   ) => GameCompletion | Promise<GameCompletion>

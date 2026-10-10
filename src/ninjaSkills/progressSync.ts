@@ -101,8 +101,10 @@ export async function syncGameProgress(options: {
           continue
         const saved = validateGameRetirement(await remote.saveRetirement(localRetirement))
         if (!stillOwner()) return
-        if (serializeGameRecord(saved) !== serializeGameRecord(localRetirement))
+        if (gameScopeKey(saved.scope) !== scopeKey || saved.runId !== localRetirement.runId)
           throw new Error('Cloud game retirement differs. The discarded run remains queued.')
+        // Different devices can retire the same run independently. The cloud
+        // record stays immutable; acknowledge only this exact local outbox copy.
         await store.acknowledgeRetirement(localRetirement)
       }
       continue
@@ -118,7 +120,11 @@ export async function syncGameProgress(options: {
           throw new Error('Online game retirement identity failed validation.')
         if (serializeGameRecord(store.checkpoint(scope)) !== serializeGameRecord(local) || !canReplaceCheckpoint(scope))
           continue
-        await store.applyRemoteRetirement(retirement)
+        await store.applyRemoteRetirement(
+          retirement,
+          localCheckpoint,
+          () => stillOwner() && canReplaceCheckpoint(scope),
+        )
         continue
       }
     }

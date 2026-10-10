@@ -70,11 +70,7 @@ function firestoreRest() {
       assert.equal(request.documents.length, 1)
       const name = request.documents[0]
       const found = documents.get(name)
-      return json([
-        found
-          ? { found, readTime: secondTime }
-          : { missing: name, readTime: secondTime },
-      ])
+      return json([found ? { found, readTime: secondTime } : { missing: name, readTime: secondTime }])
     }
     if (apiPath.endsWith('/documents:commit')) {
       const request = JSON.parse(String(init.body)) as {
@@ -154,6 +150,11 @@ test('game cloud transport uses exact conditional readback and immutable per-run
   const retirement = retireGameCheckpoint(next, secondTime)
   assert.deepEqual(await repository.saveRetirement(retirement), retirement)
   assert.deepEqual(await repository.saveRetirement(retirement), retirement, 'an identical retry is idempotent')
+  assert.deepEqual(
+    await repository.saveRetirement({ ...retirement, writerId: 'writer-two', retiredAt: firstTime }),
+    retirement,
+    'a second device confirms the existing immutable discard of the same run',
+  )
   assert.deepEqual(await repository.readRetirement(next.scope, next.runId), retirement)
   await assert.rejects(repository.writeCheckpoint(next, updated.version), /discarded game run/)
 

@@ -702,6 +702,94 @@ test('multiple offline discards for one game retain and sync every retired run',
   }
 })
 
+test('different devices discarding one run converge without replacing the first retirement', async () => {
+  const initial = fixture()
+  const first = retireGameCheckpoint(initial, now)
+  const second = retireGameCheckpoint({ ...initial, writerId: 'writer-two' }, later)
+  const local = memory()
+  local.store.saveCheckpoint(initial, null)
+  local.store.discardCheckpoint(initial, second)
+  const cloud = remoteFixture(initial)
+  cloud.retirements.set(initial.runId, first)
+  const remote = { ...cloud.remote, saveRetirement: async () => first }
+  const options = {
+    store: local.store,
+    remote,
+    childId: 'child',
+    scopes: [initial.scope],
+    stillOwner: () => true,
+    canReplaceCheckpoint: () => true,
+  }
+  await syncGameProgress(options)
+  assert.deepEqual(local.store.retirements('child'), [])
+  assert.deepEqual(cloud.retirements.get(initial.runId), first)
+  const next = startGameCheckpoint(initial.scope, initial.pack, 'next-run', 'writer-two', later)
+  local.store.saveCheckpoint(next, null)
+  await syncGameProgress(options)
+  assert.deepEqual(cloud.current(), next)
+})
+
+test('a retirement acknowledgement for another run or scope leaves the local discard queued', async () => {
+  for (const mutation of [{ runId: 'other-run' }, { scope: { ...fixture().scope, childId: 'other-child' } }]) {
+    const initial = fixture()
+    const local = memory()
+    local.store.saveCheckpoint(initial, null)
+    const retirement = retireGameCheckpoint(initial, later)
+    local.store.discardCheckpoint(initial, retirement)
+    const cloud = remoteFixture(initial)
+    await assert.rejects(
+      syncGameProgress({
+        store: local.store,
+        remote: { ...cloud.remote, saveRetirement: async () => ({ ...retirement, ...mutation }) },
+        childId: 'child',
+        scopes: [initial.scope],
+        stillOwner: () => true,
+        canReplaceCheckpoint: () => true,
+      }),
+      /retirement differs/,
+    )
+    assert.deepEqual(local.store.retirements('child'), [retirement])
+  }
+})
+
+test('remote retirement rechecks the open-game gate and snapshot inside the storage lock', async () => {
+  for (const race of ['opened', 'answered', 'owner-changed'] as const) {
+    const local = memory()
+    const initial = fixture()
+    local.store.saveCheckpoint(initial, null)
+    const cloud = remoteFixture(initial)
+    cloud.retirements.set(initial.runId, retireGameCheckpoint(initial, later))
+    let allowed = true
+    let owner = true
+    let expected = initial
+    const store = createLockedGameProgressStore(
+      local.storage,
+      'family',
+      () => owner,
+      async (_name, operation) => {
+        if (race === 'opened') allowed = false
+        if (race === 'owner-changed') owner = false
+        if (race === 'answered') {
+          expected = checkpointGameAnswer(initial, answers(initial.pack)[0], later)
+          local.store.saveCheckpoint(expected, initial)
+        }
+        return operation()
+      },
+    )
+    const sync = syncGameProgress({
+      store,
+      remote: cloud.remote,
+      childId: 'child',
+      scopes: [initial.scope],
+      stillOwner: () => owner,
+      canReplaceCheckpoint: () => allowed,
+    })
+    if (race === 'owner-changed') await assert.rejects(sync, /owner changed/)
+    else await sync
+    assert.deepEqual(local.store.checkpoint(initial.scope), expected, race)
+  }
+})
+
 test('discarding a run completed elsewhere preserves its immutable completion', async () => {
   const local = memory()
   const initial = fixture()

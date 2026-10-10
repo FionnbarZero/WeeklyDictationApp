@@ -118,7 +118,7 @@ test('family beta results persist across independent clients, retry once, and re
 })
 
 test('family game progress is private, conditional, immutable when completed, and permanently retired per run', {
-  skip: candidateFamilyGameRules ? false : 'The published root policy does not include the candidate Stage B game collections.',
+  skip: candidateFamilyGameRules ? false : 'The separate root hardening policy does not include Stage B game collections.',
 }, async () => {
   const datasets = inspectSnapshot(
     JSON.parse(await readFile(new URL('../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
@@ -167,6 +167,9 @@ test('family game progress is private, conditional, immutable when completed, an
   const retirement = retireGameCheckpoint(reviewed, '2026-10-09T01:02:00.000Z')
   await first.saveRetirement(retirement)
   await first.saveRetirement(retirement)
+  assert.deepEqual(await second.saveRetirement({
+    ...retirement, writerId: 'game-writer-two', retiredAt: '2026-10-09T01:03:00.000Z',
+  }), retirement, 'independent discards converge on the first immutable server record')
   assert.deepEqual(await second.readRetirement(checkpoint.scope, checkpoint.runId), retirement)
   await assert.rejects(first.writeCheckpoint(reviewed, updated.version), /discarded game run/)
 
@@ -726,18 +729,6 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
   await assertSucceeds(completion.commit())
   await assertSucceeds(setDoc(scoreReference, score))
   await assertFails(setDoc(scoreReference, { ...score, percent: 0, correct: 0 }))
-  await assertFails(setDoc(sessionReference, { ...session, startedAt: '2026-09-30T17:00:00.000Z' }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-path'), { ...score }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-percent'), {
-    ...score, id: 'forged-percent', percent: 100, correct: 0,
-  }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-date-range'), {
-    ...score, id: 'forged-date-range', datasetDateRange: 'invented',
-  }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/extra-field'), {
-    id: 'extra-field', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
-    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete', unexpected: true,
-  }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/invalid-review-cycle'), { ...session, id: 'invalid-review-cycle', reviewCycle: 0 }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/acquisition-with-review-cycle'), { ...session, id: 'acquisition-with-review-cycle', primaryPhase: 'acquisition' }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/acquisition-with-review-cycle'), {
@@ -751,6 +742,27 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/wrong-review-cycle'), {
     id: 'wrong-review-cycle', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
     phase: 'test-review', reviewCycle: 1, percent: 100, correct: 1, wordCount: 1,
+  }))
+})
+
+test('additional lesson hardening is separate from the production-based game policy', {
+  skip: candidateFamilyGameRules ? 'Stage B preserves existing production lesson rules; hardening is a separate proposal.' : false,
+}, async () => {
+  const database = environment.authenticatedContext('parent').firestore()
+  const sessionReference = doc(database, 'families/family-parent/children/maya/sessions/test-review-2')
+  const session = (await getDoc(sessionReference)).data()!
+  const score = (await getDoc(doc(database, 'families/family-parent/children/maya/scores/review-score'))).data()!
+  await assertFails(setDoc(sessionReference, { ...session, startedAt: '2026-09-30T17:00:00.000Z' }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-path'), { ...score }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-percent'), {
+    ...score, id: 'forged-percent', percent: 100, correct: 0,
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-date-range'), {
+    ...score, id: 'forged-date-range', datasetDateRange: 'invented',
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/extra-field'), {
+    id: 'extra-field', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete', unexpected: true,
   }))
 })
 

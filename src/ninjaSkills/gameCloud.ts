@@ -51,9 +51,9 @@ async function identity(kind: Kind, value: Value) {
   return scopeIdentity(scopeOf(value))
 }
 
-/** Concrete REST transport, intentionally NOT installed in the family runtime.
- * Activation requires discard/retirement, history-cache and production-policy
- * gates. No fallback to betaPractice or betaResults and no delete operation. */
+/** Family-runtime REST transport for the unpublished Stage B candidate.
+ * Publication still requires the production-policy and release gates.
+ * No fallback to betaPractice or betaResults and no delete operation. */
 export function createGameCloudRepository(options: {
   projectId: string; familyId: string; token: () => Promise<string>; stillOwner: () => boolean
   endpoint?: string; fetchImpl?: typeof fetch; appCheckHeaders?: () => Promise<Record<string, string>>
@@ -186,12 +186,17 @@ export function createGameCloudRepository(options: {
         ],
       }),
     })
-    // Identical authorized readback is the only acknowledgement, including a
-    // duplicate create rejected by immutable rules or a lost prior response.
+    // Checkpoints and completions require identical authorized readback.
+    // A retirement is an immutable fact about a run: two devices may discard
+    // it at different times. Preserve the first record and confirm its scope.
     if (!response.ok && ![400, 403, 409, 412].includes(response.status)) await body(response)
     await response.body?.cancel()
     const confirmed = await read(kind, fields.childId, fields.recordId)
-    if (!confirmed || serializeGameRecord(confirmed.value) !== serializeGameRecord(value))
+    const sameRetiredRun =
+      kind === 'retirement' && confirmed &&
+      gameScopeKey(scopeOf(confirmed.value)) === gameScopeKey(scopeOf(value)) &&
+      (confirmed.value as GameRetirement).runId === (value as GameRetirement).runId
+    if (!confirmed || (!sameRetiredRun && serializeGameRecord(confirmed.value) !== serializeGameRecord(value)))
       throw new Error('Game cloud write was not confirmed exactly. Retry after reconciliation; no newer record was overwritten.')
     return confirmed
   }
