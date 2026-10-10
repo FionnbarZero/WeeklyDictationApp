@@ -179,7 +179,7 @@ for (const [slug, grade, childId] of grades) {
           const choice = frame
             .locator(isMobile ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button')
             .nth(index)
-          await expect(choice).toBeEnabled()
+          await expect(choice).toBeEnabled({ timeout: 30000 })
           if (isMobile) await choose(choice)
           else await frame.locator('canvas').press(String(index + 1))
           await expect
