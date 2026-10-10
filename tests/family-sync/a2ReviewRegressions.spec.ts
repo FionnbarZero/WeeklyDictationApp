@@ -32,13 +32,17 @@ async function answer(page: Page) {
   await expect
     .poll(async () => {
       const current = page.locator('iframe:visible').contentFrame()
-      return (await current.locator('[role="timer"]').isVisible()) ||
+      return (
+        (await current.locator('[role="timer"]').isVisible()) ||
         (await current.getByRole('button', { name: 'Done for today', exact: true }).count()) > 0
+      )
     })
     .toBe(true)
 }
 
-test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device download after reopening', async ({ page }) => {
+test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device download after reopening', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-24T12:00:00-07:00'))
   await startWriting(page, 'grade2')
   const frame = page.frameLocator('iframe:visible')
@@ -95,7 +99,10 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
     )
     for (const [recordName, raw] of newerRecords) {
       const recordKey = `${key}:record:${encodeURIComponent(recordName)}`
-      records.set(recordKey, recordName.startsWith('weekly-dictation-checkpoint-v1:activity:') ? raw : olderRecords[recordName])
+      records.set(
+        recordKey,
+        recordName.startsWith('weekly-dictation-checkpoint-v1:activity:') ? raw : olderRecords[recordName],
+      )
     }
     const documents = [...records].map(([recordKey, payload]) => {
       const record = {

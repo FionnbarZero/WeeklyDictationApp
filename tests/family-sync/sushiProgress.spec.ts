@@ -1,6 +1,6 @@
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
-import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
+import { expect, type FrameLocator, type Page, test } from '@playwright/test'
 import type { SequenceGameRound } from '../../src/learningModules/sushi-scramble/runtime/contracts.ts'
+import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))

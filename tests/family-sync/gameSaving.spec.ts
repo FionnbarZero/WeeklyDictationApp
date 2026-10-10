@@ -183,10 +183,7 @@ test('an unfinished game becomes resumable on another parent-authenticated devic
 })
 
 test('discarding on one device permanently retires that unfinished run on another device', async ({ browser }) => {
-  const documents = new Map<
-    string,
-    { name: string; fields: Record<string, unknown>; updateTime?: string }
-  >()
+  const documents = new Map<string, { name: string; fields: Record<string, unknown>; updateTime?: string }>()
   const firstContext = await browser.newContext()
   const first = await firstContext.newPage()
   await installFamilyFixtures(first, documents)
@@ -201,9 +198,7 @@ test('discarding on one device permanently retires that unfinished run on anothe
   await cards.nth(indices[1]).click()
   await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
   await first.getByRole('button', { name: 'Progress', exact: true }).click()
-  await expect
-    .poll(() => [...documents.keys()].filter(name => name.includes('/betaGameCheckpoints/')).length)
-    .toBe(1)
+  await expect.poll(() => [...documents.keys()].filter((name) => name.includes('/betaGameCheckpoints/')).length).toBe(1)
 
   const secondContext = await browser.newContext()
   const second = await secondContext.newPage()
@@ -214,12 +209,10 @@ test('discarding on one device permanently retires that unfinished run on anothe
 
   await first.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await first.frameLocator('iframe:visible').getByRole('button', { name: 'Exit learning module', exact: true }).click()
-  first.once('dialog', dialog => dialog.accept())
+  first.once('dialog', (dialog) => dialog.accept())
   await first.getByRole('button', { name: 'Discard unfinished Memory Lanterns', exact: true }).click()
   await first.getByRole('button', { name: 'Progress', exact: true }).click()
-  await expect
-    .poll(() => [...documents.keys()].filter(name => name.includes('/betaGameRetirements/')).length)
-    .toBe(1)
+  await expect.poll(() => [...documents.keys()].filter((name) => name.includes('/betaGameRetirements/')).length).toBe(1)
 
   await second.getByRole('button', { name: 'Progress', exact: true }).click()
   await second.getByRole('button', { name: 'Ninja Skills', exact: true }).click()

@@ -1,4 +1,4 @@
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { expect, type FrameLocator, type Page, test } from '@playwright/test'
 import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
@@ -146,9 +146,11 @@ for (const [slug, grade, childId] of grades) {
     expect((await checkpoint(page)).prompts).toEqual(paused.prompts)
     frame = await open(page, slug, true)
     const active = await page.locator('iframe:visible').evaluate((element) => {
-      const session = ((element as HTMLIFrameElement).contentWindow as Window & {
-        familyGameSession?: { checkpoint: () => GameCheckpoint }
-      }).familyGameSession
+      const session = (
+        (element as HTMLIFrameElement).contentWindow as Window & {
+          familyGameSession?: { checkpoint: () => GameCheckpoint }
+        }
+      ).familyGameSession
       return session?.checkpoint()
     })
     expect(active?.runId).toBe(initial.runId)

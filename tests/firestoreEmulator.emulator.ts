@@ -494,12 +494,18 @@ test('family discard reaches a stale second device before a checkpoint conflict 
     identity: { childId, grade: 'Grade 2', datasetId: 'retired-week', schoolYear: '2026-27', activityModule: 'writing-dojo', tier: 'tier-1' }, lifecycleStage: { kind: 'acquisition' }, applicationVersion: 'retirement-test', strategy: grade2AcquisitionStrategy,
     targetSet: { id: 'retired-week', targets: [{ id: 'word', datasetId: 'retired-week', text: '一', sentence: '', tier: 'tier-1' }] },
   }
-  const original = openAcquisitionStore(first, context, { random: () => 0 })
+  // Wall-clock calls can share a millisecond. This scenario needs a strictly
+  // later second answer, not the separately tested stable-identity tie-break.
+  let reviewedTime = Date.now() - 2_000
+  const now = () => new Date(reviewedTime).toISOString()
+  const original = openAcquisitionStore(first, context, { random: () => 0, now })
   await repository.sync(first, childId)
   await repository.sync(second, childId)
-  const stale = openAcquisitionStore(second, context)
+  const stale = openAcquisitionStore(second, context, { now })
   original.answer(true, 'timer')
+  reviewedTime += 1_000
   stale.answer(false, 'timer')
+  assert.ok(stale.current.reviewedTrials.at(-1)!.reviewedAt > original.current.reviewedTrials.at(-1)!.reviewedAt)
   const retained = first.getItem(original.key), staleRetained = second.getItem(stale.key)
   retireAcquisition(first, original.context.identity)
   await repository.sync(first, childId)

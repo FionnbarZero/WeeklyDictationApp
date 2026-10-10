@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 async function launch(page: Page) {
@@ -91,7 +91,10 @@ test('explicit Lantern discard removes only its owned unfinished checkpoint', as
   await expect(page.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(0)
 })
 
-test('an unfinished Lantern round reopens from device storage after an offline cold start', async ({ page, context }) => {
+test('an unfinished Lantern round reopens from device storage after an offline cold start', async ({
+  page,
+  context,
+}) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', { timeout: 120_000 })

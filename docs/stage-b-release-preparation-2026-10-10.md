@@ -26,6 +26,12 @@ Integration summary:
 >
 > The game-only database policy is already published with owner approval. Application publication remains separately gated for Kindergarten, Grade 2 and Grade 5. Preserve the recorded exact-package, emulator, browser and guarded recovery evidence; CI passing is not publication evidence. See the Stage B release preparation and game readiness assessment for artifact identities, verification and remaining limitations.
 
+### Integration check repairs
+
+At `c915801`, CI run `38060353237` passed quality, build and browser jobs. Its root-policy emulator job exposed a test-clock race: two sequential answers had the same millisecond timestamp, so the approved deterministic tie-break could select either payload instead of the test's presumed later answer. The fixture now injects ordered timestamps and asserts their order. The broader family CI check also found formatting/import-order errors; mechanical fixes cover eight files, with no application behavior or policy changes.
+
+Local Node 24 verification passes 882 unit tests, six focused conflict tests, 17 root-policy emulator checks with one deliberate skip, nine family-policy emulator checks, typecheck, lint, configured format, the exact 43-file family CI formatting/lint check, and build/performance (549,990/550,000 initial JS bytes). These integration repairs do not replace or republish the retained packages below. Verify all five GitHub jobs on the final PR head before merge approval.
+
 ## Package identities
 
 Prepared with Node **24.21.0**, npm **11.19.0**, and the repository packager. All file inventories, sizes, hashes and manifest tree hashes were independently verified before and after retaining these copies.

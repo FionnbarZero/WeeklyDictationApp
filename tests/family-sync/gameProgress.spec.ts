@@ -1,4 +1,4 @@
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { expect, type FrameLocator, type Page, test } from '@playwright/test'
 import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
@@ -71,7 +71,10 @@ for (const [slug, grade, childId] of grades) {
     await expect
       .poll(() =>
         page.evaluate(
-          () => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-games-v1:') && key.includes(':pending:')).length,
+          () =>
+            Object.keys(localStorage).filter(
+              (key) => key.startsWith('family-beta-games-v1:') && key.includes(':pending:'),
+            ).length,
         ),
       )
       .toBe(0)

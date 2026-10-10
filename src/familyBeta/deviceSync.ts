@@ -37,15 +37,14 @@ function workspaceConflictCandidate(payload: string) {
       Array.isArray((values as { acquisitionPendingCheckpoints?: unknown }).acquisitionPendingCheckpoints)
         ? (values as { acquisitionPendingCheckpoints: unknown[] }).acquisitionPendingCheckpoints
         : []
-    const pendingCandidates = pending
-      .flatMap((checkpoint) => {
-        if (!checkpoint || typeof checkpoint !== 'object') return []
-        const value = checkpoint as { sessionId?: unknown; occurredAt?: unknown }
-        if (typeof value.sessionId !== 'string' || typeof value.occurredAt !== 'string') return []
-        if (Number.isNaN(Date.parse(value.occurredAt)) || new Date(value.occurredAt).toISOString() !== value.occurredAt)
-          return []
-        return [{ sessionId: value.sessionId, reviewedAt: value.occurredAt }]
-      })
+    const pendingCandidates = pending.flatMap((checkpoint) => {
+      if (!checkpoint || typeof checkpoint !== 'object') return []
+      const value = checkpoint as { sessionId?: unknown; occurredAt?: unknown }
+      if (typeof value.sessionId !== 'string' || typeof value.occurredAt !== 'string') return []
+      if (Number.isNaN(Date.parse(value.occurredAt)) || new Date(value.occurredAt).toISOString() !== value.occurredAt)
+        return []
+      return [{ sessionId: value.sessionId, reviewedAt: value.occurredAt }]
+    })
     const envelopeCandidates =
       values &&
       typeof values === 'object' &&
@@ -69,7 +68,9 @@ function workspaceConflictCandidate(payload: string) {
             return [{ sessionId: value.id, reviewedAt: receipt.appliedAt }]
           })
         : []
-    const candidates = [...pendingCandidates, ...envelopeCandidates].sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt))
+    const candidates = [...pendingCandidates, ...envelopeCandidates].sort((a, b) =>
+      a.reviewedAt.localeCompare(b.reviewedAt),
+    )
     const latest = candidates[candidates.length - 1]
     return latest
       ? { id: `workspace:${latest.sessionId}:${latest.reviewedAt}:${payload}`, reviewedAt: latest.reviewedAt }
