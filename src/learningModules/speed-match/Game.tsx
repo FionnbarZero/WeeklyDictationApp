@@ -342,7 +342,10 @@ export function SpeedMatch({
             key={card.id}
             type="button"
             className={`lg-choice lg-word-seal is-${card.kind}${selectedCardIds.includes(card.id) ? ' is-selected' : ''}${matchedPairIds.includes(card.pairId) ? ' is-matched' : ''}`}
-            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut || saving || Boolean(saveError)}
+            // Timer saves share the write slot but must not disable a button
+            // between pointer-down and pointer-up. choose queues those inputs;
+            // answer/restart saves and failed writes still freeze the board.
+            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut || (saving && pending.current?.kind !== 'timer') || Boolean(saveError)}
             aria-label={`${card.accessibleLabel || card.label}. Click to hear and select.`}
             onClick={() => {
               const spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(() => undefined, () => undefined)

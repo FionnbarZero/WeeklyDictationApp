@@ -4,6 +4,46 @@ import { grades, installFamilyFixtures } from './fixtures.ts'
 
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
+test('Shuriken queues a choice during a pending timer save instead of dropping the input', async ({
+  page,
+  isMobile,
+}) => {
+  const frame = await open(page, 'grade2')
+  const initial = await checkpoint(page)
+  if (initial.pack.moduleId !== 'speed-match') throw new Error('Wrong game')
+  const pair = initial.pack.pairs[0]
+  await seal(frame, pair.left.label, isMobile)
+  await expect(frame.locator('.lg-word-seal.is-selected')).toHaveCount(1)
+  await page.evaluate(() => {
+    const target = window as Window & { releaseGameLock?: () => void; gameLockReady?: boolean }
+    void navigator.locks.request('ninja-game-storage-v1:family-synthetic-parent', async () => {
+      target.gameLockReady = true
+      await new Promise<void>((resolve) => {
+        target.releaseGameLock = resolve
+      })
+    })
+  })
+  await expect
+    .poll(() => page.evaluate(() => (window as Window & { gameLockReady?: boolean }).gameLockReady))
+    .toBe(true)
+  try {
+    // The timer owns the durable write slot, but must not disable native input
+    // between pointer-down and pointer-up. The choice is provisional until saved.
+    await expect(frame.getByRole('status').filter({ hasText: 'Saving mission…' })).toBeVisible()
+    const right = frame.getByRole('button', { name: `${pair.right.label}. Click to hear and select.`, exact: true })
+    await expect(right).toBeEnabled()
+    await seal(frame, pair.right.label, isMobile)
+    expect((await checkpoint(page)).cleared).toEqual([])
+    expect((await checkpoint(page)).prompts[0].attempted).toBe(0)
+  } finally {
+    await page.evaluate(() => (window as Window & { releaseGameLock?: () => void }).releaseGameLock?.())
+  }
+  await expect.poll(async () => (await checkpoint(page)).cleared).toEqual([pair.id])
+  expect((await checkpoint(page)).prompts[0].attempted).toBe(1)
+  expect((await checkpoint(page)).prompts[0].correct).toBe(1)
+  await expect(frame.locator('.lg-word-seal.is-matched')).toHaveCount(2)
+})
+
 test('Shuriken holds a confirmed answer behind reporting, then retries a failed answer without losing time', async ({
   page,
   isMobile,
