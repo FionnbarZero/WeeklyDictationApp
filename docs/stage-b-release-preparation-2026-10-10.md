@@ -1,6 +1,6 @@
 # Stage B release preparation
 
-Prepared October 10, 2026 (Pacific). **The four-game application package is prepared locally; app publication and source integration remain pending approval.** The game-only database policy is already active and verified. The canonical website still serves A3.3 `e9c5a54`.
+Prepared October 10, 2026 (Pacific). **The four-game application package is prepared locally and the approved push/PR is complete; merge and app publication remain pending approval.** The game-only database policy is already active and verified. The canonical website still serves A3.3 `e9c5a54`.
 
 ## Release contents
 
@@ -16,11 +16,11 @@ The fetched `origin/main` is `b4056d6`, the PR #61 A3.2 release-evidence merge. 
 
 The total difference from `main` at that source is 101 files, 9,262 additions and 496 deletions, including tests and release records. Compared with the currently published app source `e9c5a54`, it is 61 files, 6,363 additions and 328 deletions. Application source is unchanged from reviewed repair `9f0ac75`; subsequent commits change only `STATUS.md`, `ROADMAP.md` and the game readiness assessment.
 
-GitHub inspection found no open PR for this Stage B branch. PR #52 is an older, separate Ninja Skills documentation PR and is not this release. The next source action is to push the reviewed branch and open one integration PR against `main`. Push and merge approvals remain separate. Integrating the source does not itself publish the canonical app.
+With owner approval, the branch was pushed at `c7d8e62` and [integration PR #62](https://github.com/FionnbarZero/WeeklyDictationApp/pull/62) was opened against `main`. GitHub reports no base-branch conflicts. At that initial PR head, quality, builds and root-policy emulator checks passed; browser and canonical-family checks were still running at handoff. Check all five jobs on the final PR head before requesting merge approval. PR #52 is an older, separate Ninja Skills documentation PR and is not this release. Integrating the source does not itself publish the canonical app.
 
-Suggested integration PR title: **Integrate published A3.3 reliability work and reviewed Stage B games**.
+Integration PR title: **Integrate published A3.3 reliability work and reviewed Stage B games**.
 
-Suggested description:
+Integration summary:
 
 > Bring `main` forward from A3.2 to the already published A3.3 reliability work and the reviewed Stage B game candidate. Lanterns, Shuriken Match, Context Gap Dash and Sushi Scramble now follow the approved tier/content policy and preserve reviewed progress, immutable per-target completions and cross-device discard history. Both menus share these contracts; reporting pauses active play.
 >
