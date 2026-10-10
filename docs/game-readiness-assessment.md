@@ -255,3 +255,20 @@ Fresh verification on Node 24.21.0 passed **67/67 focused tests** and **17 appli
 The recorded 882-unit, 20-browser, build/performance and dependency results remain evidence from the repair turn; those full suites were not rerun during this bounded re-review. Earlier broad game and rollback matrices retain their recorded revisions. Physical-device audio/touch and live serving are not established by this review.
 
 No application code, active policy, authentication, child records, push, merge, or publication changed during re-review. The remaining gate is explicit approval for the narrow production-policy addition, followed by the existing source-integration and per-grade publication gates. Recheck the active policy against the recorded production baseline before applying it. Use GPT-6 Astra · Extra High for that security-sensitive step and GPT-6.1 Sol · High for bounded release packaging/verification. No owner smoke testing until a reviewed release is published and its exact canonical links are verified.
+
+### Game policy publication
+
+October 10, 2026 (Pacific): the owner approved the game-only database-policy step with “proceed” following the passing re-review and explicit policy approval request. That approval did not include app publication, source push/merge, authentication changes, or child-record writes.
+
+Before publication, the complete active policy matched the reviewed A3.3 baseline SHA-256 `335b19cf431bb726ac9dcd74c9fa5fc11a8fbcb709f5fed4b3482cce1f4d1ded`, ruleset `ddf78a15-4d99-47e1-bebf-68b0d57a8929`. The candidate matched reviewed SHA-256 `ff108665b7c2b0fed1c8f476fcac0b5c4ed4b334cc3f71d630cae770491dd3c0`. Fresh Node 24.21.0 verification passed the exact additive-policy boundary test and **17 applicable emulator tests**, with one deliberate skip for the separate lesson-hardening proposal.
+
+The repository-pinned Firebase CLI 15.32.1 published **Firestore rules only** to project `weeklydictationapp`, using an isolated configuration pointing explicitly to `deployment/firestore-family-sync.rules`. Root `firestore.rules`, hosting, indexes, and authentication configuration were not deployed.
+
+- Active release: `projects/weeklydictationapp/releases/cloud.firestore`.
+- New ruleset: `projects/weeklydictationapp/rulesets/07e55d6a-e6be-4672-8a50-af50975976e0`.
+- Provider release time: `2026-10-10T13:10:25.259170Z`, October 10 at 6:10 a.m. Pacific.
+- Post-publication readback confirmed the entire active rules source equals the reviewed candidate byte-for-byte and has the SHA-256 above.
+- The previous ruleset remains available. Reverting it would reject Stage B game writes; retaining it is recovery evidence, not an instruction to roll back during normal app recovery.
+- The canonical live manifest still reports app source `e9c5a547031c65c00cce45616ec581bcec111ac7`, tree `67008aacbc2946151a661f2212b7fc47725edd2bdbf4398e26dd009b17a57e6d`.
+
+No production child records were read or written, and no app deployment, push, merge, or authentication change occurred. Verification establishes active policy identity plus local emulator behavior, not live end-to-end game syncing. That acceptance belongs to the separately approved application release. **No owner smoke testing yet.** Next: GPT-6.1 Sol · High for bounded source-integration/release preparation and verification, preserving separate push/merge and per-grade publication approvals.
