@@ -186,7 +186,7 @@ Verification against the exact `9880e8a` package:
 
 - **874/874 unit tests**, typecheck, lint, repository format, production build and performance passed. Initial JavaScript is **549,990/550,000 bytes** and CSS is **42,745/60,000 bytes**.
 - Production dependency audit reports **0 vulnerabilities**. The unchanged firebase-tools-only exception contains 11 development-tool findings and expires November 4, 2026.
-- The published root-policy suite passes **16 applicable emulator tests with one candidate-only skip**. The explicit family-sync candidate suite passes **17/17**, including cross-family denial, conditional checkpoint updates, immutable completion, forbidden private payloads and permanent retirement. `npm run test:firestore` and `npm run test:firestore:family-sync` deliberately identify which policy they exercise.
+- The separate root hardening-policy suite passes **16 applicable emulator tests with one candidate-only skip**. The explicit family-sync candidate suite passes **17/17**, including cross-family denial, conditional checkpoint updates, immutable completion, forbidden private payloads and permanent retirement. `npm run test:firestore` and `npm run test:firestore:family-sync` deliberately identify which policy they exercise.
 - The packaged desktop/tablet matrix passes **134/134**: Context 12, Lanterns 12, ownership/discard 8, Shuriken 14, Sushi 12, shared saving 32 and central policy 44. It covers all three grades, both menus, offline cold start, reconnect delivery, second-device resume/discard, failed-write retry, report pause and rapid Shuriken input.
 - All **145 package files** match their manifest. Package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-0iug0N`; tree SHA-256: `8eca7919de64929e6ce038b5475e0cbbbe0bf1b49a475343c1ca5b8545163e70`.
 
@@ -200,7 +200,7 @@ Final repaired evidence:
 
 - **877/877 unit tests**, including multiple offline discards, interrupted-discard recovery and earlier-format acknowledgement.
 - **134/134 exact-package desktop/tablet checks** across Context, Lanterns, ownership/discard, Shuriken, Sushi, shared saving and central policy.
-- Published policy: **16 applicable emulator checks passed**, with the Stage B-only collection case intentionally skipped. Candidate additive policy: **17/17 passed**.
+- Separate root hardening proposal: **16 applicable emulator checks passed**, with the Stage B-only collection case intentionally skipped. Candidate additive policy: **17/17 passed**.
 - Typecheck, lint, format, build/performance (**549,990/550,000 initial JavaScript; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing time-bounded firebase-tools-only exception passed.
 - All **145 manifest files** match source `11c66897c073d475211c6db9c3b8da7df64f2936`; tree `b7edcefb2f14ef545e1f491002c1ed8498f40a91dc8d32d742494006b886127e`; exact tested package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Mozinl`.
 
@@ -218,8 +218,29 @@ Final Sol-stage evidence at `ba9abcd4e4dbf7355d9b60f2375b1badcf980c78`:
 
 - **878/878 unit tests**; typecheck, lint and format pass.
 - **134/134** previously recorded broad game desktop/tablet checks, plus the final **18/18 Context** and **4/4 guarded rollback** matrices.
-- Published policy: **16 applicable checks**, with one intentional Stage B-only skip. Additive candidate policy: **17/17**.
+- Separate root hardening proposal: **16 applicable checks**, with one intentional Stage B-only skip. Additive candidate policy: **17/17**.
 - Build/performance passes at **549,990/550,000 initial JavaScript bytes** and **42,745/60,000 CSS bytes**. Production audit reports **0 vulnerabilities**; the documented firebase-tools-only exception remains 11 findings and expires November 4, 2026.
 - All **145 files** match the current candidate manifest. Tree SHA-256: `8944b978a756e8f84c1d80b8e314e9dfcc384b7116b98bea8eebabd100f5f77c`; exact package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-XrlM3g`.
 
 The bounded Sol implementation and rollback gate are complete. The next required gate is the independent GPT-6 Astra · Extra High cross-grade release review. The additive Firestore policy remains a proposal and needs separate explicit approval before production application; application publication also remains separately gated. No push, merge, deployment, production-policy change or child-data action occurred. A3.3 `e9c5a54` remains live, so owner smoke testing is premature.
+
+
+### Final release review repairs
+
+The final review of `ba9abcd` reproduced two cross-device discard failures and found that the proposed game policy also tightened existing lesson rules. Local repair `9f0ac7567ab6039a27f0069c2871fa6be2e1aebc` addresses those findings; the repaired candidate still needs independent GPT-6 Astra · Extra High re-review. Earlier uses of “additive” for the pre-repair candidate were inaccurate. Root `firestore.rules` is a separate hardening proposal, not evidence of the deployed family policy.
+
+- Independent discards of the same scope/run now converge on the first immutable server retirement even when writer and timestamp differ. Checkpoint/completion confirmations remain exact; wrong scope/run retirements are rejected and remain queued. A regression verifies the second device can subsequently sync a fresh run.
+- Applying a remote retirement rechecks both the expected checkpoint and the open-game/owner guard inside the storage lock. Opening a game, recording a newer answer, or changing account while waiting cannot remove that checkpoint.
+- The candidate policy now adds only the game helper functions and three game collections. A permanent boundary test removes those additions and requires the exact published A3.3 policy SHA-256 `335b19cf431bb726ac9dcd74c9fa5fc11a8fbcb709f5fed4b3482cce1f4d1ded`. Unrelated lesson hardening remains outside this release. Its emulator assertions run separately against root `firestore.rules`, not against the production-based game proposal.
+
+The new transport, convergence, and locked-retirement regressions failed before implementation (three reproduced failures) and pass after repair. No production records, authentication, or active rules were changed. No owner smoke testing is ready; publication and production-policy changes still require separate explicit approval.
+
+Verification at repaired source `9f0ac75`:
+
+- **20/20 exact-package desktop/tablet browser checks** pass across all three grades: both-menu Lantern reload/completion, failed-save retry, native competing-tab locks, explicit discard, offline cold-start recovery, and graph/detail delivery after reconnect. These synthetic checks do not establish physical-device audio or touch quality and are not an owner smoke-test handoff.
+- Node **24.21.0**: **882/882 unit tests**, typecheck, lint, configured format check and build/performance pass. Initial bundles remain **549,990/550,000 JavaScript bytes** and **42,745/60,000 CSS bytes**.
+- Production-based Stage B policy: **17 passed, one explicit hardening-only skip**. Separate root hardening proposal: **17 passed, one explicit game-only skip**. Both emulator runs passed on Node 24; neither run deploys policy. The game emulator regression uses independent REST clients and confirms differing discard writer/timestamp values retain the first server record.
+- Production dependency audit: **zero vulnerabilities**. The existing development-tool exception remains **11 firebase-tools findings**, expiring November 4, 2026.
+- All **145 packaged file sizes and hashes** independently match the manifest for source `9f0ac7567ab6039a27f0069c2871fa6be2e1aebc`. Artifact tree: `b03619a50a957669fe5901e49a52df3def36add8ab186f23fa777bacc97290f4`; local package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-dvzguk`. The browser harness packaged this candidate using the host Node 26.8.1; the required Node 24 unit/build/emulator checks were rerun separately.
+
+Evidence logs: `/tmp/ninja-stage-b-repair-red.log`, `/tmp/ninja-stage-b-repair-focused.log`, `/tmp/ninja-stage-b-repair-node24-unit.log`, `/tmp/ninja-stage-b-repair-node24-policy.log`, `/tmp/ninja-stage-b-repair-node24-root.log`, and `/tmp/ninja-stage-b-repair-browser.log`. The earlier broad 134-case game matrix and guarded predecessor rollback evidence remain attached to their recorded revisions; they are not represented as rerun for this repair.
