@@ -58,8 +58,8 @@ function activityId(key: string) {
 function activityRevision(raw: string | undefined) {
   if (!raw) return null
   try {
-    const envelopes = (JSON.parse(raw) as { values?: { acquisitionProgressEnvelopes?: Array<{ revision?: unknown }> } }).values
-      ?.acquisitionProgressEnvelopes
+    const envelopes = (JSON.parse(raw) as { values?: { acquisitionProgressEnvelopes?: Array<{ revision?: unknown }> } })
+      .values?.acquisitionProgressEnvelopes
     if (!Array.isArray(envelopes)) return null
     const revision = envelopes.reduce(
       (max, item) => (Number.isInteger(item?.revision) ? Math.max(max, item.revision as number) : max),
@@ -354,10 +354,24 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
         return
       }
       const incoming = stateRecords(baselineRecords, childId, item)
-      const records = { ...value.records }
+      // Opening a legacy workspace normalizes the writer's baseline in memory.
+      // Materialize the CURRENT stored copy before applying its changes too:
+      // an unchanged first save must not delete the bundle and skip every
+      // partition because it already equals that in-memory baseline.
+      // Validate reconstruction first so a failed read cannot become an empty
+      // fallback write over an unreadable checkpoint or history partition.
+      const currentState = stateFromRecords(value.records, childId)
+      const records =
+        value.records[stateKey] !== undefined && currentState !== null
+          ? stateRecords(value.records, childId, currentState)
+          : { ...value.records }
       // A complete AppState write supersedes the legacy bundled copy. Opaque
       // legacy state remains untouched so old clients can still recover it.
-      if (incoming[stateKey] === undefined && incoming[historyKey] !== undefined && incoming[checkpointKey] !== undefined)
+      if (
+        incoming[stateKey] === undefined &&
+        incoming[historyKey] !== undefined &&
+        incoming[checkpointKey] !== undefined
+      )
         delete records[stateKey]
       const keys = new Set([...Object.keys(baselineRecords), ...Object.keys(incoming)])
       for (const recordKey of keys) {

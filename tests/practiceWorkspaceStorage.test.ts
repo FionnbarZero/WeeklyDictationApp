@@ -133,6 +133,68 @@ test('valid Grade 2 state is stored as separate history and checkpoint records a
   assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
 })
 
+test('the first unchanged save of a valid legacy workspace retains every checkpoint and recovery journal', () => {
+  const { storage, original, pending } = fixture()
+  const state = createInitialState()
+  state.acquisitionProgressions = [
+    {
+      id: 'saved-lesson',
+      childId: 'child',
+      datasetId: 'old-edition',
+      grade: 'Grade 2',
+      flow: {} as never,
+      updatedAt: '2026-10-10T00:00:00.000Z',
+    },
+  ]
+  state.rotationCycles = { child: 2 }
+  const raw = JSON.stringify(state)
+  storage.setItem(original, raw)
+  const app = practiceWorkspaceStorage(storage, 'child')
+  app.setItem('weekly-dictation-state-v2', raw)
+  assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), state)
+  assert.deepEqual(JSON.parse(practiceWorkspaceStorage(storage, 'child').getItem('weekly-dictation-state-v2')!), state)
+  assert.equal(app.getItem('weekly-dictation-acquisition-pending-v1'), '["unacknowledged answer"]')
+  assert.equal(storage.getItem(original), raw)
+  assert.equal(storage.getItem(pending), '["unacknowledged answer"]')
+})
+
+test('a stale first save preserves another activity added while a legacy workspace was being opened', () => {
+  const { storage, original } = fixture()
+  const state = createInitialState()
+  storage.setItem(original, JSON.stringify(state))
+  const opening = practiceWorkspaceStorage(storage, 'child')
+  const other = practiceWorkspaceStorage(storage, 'child')
+  const newer = {
+    ...state,
+    acquisitionProgressions: [
+      {
+        id: 'newer-lesson',
+        childId: 'child',
+        datasetId: 'week-b',
+        grade: 'Grade 2',
+        flow: {} as never,
+        updatedAt: '2026-10-10T01:00:00.000Z',
+      },
+    ],
+  }
+  other.setItem('weekly-dictation-state-v2', JSON.stringify(newer))
+  opening.setItem('weekly-dictation-state-v2', JSON.stringify(state))
+  assert.deepEqual(JSON.parse(readPracticeWorkspaceState(storage, 'child')!), newer)
+})
+
+test('an unreadable existing partition cannot be overwritten with an empty fallback state', () => {
+  const { storage } = fixture()
+  const app = practiceWorkspaceStorage(storage, 'child')
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(createInitialState()))
+  const workspace = JSON.parse(storage.getItem(practiceWorkspaceKey('child'))!)
+  workspace.records['weekly-dictation-history-v1'] = '{'
+  const before = JSON.stringify(workspace)
+  storage.setItem(practiceWorkspaceKey('child'), before)
+  assert.throws(() => app.getItem('weekly-dictation-state-v2'), /preserved/)
+  assert.throws(() => app.setItem('weekly-dictation-state-v2', JSON.stringify(createInitialState())), /preserved/)
+  assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
+})
+
 test('oversized embedded state fails closed without rewriting the prior workspace', () => {
   const { storage } = fixture()
   const app = practiceWorkspaceStorage(storage, 'child')
