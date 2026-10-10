@@ -68,6 +68,11 @@ test('Grade 2 writing responses stay provisional until one final all-target revi
   await expect(page.getByRole('button', { name: 'Yes' })).toHaveCount(0)
 
   for (let index = 0; index < 5; index += 1) {
+    // A completed collector deliberately ignores a second click. Wait for the
+    // next keyed prompt rather than sending another click to the previous one.
+    await expect(
+      page.getByRole('heading', { name: `Listen, then write word ${index + 1}.`, exact: true }),
+    ).toBeVisible()
     await page.getByRole('button', { name: 'Skip Timer' }).click()
   }
 

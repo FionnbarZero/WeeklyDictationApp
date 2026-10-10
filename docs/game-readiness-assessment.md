@@ -1,0 +1,274 @@
+# EduGame readiness assessment
+
+Status: the baseline inventory below was prepared after the local A3.3 final review (October 8, 2026). The [Stage B local evidence](#stage-b-policy-and-content-slice-local) records subsequent implementation and supersedes its matching missing-work descriptions. This is not a claim that any game is student-ready or published.
+
+## Shared integration facts
+
+- `src/ninjaSkills/content.ts` already resolves authoritative cohort terms and emits explicit unavailable reasons. It can materialize bounded subsets, target IDs, meanings, pinyin steps, context sentences, ordered tokens, and separate lifecycle inputs.
+- `src/ninjaSkills/LearningModuleHost.tsx` owns the adapter boundary. The game components emit observations; the owning activity must apply Acquisition, Correction, Adaptive Mastery, audio provenance, attempt identity, persistence, and scoring policy.
+- `src/learningModules` contains reusable interaction components, but the harness is synthetic and does not prove curriculum selection, lifecycle placement, persistence, or results.
+- A3.3 is published at source `e9c5a54`. Its school-year policy repair passed live three-grade saving, failed-upload/reload recovery, and fresh-browser acceptance on October 8 Pacific. This establishes the shared saving prerequisite; each game's learning policy and per-target coverage still require their own acceptance.
+- The family wrapper is a second target-selection boundary: `src/familyBeta/main.tsx` builds game capabilities from earlier reading targets, substituting writing capabilities only for Dictation Streak. Updating pack tier filters alone will not make Tier 1 Context Gap Dash/Sushi Scramble or mixed-tier Shuriken Match usable. Stage B must align `src/familyBeta/gamePools.ts`, the wrapper, and the central policy.
+- `src/familyBeta/gameFrame.tsx` currently saves aggregate scores. Stage B must connect reviewed per-target results without persisting the reusable module's raw `response` values; any additional production schema/security change remains a separate concrete review and approval.
+
+## Readiness by game
+
+| Game | Existing capability | Missing contract/content | Dependencies | Shortest student-ready path |
+| --- | --- | --- | --- | --- |
+| Memory Lanterns | `memoryPack` selects distinct non-Tier-3 authoritative terms; the component has match interaction and result callbacks. | Policy must be restricted to the approved Tier 2 set for the final integration; per-target attempts and score persistence need an adapter check. | Curriculum tier resolver, result ledger, A3.3 publication. | Correct tier filter, add per-target result assertions, then a bounded Grade 5 release review. |
+| Shuriken Match | `speedMatchPack` requires two targets and distinct meanings; component supports meaning matching. | Must allow validated Tier 1 + Tier 2 targets and distinguish generated/validated meanings without placeholders. | Meaning provenance/validation, subset policy, separate game-result persistence. | Add mixed-tier policy table, fixture coverage for every selected meaning, then release one grade. |
+| Context Gap Dash | `contextPack` currently uses Tier 2 and validates sentence structure plus three choices; Phaser interaction exists. | Approved rule is Tier 1, with contextual sentences and choices validated against that tier; current error text and channel need correction. | Sentence validation, Tier 1 selection, performance check on iPad. | Switch policy to Tier 1, add sentence/token fixtures, run touch/performance review. |
+| Sushi Scramble | `sentencePack` validates ordered tokens that concatenate to the sentence; component handles sequence input. | Approved rule is Tier 1; tokenization must support longer teacher/generated sentences and preserve target identity. | Sentence provenance, robust tokenizer, result adapter. | Change tier policy, add long-sentence fixtures, verify scoring and save/reload. |
+| Shadow Strike Dojo | `targetBlastPack` prefers Tier 2 and falls back to non-Tier-3; target-blast component and movement regression exist. | Remove Tier 1 fallback; repair/measure choppy movement on iMac/iPad and verify audio/replay behavior. | Tier 2 coverage, animation budget, touch/mouse input, persistence. | Enforce Tier 2, instrument frame/input timing, then Sol High implementation and Astra High release review. |
+| Dictation Streak | Catalog and pack already support pinyin steps and candidate selection for eligible terms. | Must include both tiers and enforce `word → context sentence → word → word`; per-character candidate input and audio contract need end-to-end persistence tests. | Pinyin provenance, audio sequence, shared result ledger. | Expand policy and fixtures, test candidate selection per character, then Astra High review. |
+| Whispering Scrolls | Reusable read-aloud components exist; product rules specify temporary recording comparison. | Must be placed in acquisition and follow the full grade-owned teaching/comparison sequence, timers, correction, earned DT, resume, and recording cleanup. | Grade-specific lifecycle tables, microphone permissions, in-session-only audio. | Implement only after source-cited phase matrix and acquisition adapter are verified with Astra Extra High. |
+| Stroke Order Slay | Writing components exist in the modular library. | Must be Tier 1 acquisition with full teaching/expanded-trial/correction/earned-DT rules, stroke-guide coverage, persistence, and thinner marker on all writing activities. | Grade-specific stroke guides, handwriting input, touch QA, acquisition checkpoint contract. | Build the phase matrix and guide validation first; then implement with Astra Extra High and test every grade. |
+
+## Release order and gates
+
+1. A3.3 publication and authenticated score-policy repair are verified. Preserve that baseline and its protected recovery path as Stage B begins; source merge/push remains separate from the completed publication.
+2. Use GPT-6.1 Sol · High for the bounded first-game implementation, beginning with the smallest validated policy slices (Lanterns, Shuriken Match, Context Gap Dash, Sushi Scramble).
+3. Keep Shadow Strike separate for performance work; use GPT-6 Astra · High for Dictation Streak review.
+4. Reserve GPT-6 Astra · Extra High for Whispering Scrolls, Stroke Order Slay, security-sensitive work, and the final cross-grade release review.
+
+Every game slice must prove target selection, lifecycle placement, per-target results, pause/report behavior, save/reload, and exact artifact identity across the affected grades before a smoke-test handoff.
+
+## Stage B policy and content slice (local)
+
+The first bounded slice applies the approved selection contract in `src/ninjaSkills/policy.ts`, pack preparation, and both family menus. Each tier resolves its own previous relevant week, so Grade 2 can combine September 29 writing with September 21 reading without importing September 21 writing. Tier 3 never enters these four games. Later-stage Shadow Strike and Dictation Streak remain visible but unavailable; this is not a claim that their missing rules are fixed.
+
+`src/ninjaSkills/supplemental.ts` contains versioned generated meanings for 35 exact source targets and tokenized contexts for the 17 writing targets currently used by the three grades. Only matching authoritative document IDs receive this overlay. Teacher values win, the source fingerprints remain unchanged, and the pack retains the actual generated values/version. Other weeks with insufficient content remain unavailable; the catalog is not an automatic general-purpose language generator.
+
+Coverage is disclosed in each menu. Subsets rotate deterministically from distinct completed game attempts available in the device's validated ledger; individual answers and upload retries do not advance the visit. This is not yet lifetime cross-device coverage tracking. Opening a round pins its terms, support content, policy version and visit. The round is not silently regenerated when a teacher document refreshes.
+
+`src/ninjaSkills/review.ts` validates the pack at launch and recomputes matching/choice/token correctness before aggregate saving. The tested per-target projection includes only target/dataset IDs, tier and attempted/correct counts, plus game/policy/phase; raw responses are omitted. **The projection is not yet persisted.** Existing completed-score schema and production policy are unchanged. Do not append new fields to strict legacy score records without a compatibility design.
+
+Additional reproduced defects are fixed: Context Gap's text clue no longer prints the missing target, and Sushi's displayed token order is deterministically scrambled. Sushi accepts interchangeable identical printed tokens and sentences longer than six pieces. Mixed-tier rotation no longer permanently skips the slot replaced to include the other tier. Context Gap enables controls only when its scene accepts answers and exposes buttons on coarse-pointer tablets. The shared game surface restores readable heading contrast. Embedded completion stays open when child context is missing and retries the same completion after context returns. Spirit Realm's new Context/Sushi adapters remain “Coming soon” until full warmup behavior is verified; this slice does not introduce a second mastery policy.
+
+### Verified local evidence
+
+- Branch: `codex/stage-b-game-policy`; Stage B review base `3491041` (do not mix in the already published A3.3 work). Runtime candidate `33c5efbb2729bd10f6356f40c3ba04188a88ff5c`; test-only follow-up `9807032a7f08f4236bd08afae830608e43d2a2ef`. Only `tests/family-sync/gamePolicy.spec.ts` changed between these two revisions.
+- **832/832 unit tests**, including 11 new all-grade selection/content/rotation/scoring regressions. Typecheck, lint, repository format check and focused formatting of the new policy/review/catalog-support/test files passed. Production build/performance: **549,999/550,000 initial JS bytes; 42,745/60,000 CSS**. Production dependency audit: **0 vulnerabilities**; tooling audit: the documented 11 firebase-tools-only exceptions, expiring November 4, 2026.
+- **8/8 reported-fix regressions** passed against the rebuilt reconciliation output: Grade 5 loading protection, Grade 2 September 21 reading targets, Kindergarten earlier targets, whole-set reentry, all-grade Spirit Realm and the unfinished Shadow Strike state.
+- The exact `33c5efb` family package ran **84 desktop/tablet checks: 83 passed, one failed**. All saving/navigation cases and all desktop policy play-throughs passed. The remaining Grade 5 Context Gap tablet failure was isolated to a test-tool side effect: before full-page capture, the frame reported `pointer: coarse = true`, `maxTouchPoints = 1`, and visible controls; immediately after capture, it reported `false`, `0`, and hidden controls. No app change was made to conceal this finding.
+- The test-only correction removes mid-journey full-page capture on tablets and uses actual tap events for game answers. Its exact `9807032` package passed **16/16 tablet policy cases**, covering all three grades, four complete game rounds per grade, both menus and embedded missing-context retry. This is a targeted rerun, not a claim that all 84 cases were rerun on the test-only revision.
+- Earlier candidate `19fd1cb` had a separate five-second Grade 2 Context readiness timeout; the focused desktop/tablet and missing-context rerun passed **4/4**, and the later full matrix and actual-tap rerun both passed that Grade 2 case. Keep this timing observation for review and eventual physical-device checking; its cause was not conclusively established.
+- Desktop Shuriken/Sushi and tablet Context images were inspected for the surface contrast repair. Browser emulation and synthetic audio are not physical iMac/iPad sound, microphone or performance acceptance.
+
+Both manifests' **140 file hashes** were recomputed and matched:
+
+| Candidate | Artifact tree SHA-256 | Local package |
+| --- | --- | --- |
+| Runtime `33c5efb` | `7d5127a4e0c6f9fdb03b2294d72ca27f17355ee4a8ea1b9a107e58728dc22335` | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-wImjdc` |
+| Test correction `9807032` | `739ce60087bdb78bf617389b51148009198a9e36abbade59cebd547bfbabc6fc` | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-XdvL2M` |
+
+No source has been pushed or merged, and no Stage B build has been published. Production policy, authentication and child records are unchanged. Tests use intercepted synthetic families. Durable game checkpoints, per-target persistence and cross-device coverage remain incomplete, so this is **central-policy review readiness, not release or smoke-test readiness**.
+
+### Central-policy review repair
+
+The review of `3491041..9807032` reproduced one actionable failure: `PreviewLearningHub` read the result ledger without guarding render failures. An unreadable synthetic score entry introduced before completion removed the open game after the save-error rerender in all three grades. Kindergarten and Grade 5 became blank; Grade 2 showed its application reload fallback. Existing records were preserved, but the game's in-memory completion and retry were lost.
+
+Repair `48fd4888036dbd26826139f793c41b65c8985b4d` reads history once behind a guard, retains the active game and completion retry, disables fresh ready-game rounds when history is unverified, and checks history again when launching from an already rendered menu. A user-controlled history recheck restores availability after recovery without changing stored records. Later-stage activities retain their “Coming soon” state.
+
+Verification passed **832/832 unit tests**, typecheck, lint, repository format and focused test formatting, build/performance (**549,999/550,000 initial JS bytes; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing tooling exception (**11 firebase-tools findings**, expires November 4, 2026). The exact package passed **20/20 embedded browser cases** across desktop/tablet and all three grades: preserved completion and one saved attempt after recovery (6), blocked stale-menu launches and history recheck (6), ordinary four-game menus (6), and the existing missing-child-context completion/retry (2). Tests restore only their deliberately injected synthetic fault, never real family history. The broader four-game play-through suite was not rerun for this guarded-history repair.
+
+All **140 files** matched the package manifest. Source: `48fd4888036dbd26826139f793c41b65c8985b4d`; tree: `640acae60930bdfa62e1412c15d0b5526f87bbbb94d8c406bd0d3691f31ccbf5`; local package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-yQ9YJI`. Browser log: `/private/tmp/ninja-stage-b-history-repair-browser.log`. This repair remains local; no production publication or smoke-test handoff occurred.
+
+**Central-policy re-review passed for `3491041..48fd488`, with no additional actionable findings.** The review checked render and launch guards, preservation of the active pack/session and completion retry, unchanged immutable-result semantics, surrounding tier/source/rotation/scoring contracts, and the regression assertions. All **11 policy tests** were rerun and passed. The recorded **20/20 browser results** and **140 artifact hashes** were independently verified; the full unit/browser suites were not rerun during this read-only code review. Durable checkpoints, cross-device coverage and per-target storage remain the next planned slice, and the earlier Context readiness timing observation remains in the release evidence. Passing this bounded review does not complete Stage B or its release gate.
+
+Remaining gates in order:
+
+1. GPT-6 Astra · Extra High design/implementation of compatible per-target result storage, cross-device coverage and durable game checkpoints. The owner confirmed this assignment October 9; continue without another model prompt. Keep legacy aggregates immutable and privacy-safe. Prepare and emulator-test any concrete additive production-policy proposal; obtain separate approval before applying it.
+2. Exact-package offline/retry/reload/second-browser and guarded rollback evidence, followed by the roadmap's release review. Publish only when that game's complete acceptance gate passes; do not send the owner to the old live build to test these changes. Shadow Strike and acquisition-game work remain later stages.
+
+## Stage B persistence foundation (local)
+
+October 9: the owner selected Astra · Extra High for this same Stage B persistence slice. This is a storage/protocol implementation, **not an activated game feature or a completed Stage B release**.
+
+- `src/ninjaSkills/progress.ts` defines versioned pinned packs, prompt/target counts, reviewed timestamps, cleared prompts, Shuriken remaining time/retry cycle and distinct continuation identities. Answer correctness is checked in memory before projecting reviewed facts. Unfinished selections and response strings are never copied. Completion includes the old aggregate shape, detailed targets, reinforcement phase and the pinned policy/curriculum. Completed checkpoints cannot be forked to manufacture another score.
+- `progressStore.ts` uses a separate family-scoped namespace, confirmed writes, stale-snapshot checks, immutable completion copies and a recoverable outbox-first completion sequence. Limits are 200,000 bytes per record, 64 checkpoints and 500 distinct completions per child; hitting a limit preserves data. Browser callers must use `createLockedGameProgressStore`, whose family-scoped Web Lock serializes writes and rechecks current ownership inside the lock. The synchronous core is for serialized callers/tests only: localStorage alone is not an atomic cross-tab compare-and-swap. Unsupported locking fails closed. The locked adapter is implemented but not connected to game screens.
+- `progressSync.ts` is an injected-backend coordinator, **not a Firestore transport**. It confirms queued completions before checkpoint work, guards ownership after awaits, avoids overwriting a newer local answer or an open game, and requires matching immutable detail before downloading a completed checkpoint. Whole-snapshot conflicts use reviewed-answer time with the existing future-skew limit; equal-time same-writer updates use revision ordering. Two never-reviewed starts resolve deterministically without losing an answer; competing untrusted future-dated answers fail closed. Backend version preconditions/readback are a required adapter contract, not yet real-backend evidence.
+- Saved JSON object order is now irrelevant to pack validation; array/target order remains significant. This fixes the reload rejection reproduced by serializing the pinned pack. Game serialization stays separate from the protected acquisition persistence boundary.
+
+The focused data-layer suite covers all twelve grade/game combinations, interrupted completion writes, immutable duplicates, two completed continuations, false assessments, out-of-order prompts, wrong Context answers, timer/retry semantics, record/count bounds, malformed records, missing source provenance, foreign-family isolation, legacy namespace non-interference, offline retry, owner changes and answers arriving during a network wait. Serialized competing-tab writes and opening a game while hydration waits for the write lock are also covered. These tests use synthetic storage, an injected lock and an injected remote, not live accounts or real recordings.
+
+Remaining implementation within this slice:
+
+1. Connect the locked browser store, all four module adapters and both menus; await confirmed saving before advancing, resume reviewed prompts after reload, and keep provisional material temporary. Finish discard/new-run transitions without retiring scores. Add real browser concurrency tests for the native lock; injected-lock tests alone are not that evidence.
+2. A concrete bounded Firestore transport and additive policy proposal, emulator-tested for ownership, immutable details, conditional checkpoint writes, and old-client compatibility. No policy or security settings have been changed.
+3. Integrate immutable details with the existing aggregate outbox/graph, bounded history pagination and fresh-device subset coverage. Do not claim recent 50-score history proves lifetime coverage.
+4. Add the new namespace to the existing privacy-safe device-export allowlist before activation; the current exporter intentionally does not dump arbitrary browser storage. Then complete exact-package cross-device/offline/rollback evidence, independent Astra Extra High review and publication verification before owner smoke testing.
+
+No code here starts a later roadmap stage. The live source remains `e9c5a54`.
+
+Local verification: **857/857 unit tests**, including **25 game-progress cases**, typecheck, lint, repository/focused formatting and build/performance passed. Budgets remain **549,999/550,000 initial JS bytes and 42,745/60,000 CSS bytes**. Production dependencies have **0 reported vulnerabilities**; the existing tooling exception remains **11 firebase-tools findings**, expiring November 4, 2026. No dependency or production policy was changed. Unit/build logs are `/private/tmp/ninja-stage-b-progress-unit.log` and `/private/tmp/ninja-stage-b-progress-build.log`. These results do not establish native browser locking, real Firestore transport, complete history coverage or live game resume.
+
+The existing game runtime/scoring integration passed **44/44 exact-package browser checks** (all four games, all three grades, desktop and tablet-touch, plus embedded history-failure/retry cases) at source **`fd862d67ca8ccef30fd2447c453692656184db43`**. All **140 manifest files** matched their hashes; tree **`440fa7714c0dcfde870acc29aa0ff275a78b064cead659d34eee4f657a97a842`**, package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-n8QT5I`, log `/private/tmp/ninja-stage-b-progress-browser.log`. Subsequent foundation changes added stricter provenance validation, the locked-store adapter and tests/documentation; those modules were not imported by game screens at that checkpoint. They were covered by the 857-test/unit and build gates, **not represented as browser-tested persistence integration**. No push, merge, deployment, security change or child-data change occurred.
+
+## Stage B Lanterns screen integration (local)
+
+October 9 continuation, same confirmed Astra · Extra High slice. Runtime source `259d38e66394f429f619dc89f4545670ceebf440` connects Memory Lanterns in both menus to one family-owned adapter. The generic reusable game retains optional persistence callbacks; family/account logic stays outside the module.
+
+- Reviewed turns must save before the board advances. A failed write keeps the exact pending candidate and shows an explicit retry, without allowing replacement answers. Provisional flips stay in memory only.
+- Reload/reentry restores pinned content, matched pairs and all reviewed error counts. Completed summaries use stored reviewed counters, never fabricated historical answer strings. Interrupted outbox-first completion writes recover their original ID/time before play resumes.
+- A frame-specific family/child/week owner is rechecked inside the native write lock. Stale snapshots cannot overwrite or discard another tab's reviewed turn. Explicit discard removes only the owned checkpoint; immutable detailed results remain.
+- The existing graph/outbox receives the exact validated aggregate from the detailed completion. Duplicate retries preserve ID/time and one graph point. Detailed outbox entries remain pending: aggregate uploading is **not** confirmation of cloud detail storage.
+- Device export now includes the game namespace. Unknown/damaged scoped data remains preserved, while unrelated authentication storage is excluded.
+- A small consolidation in `savePreviewResult` keeps new-result outbox-first semantics and existing-result retry semantics while avoiding duplicated save/confirm code. The page-size gate remains unchanged.
+
+Local gates: **863/863 unit tests**, typecheck, lint, repository/focused formatting, build/performance (**549,990/550,000 initial JS; 42,745/60,000 CSS**), zero production vulnerabilities and the existing 11-finding firebase-tools exception. All **141 package hashes** match source `259d38e`, tree `b31ec9299903630819b918cb0518a97748c1bcd057ac1f287ded95fb0a975293`, at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Xz6z4X`.
+
+Browser evidence covers **90 distinct cases**, not a single 90-case invocation:
+
+- The broad desktop/tablet policy/progress/saving run passed **77/84** in 17.9 minutes. Seven desktop assertions had obsolete test assumptions: three-pair Kindergarten setup, an ambiguous audio-versus-storage alert selector, synchronous completion despite the new native-lock boundary, and old exact error wording. They were not waived.
+- Corrected progress tests passed **12/12**, covering all three grades on desktop and touch: reviewed mistakes and pairs survive reload from the outer menu to the embedded menu, per-target completion totals match the immutable aggregate, failed storage holds the turn for retry, and reporting pauses/resumes the activity.
+- The affected alias/child-context/readback saving cases passed **6/6** with explicit waits for confirmed asynchronous completion and preserved failure/retry assertions.
+- Additional native two-tab locking and explicit-discard checks passed **4/4**; offline completion/reconnect checks passed **2/2**. Competing-tab fixtures use one shared synthetic remote database. The detailed outbox remains queued after aggregate acknowledgement, as required while its real transport is unfinished.
+
+All reruns used the **same unchanged `259d38e` runtime package**. Only test fixtures/selectors and evidence documentation changed afterward. Logs: `/private/tmp/ninja-stage-b-lantern-browser.log`, `/private/tmp/ninja-stage-b-lantern-progress-fixed.log`, `/private/tmp/ninja-stage-b-lantern-saving-fixed.log`, `/private/tmp/ninja-stage-b-lantern-ownership.log`, and `/private/tmp/ninja-stage-b-lantern-offline.log`. These are intercepted synthetic browser tests, not live database, Safari, real microphone or physical-device verification.
+
+At this Lanterns checkpoint, the remaining adapters were Shuriken/Context/Sushi. The next local implementation below connects Context and Sushi; the other release gates remain open. No production rules/authentication, real child data, push, merge or publication has changed. No owner smoke-test handoff is ready.
+
+## Stage B Sushi and Context screen integration (local)
+
+The same owner-confirmed GPT-6 Astra · Extra High persistence slice continues. Source inspection confirmed both modules previously kept their reviewed turns only in component/scene memory and did not receive a durable review callback from either family menu.
+
+- `SavedLearningGame` generalizes the existing Lanterns adapter without moving family/account dependencies into the reusable games. Both menus use the same pinned checkpoint, native family lock, immutable detailed completion and unchanged aggregate-result bridge. The outer-frame completion still distinguishes launch identity from the restored saved attempt ID.
+- Sushi initializes its sentence position and counters from reviewed progress. It awaits confirmed storage before feedback/advancement; a failed turn holds the plate, blocks editing, and retries the same candidate. Reopening discards an unfinished plate, not reviewed mistakes or completed sentences.
+- Context initializes the route, reviewed correctness, counts and streak display from the saved reviewed gates. A wrong reviewed answer advances exactly once, as its existing game rules require. All gate inputs stay locked while a save is pending or failed; retry cannot substitute another answer. Confirmed feedback/movement is queued on the activity clock, so a save finishing during reporting does not resume the scene. A restored completed route retains its original detailed result until aggregate delivery succeeds.
+- All three modules remain individually lazy-loaded, preserving the standalone host's on-demand code/style loading rather than loading unrelated game styles eagerly. The parent discard loading guard covers all three connected games. No raw response, unfinished token order, recording or handwriting is persisted.
+
+Runtime checkpoints: Sushi `7ef85dc`; Sushi plus Context `7a0cbc014b799163b98d527b1c0b0a324004b3dc`; final on-demand loading `b3f4d86a87406c0100860f4d60f63c68a4ce96b1`. The final package is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-SNbzov`, with all **143 file hashes verified**, tree `35962d5e527ff15c7b41db7b0359a05269a417eb75cf31793595a9c026cfe959`. The earlier combined package is `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-l3L0NL`, with all **140 file hashes verified**, tree `977768b127d30d804b17d7ea372d102e6c048c80e33017fee98d6f15a7470d32`.
+
+Unit tests pass **863/863** on the final runtime; typecheck, lint, format and build/performance pass (**549,990/550,000 initial JS; 42,745/60,000 CSS**). Production dependency audit reports zero vulnerabilities; the unchanged 11-finding development-tooling exception remains limited to `firebase-tools` through November 4. No dependencies or policies changed.
+
+Packaged browser evidence (synthetic families only; not publication):
+
+- `7ef85dc`: **24/24** Sushi/Lantern progress tests across all three grades and desktop/touch passed (`/private/tmp/ninja-stage-b-sushi-browser.log`).
+- `7a0cbc0`: Context's 12-case cross-grade desktop/touch run passed **10/12**; the two failures used a five-second assertion for an existing route animation. Aligning it with the existing policy suite's ten-second allowance resolved both: Grade 2 desktop in the **8/8** final-adapter run (which also covered Grade 2 touch and six Grade 5 normal-motion game-policy cases), and Grade 5 touch **1/1**. Thus all 12 Context scenarios are covered, not claimed as a single clean 12-case run. Logs: `/private/tmp/ninja-stage-b-context-browser-fixed.log`, `/private/tmp/ninja-stage-b-adapters-final.log`, `/private/tmp/ninja-stage-b-context-touch-final.log`.
+- `7a0cbc0`: **2/2** native-lock/report-pause checks passed after correcting an `innerText` versus `textContent` assertion mismatch (`/private/tmp/ninja-stage-b-context-pause-fixed.log`). The initial attempt to use a second loopback port was blocked by the test fixture, not the application; the tests now explicitly allow their configured loopback origin while continuing to intercept all external requests.
+- Final `b3f4d86`: **8/8** checks passed, covering all three connected games' Grade 5 completion/policy behavior and pending-save/report pause on desktop and touch (`/private/tmp/ninja-stage-b-loading-browser.log`). Earlier cross-grade matrices above remain attributed to their exact source revisions; the final change only isolates module loading. These checks do not replace independent review, real-backend/emulator evidence, rollback or owner device testing after publication.
+
+Remaining in this same stage: Shuriken's timer-aware adapter; discoverable saved games when current curriculum cannot launch a new pack; explicit offline cold-start coverage and resumed-source reporting; real backend and additive policy/emulator proposal, including cross-device discard semantics; bounded cloud history/subset coverage and acknowledged-detail cache handling; broader rollback evidence and independent release review. A 1280px desktop capture also showed Context's right-side scene/replay area clipped inside the family frame; confirm responsive layout/scrolling before declaring student readiness. This visual observation is not a persistence failure or a verified root cause. This is local-only implementation: A3.3 `e9c5a54` remains the last verified live source, and owner smoke testing is premature.
+
+## Stage B Shuriken screen integration (local)
+
+This continues the owner-confirmed GPT-6 Astra · Extra High persistence slice. The Shuriken adapter listed as unfinished above is now locally connected in both family menus; the other Stage B release gates remain open.
+
+- `gameSession` serializes answer, timer and expired-round restart transitions with one retained candidate. Partial writes retry the identical candidate; neither a new answer nor another timer tick can replace it. Timer-only writes do not change the reviewed-answer timestamp used for unfinished conflicts. Completion remains immutable and uses the existing aggregate bridge.
+- Shuriken restores its pinned target pack, reviewed counts, cleared pairs and remaining clock. Each displayed whole-second decrement follows confirmed saving. Failed storage locks game inputs and stops further countdown writes until retry. Expired missions restart only after the reset saves; reviewed counts survive every retry cycle, including previously cleared targets, so final per-target detail and the graph agree.
+- Report/navigation pauses use the existing activity clock. A confirmed answer waits to show feedback when reporting is open. The saving status reserves its layout space so periodic writes do not move the board under a click. Native-write-lock and injected-failure tests cover both timer and answer operations.
+- Deliberate limits: the clock resumes at its last confirmed whole second, not subsecond precision; pending card selection and raw answers are not persisted. Cosmetic stealth streaks restart each visit and are labelled accordingly. Account ownership, bounds and exact-write comparisons remain enforced by the shared store. Game-detail cloud transport is still absent and the screen says so.
+
+Runtime source: `76740f3ad6e7b5d642746970a07860b1937ab64d`. Exact Shuriken test package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Qvy8eK`; all **143 file hashes verified**, tree `bcb979cd81e17a597b76356b3b6a2f22fbe5ab136c814859d8cb2c69d71b5d1f`.
+
+Verification: **866/866 unit tests**, including three additional timer/session safety cases; typecheck, lint, repository and targeted formatting, build/performance (**549,990/550,000 initial JS; 42,745/60,000 CSS**); production dependency audit zero vulnerabilities; unchanged 11-finding firebase-tools exception through November 4. No dependency or security-policy changes.
+
+Browser evidence, synthetic families only:
+
+- Initial `59fdd20` matrix: **11/12 passed**. Grade 2 desktop exposed board movement while the new timer-saving message appeared/disappeared. Runtime `76740f3` reserves status space, and regression assertions now confirm each intended card selection and match.
+- Final `76740f3`: **20/20 passed** in one desktop/touch run, covering normal Shuriken policy/completion for all grades, both-menu reloads, incorrect reviews, report-paused countdowns, expiry/restart, exact cumulative detailed/aggregate results, timer failure/retry, and an answer whose save confirms while reporting remains open. Log: `/private/tmp/ninja-shuriken-browser-final.log`.
+- Additional shared-game regressions: **8/8 passed** with a separately managed server, covering Grade 5 Lanterns/Sushi/Context completion and Context's delayed-save/report pause on desktop and touch (`/private/tmp/ninja-shuriken-other-games-final.log`). The package at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-NKAC36` has the same runtime revision and tree hash as the Shuriken package; all 143 hashes were checked again. A preliminary shared-server attempt passed 3/8 before the Shuriken runner shut down that server; its five connection-refused failures were infrastructure results and prompted this clean managed-server rerun. These eight passes are separate from the 20/20 count, not physical-device or live-backend acceptance.
+
+Next: concrete backend/discovery and additive emulator-tested policy proposal, including discard semantics that cannot resurrect abandoned checkpoints; bounded remote history/coverage and acknowledged-detail cache behavior; offline cold-start/resumed-source evidence; the recorded Context layout repair; rollback and independent persistence/release review. No production publication, push, merge, security/authentication change or real-child record change has occurred. A3.3 `e9c5a54` remains live. This is not an owner smoke-test handoff.
+
+## Stage B cross-device persistence candidate (local)
+
+The owner-confirmed GPT-6 Astra · Extra High persistence slice is implemented at application source `9880e8a4b6782b986d4a5ddd3d607276dfb6cd1d`. It is still local and unpublished. The additive Firestore policy is a tested proposal, not an active production policy.
+
+- `gameCloud.ts` provides a bounded parent-authenticated REST transport for checkpoints, immutable per-target completions and immutable retirement records. Every conditional write is confirmed by exact authorized readback. Records are scoped to one family child, exclude raw responses, recordings and handwriting images, and reject oversized or malformed provider data.
+- Retirement is permanent for a specific run. A discarded run cannot upload again or return from a stale device; immutable completed attempts are never retired. Two completed scores remain separate graph data points. Only competing unfinished checkpoints use the newest trusted reviewed-answer time.
+- `gameHistory.ts` stages bounded pages before changing device state, discovers saved scopes across devices and caches acknowledged immutable completions. The family runtime synchronizes ordinary practice first, then game history, while preserving open-game ownership and local work on any failure.
+- Both family menus discover unfinished and completed-but-undelivered games even when the current teacher snapshot cannot create a fresh round. Reopening uses the pinned week, targets, support content and policy. Offline cold start reports the saved source accurately and continues locally until reconnect.
+- Shuriken queues at most two distinct rapid taps while its timer or prior answer finishes saving, then replays them in order against the next rendered board. A failed write still blocks advancement and retains the exact retry.
+
+Verification against the exact `9880e8a` package:
+
+- **874/874 unit tests**, typecheck, lint, repository format, production build and performance passed. Initial JavaScript is **549,990/550,000 bytes** and CSS is **42,745/60,000 bytes**.
+- Production dependency audit reports **0 vulnerabilities**. The unchanged firebase-tools-only exception contains 11 development-tool findings and expires November 4, 2026.
+- The separate root hardening-policy suite passes **16 applicable emulator tests with one candidate-only skip**. The explicit family-sync candidate suite passes **17/17**, including cross-family denial, conditional checkpoint updates, immutable completion, forbidden private payloads and permanent retirement. `npm run test:firestore` and `npm run test:firestore:family-sync` deliberately identify which policy they exercise.
+- The packaged desktop/tablet matrix passes **134/134**: Context 12, Lanterns 12, ownership/discard 8, Shuriken 14, Sushi 12, shared saving 32 and central policy 44. It covers all three grades, both menus, offline cold start, reconnect delivery, second-device resume/discard, failed-write retry, report pause and rapid Shuriken input.
+- All **145 package files** match their manifest. Package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-0iug0N`; tree SHA-256: `8eca7919de64929e6ce038b5475e0cbbbe0bf1b49a475343c1ca5b8545163e70`.
+
+Remaining gates at that checkpoint were the independent persistence review, bounded repair and verification of the recorded Context frame clipping, guarded predecessor/candidate rollback evidence, and explicit approval before any policy deployment, merge, push or publication. The review result and repairs are recorded below. Real-child records, authentication and production security were untouched. A3.3 `e9c5a54` remains the verified live source, so owner smoke testing is still premature.
+
+### Persistence review repair
+
+The independent GPT-6 Astra · Extra High persistence review found one release-blocking data-lifecycle defect: the first candidate kept only one unsynced retirement for each child/week/game scope. Discarding a second offline run could overwrite the first retirement and allow a stale device to revive the older run. Commit `11c6689` stores each retirement by scope and run, synchronizes every retained retirement, and keeps completed attempts immutable. The same repair ensures that a checkpoint left behind by an interrupted discard cannot block a fresh run and preserves compatibility with the earlier one-retirement preview format. The student-facing status now accurately says reviewed turns sync through the parent family account when connected.
+
+Final repaired evidence:
+
+- **877/877 unit tests**, including multiple offline discards, interrupted-discard recovery and earlier-format acknowledgement.
+- **134/134 exact-package desktop/tablet checks** across Context, Lanterns, ownership/discard, Shuriken, Sushi, shared saving and central policy.
+- Separate root hardening proposal: **16 applicable emulator checks passed**, with the Stage B-only collection case intentionally skipped. Candidate additive policy: **17/17 passed**.
+- Typecheck, lint, format, build/performance (**549,990/550,000 initial JavaScript; 42,745/60,000 CSS**), production audit (**0 vulnerabilities**) and the existing time-bounded firebase-tools-only exception passed.
+- All **145 manifest files** match source `11c66897c073d475211c6db9c3b8da7df64f2936`; tree `b7edcefb2f14ef545e1f491002c1ed8498f40a91dc8d32d742494006b886127e`; exact tested package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-Mozinl`.
+
+The persistence review has no remaining actionable finding. The next bounded implementation slice was the recorded Context family-frame clipping repair using GPT-6.1 Sol · High. Its result and the guarded predecessor/candidate evidence are recorded below. No push, merge, deployment, production-policy change or child-data action occurred; the live source remains A3.3 `e9c5a54`, so smoke testing is premature.
+
+### Context containment and guarded rollback gate
+
+The desktop reproduction showed the Context scene reaching 1,338px inside a 1,256px iframe viewport for Kindergarten, Grade 2 and Grade 5; tablet layouts stayed contained. Commit `f26849d` keeps the intended wide game card but centers it inside the family frame. The final exact-package Context matrix passes **18/18** across all three grades and desktop/tablet: scene and replay controls stay within the viewport without horizontal overflow, reviewed mistakes and completed gates reload, and failed writes retain an exact retry.
+
+The rollback review found that the older-engine guard recognized newer lesson records but not the new `family-beta-games-v1` namespace. Commit `768f8cb` recognizes that namespace before the older application can read credentials or write storage. Its unit coverage proves the guard's no-read/no-write contract directly. The browser rehearsal used the actual published predecessor, reconstructed read-only from `https://ninjadojo.meghangames.com`; all **138 predecessor files** match published tree `67008aacbc2946151a661f2212b7fc47725edd2bdbf4398e26dd009b17a57e6d`.
+
+The final predecessor/candidate rehearsal passes **4/4** on desktop and tablet. The ordinary path upgrades A3.3 Grade 2 records, activates the guarded older engine, confirms every record is unchanged offline, then restores the Stage B candidate and resumes the original lesson. The Stage B-specific path retains only a reviewed `family-beta-games-v1` Lantern checkpoint, confirms the older engine reads no credential and writes no storage, then restores the candidate and resumes the matched pair. Test-only commits `d141185`, `c92ce9a`, `1022ec5` and `ba9abcd` align the status assertion, bound service-worker activation, add the game-only proof and recognize a legitimately dormant worker process; they do not change application behavior.
+
+Final Sol-stage evidence at `ba9abcd4e4dbf7355d9b60f2375b1badcf980c78`:
+
+- **878/878 unit tests**; typecheck, lint and format pass.
+- **134/134** previously recorded broad game desktop/tablet checks, plus the final **18/18 Context** and **4/4 guarded rollback** matrices.
+- Separate root hardening proposal: **16 applicable checks**, with one intentional Stage B-only skip. Additive candidate policy: **17/17**.
+- Build/performance passes at **549,990/550,000 initial JavaScript bytes** and **42,745/60,000 CSS bytes**. Production audit reports **0 vulnerabilities**; the documented firebase-tools-only exception remains 11 findings and expires November 4, 2026.
+- All **145 files** match the current candidate manifest. Tree SHA-256: `8944b978a756e8f84c1d80b8e314e9dfcc384b7116b98bea8eebabd100f5f77c`; exact package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-XrlM3g`.
+
+The bounded Sol implementation and rollback gate are complete. The next required gate is the independent GPT-6 Astra · Extra High cross-grade release review. The additive Firestore policy remains a proposal and needs separate explicit approval before production application; application publication also remains separately gated. No push, merge, deployment, production-policy change or child-data action occurred. A3.3 `e9c5a54` remains live, so owner smoke testing is premature.
+
+
+### Final release review repairs
+
+The final review of `ba9abcd` reproduced two cross-device discard failures and found that the proposed game policy also tightened existing lesson rules. Local repair `9f0ac7567ab6039a27f0069c2871fa6be2e1aebc` addresses those findings; the repaired candidate subsequently passed the GPT-6 Astra · Extra High re-review recorded below. Earlier uses of “additive” for the pre-repair candidate were inaccurate. Root `firestore.rules` is a separate hardening proposal, not evidence of the deployed family policy.
+
+- Independent discards of the same scope/run now converge on the first immutable server retirement even when writer and timestamp differ. Checkpoint/completion confirmations remain exact; wrong scope/run retirements are rejected and remain queued. A regression verifies the second device can subsequently sync a fresh run.
+- Applying a remote retirement rechecks both the expected checkpoint and the open-game/owner guard inside the storage lock. Opening a game, recording a newer answer, or changing account while waiting cannot remove that checkpoint.
+- The candidate policy now adds only the game helper functions and three game collections. A permanent boundary test removes those additions and requires the exact published A3.3 policy SHA-256 `335b19cf431bb726ac9dcd74c9fa5fc11a8fbcb709f5fed4b3482cce1f4d1ded`. Unrelated lesson hardening remains outside this release. Its emulator assertions run separately against root `firestore.rules`, not against the production-based game proposal.
+
+The new transport, convergence, and locked-retirement regressions failed before implementation (three reproduced failures) and pass after repair. No production records, authentication, or active rules were changed. No owner smoke testing is ready; publication and production-policy changes still require separate explicit approval.
+
+Verification at repaired source `9f0ac75`:
+
+- **20/20 exact-package desktop/tablet browser checks** pass across all three grades: both-menu Lantern reload/completion, failed-save retry, native competing-tab locks, explicit discard, offline cold-start recovery, and graph/detail delivery after reconnect. These synthetic checks do not establish physical-device audio or touch quality and are not an owner smoke-test handoff.
+- Node **24.21.0**: **882/882 unit tests**, typecheck, lint, configured format check and build/performance pass. Initial bundles remain **549,990/550,000 JavaScript bytes** and **42,745/60,000 CSS bytes**.
+- Production-based Stage B policy: **17 passed, one explicit hardening-only skip**. Separate root hardening proposal: **17 passed, one explicit game-only skip**. Both emulator runs passed on Node 24; neither run deploys policy. The game emulator regression uses independent REST clients and confirms differing discard writer/timestamp values retain the first server record.
+- Production dependency audit: **zero vulnerabilities**. The existing development-tool exception remains **11 firebase-tools findings**, expiring November 4, 2026.
+- All **145 packaged file sizes and hashes** independently match the manifest for source `9f0ac7567ab6039a27f0069c2871fa6be2e1aebc`. Artifact tree: `b03619a50a957669fe5901e49a52df3def36add8ab186f23fa777bacc97290f4`; local package: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-dvzguk`. The browser harness packaged this candidate using the host Node 26.8.1; the required Node 24 unit/build/emulator checks were rerun separately.
+
+Evidence logs: `/tmp/ninja-stage-b-repair-red.log`, `/tmp/ninja-stage-b-repair-focused.log`, `/tmp/ninja-stage-b-repair-node24-unit.log`, `/tmp/ninja-stage-b-repair-node24-policy.log`, `/tmp/ninja-stage-b-repair-node24-root.log`, and `/tmp/ninja-stage-b-repair-browser.log`. The earlier broad 134-case game matrix and guarded predecessor rollback evidence remain attached to their recorded revisions; they are not represented as rerun for this repair.
+
+
+### Release rereview verdict
+
+October 9, 2026 (Pacific): **re-review of application candidate `9f0ac7567ab6039a27f0069c2871fa6be2e1aebc` passed with no remaining actionable findings in the repaired scope.** The review checked the repair diff and surrounding transport, owner checks, write-lock handling, immutable completions, retirement acknowledgements, and policy compatibility. Different discard timestamps/writers can confirm only the same validated scope/run; checkpoint and completion readbacks remain exact. Local removal checks run inside the lock and preserve a newly opened or changed checkpoint.
+
+Fresh verification on Node 24.21.0 passed **67/67 focused tests** and **17 applicable production-based candidate-policy emulator checks**, with one deliberate skip for the separate lesson-hardening proposal. The exact artifact inventory, all **145 file sizes/hashes**, tree hash, and source identity were verified again. Removing only the game additions reproduces the complete `3491041` published policy byte-for-byte. Reviewed game-policy SHA-256: `ff108665b7c2b0fed1c8f476fcac0b5c4ed4b334cc3f71d630cae770491dd3c0`. Logs: `/tmp/ninja-stage-b-rereview-tests.log` and `/tmp/ninja-stage-b-rereview-policy.log`.
+
+The recorded 882-unit, 20-browser, build/performance and dependency results remain evidence from the repair turn; those full suites were not rerun during this bounded re-review. Earlier broad game and rollback matrices retain their recorded revisions. Physical-device audio/touch and live serving are not established by this review.
+
+No application code, active policy, authentication, child records, push, merge, or publication changed during re-review. The remaining gate is explicit approval for the narrow production-policy addition, followed by the existing source-integration and per-grade publication gates. Recheck the active policy against the recorded production baseline before applying it. Use GPT-6 Astra · Extra High for that security-sensitive step and GPT-6.1 Sol · High for bounded release packaging/verification. No owner smoke testing until a reviewed release is published and its exact canonical links are verified.
+
+### Game policy publication
+
+October 10, 2026 (Pacific): the owner approved the game-only database-policy step with “proceed” following the passing re-review and explicit policy approval request. That approval did not include app publication, source push/merge, authentication changes, or child-record writes.
+
+Before publication, the complete active policy matched the reviewed A3.3 baseline SHA-256 `335b19cf431bb726ac9dcd74c9fa5fc11a8fbcb709f5fed4b3482cce1f4d1ded`, ruleset `ddf78a15-4d99-47e1-bebf-68b0d57a8929`. The candidate matched reviewed SHA-256 `ff108665b7c2b0fed1c8f476fcac0b5c4ed4b334cc3f71d630cae770491dd3c0`. Fresh Node 24.21.0 verification passed the exact additive-policy boundary test and **17 applicable emulator tests**, with one deliberate skip for the separate lesson-hardening proposal.
+
+The repository-pinned Firebase CLI 15.32.1 published **Firestore rules only** to project `weeklydictationapp`, using an isolated configuration pointing explicitly to `deployment/firestore-family-sync.rules`. Root `firestore.rules`, hosting, indexes, and authentication configuration were not deployed.
+
+- Active release: `projects/weeklydictationapp/releases/cloud.firestore`.
+- New ruleset: `projects/weeklydictationapp/rulesets/07e55d6a-e6be-4672-8a50-af50975976e0`.
+- Provider release time: `2026-10-10T13:10:25.259170Z`, October 10 at 6:10 a.m. Pacific.
+- Post-publication readback confirmed the entire active rules source equals the reviewed candidate byte-for-byte and has the SHA-256 above.
+- The previous ruleset remains available. Reverting it would reject Stage B game writes; retaining it is recovery evidence, not an instruction to roll back during normal app recovery.
+- The canonical live manifest still reports app source `e9c5a547031c65c00cce45616ec581bcec111ac7`, tree `67008aacbc2946151a661f2212b7fc47725edd2bdbf4398e26dd009b17a57e6d`.
+
+No production child records were read or written, and no app deployment, push, merge, or authentication change occurred. Verification establishes active policy identity plus local emulator behavior, not live end-to-end game syncing. That acceptance belongs to the separately approved application release. **No owner smoke testing yet.** Next: GPT-6.1 Sol · High for bounded source-integration/release preparation and verification, preserving separate push/merge and per-grade publication approvals.

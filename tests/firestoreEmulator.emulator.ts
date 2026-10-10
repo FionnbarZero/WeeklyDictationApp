@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore'
 import { readFile } from 'node:fs/promises'
 import { createResultRepository } from '../src/familyBeta/cloud.ts'
 import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
@@ -10,7 +10,17 @@ import { createHash } from 'node:crypto'
 import { openAcquisitionStore } from '../src/familyBeta/acquisitionStore.ts'
 import { retireAcquisition } from '../src/familyBeta/acquisitionRetirement.ts'
 import { listSavedLessons, rememberLessonLaunch } from '../src/familyBeta/lessonLaunch.ts'
-import { validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import { inspectSnapshot, validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
+import { createGameCloudRepository } from '../src/ninjaSkills/gameCloud.ts'
+import {
+  checkpointGameAnswer,
+  completeGameCheckpoint,
+  gameScopeKey,
+  retireGameCheckpoint,
+  serializeGameRecord,
+  startGameCheckpoint,
+} from '../src/ninjaSkills/progress.ts'
 import { grade2AcquisitionStrategy } from '../src/acquisition/strategies/grade2.ts'
 import type { AcquisitionPersistenceContext } from '../src/acquisition/persistence/contracts.ts'
 import { makeResult } from '../src/familyBeta/model.ts'
@@ -21,6 +31,7 @@ import type { ChildMasteryState } from '../src/warmup/adaptive/contracts.ts'
 import { encodeChangedCloudWarmupQueueEntry, encodeCloudWarmupVisit } from '../src/persistence/warmup/cloudCodec.ts'
 
 let environment: RulesTestEnvironment
+const candidateFamilyGameRules = process.env.FAMILY_SYNC_RULES_FILE?.endsWith('firestore-family-sync.rules') ?? false
 
 before(async () => {
   environment = await initializeTestEnvironment({
@@ -106,6 +117,127 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
 })
 
+test('family game progress is private, conditional, immutable when completed, and permanently retired per run', {
+  skip: candidateFamilyGameRules ? false : 'The separate root hardening policy does not include Stage B game collections.',
+}, async () => {
+  const datasets = inspectSnapshot(
+    JSON.parse(await readFile(new URL('../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
+  ).datasets
+  const capability = reinforcementGames(datasets, '2026-10-05', 'Grade 2').find(
+    ({ capability: value }) => value.status === 'ready' && value.pack.moduleId === 'memory-flip',
+  )!.capability
+  if (capability.status !== 'ready') throw new Error('Missing emulator game fixture.')
+  const checkpoint = startGameCheckpoint(
+    { childId: 'maya', grade: 'Grade 2', week: '2026-10-05', gameId: 'memory-flip' },
+    capability.pack,
+    'game-attempt-one',
+    'game-writer-one',
+    '2026-10-09T01:00:00.000Z',
+  )
+  const host = process.env.FIRESTORE_EMULATOR_HOST!
+  const config = {
+    projectId: 'weekly-dictation-test',
+    familyId: 'family-parent',
+    endpoint: `http://${host}`,
+    token: async () => mockToken('parent'),
+    stillOwner: () => true,
+  }
+  const first = createGameCloudRepository(config)
+  const second = createGameCloudRepository(config)
+  const created = await first.writeCheckpoint(checkpoint, null)
+  assert.deepEqual((await second.readCheckpoint(checkpoint.scope))?.value, checkpoint)
+
+  const pair = 'pairs' in checkpoint.pack ? checkpoint.pack.pairs[0] : null
+  if (!pair) throw new Error('Expected memory pair.')
+  const reviewed = checkpointGameAnswer(
+    checkpoint,
+    {
+      gameId: 'memory-flip',
+      promptId: pair.id,
+      targetId: pair.targetId,
+      correct: true,
+      assessmentMode: 'automatic',
+      response: [`${pair.id}:left`, `${pair.id}:right`],
+    },
+    '2026-10-09T01:01:00.000Z',
+  )
+  const updated = await first.writeCheckpoint(reviewed, created.version)
+  await assert.rejects(first.writeCheckpoint(checkpoint, created.version))
+
+  const retirement = retireGameCheckpoint(reviewed, '2026-10-09T01:02:00.000Z')
+  await first.saveRetirement(retirement)
+  await first.saveRetirement(retirement)
+  assert.deepEqual(await second.saveRetirement({
+    ...retirement, writerId: 'game-writer-two', retiredAt: '2026-10-09T01:03:00.000Z',
+  }), retirement, 'independent discards converge on the first immutable server record')
+  assert.deepEqual(await second.readRetirement(checkpoint.scope, checkpoint.runId), retirement)
+  await assert.rejects(first.writeCheckpoint(reviewed, updated.version), /discarded game run/)
+
+  const intruder = createGameCloudRepository({ ...config, token: async () => mockToken('intruder') })
+  await assert.rejects(intruder.readCheckpoint(checkpoint.scope))
+  await assert.rejects(intruder.saveRetirement({ ...retirement, runId: 'intruder-run' }))
+
+  const owner = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  const scopeId = createHash('sha256').update(gameScopeKey(checkpoint.scope)).digest('hex')
+  const checkpointPath = `families/family-parent/children/maya/betaGameCheckpoints/${scopeId}`
+  const retirementPath = `families/family-parent/children/maya/betaGameRetirements/${scopeId}_${checkpoint.runId}`
+  await assertFails(getDoc(doc(anonymous, checkpointPath)))
+  await assertFails(deleteDoc(doc(owner, retirementPath)))
+  await assertFails(
+    setDoc(doc(owner, checkpointPath), {
+      schema: 1,
+      kind: 'checkpoint',
+      childId: 'maya',
+      grade: 'Grade 2',
+      scopeId,
+      runId: 'fresh-run',
+      recordId: scopeId,
+      payload: '{"response":"must-not-be-stored"}',
+    }),
+  )
+
+  let completed = startGameCheckpoint(
+    { ...checkpoint.scope, week: '2026-09-28' },
+    capability.pack,
+    'game-attempt-two',
+    'game-writer-one',
+    '2026-10-09T01:03:00.000Z',
+  )
+  if (!('pairs' in completed.pack)) throw new Error('Expected memory pack.')
+  for (const item of completed.pack.pairs) {
+    completed = checkpointGameAnswer(
+      completed,
+      {
+        gameId: 'memory-flip',
+        promptId: item.id,
+        targetId: item.targetId,
+        correct: true,
+        assessmentMode: 'automatic',
+        response: [`${item.id}:left`, `${item.id}:right`],
+      },
+      '2026-10-09T01:04:00.000Z',
+    )
+  }
+  const completion = completeGameCheckpoint(completed, '2026-10-09T01:04:00.000Z')
+  await first.saveCompletion(completion)
+  await first.saveCompletion(completion)
+  assert.deepEqual(await second.readCompletion('maya', completion.result.id), completion)
+  await first.writeCheckpoint(completed, null)
+  const completionPath = `families/family-parent/children/maya/betaGameCompletions/${completion.result.id}`
+  await assertFails(
+    setDoc(doc(owner, completionPath), {
+      schema: 1,
+      kind: 'completion',
+      childId: 'maya',
+      grade: 'Grade 2',
+      recordId: completion.result.id,
+      payload: serializeGameRecord({ ...completion, targets: [] }),
+    }),
+  )
+  await assertFails(deleteDoc(doc(owner, completionPath)))
+})
+
 test('family result history paginates by completion and stable identity without dropping same-time attempts', async () => {
   const childId = 'history-child'
   const expected = Array.from({ length: 55 }, (_, i) => makeResult({ id: childId, nickname: 'Synthetic', grade: 'Grade 2', active: true },
@@ -130,6 +262,38 @@ test('family result history paginates by completion and stable identity without 
   assert.deepEqual([...first.results, ...second.results].map(r => r.id), expected.map(r => r.id).reverse())
   assert.equal((await repository.listPage(childId)).results[0].id, 'new-arrival')
   await assert.rejects(createResultRepository({ ...config, token: async () => mockToken('intruder') }).listPage(childId, first.nextPageToken))
+})
+
+test('family school-year scores save and retry across all grades while remaining private and immutable', async () => {
+  const config = { projectId: 'weekly-dictation-test', familyId: 'family-parent', endpoint: `http://${process.env.FIRESTORE_EMULATOR_HOST}`, token: async () => mockToken('parent') }
+  const first = createResultRepository(config), second = createResultRepository(config)
+  const intruder = createResultRepository({ ...config, token: async () => mockToken('intruder') })
+  const owner = environment.authenticatedContext('parent').firestore()
+  const anonymous = environment.unauthenticatedContext().firestore()
+  for (const [index, grade] of (['Kindergarten', 'Grade 2', 'Grade 5'] as const).entries()) {
+    const child = { id: `school-year-child-${index}`, nickname: 'Synthetic', grade, active: true }
+    await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), `families/family-parent/children/${child.id}`), child))
+    for (const channel of ['writing', 'reading', 'game'] as const) {
+      const result = makeResult(child, { id: `school-year-${channel}`, activity: 'Policy regression', channel, datasetIds: ['dataset-1'], schoolYear: '2026-27', correct: 1, attempted: 2 })
+      const path = `families/family-parent/children/${child.id}/betaResults`
+      await first.save(result)
+      await first.save(result)
+      assert.deepEqual((await second.list(child.id)).filter(r => r.id === result.id), [result])
+      await assert.rejects(first.save({ ...result, schoolYear: '2025-26' }))
+      await assert.rejects(intruder.save({ ...result, id: `unauthorized-${channel}` }))
+      await assertFails(getDoc(doc(anonymous, `${path}/${result.id}`)))
+      await assertFails(deleteDoc(doc(owner, `${path}/${result.id}`)))
+      for (const [valueIndex, schoolYear] of [null, 123, '', 'x'.repeat(33), [], {}].entries()) {
+        const id = `invalid-${channel}-${valueIndex}`
+        await assertFails(setDoc(doc(owner, `${path}/${id}`), { ...result, id, schoolYear }))
+      }
+      for (const field of ['recording', 'handwritingImage', 'response']) {
+        const id = `forbidden-${channel}-${field}`
+        await assertFails(setDoc(doc(owner, `${path}/${id}`), { ...result, id, [field]: 'forbidden' }))
+      }
+    }
+    await assert.rejects(intruder.list(child.id))
+  }
 })
 
 test('family practice sync hydrates another device, preserves conflicts, and rejects cross-family and anonymous access', async () => {
@@ -330,16 +494,25 @@ test('family discard reaches a stale second device before a checkpoint conflict 
     identity: { childId, grade: 'Grade 2', datasetId: 'retired-week', schoolYear: '2026-27', activityModule: 'writing-dojo', tier: 'tier-1' }, lifecycleStage: { kind: 'acquisition' }, applicationVersion: 'retirement-test', strategy: grade2AcquisitionStrategy,
     targetSet: { id: 'retired-week', targets: [{ id: 'word', datasetId: 'retired-week', text: '一', sentence: '', tier: 'tier-1' }] },
   }
-  const original = openAcquisitionStore(first, context, { random: () => 0 })
+  // Wall-clock calls can share a millisecond. This scenario needs a strictly
+  // later second answer, not the separately tested stable-identity tie-break.
+  let reviewedTime = Date.now() - 2_000
+  const now = () => new Date(reviewedTime).toISOString()
+  const original = openAcquisitionStore(first, context, { random: () => 0, now })
   await repository.sync(first, childId)
   await repository.sync(second, childId)
-  const stale = openAcquisitionStore(second, context)
+  const stale = openAcquisitionStore(second, context, { now })
   original.answer(true, 'timer')
+  reviewedTime += 1_000
   stale.answer(false, 'timer')
+  assert.ok(stale.current.reviewedTrials.at(-1)!.reviewedAt > original.current.reviewedTrials.at(-1)!.reviewedAt)
   const retained = first.getItem(original.key), staleRetained = second.getItem(stale.key)
   retireAcquisition(first, original.context.identity)
   await repository.sync(first, childId)
-  await assert.rejects(repository.sync(second, childId), /both devices/)
+  // A reviewed answer is a trusted unfinished-attempt checkpoint. The later
+  // device answer wins automatically; the retirement marker still prevents
+  // the discarded activity from continuing or resurrecting its old lesson.
+  await repository.sync(second, childId)
   assert.throws(() => stale.answer(true, 'timer'), /discarded/)
   const fresh = openAcquisitionStore(second, context)
   assert.notEqual(fresh.key, original.key)
@@ -562,18 +735,6 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
   await assertSucceeds(completion.commit())
   await assertSucceeds(setDoc(scoreReference, score))
   await assertFails(setDoc(scoreReference, { ...score, percent: 0, correct: 0 }))
-  await assertFails(setDoc(sessionReference, { ...session, startedAt: '2026-09-30T17:00:00.000Z' }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-path'), { ...score }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-percent'), {
-    ...score, id: 'forged-percent', percent: 100, correct: 0,
-  }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-date-range'), {
-    ...score, id: 'forged-date-range', datasetDateRange: 'invented',
-  }))
-  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/extra-field'), {
-    id: 'extra-field', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
-    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete', unexpected: true,
-  }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/invalid-review-cycle'), { ...session, id: 'invalid-review-cycle', reviewCycle: 0 }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/acquisition-with-review-cycle'), { ...session, id: 'acquisition-with-review-cycle', primaryPhase: 'acquisition' }))
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/acquisition-with-review-cycle'), {
@@ -587,6 +748,27 @@ test('Test Review cycle identity is accepted only on matching session, attempt, 
   await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/wrong-review-cycle'), {
     id: 'wrong-review-cycle', childId: 'maya', datasetId: 'dataset-1', sessionId: 'test-review-2', sessionDate: '2026-09-30',
     phase: 'test-review', reviewCycle: 1, percent: 100, correct: 1, wordCount: 1,
+  }))
+})
+
+test('additional lesson hardening is separate from the production-based game policy', {
+  skip: candidateFamilyGameRules ? 'Stage B preserves existing production lesson rules; hardening is a separate proposal.' : false,
+}, async () => {
+  const database = environment.authenticatedContext('parent').firestore()
+  const sessionReference = doc(database, 'families/family-parent/children/maya/sessions/test-review-2')
+  const session = (await getDoc(sessionReference)).data()!
+  const score = (await getDoc(doc(database, 'families/family-parent/children/maya/scores/review-score'))).data()!
+  await assertFails(setDoc(sessionReference, { ...session, startedAt: '2026-09-30T17:00:00.000Z' }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-path'), { ...score }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-percent'), {
+    ...score, id: 'forged-percent', percent: 100, correct: 0,
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/scores/forged-date-range'), {
+    ...score, id: 'forged-date-range', datasetDateRange: 'invented',
+  }))
+  await assertFails(setDoc(doc(database, 'families/family-parent/children/maya/sessions/test-review-2/attempts/extra-field'), {
+    id: 'extra-field', sessionId: 'test-review-2', wordId: 'word-1', sourceDatasetId: 'dataset-1', phase: 'test-review',
+    reviewCycle: 2, correct: true, reviewedAt: '2026-09-30T16:01:00.000Z', completionStatus: 'complete', unexpected: true,
   }))
 })
 

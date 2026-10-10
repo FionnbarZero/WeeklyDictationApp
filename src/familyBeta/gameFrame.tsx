@@ -5,8 +5,10 @@ import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import { LearningModuleHost } from '../ninjaSkills/LearningModuleHost.tsx'
+import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import type { FamilyActivitySlot } from './activitySlots.ts'
 import { familyPreview, previewProfile, savePreviewResult } from './runtime.ts'
+import { SavedLearningGame } from './SavedLearningGame.tsx'
 import '../styles.css'
 
 function readGame() {
@@ -15,6 +17,7 @@ function readGame() {
     const game = JSON.parse(
       window.frameElement?.getAttribute('data-family-game') || 'null',
     ) as FamilyActivitySlot['game']
+    if (game) assertGamePack(game.pack)
     return game && /^[\w-]{1,160}$/.test(game.attemptId) && game.pack.cohort.grade === previewProfile()?.grade
       ? game
       : null
@@ -31,37 +34,64 @@ function FamilyGame() {
   return (
     <div data-report-activity={game.pack.title} data-report-phase="game">
       {error && <p role="alert">{error}</p>}
-      <LearningModuleHost
-        pack={game.pack}
-        onExit={() => {
-          pauseToFamilyHub()
-        }}
-        playAudio={(text, language = 'zh-CN', rate = 0.65) =>
-          promptAudioCompleted(
-            playAudioPlan([
-              { text, language: language as 'zh-CN', rate, storagePath: kindergartenAudioForText(text)?.storagePath },
-            ]),
-          )
-        }
-        onComplete={(summary) => {
-          try {
-            const saved = savePreviewResult({
-              id: game.attemptId,
-              activity: game.pack.title,
-              channel: 'game',
-              datasetIds: game.pack.cohort.provenance.map((p) => p.datasetId),
-              correct: summary.correct,
-              attempted: summary.attempted,
-            })
-            if (!saved) throw new Error('The completed game could not be saved for this child.')
-            parent.postMessage({ type: 'family-beta-game-completed', attemptId: saved.id }, location.origin)
-          } catch (e) {
-            setError(
-              `${e instanceof Error ? e.message : 'Saving could not be confirmed.'} Keep the game open and retry its completion.`,
+      {game.pack.moduleId === 'memory-flip' ||
+      game.pack.moduleId === 'sentence-scramble' ||
+      game.pack.moduleId === 'context-gap-dash' ||
+      game.pack.moduleId === 'speed-match' ? (
+        <SavedLearningGame
+          pack={game.pack}
+          onExit={() => {
+            pauseToFamilyHub()
+          }}
+          playAudio={(text, language = 'zh-CN', rate = 0.65) =>
+            promptAudioCompleted(
+              playAudioPlan([
+                { text, language: language as 'zh-CN', rate, storagePath: kindergartenAudioForText(text)?.storagePath },
+              ]),
             )
           }
-        }}
-      />
+          onComplete={(saved) =>
+            parent.postMessage(
+              { type: 'family-beta-game-completed', attemptId: game.attemptId, resultId: saved.id },
+              location.origin,
+            )
+          }
+        />
+      ) : (
+        <LearningModuleHost
+          pack={game.pack}
+          onExit={() => {
+            pauseToFamilyHub()
+          }}
+          playAudio={(text, language = 'zh-CN', rate = 0.65) =>
+            promptAudioCompleted(
+              playAudioPlan([
+                { text, language: language as 'zh-CN', rate, storagePath: kindergartenAudioForText(text)?.storagePath },
+              ]),
+            )
+          }
+          onComplete={(summary) => {
+            try {
+              const reviewed = reviewGameSummary(game.pack, summary)
+              const saved = savePreviewResult({
+                id: game.attemptId,
+                activity: game.pack.title,
+                channel: 'game',
+                datasetIds: game.pack.cohort.provenance.map((p) => p.datasetId),
+                schoolYear: game.pack.cohort.schoolYear,
+                correct: reviewed.correct,
+                attempted: reviewed.attempted,
+              })
+              if (!saved) throw new Error('The completed game could not be saved for this child.')
+              parent.postMessage({ type: 'family-beta-game-completed', attemptId: saved.id }, location.origin)
+            } catch (e) {
+              setError(
+                `${e instanceof Error ? e.message : 'Saving could not be confirmed.'} Keep the game open and retry its completion.`,
+              )
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

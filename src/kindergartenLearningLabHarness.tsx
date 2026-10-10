@@ -345,7 +345,7 @@ function KindergartenLearningLab() {
   }
 
   function finishWriting() {
-    try { acquisitionStore.current?.assertActive() }
+    try { if (acquisitionStore.current) attemptId.current = acquisitionStore.current.prepareResult().sessionId }
     catch (error) {
       setStatus(error instanceof Error ? error.message : 'This attempt cannot be submitted.'); setError(true)
       return
@@ -369,6 +369,7 @@ function KindergartenLearningLab() {
     if (!writingPractice) return
     try {
       const saved = acquisitionStore.current?.answer(answer, writingPractice.revealMethod)
+      if (saved) attemptId.current = saved.sessionId
       setWritingPractice({ ...writingPractice,
         state: saved ? { ...writingPractice.state, flow: saved.envelope.flow, assessments: saved.assessments }
           : answerKindergartenAcquisitionLab(writingPractice.state, answer, writingPractice.revealMethod),

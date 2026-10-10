@@ -2,16 +2,15 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import type { Dataset } from '../domain/contracts.ts'
-import { familyPreview, savePreviewResult } from './runtime.ts'
+import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
 import { fetchCurriculum } from './curriculum.ts'
-import type { BetaGrade } from './model.ts'
+import type { BetaGrade, BetaResult } from './model.ts'
 import { localDateKey } from '../domain.ts'
-import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
-import { NINJA_SKILLS_PROFILES } from '../ninjaSkills/profiles.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import {
-  channelCohort,
+  reinforcementGames,
   channelWords,
   latestEarlierTargets,
   sectionDatasets,
@@ -26,15 +25,17 @@ import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
 
 const ModuleHost = lazy(() =>
-  import('../ninjaSkills/LearningModuleHost.tsx').then((m) => ({ default: m.LearningModuleHost })),
+  import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
 type ExtraLaunch =
-  | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel; datasets: Dataset[] }
+  | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel | 'mixed'; datasets: Dataset[] }
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
+
+const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
 
 export function PreviewLearningHub<Launch>(props: LearningHubProps<Launch>) {
   return familyPreview ? <EnhancedHub {...props} /> : <LearningHub {...props} />
@@ -47,6 +48,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
   const [sessionId, setSessionId] = useState('')
+  const [, refreshHistory] = useState(0)
   useEffect(() => {
     if (active) window.scrollTo(0, 0)
   }, [active])
@@ -67,7 +69,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   function complete(correct: number, attempted: number) {
     if (!active) return
     try {
-      savePreviewResult({
+      const saved = savePreviewResult({
         id: sessionId,
         activity:
           active.previewAction === 'game'
@@ -79,9 +81,11 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                 : 'Stroke Order',
         channel: 'game',
         datasetIds: active.datasets.map((d) => d.id),
+        schoolYear: active.datasets[0].schoolYear,
         correct,
         attempted,
       })
+      if (!saved) throw new Error('The completed game could not be saved for this child.')
       setError('')
       exit()
     } catch {
@@ -117,6 +121,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
         )}
       </section>
     )
+  // A history read must not unmount an active game or its completion retry.
+  // Unverified history also cannot become a fresh round's rotation cursor.
+  let completedGames: BetaResult[] | null = null
+  try { completedGames = previewResults() } catch { /* Preserve stored records and the active game. */ }
   const model: LearningHubViewModel<Launch | ExtraLaunch> = {
     ...props.model,
     sections: props.model.sections.map((section) => {
@@ -223,29 +231,19 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
               launch: { previewAction: 'sky', channel: 'writing', datasets: writing },
             },
           })
-        const writingCapabilities = learningModuleCapabilities(
-          channelCohort(writing, 'writing', 'Earlier writing targets'),
-          NINJA_SKILLS_PROFILES[grade],
-        )
-        const readingCapabilities = learningModuleCapabilities(
-          channelCohort(reading, 'reading', 'Earlier reading targets'),
-          NINJA_SKILLS_PROFILES[grade],
-        )
-        for (const readingCapability of readingCapabilities) {
-          const id = readingCapability.status === 'ready' ? readingCapability.pack.moduleId : readingCapability.moduleId
-          const channel = id === 'dictation-streak' ? 'writing' : 'reading'
-          const capability =
-            channel === 'writing'
-              ? writingCapabilities.find((c) => (c.status === 'ready' ? c.pack.moduleId : c.moduleId) === id)!
-              : readingCapability
+        for (const { capability: availableCapability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)) {
+          const capability = completedGames === null && availableCapability.status === 'ready'
+            ? { status: 'unavailable' as const, moduleId: availableCapability.pack.moduleId, reason: gameHistoryWarning }
+            : availableCapability
+          const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
           const entry = learningModuleCatalogEntry(id)
           activities.push({
             id: `preview-game-${id}`,
             title: entry.title,
-            eyebrow: `${channel} · ${(channel === 'writing' ? writing : reading)[0]?.dateRange || 'No earlier targets'}`,
+            eyebrow: `${entry.eyebrow} · ${datasets.map(dataset => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
             description: entry.description,
             icon: entry.icon,
-            ...(capability.status === 'unavailable' ? { note: capability.reason } : {}),
+            note: capability.status === 'unavailable' ? capability.reason : capability.pack.scopeNote,
             action:
               capability.status === 'ready'
                 ? {
@@ -255,10 +253,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                       previewAction: 'game',
                       pack: capability.pack,
                       channel,
-                      datasets: channel === 'writing' ? writing : reading,
+                      datasets,
                     },
                   }
-                : { kind: 'disabled', label: 'Needs teacher-approved content', reason: capability.reason },
+                : { kind: 'disabled', label: capability.reason === gameHistoryWarning ? 'Temporarily unavailable' : 'Coming soon', reason: capability.reason },
           })
         }
         if (section.id === 'ninja-skills')
@@ -303,6 +301,10 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
   return (
     <>
       {error && <p role="alert">{error}</p>}
+      {completedGames === null && <div role="alert">
+        <p>{gameHistoryWarning}</p>
+        <button onClick={() => { setError(''); refreshHistory(value => value + 1) }}>Check saved history again</button>
+      </div>}
       <div hidden={Boolean(active)}>
         <LearningHub
           {...props}
@@ -310,6 +312,15 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           hideUnavailable={false}
           onLaunch={(launch, context) => {
             if (launch && typeof launch === 'object' && 'previewAction' in launch) {
+              if ((launch as ExtraLaunch).previewAction === 'game') {
+                try {
+                  // History can change after the menu renders (for example in
+                  // another tab). Check again before starting an unsaved round.
+                  previewResults()
+                  assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack)
+                }
+                catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
+              }
               setSessionId(crypto.randomUUID())
               setActive(launch as ExtraLaunch)
             } else props.onLaunch(launch as Launch, context)
@@ -320,9 +331,15 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost
             pack={active.pack}
+            onSavedComplete={exit}
             playAudio={audio}
             onExit={exit}
-            onComplete={(summary) => complete(summary.correct, summary.attempted)}
+            onComplete={(summary) => {
+              try {
+                const reviewed = reviewGameSummary(active.pack, summary)
+                complete(reviewed.correct, reviewed.attempted)
+              } catch (e) { setError(e instanceof Error ? e.message : 'The game result could not be verified.') }
+            }}
           />
         </Suspense>
       )}

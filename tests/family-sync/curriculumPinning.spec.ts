@@ -125,7 +125,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       await page.getByText('Saved lessons', { exact: true }).click()
       await expect(page.getByRole('button', { name: new RegExp(`Resume saved ${channel}`) })).toHaveCount(0)
       frame = await launch(page, slug, channel)
-      const envelopes =
+      const readEnvelopes = async () =>
         slug === 'grade2' && channel === 'writing'
           ? (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes!
           : await page.evaluate(() =>
@@ -135,9 +135,15 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
                 return []
               }),
             )
-      expect(envelopes.find((e) => e.id === old.id)).toEqual(old)
-      const fresh = envelopes.find((e) => e.id !== old.id && e.activityModule.includes(':restart-'))
-      expect(fresh?.revision).toBe(0)
+      // Clicking the menu can return before the lazy activity initializes its
+      // durable store. Wait for that observable checkpoint, not an arbitrary delay.
+      await expect
+        .poll(
+          async () =>
+            (await readEnvelopes()).find((e) => e.id !== old.id && e.activityModule.includes(':restart-'))?.revision,
+        )
+        .toBe(0)
+      expect((await readEnvelopes()).find((e) => e.id === old.id)).toEqual(old)
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()

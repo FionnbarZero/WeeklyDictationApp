@@ -15,6 +15,8 @@ import type {
   LearningModuleTerm,
 } from './contracts.ts'
 import type { NinjaSkillsProfile } from './profiles.ts'
+import { eligibleGameTier, GAME_POLICIES, GAME_POLICY_VERSION, rotatingGameTerms } from './policy.ts'
+import { withSupplementalContent } from './supplemental.ts'
 
 function distinctTerms(terms: readonly LearningModuleTerm[]) {
   const seen = new Set<string>()
@@ -39,6 +41,15 @@ function scopeNote(included: number, eligible: number) {
   return eligible > included
     ? `This practice visit uses the first ${included} of ${eligible} eligible source targets in source order.`
     : undefined
+}
+
+function selectedScope(id: LearningModuleId, cohort: LearningModuleCohort, included: number, eligible: number, visit: number) {
+  const available = distinctTermsByText(cohort.terms.filter(term => eligibleGameTier(id, term.tier))).length
+  const generated = cohort.terms.some(term => eligibleGameTier(id, term.tier) && term.supplementalVersion)
+  return {
+    selection: { policyVersion: GAME_POLICY_VERSION, visit, available, eligible, included },
+    scopeNote: `${included} of ${available} source targets this round; ${eligible} have usable content. Completed visits rotate the usable subset.${generated ? ' Supporting language is generated and validated, not teacher-authored.' : ''}`,
+  }
 }
 
 function termFromWord(word: Word): LearningModuleTerm {
@@ -88,17 +99,19 @@ export function learningModuleCohortFromDatasets(
 ): LearningModuleCohort | null {
   const provenance = datasets.map(datasetProvenance)
   if (!datasets.length || provenance.some((item) => !item)) return null
-  const words = datasets.flatMap((dataset) =>
-    dataset.vocabulary
+  if (datasets.some(dataset => dataset.grade !== datasets[0].grade || dataset.schoolYear !== datasets[0].schoolYear)) return null
+  const terms = datasets.flatMap((dataset) => {
+    const words = dataset.vocabulary
       ? [...dataset.vocabulary.tier1, ...dataset.vocabulary.tier2, ...dataset.vocabulary.tier3]
-      : dataset.words,
-  )
+      : dataset.words
+    return words.map(word => ({ ...termFromWord(word), datasetId: dataset.id }))
+  })
   return {
     id,
     label,
     grade: datasets[0].grade,
     schoolYear: datasets[0].schoolYear,
-    terms: distinctTerms(words.map(termFromWord)),
+    terms: distinctTerms(terms),
     provenance: provenance.filter((item): item is NonNullable<typeof item> => Boolean(item)),
   }
 }
@@ -110,6 +123,7 @@ export function learningModuleCohortFromCandidate(candidate: WeeklyDatasetCandid
     return candidate[tierKey].map(
       (word): LearningModuleTerm => ({
         occurrenceId: word.targetOccurrenceId || '',
+        datasetId: candidate.datasetId!,
         text: word.text.trim(),
         tier,
         ...(word.learningModule?.meaning ? { meaning: word.learningModule.meaning } : {}),
@@ -157,6 +171,7 @@ function selectionChoices(terms: readonly LearningModuleTerm[], targetIndex: num
 
 function exactContextParts(term: LearningModuleTerm) {
   const sentence = term.context?.sentence.trim() || ''
+  if (!sentence || sentence.length > 256 || sentence === term.text) return null
   const first = sentence.indexOf(term.text)
   if (first < 0 || first !== sentence.lastIndexOf(term.text)) return null
   return { before: sentence.slice(0, first), after: sentence.slice(first + term.text.length) }
@@ -200,24 +215,26 @@ function dictationPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile
   })
 }
 
-function speedMatchPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const eligible = distinctTermsByText(cohort.terms.filter((term) => term.meaning?.trim()))
-  const terms = eligible.slice(0, profile.maximumItems['speed-match'])
+function speedMatchPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const meanings = new Set<string>()
+  const eligible = distinctTermsByText(cohort.terms.filter((term) => eligibleGameTier('speed-match', term.tier) && term.meaning?.trim() && term.meaning.length <= 100))
+    .filter(term => {
+      const meaning = term.meaning!.trim().toLowerCase()
+      if (meanings.has(meaning)) return false
+      meanings.add(meaning)
+      return true
+    })
+  const terms = rotatingGameTerms('speed-match', eligible, profile.maximumItems['speed-match'], visit)
   if (terms.length < 2)
     return unavailable(
       'speed-match',
-      'Shuriken Match needs approved English meanings for at least two targets in this cohort.',
-    )
-  if (new Set(terms.map((term) => term.meaning!.trim())).size !== terms.length)
-    return unavailable(
-      'speed-match',
-      'Shuriken Match needs a distinct approved English meaning for every target in this practice visit.',
+      'Shuriken Match needs distinct validated English meanings for targets from both Tier 1 and Tier 2.',
     )
   return ready({
     moduleId: 'speed-match',
     title: learningModuleCatalogEntry('speed-match').title,
     cohort,
-    ...(scopeNote(terms.length, eligible.length) ? { scopeNote: scopeNote(terms.length, eligible.length) } : {}),
+    ...selectedScope('speed-match', cohort, terms.length, eligible.length, visit),
     pairs: terms.map((term) => ({
       id: `meaning:${term.occurrenceId}`,
       targetId: term.occurrenceId,
@@ -256,19 +273,19 @@ function targetBlastPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfi
   })
 }
 
-function memoryPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const eligible = distinctTermsByText(cohort.terms.filter((term) => term.tier !== 'tier-3'))
-  const terms = eligible.slice(0, profile.maximumItems['memory-flip'])
+function memoryPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const eligible = distinctTermsByText(cohort.terms.filter((term) => eligibleGameTier('memory-flip', term.tier)))
+  const terms = rotatingGameTerms('memory-flip', eligible, profile.maximumItems['memory-flip'], visit)
   if (terms.length < 2)
     return unavailable(
       'memory-flip',
-      'Memory Lanterns needs at least two distinct authoritative targets in this cohort.',
+      'Memory Lanterns needs at least two distinct Tier 2 source targets.',
     )
   return ready({
     moduleId: 'memory-flip',
     title: learningModuleCatalogEntry('memory-flip').title,
     cohort,
-    ...(scopeNote(terms.length, eligible.length) ? { scopeNote: scopeNote(terms.length, eligible.length) } : {}),
+    ...selectedScope('memory-flip', cohort, terms.length, eligible.length, visit),
     pairs: terms.map((term) => ({
       id: `memory:${term.occurrenceId}`,
       targetId: term.occurrenceId,
@@ -278,14 +295,14 @@ function memoryPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): 
   })
 }
 
-function contextPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const pool = distinctTermsByText(cohort.terms.filter((term) => term.tier === 'tier-2'))
+function contextPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const pool = distinctTermsByText(cohort.terms.filter((term) => eligibleGameTier('context-gap-dash', term.tier)))
   const eligible = pool.filter((term) => exactContextParts(term))
-  const terms = eligible.slice(0, profile.maximumItems['context-gap-dash'])
+  const terms = rotatingGameTerms('context-gap-dash', eligible, profile.maximumItems['context-gap-dash'], visit)
   if (pool.length < 3 || !terms.length)
     return unavailable(
       'context-gap-dash',
-      'Context Gap Dash needs an approved sentence and at least three distinct Tier 2 choices.',
+      'Context Gap Dash needs a validated sentence and at least three distinct Tier 1 choices.',
     )
   const rounds: LearningModuleContextRound[] = terms.map((term) => {
     const parts = exactContextParts(term)!
@@ -294,7 +311,7 @@ function contextPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile):
       id: `context:${term.occurrenceId}`,
       targetId: term.occurrenceId,
       targetText: term.text,
-      cueText: term.context!.sentence,
+      cueText: `${parts.before}____${parts.after}`,
       audioText: term.context!.sentence,
       sentenceBefore: parts.before,
       sentenceAfter: parts.after,
@@ -306,23 +323,24 @@ function contextPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile):
     moduleId: 'context-gap-dash',
     title: learningModuleCatalogEntry('context-gap-dash').title,
     cohort,
-    ...(scopeNote(terms.length, eligible.length) ? { scopeNote: scopeNote(terms.length, eligible.length) } : {}),
+    ...selectedScope('context-gap-dash', cohort, terms.length, eligible.length, visit),
     rounds,
   })
 }
 
-function sentencePack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const eligible = cohort.terms
+function sentencePack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const eligible = distinctTermsByText(cohort.terms)
     .filter((term) => {
       const sentence = term.context?.sentence.trim() || ''
       const tokens = term.context?.tokens || []
-      return tokens.length >= 2 && tokens.every((token) => token.trim()) && tokens.join('') === sentence
+      return eligibleGameTier('sentence-scramble', term.tier) && exactContextParts(term) &&
+        tokens.length >= 2 && tokens.length <= 64 && tokens.every((token) => token.trim()) && tokens.join('') === sentence
     })
-  const terms = eligible.slice(0, profile.maximumItems['sentence-scramble'])
+  const terms = rotatingGameTerms('sentence-scramble', eligible, profile.maximumItems['sentence-scramble'], visit)
   if (!terms.length)
     return unavailable(
       'sentence-scramble',
-      'Sushi Scramble needs an approved sentence and explicit ordered tokens for this cohort.',
+      'Sushi Scramble needs a validated Tier 1 sentence and explicit ordered tokens.',
     )
   const rounds: LearningModuleSequenceRound[] = terms.map((term) => {
     const tokens = term.context!.tokens.map((label, index) => ({
@@ -334,7 +352,7 @@ function sentencePack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile)
       targetId: term.occurrenceId,
       targetText: term.context!.sentence,
       audioText: term.context!.sentence,
-      tokens,
+      tokens: scrambleTokens(tokens, `${term.occurrenceId}:${visit}`),
       correctTokenIds: tokens.map((token) => token.id),
     }
   })
@@ -342,31 +360,46 @@ function sentencePack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile)
     moduleId: 'sentence-scramble',
     title: learningModuleCatalogEntry('sentence-scramble').title,
     cohort,
-    ...(scopeNote(terms.length, eligible.length) ? { scopeNote: scopeNote(terms.length, eligible.length) } : {}),
+    ...selectedScope('sentence-scramble', cohort, terms.length, eligible.length, visit),
     rounds,
   })
+}
+
+function scrambleTokens(tokens: readonly LearningModuleChoice[], seedText: string) {
+  const shuffled = [...tokens]
+  let seed = 2166136261
+  for (const char of seedText) seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+    const next = seed % (index + 1)
+    ;[shuffled[index], shuffled[next]] = [shuffled[next], shuffled[index]]
+  }
+  if (shuffled.every((token, index) => token.label === tokens[index].label)) {
+    const other = shuffled.findIndex(token => token.label !== shuffled[0].label)
+    if (other > 0) [shuffled[0], shuffled[other]] = [shuffled[other], shuffled[0]]
+  }
+  return shuffled
 }
 
 export function learningModuleCapabilities(
   cohort: LearningModuleCohort | null,
   profile: NinjaSkillsProfile,
 ): readonly LearningModuleCapability[] {
-  if (!cohort || cohort.provenance.length === 0) {
-    return LEARNING_MODULE_CATALOG.map((entry) =>
-      unavailable(
-        entry.id,
-        `Connect and validate the authoritative ${profile.grade} curriculum source before using this learning module.`,
-      ),
-    )
+  return LEARNING_MODULE_CATALOG.map(entry => learningModuleCapability(entry.id, cohort, profile))
+}
+
+export function learningModuleCapability(
+  id: LearningModuleId, cohort: LearningModuleCohort | null, profile: NinjaSkillsProfile, visit = 0,
+): LearningModuleCapability {
+  if (GAME_POLICIES[id].implementation !== 'stage-b')
+    return unavailable(id, 'Coming soon: this game’s teaching, audio and interaction rules are still being completed.')
+  if (!cohort || !cohort.provenance.length || cohort.grade !== profile.grade)
+    return unavailable(id, `Validated ${profile.grade} source targets are needed for this game.`)
+  const builders = {
+    'dictation-streak': dictationPack, 'speed-match': speedMatchPack, 'target-blast': targetBlastPack,
+    'memory-flip': memoryPack, 'context-gap-dash': contextPack, 'sentence-scramble': sentencePack,
   }
-  return [
-    dictationPack(cohort, profile),
-    speedMatchPack(cohort, profile),
-    targetBlastPack(cohort, profile),
-    memoryPack(cohort, profile),
-    contextPack(cohort, profile),
-    sentencePack(cohort, profile),
-  ]
+  return builders[id](withSupplementalContent(cohort), profile, visit)
 }
 
 export function learningModuleActivities<Launch>(
@@ -392,7 +425,7 @@ export function learningModuleActivities<Launch>(
       action:
         capability.status === 'ready'
           ? { kind: 'launch', label: `Start ${entry.title}`, launch: launch(capability.pack) }
-          : { kind: 'disabled', label: 'Needs Source Data', reason: capability.reason },
+          : { kind: 'disabled', label: 'Coming soon', reason: capability.reason },
     }
   })
 }

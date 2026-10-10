@@ -14,11 +14,14 @@ import {
 import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/validation.ts'
 import { pinAcquisitionLesson, resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
 import { currentAcquisitionContext, isAcquisitionRetired } from './acquisitionRetirement.ts'
+import { validWriter } from './deviceWriter.ts'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
+const MAX_REVIEWED_TRIALS = 500
 export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
   schema: 1
   sessionId: string
+  writerId?: string
   envelope: AcquisitionProgressEnvelope<T>
   assessments: AcquisitionAssessment<T, R>[]
   reviewedTrials: { sessionId: string; reviewedAt: string; assessment: AcquisitionAssessment<T, R> }[]
@@ -29,8 +32,9 @@ export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
 export function openAcquisitionStore<T extends AcquisitionTarget, R extends string>(
   storage: Store,
   latestContext: AcquisitionPersistenceContext<T>,
-  options: { random?: () => number; now?: () => string; uuid?: () => string } = {},
+  options: { random?: () => number; now?: () => string; uuid?: () => string; writerId?: string } = {},
 ) {
+  if (options.writerId !== undefined && !validWriter(options.writerId)) throw new Error('Invalid practice writer identity.')
   latestContext = currentAcquisitionContext(storage, latestContext)
   const random = options.random || Math.random
   const now = options.now || (() => new Date().toISOString())
@@ -47,8 +51,11 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       saved.schema !== 1 ||
       typeof saved.sessionId !== 'string' ||
       !/^[\w-]{1,160}$/.test(saved.sessionId) ||
+      ('writerId' in saved && !validWriter(saved.writerId)) ||
       !Array.isArray(saved.assessments) ||
       !Array.isArray(saved.reviewedTrials) ||
+      saved.assessments.length > MAX_REVIEWED_TRIALS ||
+      saved.reviewedTrials.length > MAX_REVIEWED_TRIALS ||
       !validateAcquisitionProgressEnvelope(saved.envelope, validationContext).valid ||
       saved.assessments.some(
         (a) =>
@@ -93,6 +100,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
   function fresh(nextContext: AcquisitionPersistenceContext<T>): SavedAcquisition<T, R> {
     return {
       schema: 1, sessionId: uuid(),
+      ...(options.writerId ? { writerId: options.writerId } : {}),
       envelope: pinAcquisitionLesson(createAcquisitionProgressEnvelope(nextContext,
         startAcquisition(nextContext.targetSet, nextContext.strategy, random), now()), nextContext),
       assessments: [], reviewedTrials: [],
@@ -121,12 +129,34 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
     get current() {
       return current
     },
+    prepareResult() {
+      assertActive()
+      if (storage.getItem(key) !== raw)
+        throw new Error('This activity changed in another tab. Reopen the saved lesson before submitting its score; nothing was overwritten.')
+      if (options.writerId && current.writerId !== options.writerId && current.assessments.some(a => a.countsTowardWeeklyScore)) {
+        // Done for today can submit inherited reviewed work without another
+        // answer. Claim once before scoring, so two completions stay distinct
+        // and a failed score write retries the same claimed identity.
+        return commit({ ...current, sessionId: uuid(), writerId: options.writerId })
+      }
+      return current
+    },
     answer(correct: boolean, revealMethod: R) {
+      // Reading/resuming never forks. The first successfully reviewed answer
+      // from a different installation claims its own score identity atomically
+      // with that checkpoint. Inherited teaching progress remains unchanged.
+      // Show-and-copy is a teaching-only prompt and deliberately produces no
+      // assessment. It must not claim the checkpoint for a different writer;
+      // otherwise an unscored response could look like a newer reviewed visit.
+      const claimsReviewedAnswer = current.envelope.flow.prompt?.kind !== 'show-copy'
+      const sessionId = options.writerId && current.writerId !== options.writerId && claimsReviewedAnswer
+        ? uuid()
+        : current.sessionId
       const checkpoint = buildAcquisitionCheckpoint({
         envelope: current.envelope,
         context,
         answeredPromptId: current.envelope.flow.prompt?.id || '',
-        sessionId: current.sessionId,
+        sessionId,
         occurredAt: now(),
         response: { correct, revealMethod },
         random,
@@ -135,12 +165,14 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       if (applied.status === 'conflict') throw new Error(applied.reason)
       return commit({
         ...current,
+        sessionId,
+        ...(options.writerId && claimsReviewedAnswer ? { writerId: options.writerId } : {}),
         envelope: applied.envelope,
         reviewedTrials: checkpoint.assessment
           ? [
               ...current.reviewedTrials,
               {
-                sessionId: current.sessionId,
+                sessionId,
                 reviewedAt: checkpoint.occurredAt,
                 assessment: checkpoint.assessment as AcquisitionAssessment<T, R>,
               },

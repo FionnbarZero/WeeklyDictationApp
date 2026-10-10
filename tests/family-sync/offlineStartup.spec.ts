@@ -72,14 +72,14 @@ for (const [slug, , id] of grades)
         localStorage.setItem('weekly-dictation-auth-v1', JSON.stringify(auth))
       })
       await context.setOffline(false)
-      await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+      await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
     })
   }
 
 test('sign-out removes offline bootstrap access without erasing reviewed practice', async ({ page, context }) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
   await page.getByRole('button', { name: 'Parent controls', exact: true }).click()
   page.on('dialog', (dialog) => dialog.accept())
@@ -94,7 +94,7 @@ test('sign-out removes offline bootstrap access without erasing reviewed practic
 test('a confirmed family access denial cannot be bypassed by going offline', async ({ page, context }) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
   await page.route('**/children/synthetic-g5/betaPractice?*', (route) => route.fulfill({ status: 403, body: '{}' }))
   await page.evaluate(() => dispatchEvent(new Event('online')))
@@ -109,7 +109,7 @@ test('a confirmed family access denial cannot be bypassed by going offline', asy
 test('offline bootstrap does not invent access for a different signed-in parent', async ({ page, context }) => {
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
   await context.setOffline(true)
   await page.evaluate(() => {

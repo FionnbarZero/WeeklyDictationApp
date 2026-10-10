@@ -52,6 +52,86 @@ function context(
     applicationVersion: 'test',
   }
 }
+
+test('two devices continuing the same checkpoint produce distinct completed-attempt identities', () => {
+  const firstDevice = memory(), ctx = context()
+  const first = openAcquisitionStore(firstDevice, ctx, { writerId: 'device-one', random: () => 0 })
+  first.answer(true, 'timer')
+  const secondDevice = memory()
+  for (const [key, raw] of firstDevice.records) secondDevice.setItem(key, raw)
+  const second = openAcquisitionStore(secondDevice, ctx, { writerId: 'device-two', random: () => 0 })
+  assert.equal(second.current.sessionId, first.current.sessionId, 'reading a checkpoint does not create an attempt')
+  assert.deepEqual(second.current.envelope, JSON.parse(JSON.stringify(first.current.envelope)))
+  const inheritedAssessments = [...second.current.assessments]
+  first.answer(true, 'timer')
+  second.answer(false, 'timer')
+  assert.notEqual(second.current.sessionId, first.current.sessionId)
+  assert.deepEqual(second.current.assessments.slice(0, inheritedAssessments.length), inheritedAssessments)
+  const reopened = openAcquisitionStore(secondDevice, ctx, { writerId: 'device-two', random: () => 0 })
+  const sameAttempt = reopened.current.sessionId
+  reopened.answer(true, 'timer')
+  assert.equal(reopened.current.sessionId, sameAttempt, 'same-device retry/reload does not create another result')
+})
+
+test('a cross-device show-copy response does not claim a newer reviewed attempt', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'device-one', random: () => 0 })
+  first.answer(true, 'timer')
+  first.answer(true, 'timer')
+  assert.equal(first.current.envelope.flow.prompt?.kind, 'show-copy')
+  const second = openAcquisitionStore(storage, ctx, { writerId: 'device-two', random: () => 0 })
+  const before = {
+    sessionId: second.current.sessionId,
+    writerId: second.current.writerId,
+    assessments: second.current.assessments.length,
+  }
+  second.answer(true, 'timer')
+  assert.equal(second.current.sessionId, before.sessionId)
+  assert.equal(second.current.writerId, before.writerId)
+  assert.equal(second.current.assessments.length, before.assessments)
+})
+
+test('a legacy unowned attempt is claimed only with a successfully saved reviewed answer', () => {
+  const storage = memory(), ctx = context()
+  const legacy = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  legacy.answer(true, 'timer')
+  const original = storage.getItem(legacy.key)
+  const upgraded = openAcquisitionStore(storage, ctx, { writerId: 'new-device', random: () => 0 })
+  assert.equal(storage.getItem(legacy.key), original)
+  const write = storage.setItem
+  storage.setItem = () => { throw new Error('quota') }
+  assert.throws(() => upgraded.answer(true, 'timer'), /quota/)
+  assert.equal(upgraded.current.sessionId, legacy.current.sessionId)
+  storage.setItem = write
+  upgraded.answer(true, 'timer')
+  assert.notEqual(upgraded.current.sessionId, legacy.current.sessionId)
+})
+
+test('completing inherited reviewed work claims one stable result identity without changing its checkpoint', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'device-one', random: () => 0 })
+  for (let i = 0; i < 4; i++) first.answer(true, 'timer')
+  const next = openAcquisitionStore(storage, ctx, { writerId: 'device-two', random: () => 0 })
+  const before = JSON.parse(JSON.stringify(next.current))
+  const claimed = next.prepareResult()
+  assert.notEqual(claimed.sessionId, before.sessionId)
+  assert.deepEqual(claimed.envelope, before.envelope)
+  assert.deepEqual(claimed.assessments, before.assessments)
+  assert.deepEqual(claimed.reviewedTrials, before.reviewedTrials)
+  assert.equal(next.prepareResult().sessionId, claimed.sessionId)
+  assert.equal(openAcquisitionStore(storage, ctx, { writerId: 'device-two' }).prepareResult().sessionId, claimed.sessionId)
+})
+
+test('a stale same-device view cannot finalize a different score under the live attempt identity', () => {
+  const storage = memory(), ctx = context()
+  const first = openAcquisitionStore(storage, ctx, { writerId: 'same-device', random: () => 0 })
+  for (let i = 0; i < 4; i++) first.answer(true, 'timer')
+  const stale = openAcquisitionStore(storage, ctx, { writerId: 'same-device', random: () => 0 })
+  first.answer(false, 'timer')
+  const before = storage.getItem(first.key)
+  assert.throws(() => stale.prepareResult(), /another tab/)
+  assert.equal(storage.getItem(first.key), before)
+})
 for (const strategy of [
   grade5AcquisitionStrategy,
   kindergartenAcquisitionStrategy,
@@ -116,6 +196,17 @@ test('legacy records with changed curricula fail without erasing earlier data', 
   storage.setItem(original.key, '{broken')
   assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
   assert.equal(storage.getItem(original.key), '{broken')
+})
+test('oversized reviewed history is rejected without erasing the saved lesson', () => {
+  const storage = memory(), ctx = context()
+  const store = openAcquisitionStore(storage, ctx, { random: () => 0 })
+  store.answer(true, 'timer')
+  const oversized = JSON.parse(storage.getItem(store.key)!)
+  oversized.reviewedTrials = Array.from({ length: 501 }, () => oversized.reviewedTrials[0])
+  const encoded = JSON.stringify(oversized)
+  storage.setItem(store.key, encoded)
+  assert.throws(() => openAcquisitionStore(storage, ctx), /Nothing was erased/)
+  assert.equal(storage.getItem(store.key), encoded)
 })
 for (const strategy of [grade5AcquisitionStrategy, kindergartenAcquisitionStrategy,
   grade2Tier2ReadingProfile.acquisitionStrategy, grade5Tier2ReadingProfile.acquisitionStrategy,

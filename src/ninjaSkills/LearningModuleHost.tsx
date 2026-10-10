@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import './surface.css'
 import type {
   LearningModuleAttempt,
   LearningModulePack,
@@ -44,26 +45,28 @@ export function LearningModuleHost({ pack, playAudio, onExit, onAttempt, onCompl
   }
 
   return (
-    <Suspense
-      fallback={
-        <main className="page loading-surface" role="status">
-          Loading {pack.title}…
-        </main>
-      }
-    >
-      {pack.moduleId === 'dictation-streak' ? (
-        <DictationStreak {...shared} rounds={pack.rounds} />
-      ) : pack.moduleId === 'speed-match' ? (
-        <SpeedMatch {...shared} pairs={pack.pairs} />
-      ) : pack.moduleId === 'target-blast' ? (
-        <TargetBlast {...shared} rounds={pack.rounds} />
-      ) : pack.moduleId === 'memory-flip' ? (
-        <MemoryLanterns {...shared} pairs={pack.pairs} />
-      ) : pack.moduleId === 'context-gap-dash' ? (
-        <ContextGapDash {...shared} rounds={pack.rounds} />
-      ) : (
-        <SushiScramble {...shared} rounds={pack.rounds} />
-      )}
-    </Suspense>
+    <div className="ninja-game-surface">
+      <Suspense
+        fallback={
+          <main className="page loading-surface" role="status">
+            Loading {pack.title}…
+          </main>
+        }
+      >
+        {pack.moduleId === 'dictation-streak' ? (
+          <DictationStreak {...shared} rounds={pack.rounds} />
+        ) : pack.moduleId === 'speed-match' ? (
+          <SpeedMatch {...shared} pairs={pack.pairs} />
+        ) : pack.moduleId === 'target-blast' ? (
+          <TargetBlast {...shared} rounds={pack.rounds} />
+        ) : pack.moduleId === 'memory-flip' ? (
+          <MemoryLanterns {...shared} pairs={pack.pairs} />
+        ) : pack.moduleId === 'context-gap-dash' ? (
+          <ContextGapDash {...shared} rounds={pack.rounds} />
+        ) : (
+          <SushiScramble {...shared} rounds={pack.rounds} />
+        )}
+      </Suspense>
+    </div>
   )
 }

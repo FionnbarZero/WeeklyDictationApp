@@ -86,7 +86,8 @@ export type LearningGameBaseProps = {
   readonly title?: string
   readonly eyebrow?: string
   readonly onExit: () => void
-  readonly onAttempt?: (attempt: LearningGameAttempt) => void
+  readonly onAttempt?: (attempt: LearningGameAttempt) => void | Promise<void>
+  readonly savedProgress?: { readonly cleared: readonly string[]; readonly attempted: number; readonly correct: number }
   readonly onComplete: (summary: LearningGameSummary) => void
 }
 

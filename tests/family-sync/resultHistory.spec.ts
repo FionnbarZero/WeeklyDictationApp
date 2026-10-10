@@ -143,7 +143,7 @@ test('local older history keeps its source and boundary across reconnect, new ar
   await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
   control.offline = false
   await page.evaluate(() => dispatchEvent(new Event('online')))
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Older attempts', exact: true })).toBeVisible()
   await page.evaluate(

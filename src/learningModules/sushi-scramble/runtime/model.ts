@@ -23,7 +23,11 @@ export function validSequenceRounds(rounds: readonly SequenceGameRound[]) {
 
 export function sequenceIsCorrect(round: SequenceGameRound, response: readonly string[]) {
   return response.length === round.correctTokenIds.length
-    && response.every((id, index) => id === round.correctTokenIds[index])
+    && new Set(response).size === response.length
+    && response.every((id, index) => {
+      const token = round.tokens.find(token => token.id === id)
+      return token && token.label === round.tokens.find(token => token.id === round.correctTokenIds[index])?.label
+    })
 }
 
 export function summarizeLearningGame(

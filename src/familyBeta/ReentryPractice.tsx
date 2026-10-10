@@ -58,6 +58,7 @@ export function ReentryPractice({
         activity: `Reenter the Dojo · ${channel}`,
         channel,
         datasetIds: datasets.map((d) => d.id),
+        schoolYear: datasets[0].schoolYear,
         correct,
         attempted,
       })

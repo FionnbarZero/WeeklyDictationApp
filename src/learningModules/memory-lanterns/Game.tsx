@@ -1,5 +1,5 @@
 import { activityClock } from '../../activity/activityLifecycle.ts'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { LearningGameAttempt } from './runtime/contracts'
 import type { PairGameProps } from './runtime/PairGameShared'
@@ -14,6 +14,7 @@ export function MemoryFlip({
   eyebrow = 'Sunset lantern challenge',
   onExit,
   onAttempt,
+  savedProgress,
   onComplete,
 }: PairGameProps) {
   const characterPairs = useMemo(() => pairs.map((pair) => ({
@@ -23,8 +24,12 @@ export function MemoryFlip({
   })), [pairs])
   const deck = useMemo(() => memoryDeck(characterPairs), [characterPairs])
   const [flippedIds, setFlippedIds] = useState<readonly string[]>([])
-  const [matchedPairIds, setMatchedPairIds] = useState<readonly string[]>([])
+  const [matchedPairIds, setMatchedPairIds] = useState<readonly string[]>(savedProgress?.cleared || [])
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
+  const pending = useRef<LearningGameAttempt | null>(null)
+  const saving = useRef(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [audioError, setAudioError] = useState(false)
   const twoFlipped = flippedIds.length === 2
   const flippedCards = flippedIds.map((id) => deck.find((card) => card.id === id)).filter((card) => Boolean(card))
@@ -37,7 +42,7 @@ export function MemoryFlip({
   }, [])
 
   useEffect(() => {
-    if (!twoFlipped) return
+    if (!twoFlipped || !confirmed) return
     const timer = activityClock.setTimeout(() => {
       const first = deck.find((card) => card.id === flippedIds[0])
       const second = deck.find((card) => card.id === flippedIds[1])
@@ -47,7 +52,7 @@ export function MemoryFlip({
       setFlippedIds([])
     }, pairMatch ? 1050 : 1450)
     return () => activityClock.clearTimeout(timer)
-  }, [deck, flippedIds, pairMatch, twoFlipped])
+  }, [deck, flippedIds, pairMatch, twoFlipped, confirmed])
 
   useEffect(() => {
     if (!complete) return
@@ -56,10 +61,11 @@ export function MemoryFlip({
   }, [complete])
 
   function flip(cardId: string) {
-    if (twoFlipped || flippedIds.includes(cardId)) return
+    if (pending.current || twoFlipped || flippedIds.includes(cardId)) return
     const card = deck.find((candidate) => candidate.id === cardId)
     if (!card || matchedPairIds.includes(card.pairId)) return
     const next = [...flippedIds, cardId]
+    setConfirmed(false)
     setFlippedIds(next)
     const spoken = new Promise<void>((resolve) => activityClock.requestAnimationFrame(() => {
       void Promise.resolve(playAudio?.(card.face.label, 'zh-CN')).then(() => { setAudioError(false); resolve() }, () => { setAudioError(true); resolve() })
@@ -80,11 +86,27 @@ export function MemoryFlip({
       response: next,
       assessmentMode: 'automatic',
     }
-    setAttempts((current) => [...current, attempt])
-    onAttempt?.(attempt)
+    pending.current = attempt
+    void saveTurn()
   }
 
-  const summary = summarizeLearningGame('memory-flip', attempts)
+  async function saveTurn() {
+    const attempt = pending.current
+    if (!attempt || saving.current) return
+    saving.current = true
+    setSaveError('')
+    try {
+      await onAttempt?.(attempt)
+      setAttempts((current) => [...current, attempt])
+      pending.current = null
+      setConfirmed(true)
+    } catch (error) {
+      setSaveError(`${error instanceof Error ? error.message : 'Saving failed.'} This turn has not advanced. Retry saving.`)
+    } finally { saving.current = false }
+  }
+
+  const reviewed = summarizeLearningGame('memory-flip', attempts)
+  const summary = { ...reviewed, attempted: reviewed.attempted + (savedProgress?.attempted || 0), correct: reviewed.correct + (savedProgress?.correct || 0) }
   return <LearningGameShell gameId="memory-flip" title={title} eyebrow={eyebrow} progress={`${matchedPairIds.length}/${characterPairs.length} pairs lit`} onExit={onExit}>
     {!valid ? <LearningGameEmpty onExit={onExit} /> : complete ? <LearningGameComplete
       summary={summary}
@@ -94,9 +116,11 @@ export function MemoryFlip({
       <div className="lg-mission-banner"><span>Lantern festival</span><strong>Find each character’s exact twin</strong></div>
       <p className="lg-instruction">Tap a lantern to reveal and hear its character, then find the identical character.</p>
       {audioError && <p role="alert">The word could not play. Check the browser’s sound permission, then tap another lantern to try again.</p>}
+      {saveError && <div role="alert"><p>{saveError}</p><button onClick={() => void saveTurn()}>Retry saving turn</button></div>}
+      {twoFlipped && !confirmed && !saveError && <p role="status">Saving this turn…</p>}
       <div className="lg-stat-row">
         <span><strong>{matchedPairIds.length}/{characterPairs.length}</strong> pairs glowing</span>
-        <span><strong>{attempts.length}</strong> turns</span>
+        <span><strong>{summary.attempted}</strong> turns</span>
       </div>
       <div className="lg-lantern-courtyard">
         <div className="lg-lantern-sky" aria-hidden="true"><i className="lg-setting-sun" /><i className="lg-sunset-cloud is-one" /><i className="lg-sunset-cloud is-two" /><i className="lg-distant-hills" /></div>
@@ -126,7 +150,7 @@ export function MemoryFlip({
           })}
         </div>
       </div>
-      {twoFlipped && <div className={`lg-feedback is-${pairMatch ? 'correct' : 'incorrect'} is-auto`} role="status">
+      {twoFlipped && confirmed && <div className={`lg-feedback is-${pairMatch ? 'correct' : 'incorrect'} is-auto`} role="status">
         <strong>{pairMatch ? 'The characters match exactly!' : 'Keep their places in mind.'}</strong>
         <span className="lg-feedback-detail">{pairMatch ? 'Two identical characters join the festival.' : 'The lanterns will dim so you can try again.'}</span>
         <span className="lg-auto-status">{pairMatch ? 'Lighting the pair…' : <><RotateCcw size={14} /> Lowering the light…</>}</span>

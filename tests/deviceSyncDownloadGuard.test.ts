@@ -8,7 +8,7 @@ const key = 'family-beta-activity:child:checkpoint'
 const digest = (key: string) => createHash('sha256').update(key).digest('hex')
 const baselineKey = (key: string) => `family-beta-sync-base-v1:family:child:${digest(key)}`
 
-function harness(keys = [key]) {
+function harness(keys = [key], remotePayload = 'new') {
   const values = new Map(
     keys.flatMap((key) => [
       [key, 'old'],
@@ -50,7 +50,7 @@ function harness(keys = [key]) {
             schema: { integerValue: '1' },
             childId: { stringValue: 'child' },
             key: { stringValue: key },
-            payload: { stringValue: 'new' },
+            payload: { stringValue: remotePayload },
             generation: { integerValue: '2' },
           },
         })),
@@ -115,4 +115,23 @@ test('the upgraded workspace downloads before divergent legacy keys, without rep
   assert.equal(storage.getItem(current), 'new')
   assert.equal(storage.getItem(legacy), 'locally changed by old client')
   assert.equal(storage.getItem(baselineKey(legacy)), 'old')
+})
+
+test('remote practice hydration rejects more than 500 records before changing device state', async () => {
+  const keys = Array.from({ length: 501 }, (_, index) => `family-beta-activity:child:record-${index}`)
+  const { storage, repository, release } = harness(keys)
+  const sync = repository.sync(storage, 'child')
+  release()
+  await assert.rejects(sync, /safe loading limit/)
+  assert.equal(storage.getItem(keys[0]), 'old')
+  assert.equal(storage.getItem(keys.at(-1)!), 'old')
+})
+
+test('remote practice hydration rejects an oversized payload before changing device state', async () => {
+  const { storage, repository, release } = harness([key], 'x'.repeat(700_001))
+  const sync = repository.sync(storage, 'child')
+  release()
+  await assert.rejects(sync, /failed validation/)
+  assert.equal(storage.getItem(key), 'old')
+  assert.equal(storage.getItem(baselineKey(key)), 'old')
 })

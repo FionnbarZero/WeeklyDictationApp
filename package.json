@@ -44,6 +44,7 @@
     "test:prototype-baseline": "VITE_GIT_REVISION=0000000000000000000000000000000000000000 npm run build:prototype-baseline && playwright test tests/browser/prototypeRoutes.spec.ts tests/browser/kindergartenActivityExit.spec.ts tests/browser/prototypeVisuals.spec.ts --config playwright.prototype-baseline.config.ts",
     "test:public-preview": "npm run build:public-preview && playwright test --config playwright.public-preview.config.ts",
     "test:firestore": "firebase emulators:exec --only firestore --project weekly-dictation-test \"node --experimental-strip-types --test tests/firestoreEmulator.emulator.ts\"",
+    "test:firestore:family-sync": "FAMILY_SYNC_RULES_FILE=deployment/firestore-family-sync.rules npm run test:firestore",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "audit:tooling": "node --experimental-strip-types scripts/audit-toolchain.ts",
     "import:slides": "node --experimental-strip-types scripts/import-slides.ts",

@@ -79,7 +79,10 @@ export function createResultRepository(options: {
         },
       }),
     })
-    if (!response.ok) throw new Error(`Saved results could not be loaded (${response.status}).`)
+    if (!response.ok)
+      throw Object.assign(new Error(`Saved results could not be loaded (${response.status}).`), {
+        status: response.status,
+      })
     const raw = await response.text()
     if (raw.length > 2_000_000) throw new Error('The history page exceeds the safe loading limit.')
     const body = JSON.parse(raw) as { document?: CloudDocument; readTime?: string }[]
@@ -125,9 +128,15 @@ export function createResultRepository(options: {
       // Immutable rules can reject a duplicate PATCH before evaluating the precondition.
       // Only an identical authorized readback may acknowledge that retry.
       if (!response.ok && ![403, 409, 412].includes(response.status))
-        throw new Error(`Score upload failed (${response.status}). Your result remains queued on this device.`)
+        throw Object.assign(
+          new Error(`Score upload failed (${response.status}). Your result remains queued on this device.`),
+          { status: response.status },
+        )
       const readback = await request(path)
-      if (!readback.ok) throw new Error('The uploaded score could not be confirmed. Please retry.')
+      if (!readback.ok)
+        throw Object.assign(new Error('The uploaded score could not be confirmed. Please retry.'), {
+          status: readback.status,
+        })
       const saved = decode(await readback.json())
       if (
         !isBetaResult(saved) ||

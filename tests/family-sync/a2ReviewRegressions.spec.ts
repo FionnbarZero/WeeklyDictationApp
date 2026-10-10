@@ -20,12 +20,29 @@ async function enterWriting(page: Page) {
 
 async function answer(page: Page) {
   const frame = page.frameLocator('iframe:visible')
-  await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+  const skipTimer = frame.getByRole('button', { name: 'Skip Timer', exact: true })
+  // Switching back to a retained week can reopen directly in its persisted
+  // review phase. In that case there is no timer to skip; answer the review
+  // that is already on screen.
+  if (await skipTimer.count()) await skipTimer.click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-  await expect(frame.getByRole('timer')).toBeVisible()
+  // A retained-week switch can replace the visible iframe while the answer
+  // transition is committing. Resolve the post-answer frame afresh rather
+  // than holding a locator bound to the previous document.
+  await expect
+    .poll(async () => {
+      const current = page.locator('iframe:visible').contentFrame()
+      return (
+        (await current.locator('[role="timer"]').isVisible()) ||
+        (await current.getByRole('button', { name: 'Done for today', exact: true }).count()) > 0
+      )
+    })
+    .toBe(true)
 }
 
-test('a delayed download cannot replace a newly opened Grade 2 workspace', async ({ page }) => {
+test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device download after reopening', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-24T12:00:00-07:00'))
   await startWriting(page, 'grade2')
   const frame = page.frameLocator('iframe:visible')
@@ -35,13 +52,18 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
   const read = () => page.evaluate((key) => localStorage.getItem(key)!, key)
   await answer(page)
   const older = await read()
+  await page.clock.setFixedTime(new Date('2026-09-24T12:01:00-07:00'))
   await answer(page)
   const newer = await read()
+  const newerActivity = Object.entries(JSON.parse(newer).records as Record<string, string>).find(([recordKey]) =>
+    recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
+  )
+  expect(newerActivity).toBeDefined()
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
   await expect(page.locator('iframe[data-family-slot]')).toHaveCount(1)
-  // Two valid app-generated snapshots model this device's confirmed checkpoint
-  // and a newer checkpoint from another device. No production requests are made.
+  // Keep this device's older atomic workspace, then expose the newer activity
+  // partition from another device. No production requests are made.
   await page.evaluate(
     ({ key, baseKey, older }) => {
       localStorage.setItem(key, older)
@@ -55,23 +77,39 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
     release = resolve
   })
   let requested = false
+  const owned = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter(
+        (recordKey) =>
+          recordKey.startsWith('family-beta-activity:synthetic-g2:') ||
+          recordKey.startsWith('family-beta-mastery-v1:synthetic-g2:'),
+      )
+      .map((recordKey) => [recordKey, localStorage.getItem(recordKey)!] as const),
+  )
   await page.route('**/children/synthetic-g2/betaPractice?*', async (route) => {
     requested = true
     await gate
-    const owned = await page.evaluate(() =>
-      Object.keys(localStorage)
-        .filter(
-          (k) =>
-            k.startsWith('family-beta-activity:synthetic-g2:') || k.startsWith('family-beta-mastery-v1:synthetic-g2:'),
-        )
-        .map((k) => [k, localStorage.getItem(k)!]),
+    const records = new Map(owned)
+    const olderRecords = JSON.parse(older).records as Record<string, string>
+    const newerRecords = Object.entries(JSON.parse(newer).records as Record<string, string>).filter(
+      ([recordKey]) =>
+        recordKey === 'weekly-dictation-history-v1' ||
+        recordKey === 'weekly-dictation-checkpoint-v1' ||
+        recordKey.startsWith('weekly-dictation-checkpoint-v1:activity:'),
     )
-    const documents = owned.map(([recordKey, raw]) => {
+    for (const [recordName, raw] of newerRecords) {
+      const recordKey = `${key}:record:${encodeURIComponent(recordName)}`
+      records.set(
+        recordKey,
+        recordName.startsWith('weekly-dictation-checkpoint-v1:activity:') ? raw : olderRecords[recordName],
+      )
+    }
+    const documents = [...records].map(([recordKey, payload]) => {
       const record = {
         schema: 1,
         childId: 'synthetic-g2',
         key: recordKey,
-        payload: recordKey === key ? newer : raw,
+        payload,
         generation: 2,
       }
       const fields = Object.fromEntries(
@@ -89,28 +127,15 @@ test('a delayed download cannot replace a newly opened Grade 2 workspace', async
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ documents }) })
   })
   try {
-    page.once('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
+    const reload = page.reload()
     await expect.poll(() => requested).toBe(true)
-    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
     expect(await read()).toBe(older)
     release()
-    await expect(page.getByRole('alert')).toContainText('Newer practice is available from another device')
-    expect(await read()).toBe(older)
+    await reload
+    await expect(page.getByRole('alert')).toHaveCount(0, { timeout: 1_000 })
+    const current = JSON.parse(await read()) as { records: Record<string, string> }
+    expect(current.records[newerActivity![0]]).toBe(newerActivity![1])
     expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(older)
-    // The new generation can continue locally; discarded history must not advance.
-    await enterWriting(page)
-    await answer(page)
-    const oldEnvelope = JSON.parse(JSON.parse(older).records['weekly-dictation-state-v2'])
-      .acquisitionProgressEnvelopes[0]
-    const envelopes = JSON.parse(
-      JSON.parse(await read()).records['weekly-dictation-state-v2'],
-    ).acquisitionProgressEnvelopes
-    expect(envelopes.find((e: { id: string }) => e.id === oldEnvelope.id)).toEqual(oldEnvelope)
-    const restarted = envelopes.find((e: { id: string }) => e.id !== oldEnvelope.id)
-    expect(restarted.activityModule).toContain(':restart-')
-    expect(restarted.revision).toBe(1)
-    await expect(frame.getByText('Another browser changed saved practice.', { exact: false })).toHaveCount(0)
   } finally {
     release()
   }
@@ -150,7 +175,7 @@ test('offline token renewal preserves the initialized activity and retries later
   await expect(frame.getByRole('timer')).toHaveText(remaining)
   offline = false
   await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
-  await expect(page.getByText(/Scores and saved practice confirmed/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   await expect(frame.locator('body')).toHaveAttribute('data-review-probe', 'original')
 })
 

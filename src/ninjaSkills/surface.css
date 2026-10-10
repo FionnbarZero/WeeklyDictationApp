@@ -1,0 +1,11 @@
+.ninja-game-surface {
+  display: flow-root;
+  min-height: 100vh;
+  isolation: isolate;
+  color: #f8f8fc;
+  background: #1b2034;
+}
+
+.ninja-game-surface .lg-heading h1 {
+  color: #f8f8fc;
+}

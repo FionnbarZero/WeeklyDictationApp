@@ -207,6 +207,7 @@
 .lg-canvas-access { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 .lg-phaser-stage canvas:focus-visible { outline: 5px solid #fff2a5; outline-offset: -6px; }
 .lg-phaser-dash-card .lg-phaser-meta > span,.lg-phaser-dash-card .lg-phaser-meta > button { border-color: rgb(102 236 211 / 26%); background: rgb(7 26 36 / 86%); }
+.lg-phaser-dash-card { left: 50%; transform: translateX(-50%); }
 .lg-phaser-dash-card .lg-phaser-meta > button { color: #d5fff6; }
 .lg-phaser-dash-card .lg-phaser-meta > button:hover { border-color: #81efd8; background: #123c42; }
 .lg-dash-context-clue { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px 16px; margin: 0 auto 12px; padding: 13px 15px; border: 1px solid rgb(102 236 211 / 32%); border-radius: 18px; color: #effffb; background: linear-gradient(135deg,rgb(7 31 42 / 94%),rgb(15 58 61 / 91%)); box-shadow: 0 13px 35px rgb(0 0 0 / 18%); }
@@ -229,6 +230,8 @@
   .lg-dash-context-clue > strong { grid-column: 1/-1; grid-row: 2; font-size: .72rem; }
   .lg-dash-context-clue > button { min-height: 34px; padding: 7px 10px; }
   .lg-dash-context-clue > span { font-size: .75rem; }
+}
+@media (max-width: 700px), (pointer: coarse) {
   .lg-mobile-gate-choices { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 10px 2px 0; }
   .lg-mobile-feedback { display: block; grid-column: 1 / -1; min-height: 1.3em; color: #eafffb; font-size: .8rem; text-align: center; }
   .lg-canvas-access { display: none !important; }
@@ -237,6 +240,8 @@
   .lg-mobile-gate-choices button:disabled { opacity: .58; filter: saturate(.55); cursor: default; }
   .lg-mobile-gate-choices small { position: absolute; top: 6px; left: 7px; display: grid; place-items: center; width: 20px; aspect-ratio: 1; border-radius: 6px; color: #123832; background: #d8fff3; font: 900 .75rem/1 Inter,sans-serif; }
   .lg-mobile-gate-choices strong { font: 950 1.8rem/1 "Arial Rounded MT Bold","Avenir Next",sans-serif; }
+}
+@media (max-width: 700px) {
   .lg-phaser-help { display: none; }
   .lg-phaser-finish-actions { margin-top: 9px; border-radius: 14px; }
   .lg-phaser-finish-actions strong { display: none; }

@@ -412,6 +412,37 @@ service cloud.firestore {
         && request.resource.data.correct >= 0
         && request.resource.data.correct <= request.resource.data.wordCount;
     }
+    function validGamePayload() {
+      return request.resource.data.payload is string
+        && request.resource.data.payload.size() > 0
+        && request.resource.data.payload.size() <= 200000
+        && !request.resource.data.payload.matches('.*"response".*')
+        && !request.resource.data.payload.matches('.*"recording".*')
+        && !request.resource.data.payload.matches('.*"recordingUrl".*')
+        && !request.resource.data.payload.matches('.*"handwritingImage".*')
+        && !request.resource.data.payload.matches('.*"audioBlob".*')
+        && !request.resource.data.payload.matches('.*"mimeType".*')
+        && !request.resource.data.payload.matches('.*blob:.*')
+        && !request.resource.data.payload.matches('.*data:audio.*');
+    }
+    function validGameBase(familyId, childId, recordId, kind) {
+      return request.resource.data.schema == 1
+        && request.resource.data.kind == kind
+        && request.resource.data.childId == childId
+        && request.resource.data.grade in ['Kindergarten', 'Grade 2', 'Grade 5']
+        && request.resource.data.grade == get(/databases/$(database)/documents/families/$(familyId)/children/$(childId)).data.grade
+        && request.resource.data.recordId == recordId
+        && validGamePayload();
+    }
+    function validGameScoped(familyId, childId, recordId, kind) {
+      return request.resource.data.keys().hasAll(['schema', 'kind', 'childId', 'grade', 'scopeId', 'runId', 'recordId', 'payload'])
+        && request.resource.data.keys().hasOnly(['schema', 'kind', 'childId', 'grade', 'scopeId', 'runId', 'recordId', 'payload'])
+        && validGameBase(familyId, childId, recordId, kind)
+        && request.resource.data.scopeId is string
+        && request.resource.data.scopeId.matches('^[a-f0-9]{64}$')
+        && request.resource.data.runId is string
+        && request.resource.data.runId.matches('^[A-Za-z0-9_-]{1,160}$');
+    }
 
     match /users/{parentId} {
       allow read: if signedIn() && request.auth.uid == parentId;
@@ -472,7 +503,7 @@ service cloud.firestore {
           allow read: if childExists(familyId, childId);
           allow create: if ownsActiveChild(familyId, childId)
             && request.resource.data.keys().hasAll(['schema','id','childId','grade','activity','channel','datasetIds','correct','attempted','completedAt','day'])
-            && request.resource.data.keys().hasOnly(['schema','id','childId','grade','activity','channel','datasetIds','correct','attempted','completedAt','day'])
+            && request.resource.data.keys().hasOnly(['schema','id','childId','grade','activity','channel','datasetIds','schoolYear','correct','attempted','completedAt','day'])
             && request.resource.data.schema == 1
             && request.resource.data.id == resultId
             && resultId.matches('^[A-Za-z0-9_-]{1,160}$')
@@ -484,6 +515,7 @@ service cloud.firestore {
             && request.resource.data.datasetIds is list && request.resource.data.datasetIds.size() > 0 && request.resource.data.datasetIds.size() <= 100
             && request.resource.data.datasetIds.join('|').split('[|]') == request.resource.data.datasetIds
             && request.resource.data.datasetIds.join('|').matches('^[A-Za-z0-9_:-]{1,300}([|][A-Za-z0-9_:-]{1,300}){0,99}$')
+            && (!('schoolYear' in request.resource.data) || (request.resource.data.schoolYear is string && request.resource.data.schoolYear.size() > 0 && request.resource.data.schoolYear.size() <= 32))
             && request.resource.data.correct is int && request.resource.data.attempted is int
             && request.resource.data.correct >= 0 && request.resource.data.correct <= request.resource.data.attempted
             && request.resource.data.attempted > 0 && request.resource.data.attempted <= 100000
@@ -514,6 +546,40 @@ service cloud.firestore {
             && request.resource.data.childId == resource.data.childId
             && request.resource.data.generation == resource.data.generation + 1;
           allow delete: if false;
+        }
+
+        // Candidate Stage B game contract. This source is tested locally but
+        // must not be activated without a separate production-policy approval.
+        match /betaGameCheckpoints/{recordId} {
+          function validCheckpoint() {
+            return validGameScoped(familyId, childId, recordId, 'checkpoint')
+              && request.resource.data.recordId == request.resource.data.scopeId
+              && !existsAfter(/databases/$(database)/documents/families/$(familyId)/children/$(childId)/betaGameRetirements/$(request.resource.data.scopeId + '_' + request.resource.data.runId));
+          }
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId) && validCheckpoint();
+          allow update: if ownsActiveChild(familyId, childId)
+            && validCheckpoint()
+            && request.resource.data.scopeId == resource.data.scopeId;
+          allow delete: if false;
+        }
+
+        match /betaGameRetirements/{retirementId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && validGameScoped(familyId, childId, retirementId, 'retirement')
+            && retirementId == request.resource.data.scopeId + '_' + request.resource.data.runId;
+          allow update, delete: if false;
+        }
+
+        match /betaGameCompletions/{completionId} {
+          allow read: if childExists(familyId, childId);
+          allow create: if ownsActiveChild(familyId, childId)
+            && request.resource.data.keys().hasAll(['schema', 'kind', 'childId', 'grade', 'recordId', 'payload'])
+            && request.resource.data.keys().hasOnly(['schema', 'kind', 'childId', 'grade', 'recordId', 'payload'])
+            && validGameBase(familyId, childId, completionId, 'completion')
+            && completionId.matches('^[A-Za-z0-9_-]{1,160}$');
+          allow update, delete: if false;
         }
 
         match /scores/{scoreId} {
