@@ -34,7 +34,7 @@ function reviewedCorrect(pack: LearningModulePack, attempt: LearningModuleAttemp
       throw new Error('The matching response belongs to a different target.')
     return first.pair.id === second.pair.id
   }
-  if (pack.moduleId === 'context-gap-dash') {
+  if (pack.moduleId === 'context-gap-dash' || pack.moduleId === 'target-blast') {
     const round = pack.rounds.find((round) => round.id === attempt.promptId && round.targetId === attempt.targetId)
     if (
       !round ||

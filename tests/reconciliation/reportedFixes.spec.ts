@@ -116,6 +116,10 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
     await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
     await frame.getByRole('button', { name: 'Reading mastered-word games', exact: true }).click()
     await expect(frame.locator('.family-spirit-menu')).toHaveCSS('background-color', 'rgb(27, 32, 52)')
+    const shadow = frame.getByRole('heading', { name: 'Shadow Strike Dojo', exact: true }).locator('..')
+    await expect(shadow.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
+    await expect(shadow).toContainText('full warmup repetitions and correction flow')
+    await expect(frame.getByRole('button', { name: 'Start Shadow Strike Dojo', exact: true })).toHaveCount(0)
     if (grade === 'grade5') await page.screenshot({ path: test.info().outputPath('spirit-menu.png') })
     await expect(frame.getByRole('button', { name: 'Start Memory Lanterns' })).toBeEnabled()
     await frame.getByRole('button', { name: 'Start Memory Lanterns' }).click()
@@ -123,12 +127,11 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
   })
 }
 
-test('unfinished Shadow Strike stays visible but unavailable until its dedicated stage', async ({
-  page,
-}) => {
+test('Shadow Strike launches its Tier 2 training field', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  const card = page.getByRole('heading', { name: 'Shadow Strike Dojo', exact: true }).locator('..')
-  await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
-  await expect(card).toContainText('interaction rules are still being completed')
+  await page.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
+  const frame = page.frameLocator('iframe:visible')
+  await expect(frame.locator('.lg-target-blast-playfield')).toBeVisible()
+  await expect(frame.locator('.lg-world-choice').first()).toBeEnabled()
 })

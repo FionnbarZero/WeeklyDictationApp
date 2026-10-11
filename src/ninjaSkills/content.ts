@@ -244,31 +244,28 @@ function speedMatchPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfil
   })
 }
 
-function targetBlastPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const preferred = cohort.terms.filter((term) => term.tier === 'tier-2')
-  const pool = distinctTermsByText(
-    preferred.length >= 2 ? preferred : cohort.terms.filter((term) => term.tier !== 'tier-3'),
-  )
+function targetBlastPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const pool = distinctTermsByText(cohort.terms.filter(term => eligibleGameTier('target-blast', term.tier)))
   if (pool.length < 2)
     return unavailable(
       'target-blast',
-      'Shadow Strike Dojo needs at least two distinct authoritative targets in the same cohort.',
+      'Shadow Strike Dojo needs at least two distinct Tier 2 source targets.',
     )
-  const terms = pool.slice(0, profile.maximumItems['target-blast'])
-  const rounds: LearningModuleSelectionRound[] = terms.map((term, index) => ({
+  const terms = rotatingGameTerms('target-blast', pool, profile.maximumItems['target-blast'], visit)
+  const rounds: LearningModuleSelectionRound[] = terms.map((term) => ({
     id: `shadow:${term.occurrenceId}`,
     targetId: term.occurrenceId,
     targetText: term.text,
     cueText: 'Listen, then strike the matching character',
     audioText: term.text,
-    choices: selectionChoices(pool, index),
+    choices: selectionChoices(pool, pool.findIndex(candidate => candidate.occurrenceId === term.occurrenceId)),
     correctChoiceId: choice(term).id,
   }))
   return ready({
     moduleId: 'target-blast',
     title: learningModuleCatalogEntry('target-blast').title,
     cohort,
-    ...(scopeNote(terms.length, pool.length) ? { scopeNote: scopeNote(terms.length, pool.length) } : {}),
+    ...selectedScope('target-blast', cohort, terms.length, pool.length, visit),
     rounds,
   })
 }
@@ -391,7 +388,7 @@ export function learningModuleCapabilities(
 export function learningModuleCapability(
   id: LearningModuleId, cohort: LearningModuleCohort | null, profile: NinjaSkillsProfile, visit = 0,
 ): LearningModuleCapability {
-  if (GAME_POLICIES[id].implementation !== 'stage-b')
+  if (GAME_POLICIES[id].implementation === 'later-stage')
     return unavailable(id, 'Coming soon: this game’s teaching, audio and interaction rules are still being completed.')
   if (!cohort || !cohort.provenance.length || cohort.grade !== profile.grade)
     return unavailable(id, `Validated ${profile.grade} source targets are needed for this game.`)

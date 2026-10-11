@@ -150,130 +150,153 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   if (key!.endsWith('weekly-dictation-state-v2')) expect((await records(page))[key!]).toBe(initialRecords[key!])
 })
 
-test('a game-only Stage B checkpoint blocks the older engine without reading credentials or changing storage', async ({
-  page,
-  context,
-  request,
-  isMobile,
-}) => {
-  test.skip(
-    !process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT,
-    'Requires the verified retained previous release artifact; not a fresh-browser substitute.',
-  )
-  test.setTimeout(180_000)
-  await installFamilyFixtures(page)
-  const select = async (version: 'candidate' | 'rollback') => {
-    const result = await request.post(`/__rehearsal__/version?version=${version}`)
-    expect(result.ok()).toBe(true)
-    return result.json() as Promise<{ candidate: string }>
-  }
-  const records = () =>
-    page.evaluate(() =>
-      Object.fromEntries(
-        Object.keys(localStorage)
-          .filter((key) => key.startsWith('family-beta-'))
-          .sort()
-          .map((key) => [key, localStorage.getItem(key)]),
-      ),
+for (const title of ['Memory Lanterns', 'Shadow Strike Dojo']) {
+  test(`a game-only ${title} checkpoint blocks the older engine without reading credentials or changing storage`, async ({
+    page,
+    context,
+    request,
+    isMobile,
+  }) => {
+    test.skip(
+      !process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT,
+      'Requires the verified retained previous release artifact; not a fresh-browser substitute.',
     )
-  const activateReplacement = async (version: 'candidate' | 'rollback') => {
-    await select(version)
-    await page.evaluate(async () => {
-      await (await navigator.serviceWorker.getRegistration())!.update()
-    })
-    await expect
-      .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting))
-      .toBe(true)
-    await page.goto('about:blank')
-    await expect
-      .poll(
-        async () => {
-          const workers = context.serviceWorkers()
-          if (workers.length === 0) return true
-          for (const worker of workers) {
-            try {
-              if (
-                await Promise.race([
-                  worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing),
-                  new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 250)),
-                ])
-              )
-                return true
-            } catch {
-              /* The replaced worker can become redundant during polling. */
-            }
-          }
-          return false
-        },
-        { timeout: 15_000 },
+    test.setTimeout(180_000)
+    await installFamilyFixtures(page)
+    const select = async (version: 'candidate' | 'rollback') => {
+      const result = await request.post(`/__rehearsal__/version?version=${version}`)
+      expect(result.ok()).toBe(true)
+      return result.json() as Promise<{ candidate: string }>
+    }
+    const records = () =>
+      page.evaluate(() =>
+        Object.fromEntries(
+          Object.keys(localStorage)
+            .filter((key) => key.startsWith('family-beta-'))
+            .sort()
+            .map((key) => [key, localStorage.getItem(key)]),
+        ),
       )
-      .toBe(true)
+    const activateReplacement = async (version: 'candidate' | 'rollback') => {
+      await select(version)
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())!.update()
+      })
+      await expect
+        .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting))
+        .toBe(true)
+      await page.goto('about:blank')
+      await expect
+        .poll(
+          async () => {
+            const workers = context.serviceWorkers()
+            if (workers.length === 0) return true
+            for (const worker of workers) {
+              try {
+                if (
+                  await Promise.race([
+                    worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing),
+                    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 250)),
+                  ])
+                )
+                  return true
+              } catch {
+                /* The replaced worker can become redundant during polling. */
+              }
+            }
+            return false
+          },
+          { timeout: 15_000 },
+        )
+        .toBe(true)
+      await page.goto('/?grade=grade5')
+    }
+
+    const candidate = await select('candidate')
     await page.goto('/?grade=grade5')
-  }
+    await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
+    await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', { timeout: 120_000 })
+    await page.reload()
+    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+    await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+    await page.getByRole('button', { name: title, exact: true }).click()
+    const frame = page.frameLocator('iframe:visible')
+    let shadowCount = 0
+    if (title === 'Shadow Strike Dojo') {
+      await expect(frame.locator('.lg-world-choice').first()).toBeEnabled()
+      const saved = await page.evaluate(() => {
+        const key = Object.keys(localStorage).find(
+          (key) => key.startsWith('family-beta-games-v1:') && key.includes(':checkpoint:'),
+        )!
+        return JSON.parse(localStorage.getItem(key)!)
+      })
+      shadowCount = saved.pack.rounds.length
+      const choice = frame.locator(`[data-choice-id="${saved.pack.rounds[0].correctChoiceId}"]`)
+      if (isMobile) await choice.tap()
+      else await choice.click()
+      await expect(frame.locator('.lg-round-label')).toHaveText(`Training strike 2 of ${shadowCount}`)
+    } else {
+      const cards = frame.locator('.lg-memory-card')
+      await expect(cards.first()).toBeVisible()
+      const faces = await cards.locator('.lg-card-face b').allTextContents()
+      const pair = faces.flatMap((face, index) => (face === faces[0] ? [index] : []))
+      for (const index of pair) {
+        if (isMobile) await cards.nth(index).tap()
+        else await cards.nth(index).click()
+      }
+      await expect(cards.nth(pair[0])).toHaveClass(/is-matched/)
+    }
+    await page.evaluate(() => {
+      for (const key of Object.keys(localStorage))
+        if (key.startsWith('family-beta-') && !key.startsWith('family-beta-games-v1:')) localStorage.removeItem(key)
+    })
+    const beforeRollback = await records()
+    expect(Object.keys(beforeRollback).some((key) => key.includes(':checkpoint:'))).toBe(true)
+    expect(Object.keys(beforeRollback).every((key) => key.startsWith('family-beta-games-v1:'))).toBe(true)
+    await page.addInitScript(() => {
+      const originalGet = Storage.prototype.getItem
+      const originalSet = Storage.prototype.setItem
+      const originalRemove = Storage.prototype.removeItem
+      const originalClear = Storage.prototype.clear
+      Storage.prototype.getItem = function (key) {
+        if (key === 'weekly-dictation-auth-v1')
+          (window as Window & { __rollbackCredentialRead?: boolean }).__rollbackCredentialRead = true
+        return originalGet.call(this, key)
+      }
+      Storage.prototype.setItem = function (key, value) {
+        ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
+        return originalSet.call(this, key, value)
+      }
+      Storage.prototype.removeItem = function (key) {
+        ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
+        return originalRemove.call(this, key)
+      }
+      Storage.prototype.clear = function () {
+        ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
+        return originalClear.call(this)
+      }
+    })
 
-  const candidate = await select('candidate')
-  await page.goto('/?grade=grade5')
-  await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
-  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', { timeout: 120_000 })
-  await page.reload()
-  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
-  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
-  const cards = page.frameLocator('iframe:visible').locator('.lg-memory-card')
-  await expect(cards.first()).toBeVisible()
-  const faces = await cards.locator('.lg-card-face b').allTextContents()
-  const pair = faces.flatMap((face, index) => (face === faces[0] ? [index] : []))
-  for (const index of pair) {
-    if (isMobile) await cards.nth(index).tap()
-    else await cards.nth(index).click()
-  }
-  await expect(cards.nth(pair[0])).toHaveClass(/is-matched/)
-  await page.evaluate(() => {
-    for (const key of Object.keys(localStorage))
-      if (key.startsWith('family-beta-') && !key.startsWith('family-beta-games-v1:')) localStorage.removeItem(key)
+    await activateReplacement('rollback')
+    await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
+    expect(
+      await page.evaluate(() => ({
+        credentialRead: (window as Window & { __rollbackCredentialRead?: boolean }).__rollbackCredentialRead ?? false,
+        storageWrite: (window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite ?? false,
+      })),
+    ).toEqual({ credentialRead: false, storageWrite: false })
+    expect(await records()).toEqual(beforeRollback)
+    await expect(page.getByLabel('Child profile')).toHaveCount(0)
+
+    await activateReplacement('candidate')
+    await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
+    await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+    await expect(page.getByRole('button', { name: `Resume ${title}`, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: `Resume ${title}`, exact: true }).click()
+    if (title === 'Shadow Strike Dojo')
+      await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
+        `Training strike 2 of ${shadowCount}`,
+      )
+    else await expect(page.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(2)
   })
-  const beforeRollback = await records()
-  expect(Object.keys(beforeRollback).some((key) => key.includes(':checkpoint:'))).toBe(true)
-  expect(Object.keys(beforeRollback).every((key) => key.startsWith('family-beta-games-v1:'))).toBe(true)
-  await page.addInitScript(() => {
-    const originalGet = Storage.prototype.getItem
-    const originalSet = Storage.prototype.setItem
-    const originalRemove = Storage.prototype.removeItem
-    const originalClear = Storage.prototype.clear
-    Storage.prototype.getItem = function (key) {
-      if (key === 'weekly-dictation-auth-v1')
-        (window as Window & { __rollbackCredentialRead?: boolean }).__rollbackCredentialRead = true
-      return originalGet.call(this, key)
-    }
-    Storage.prototype.setItem = function (key, value) {
-      ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
-      return originalSet.call(this, key, value)
-    }
-    Storage.prototype.removeItem = function (key) {
-      ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
-      return originalRemove.call(this, key)
-    }
-    Storage.prototype.clear = function () {
-      ;(window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite = true
-      return originalClear.call(this)
-    }
-  })
-
-  await activateReplacement('rollback')
-  await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
-  expect(
-    await page.evaluate(() => ({
-      credentialRead: (window as Window & { __rollbackCredentialRead?: boolean }).__rollbackCredentialRead ?? false,
-      storageWrite: (window as Window & { __rollbackStorageWrite?: boolean }).__rollbackStorageWrite ?? false,
-    })),
-  ).toEqual({ credentialRead: false, storageWrite: false })
-  expect(await records()).toEqual(beforeRollback)
-  await expect(page.getByLabel('Child profile')).toHaveCount(0)
-
-  await activateReplacement('candidate')
-  await expect(page.getByText(`Beta build ${candidate.candidate.slice(0, 7)}`)).toBeVisible()
-  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
-  await expect(page.frameLocator('iframe:visible').locator('.is-matched')).toHaveCount(2)
-})
+}

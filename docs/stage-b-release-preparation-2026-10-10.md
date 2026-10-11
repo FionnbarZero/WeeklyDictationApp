@@ -1,6 +1,62 @@
 # Stage B release preparation
 
-Prepared October 10, 2026 (Pacific). **The four-game application package is prepared locally and the approved push/PR is complete; merge and app publication remain pending approval.** The game-only database policy is already active and verified. The canonical website still serves A3.3 `e9c5a54`.
+Updated October 10, 2026 (Pacific). **PR #62 is merged and source `d846981` is published and live-verified for all three grades.** The owner approved Kindergarten, Grade 2 and Grade 5 separately. The game-only database policy was already active; this application release changes neither policy nor authentication. Earlier preparation/source checkpoints below are historical.
+
+## Publication and live acceptance
+
+Activated October 10 at 7:42 p.m. Pacific (`2026-10-11T02:42:15.393Z`) on the existing Cloudflare Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`. No domain, route, security, authentication or real-family data changes were made.
+
+- Active version: `d7070249-2471-4d63-aed4-0ddc8bfb7b46`, 100% traffic, exact source `d846981434f61534f584da22b67f2bdebc356cef`.
+- Candidate tree: `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a`; 145 manifest entries. The canonical manifest and all **143 public files** match exactly. `_headers` and `.vite/manifest.json` are hosting/build controls rather than public asset checks.
+- Inactive guarded recovery: `8db5c134-ee7e-4a19-9094-b94984bdf2c9`, tree `36519a4996bdde153b81ffb5d004ce5488cc3c776791a2684cb3e6b1da9e970e`. Retains the A3.3 engine with the reviewed new-record compatibility guard. Do not use ordinary unguarded predecessor `4043b2d7-9869-42b5-87b1-e0dc04a1f8fc` as the new-data recovery path.
+- Uploads were inactive until the pre-publication synthetic backend check passed. Activation ran once and provider state was confirmed afterward. No application changes or rebuilding occurred during publication.
+
+The release-specific driver at ignored `family-beta-artifacts/releases/stage-b-d846981/acceptance.ts` passed against both the retained local candidate with the real backend and the canonical HTTPS site. For each grade it creates only a disposable child under its new test parent, reviews a Lantern match, verifies report pause, retrieves the saved checkpoint in a fresh browser, completes the game, waits for both result/detail delivery, and recovers the same graph point and exact per-target completion in fresh browsers. Anonymous family reads are denied. Both successful runs removed their temporary parent and 20 test documents, and all preliminary runs also completed scoped cleanup. No real family's credentials or records were used.
+
+Preliminary driver failures are retained rather than reported as passing runs: it first looked for the new-game label instead of **Resume Memory Lanterns**, then treated an already visible sync message/empty queue as proof that a new completion had finished, and also assumed the last remaining pair was last in a reshuffled deck. The driver now waits for the finished menu, exact aggregate, drained queues and visible remote score, and distinguishes remaining pairs from the whole deck. These changes did not alter the approved application. The final complete local and live runs both passed. This is distinct from the unchanged application's earlier Context startup timeout described below.
+
+Live read-only browser checks also pass all **six** grade × desktop/tablet entries, including sign-in visibility, preserved grade query, working report open/close, and no page errors. Real-backend acceptance used Chromium and synthetic speech; neither this nor tablet-sized automation proves physical iMac/iPad audio or touch quality.
+
+Evidence retained locally:
+
+- `/tmp/ninja-stage-b-d846981-prepublication-acceptance.log` and `/tmp/ninja-stage-b-d846981-live-acceptance.log`: successful backend checks and scoped cleanup.
+- `/tmp/ninja-stage-b-d846981-live-assets.log`: manifest, 143 asset hashes and six browser-entry checks.
+- `/tmp/ninja-stage-b-d846981-recovery-upload.log`, `/tmp/ninja-stage-b-d846981-candidate-upload.log`, `/tmp/ninja-stage-b-d846981-activation.log`, `/tmp/ninja-stage-b-d846981-active-provider.log`: provider publication evidence.
+- Earlier `prepublication`, `prepublication-repeat`, `prepublication-final` and `prepublication-confirmed` logs preserve the driver failures and successful cleanup.
+
+### Bounded owner smoke check
+
+These are **live canonical links**, all serving build **d846981**:
+
+- [Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten)
+- [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2)
+- [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5)
+
+Allow **5–8 minutes total**, not a full app audit. Start with Grade 2 → Ninja Skills → Memory Lanterns: make a match, open/close Report a problem, reload and resume the same match, then finish and check its score. On iMac confirm mouse input and audible words; on iPad confirm taps, audible words and usable report controls. With the same parent signed in on both devices, check the saved game or completed score on the second device. No clearing browser data or editing teacher documents. Save issues through Report a problem and send the batch at session end.
+
+Shadow Strike, Dictation Streak, Whispering Scrolls and Stroke Order Slay remain unfinished; do not audit them for this release. Do not retest unrelated acquisition, recording or handwriting flows merely for this game release. Context's disclosed initial-readiness timeout still needs practical feedback if encountered, but is not a request for repeated timing drills. Next engineering task is **C1 Shadow Strike, GPT-6.1 Sol · High**, followed by **GPT-6 Astra · High** release review; confirm the model before that new stage's application edits.
+
+## Merged release candidate
+
+PR #62 merged on October 10 at 12:48 p.m. Pacific as `d846981434f61534f584da22b67f2bdebc356cef`. All five final-head jobs in run `38078055743` passed for `a07002bde6c7eda2376b8650670beb4e68e6bb86`; its canonical suite passed 336 cases with four deliberate opt-in recovery skips, followed by nine passing family-policy cases. The merge has exactly the tested head's file tree. Local `main` was fast-forwarded without deleting the feature branch.
+
+Fresh Node 24.21.0 verification on the merge passes 885 unit tests, typecheck, lint (564 files), configured format (91 files), build/performance (549,990/550,000 initial JS bytes; 42,745/60,000 CSS bytes), production audit (zero vulnerabilities), and the unchanged tooling exception (11 firebase-tools-only findings, expiry November 4). No application, test, authentication, security or child-record changes were made during this preparation.
+
+The focused exact-package desktop/touch run covered Lantern saved turns, both-menu reopening, failed-write retries, competing tabs, explicit discard, offline recovery, report pauses, Shuriken input/timer recovery, and predecessor → candidate → guarded rollback → candidate transitions. It was **41/42**, not a fully passing first run. The sole failure was Context's first-input readiness expectation after five seconds, before any answer or report-pause assertion. Three unchanged desktop and three unchanged touch repetitions then passed **6/6**, including the full report-pause assertions; no timeout or assertion was relaxed. All four explicit rollback/recovery cases passed in the broader run. The initial timeout's cause is not proven; retain it as an intermittent startup-timing limitation for later physical-device feedback, not as a data-loss finding or an erased failure.
+
+Evidence: `/tmp/ninja-stage-b-d846981-browser.log`, `/tmp/ninja-stage-b-d846981-context-repeat.log`, `/tmp/ninja-stage-b-d846981-context-failure/trace.zip`, `/tmp/ninja-stage-b-d846981-unit.log`, `/tmp/ninja-stage-b-d846981-build.log`, `/tmp/ninja-stage-b-d846981-format.log`, and `/tmp/ninja-stage-b-d846981-package.log`.
+
+All inventories, file sizes, SHA-256 values and tree hashes were checked before and after retaining the packages under ignored directory `family-beta-artifacts/releases/stage-b-d846981/`:
+
+| Package | Source | Files | File-tree SHA-256 |
+| --- | --- | --- | --- |
+| `candidate` | `d846981434f61534f584da22b67f2bdebc356cef` | 145 | `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a` |
+| `guarded-rollback` | `e9c5a547031c65c00cce45616ec581bcec111ac7`, compatibility `d846981` | 139 | `36519a4996bdde153b81ffb5d004ce5488cc3c776791a2684cb3e6b1da9e970e` |
+| `previous-live` | `e9c5a547031c65c00cce45616ec581bcec111ac7` | 138 | `67008aacbc2946151a661f2212b7fc47725edd2bdbf4398e26dd009b17a57e6d` |
+
+The browser harness independently packaged the same candidate tree. Read-only provider inspection still shows Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`, version `4043b2d7-9869-42b5-87b1-e0dc04a1f8fc` active at 100%. The canonical manifest and all 136 public predecessor files match the retained `previous-live` package. Nothing was uploaded or activated.
+
+**Next gate:** obtain separate approvals for Kindergarten, Grade 2 and Grade 5 before activating their shared candidate. Use the existing canonical Worker, retain the guarded recovery version, perform isolated synthetic release acceptance, and verify the exact served manifest/assets after activation. No ordinary rollback to the unguarded old engine. Model: **GPT-6.1 Sol · High**. No owner smoke testing until publication and verified canonical links. Shadow Strike, Dictation Streak, Whispering Scrolls and Stroke Order Slay remain unfinished; retain batched problem reports and temporary-only recordings.
 
 ## Release contents
 

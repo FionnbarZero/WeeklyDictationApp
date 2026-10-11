@@ -164,7 +164,7 @@ export function SpiritRealmPractice({
                   const entry = learningModuleCatalogEntry(
                     capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId,
                   )
-                  const needsWarmupAdapter = ['context-gap-dash', 'sentence-scramble'].includes(entry.id)
+                  const needsWarmupAdapter = ['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(entry.id)
                   return (
                     <article className="lg-card" key={entry.id}>
                       <h2>{entry.title}</h2>

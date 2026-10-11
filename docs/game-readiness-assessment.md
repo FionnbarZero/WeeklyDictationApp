@@ -1,5 +1,61 @@
 # EduGame readiness assessment
 
+## C1 Shadow Strike implementation — local, unpublished
+
+The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. The branch is now pushed and PR #63 is open; no C1 merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+
+### C1 PR and release preparation — October 11, 2026
+
+[PR #63](https://github.com/FionnbarZero/WeeklyDictationApp/pull/63) targets `main`. Initial CI run `38153751398` started at `b803cc9600ffe3cd8ae071f335e90843e25830cb`; checks are pending, not verified green. Recheck the final head after any documentation update. The fetched base was `d846981434f61534f584da22b67f2bdebc356cef`, with no divergent base commits.
+
+- Candidate source `b803cc9600ffe3cd8ae071f335e90843e25830cb`: all **145 files** match manifest tree `232e3f2884a2c67d8f2c052f38fede9ecf43e867c301f28a560efdacd8454fdf`. Built with the supported Node 24 runtime and retained in `family-beta-artifacts/releases/c1-b803cc9/candidate/`.
+- Guarded recovery: Stage B source `d846981434f61534f584da22b67f2bdebc356cef`, compatibility revision `b803cc9600ffe3cd8ae071f335e90843e25830cb`, all **146 files** independently verified against tree `737a37823e3927fe73cbe39ce941328316d340f4f4d6707007edf462caf3b8e9`. Retained in `family-beta-artifacts/releases/c1-b803cc9/guarded-rollback/`; not uploaded or activated.
+- Read-only canonical manifest verification still reports Stage B `d846981` and tree `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a`. This check is manifest-only, not a fresh verification of every served asset.
+
+Remaining gates: all final-head CI jobs, owner merge approval, packaging the approved merged source, separate publication approval for each grade, exact-artifact activation and served-build verification. No production, security, authentication or child-record mutation occurred during this preparation. No C1 smoke-test handoff yet.
+
+### Independent C1 review — October 11, 2026
+
+Reviewed source: `54d36af4a0c7470734834f5177a261befc0e471f` against published Stage B `d846981`. Requested review routing: **GPT-6 Astra · High**, following C1's specific roadmap assignment. Verdict: **no actionable release-blocking findings in the C1 diff**. No application fixes were needed during this review.
+
+The review traced both launch surfaces through pinned Tier 2 packs, selection validation, sequential reviewed progress, write-before-feedback, exact retry, immutable completion and per-target detail. It checked the existing family ownership, cloud reconciliation and retirement boundaries; the added adapter retains their contracts without new schema fields or security changes. It also inspected report/navigation pause, stable mouse/touch hit areas, transform movement, Spirit Realm exclusion and guarded rollback evidence. The existing four games' selection and completion behavior is unchanged by the added game.
+
+Fresh independent checks pass **62/62 targeted policy/progress unit tests** and **16/16 packaged desktop/tablet Shadow Strike cases**. The review package at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-aTOMBZ` contains **145 independently verified files**, source `54d36af4a0c7470734834f5177a261befc0e471f`, tree `2a03636ffceee968c4b21c368f897dd51db9b22ebbf1146bbf5a7c4a5f53c78f`; it is retained with logs under ignored `family-beta-artifacts/releases/c1-review-54d36af/`. The review also inspected the recorded 890-unit, 78-browser, 10-policy, five-reconciliation, quality/build/dependency and six guarded rollback results below. Those broader gates were not rerun during this review; application source has not changed since their tested candidate.
+
+Remaining release requirements: PR integration and final-head CI, final approved source packaging, approval-gated merge/publication, and exact served-build verification. Physical iMac/iPad sound and smoothness remain unverified; browser audio is synthetic. The earlier Context startup-timing limitation remains open, and later-stage games/full Shadow Strike Spirit Realm warmup remain unfinished. No owner C1 smoke test is appropriate before publication and verified links.
+
+### Implemented scope
+
+- Shadow Strike selects only distinct authoritative Tier 2 targets and distractors. Fewer than two usable targets makes it unavailable; there is no Tier 1 fallback. Bounded subsets rotate and disclose their actual coverage.
+- Both family menus use the shared pinned-pack checkpoint, completion, outbox, reconciliation and retirement paths. Reviewed errors count but do not advance the target. A failed write holds the same strike without correctness feedback and offers an exact retry; completion retains per-target attempted/correct counts without raw answers.
+- Opening a problem report holds audio, feedback and movement, including a write that completes while reporting is open. Reload, offline continuation, reconnect, fresh-browser result/detail recovery, competing unfinished devices and explicit discard have dedicated browser checks.
+- Animated artwork now moves inside stationary target buttons, so ordinary mouse clicks and touch taps have stable hit areas. Horizontal journey motion uses a separate transform track rather than animating `left`.
+- Spirit Realm Shadow Strike remains **Coming soon** until its full warmup repetitions/correction adapter is ready. Kindergarten's distinct Lilypad prototype is retained. C1 does not implement Dictation Streak, Whispering Scrolls or Stroke Order Slay.
+
+### Local verification and limitations
+
+Application changes end at `c25d3b7`; subsequent commits through tested source `e82b2bea81c66bea8a27e7fcdbbd15a0c8d1f5e0` contain tests only. The exact packaged browser candidate at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-LiQ8u5`, retained under ignored `family-beta-artifacts/releases/c1-e82b2be/candidate/`, has **145 independently verified file hashes**, tree `3550289c7ab281db5288777cce1f9f445a585b294040fe5518b6cedd85aea495`. Later documentation/reconciliation-test changes do not change that application; release preparation must package its final approved source again.
+
+- **890/890 unit tests** pass. Typecheck, lint, configured format, family-CI formatting, build/performance and dependency gates pass. Initial JavaScript remains **549,990/550,000 bytes** and CSS **42,745/60,000 bytes**; no budget or dependency was relaxed. Production audit has zero vulnerabilities; the existing 11 firebase-tools-only tooling exceptions expire November 4, 2026.
+- **16/16** focused exact-package desktop/tablet C1 cases pass at `614e8b1`, including all-grade Tier 2 selection, both-menu restore, offline completion, cloud detail recovery, failed writes, report pause, second-device reconciliation, retirement and transform-layout checks. The broader exact-package matrix at `e82b2be` passes **78/78 in 16 minutes**, covering `gamePolicy.spec.ts`, `gameProgress.spec.ts`, `offlineTransition.spec.ts` and `shadowStrike.spec.ts`. This includes all four previously published games' cross-grade policy play-throughs, saved Lantern regressions, the 16 Shadow Strike cases and **all six opted-in guarded rollback/recovery cases** against retained Stage B `d846981`; none were skipped. Log: `/tmp/ninja-c1-acceptance.log`; retained package/evidence: `family-beta-artifacts/releases/c1-e82b2be/`.
+- **10/10 family-policy emulator cases** pass, including Shadow Strike's exact envelope under the existing published policy. This does not publish rules or mutate production data.
+- **5/5 reconciliation regressions** pass: all-grade Spirit Realm isolation, Kindergarten Lilypad preservation and main-menu Shadow Strike launch.
+- A retained 1.1-second Chromium movement probe reduced layout counts from **47 to 1** on desktop and **50 to 1** on touch emulation. Measured layout time fell from 0.005371 to 0.000909 seconds and 0.004219 to 0.000596 seconds respectively. This establishes less layout work, **not physical iMac/iPad frame-rate or audio acceptance**. Synthetic audio and emulated touch do not establish real-device sound or touch quality.
+
+Initial failures are retained rather than counted as passing: the first ordinary-click attempt exposed the moving-button hit-area bug (fixed at `c25d3b7`); the next run exposed a new test's premature score inspection after asynchronous completion (test-only wait fixed at `614e8b1`). A reconciliation test also incorrectly expected a heading inside a ready card; its selector was corrected without changing the app. Evidence is retained in ignored `family-beta-artifacts/c1-first-completion-test-evidence/`, `c1-reconciliation-first-evidence/` and `c1-614e8b1-browser-evidence/`, with diagnostics in `/tmp/ninja-c1-*.log`. The pre-existing Context startup-readiness limitation is not declared fixed by C1.
+
+The C1 baseline and older Stage B inventory below are historical; this implementation section supersedes their matching missing-work descriptions, not their still-unfinished acquisition or warmup requirements.
+
+## C1 Shadow Strike baseline — October 11, 2026
+
+Stage B `d846981` is published; the owner confirmed **GPT-6.1 Sol · High** for C1. This stage covers Shadow Strike's existing modular Dojo; the visually distinct Lilypad prototype is retained and is not replaced by the Dojo.
+
+The current `targetBlastPack` in `src/ninjaSkills/content.ts` falls back to other tiers when fewer than two Tier 2 targets exist and has no rotating selection metadata. Central policy currently blocks launch. The modular `TargetBlast` starts its throwing animation and adds a scored attempt before awaiting its optional save callback; it cannot restore reviewed rounds, failures or counts. The shared saved-game adapter, response validation and checkpoint allowlist cover four games and need a bounded selection-game extension. Existing production family rules accept the same scoped game envelope; no new collections, fields or policy publication are required for this extension.
+
+The journey actor transitions its `left` position for 900 ms while its surrounding world scrolls with a transform. This causes layout work during motion; a retained Chromium desktop/tablet probe measures the original behavior before edits. Use a separate transform track for horizontal movement, preserving the actor's existing vertical animation and interruption boundary. Browser measurements will establish the rendering-work change, not physical iMac/iPad smoothness.
+
+Shortest ready path: Tier 2-only rotating packs with validated choices; sequential reviewed checkpoints and exact failed-turn retries through both family menus; report-aware feedback/audio and reload recovery; then cross-grade mouse/touch, offline, result-detail and compatibility checks. An independent **GPT-6 Astra · High** release review remains required before publication. C1 is not published or ready for a new owner smoke test.
+
 Status: the baseline inventory below was prepared after the local A3.3 final review (October 8, 2026). The [Stage B local evidence](#stage-b-policy-and-content-slice-local) records subsequent implementation and supersedes its matching missing-work descriptions. This is not a claim that any game is student-ready or published.
 
 ## Shared integration facts
