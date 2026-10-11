@@ -150,7 +150,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   if (key!.endsWith('weekly-dictation-state-v2')) expect((await records(page))[key!]).toBe(initialRecords[key!])
 })
 
-for (const title of ['Memory Lanterns', 'Shadow Strike Dojo']) {
+for (const title of ['Memory Lanterns', 'Shadow Strike Dojo', 'Dictation Streak']) {
   test(`a game-only ${title} checkpoint blocks the older engine without reading credentials or changing storage`, async ({
     page,
     context,
@@ -222,7 +222,17 @@ for (const title of ['Memory Lanterns', 'Shadow Strike Dojo']) {
     await page.getByRole('button', { name: title, exact: true }).click()
     const frame = page.frameLocator('iframe:visible')
     let shadowCount = 0
-    if (title === 'Shadow Strike Dojo') {
+    if (title === 'Dictation Streak') {
+      await expect(frame.locator('input')).toBeVisible()
+      const saved = await page.evaluate(() => {
+        const key = Object.keys(localStorage).find(key => key.startsWith('family-beta-games-v1:') && key.includes(':checkpoint:'))!
+        return JSON.parse(localStorage.getItem(key)!)
+      })
+      shadowCount = saved.pack.rounds.length
+      await frame.locator('input').fill(saved.pack.rounds[0].targetText)
+      await frame.getByRole('button', { name: 'Check characters', exact: true }).click()
+      await expect(frame.locator('.lg-round-label')).toHaveText(`Prompt 2 of ${shadowCount}`)
+    } else if (title === 'Shadow Strike Dojo') {
       await expect(frame.locator('.lg-world-choice').first()).toBeEnabled()
       const saved = await page.evaluate(() => {
         const key = Object.keys(localStorage).find(
@@ -293,7 +303,9 @@ for (const title of ['Memory Lanterns', 'Shadow Strike Dojo']) {
     await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
     await expect(page.getByRole('button', { name: `Resume ${title}`, exact: true })).toBeVisible()
     await page.getByRole('button', { name: `Resume ${title}`, exact: true }).click()
-    if (title === 'Shadow Strike Dojo')
+    if (title === 'Dictation Streak')
+      await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(`Prompt 2 of ${shadowCount}`)
+    else if (title === 'Shadow Strike Dojo')
       await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
         `Training strike 2 of ${shadowCount}`,
       )
