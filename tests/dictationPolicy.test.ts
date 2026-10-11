@@ -30,6 +30,20 @@ for (const [slug, grade] of [
     assert.ok(capability.status === 'ready' && capability.pack.moduleId === 'dictation-streak')
     const pack = capability.pack
     assertGamePack(pack)
+    // Simulate a saved subset whose unused source target only gained support in
+    // a later release. Review must not silently widen its eligibility/selection.
+    const older = {
+      ...pack.cohort,
+      terms: pack.cohort.terms.map((term, index) =>
+        index === 0 ? { ...term, pinyinSteps: undefined, pinyinText: undefined } : term,
+      ),
+    }
+    const pinned = learningModuleCapability('dictation-streak', older, NINJA_SKILLS_PROFILES[grade], 0, true)
+    assert.ok(pinned.status === 'ready')
+    assertGamePack(pinned.pack)
+    const fresh = learningModuleCapability('dictation-streak', older, NINJA_SKILLS_PROFILES[grade])
+    assert.ok(fresh.status === 'ready')
+    assert.equal(fresh.pack.selection!.eligible, pinned.pack.selection!.eligible + 1)
     for (const round of pack.rounds) {
       const term = pack.cohort.terms.find((t) => t.occurrenceId === round.targetId)!
       assert.equal(round.audioText, dictationAudioText(term.text, term.context!.sentence))

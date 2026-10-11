@@ -117,7 +117,7 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
 })
 
-for (const gameId of ['memory-flip', 'target-blast'] as const) {
+for (const gameId of ['memory-flip', 'target-blast', 'dictation-streak'] as const) {
 test(`family ${gameId} progress is private, conditional, immutable when completed, and permanently retired per run`, {
   skip: candidateFamilyGameRules ? false : 'The separate root hardening policy does not include Stage B game collections.',
 }, async () => {
@@ -158,7 +158,7 @@ test(`family ${gameId} progress is private, conditional, immutable when complete
       targetId: pair.targetId,
       correct: true,
       assessmentMode: 'automatic',
-      response: 'correctChoiceId' in pair ? pair.correctChoiceId : [`${pair.id}:left`, `${pair.id}:right`],
+      response: 'correctChoiceId' in pair ? pair.correctChoiceId : 'targetText' in pair ? pair.targetText : [`${pair.id}:left`, `${pair.id}:right`],
     },
     '2026-10-09T01:01:00.000Z',
   )
@@ -214,7 +214,7 @@ test(`family ${gameId} progress is private, conditional, immutable when complete
         targetId: item.targetId,
         correct: true,
         assessmentMode: 'automatic',
-        response: 'correctChoiceId' in item ? item.correctChoiceId : [`${item.id}:left`, `${item.id}:right`],
+        response: 'correctChoiceId' in item ? item.correctChoiceId : 'targetText' in item ? item.targetText : [`${item.id}:left`, `${item.id}:right`],
       },
       '2026-10-09T01:04:00.000Z',
     )

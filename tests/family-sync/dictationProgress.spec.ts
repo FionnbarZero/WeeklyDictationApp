@@ -3,6 +3,66 @@ import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import type { LearningModuleProductionRound } from '../../src/ninjaSkills/contracts.ts'
 import { grades, installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
 
+test('Dictation newest reviewed checkpoint continues across devices without provisional typing', async ({
+  page,
+  browser,
+}) => {
+  const documents: SyntheticFamilyDocuments = new Map()
+  await setup(page, documents)
+  const frame = await open(page)
+  const initial = await checkpoint(page)
+  if (initial.pack.moduleId !== 'dictation-streak') throw new Error('Wrong fixture')
+  await assemble(frame, initial.pack.rounds[0])
+  await expect.poll(async () => (await checkpoint(page)).cleared.length).toBe(1)
+  await expect(frame.locator('input')).toBeVisible()
+  await frame.locator('input').fill(initial.pack.rounds[1].pinyinSteps![0].pinyin)
+  expect((await checkpoint(page)).revision).toBe(1)
+  await page.getByRole('button', { name: 'Progress', exact: true }).click()
+  await expect.poll(() => [...documents.keys()].filter((key) => key.includes('/betaGameCheckpoints/')).length).toBe(1)
+  const secondContext = await browser.newContext()
+  try {
+    const second = await secondContext.newPage()
+    await setup(second, documents)
+    const other = await open(second)
+    await expect(other.locator('.lg-round-label')).toHaveText(`Prompt 2 of ${initial.pack.rounds.length}`)
+    await expect(other.locator('input')).toHaveValue('')
+    const continued = await checkpoint(second)
+    expect(continued.pack).toEqual(initial.pack)
+    expect(continued.runId).toBe(initial.runId)
+    expect(continued.attemptId).not.toBe(initial.attemptId)
+    await assemble(other, initial.pack.rounds[1])
+    await expect.poll(async () => (await checkpoint(second)).cleared.length).toBe(2)
+    await second.getByRole('button', { name: 'Progress', exact: true }).click()
+    await expect
+      .poll(() =>
+        [...documents.entries()]
+          .filter(([key]) => key.includes('/betaGameCheckpoints/'))
+          .map(([, value]) => JSON.parse((value.fields.payload as { stringValue: string }).stringValue).cleared.length),
+      )
+      .toEqual([2])
+    const returned = await open(page)
+    await expect(returned.locator('.lg-round-label')).toHaveText(`Prompt 3 of ${initial.pack.rounds.length}`)
+    expect((await checkpoint(page)).cleared).toEqual(initial.pack.rounds.slice(0, 2).map((r) => r.id))
+  } finally {
+    await secondContext.close()
+  }
+})
+
+test('Dictation native composition is provisional until explicit submission', async ({ page }) => {
+  await setup(page)
+  const frame = await open(page)
+  const initial = await checkpoint(page)
+  if (initial.pack.moduleId !== 'dictation-streak') throw new Error('Wrong fixture')
+  const input = frame.locator('input')
+  await input.dispatchEvent('compositionstart')
+  await input.fill(initial.pack.rounds[0].targetText)
+  await frame.getByRole('button', { name: 'Check characters', exact: true }).click()
+  expect(await checkpoint(page)).toEqual(initial)
+  await input.dispatchEvent('compositionend')
+  await frame.getByRole('button', { name: 'Check characters', exact: true }).click()
+  await expect.poll(async () => (await checkpoint(page)).revision).toBe(1)
+})
+
 async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
   await installFamilyFixtures(page, documents)
   await page.addInitScript(() => {
@@ -15,6 +75,59 @@ async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()
     }
   })
 }
+
+test('Dictation preserves provisional candidate selection over report pause and retires explicit discard', async ({
+  page,
+  isMobile,
+}) => {
+  await setup(page)
+  const frame = await open(page)
+  const initial = await checkpoint(page)
+  if (initial.pack.moduleId !== 'dictation-streak') throw new Error('Wrong fixture')
+  const round = initial.pack.rounds[0]
+  await frame.locator('input').fill(round.pinyinSteps![0].pinyin)
+  await expect(frame.getByRole('listbox')).toBeVisible()
+  await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+  await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
+  await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+  await expect(frame.locator('input')).toHaveValue(round.pinyinSteps![0].pinyin)
+  expect(await checkpoint(page)).toEqual(initial)
+  await assemble(frame, round, isMobile)
+  await expect.poll(async () => (await checkpoint(page)).cleared.length).toBe(1)
+  await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Discard unfinished Dictation Streak', exact: true }).click()
+  const retired = await records(page)
+  expect(Object.keys(retired).some((key) => key.includes(':checkpoint:'))).toBe(false)
+  expect(
+    Object.entries(retired)
+      .filter(([key]) => key.includes(':retirement:'))
+      .map(([, value]) => value.runId),
+  ).toEqual([initial.runId])
+  await page.getByRole('button', { name: 'Dictation Streak', exact: true }).click()
+  await expect(page.frameLocator('iframe:visible').locator('input')).toBeVisible()
+  expect((await checkpoint(page)).runId).not.toBe(initial.runId)
+})
+
+test('Dictation audio failure offers replay without saving a response', async ({ page }) => {
+  await setup(page)
+  await page.addInitScript(() => {
+    const speak = speechSynthesis.speak.bind(speechSynthesis)
+    let fail = true
+    speechSynthesis.speak = (utterance) => {
+      if (fail) {
+        fail = false
+        setTimeout(() => utterance.onerror?.({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent), 0)
+      } else speak(utterance)
+    }
+  })
+  const frame = await open(page)
+  const initial = await checkpoint(page)
+  await expect(frame.locator('.lg-audio-error')).toBeVisible()
+  await frame.getByRole('button', { name: 'Replay transmission', exact: true }).click()
+  await expect(frame.locator('.lg-audio-error')).toHaveCount(0)
+  expect(await checkpoint(page)).toEqual(initial)
+})
 async function open(page: Page, slug = 'grade5', embedded = false) {
   await page.goto(`http://127.0.0.1:5193/?grade=${slug}`)
   const menu = embedded ? page.frameLocator('iframe:visible') : page

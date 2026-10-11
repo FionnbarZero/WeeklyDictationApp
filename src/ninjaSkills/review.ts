@@ -11,7 +11,7 @@ export function assertGamePack(pack: LearningModulePack) {
   const profile = NINJA_SKILLS_PROFILES[pack.cohort.grade as SupportedGrade]
   if (!profile || !pack.selection || pack.selection.policyVersion !== GAME_POLICY_VERSION)
     throw new Error('This game needs a current validated selection. Return to Ninja Skills.')
-  const expected = learningModuleCapability(pack.moduleId, pack.cohort, profile, pack.selection.visit)
+  const expected = learningModuleCapability(pack.moduleId, pack.cohort, profile, pack.selection.visit, true)
   if (expected.status !== 'ready') throw new Error('This game’s required content is not ready.')
   const prompts = (value: LearningModulePack) => ('pairs' in value ? value.pairs : value.rounds)
   if (

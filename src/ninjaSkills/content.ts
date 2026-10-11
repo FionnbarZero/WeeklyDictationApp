@@ -173,8 +173,7 @@ function exactContextParts(term: LearningModuleTerm) {
   return { before: sentence.slice(0, first), after: sentence.slice(first + term.text.length) }
 }
 
-function dictationPack(source: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
-  const cohort = withDictationContent(source)
+function dictationPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
   const eligible = distinctTermsByText(cohort.terms).filter((term) => {
     const characters = Array.from(term.text)
     return (
@@ -386,7 +385,7 @@ export function learningModuleCapabilities(
 }
 
 export function learningModuleCapability(
-  id: LearningModuleId, cohort: LearningModuleCohort | null, profile: NinjaSkillsProfile, visit = 0,
+  id: LearningModuleId, cohort: LearningModuleCohort | null, profile: NinjaSkillsProfile, visit = 0, pinned = false,
 ): LearningModuleCapability {
   if (!cohort || !cohort.provenance.length || cohort.grade !== profile.grade)
     return unavailable(id, `Validated ${profile.grade} source targets are needed for this game.`)
@@ -394,7 +393,10 @@ export function learningModuleCapability(
     'dictation-streak': dictationPack, 'speed-match': speedMatchPack, 'target-blast': targetBlastPack,
     'memory-flip': memoryPack, 'context-gap-dash': contextPack, 'sentence-scramble': sentencePack,
   }
-  return builders[id](withSupplementalContent(cohort), profile, visit)
+  // A saved pack must not gain new supporting language when a catalog grows.
+  // Fresh launches hydrate once; review rebuilds only the captured teaching data.
+  const supported = pinned ? cohort : withSupplementalContent(cohort)
+  return builders[id](!pinned && id === 'dictation-streak' ? withDictationContent(supported) : supported, profile, visit)
 }
 
 export function learningModuleActivities<Launch>(
