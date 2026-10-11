@@ -6,6 +6,33 @@ The owner confirmed GPT-6 Astra · High for C2. Dictation currently has a protot
 
 The bounded implementation will add validated mixed-tier subsets and versioned supporting Pinyin/contexts, the complete word → sentence → word → word prompt, and the existing pinned checkpoint/immutable completion adapter. Full-word submissions are reviewed; unfinished typing and existing per-character coaching remain provisional and are not saved as child responses. It will preserve report pause and failed-save retry, verify both menus and cross-device recovery, and leave acquisition games and Spirit Realm rules outside C2. No new database schema or production policy is proposed. C2 remains unpublished; owner smoke testing is premature until its separate review/release gates pass.
 
+### C2 local candidate and acceptance evidence
+
+Candidate source `c0b2ad986c30ab75d1dc16f6ca54580167a822bd` implements the bounded C2 contract. Both family entry paths use `SavedLearningGame`, the existing reviewed checkpoint/completion ledger, newest-reviewed cross-device reconciliation and immutable per-target facts. Dictation reserves both tiers, rotates usable subsets and resolves each tier's earlier relevant week independently. Generated supporting language is versioned and restricted to exact authoritative-source targets; unavailable content does not fall back to placeholders. Saved-pack review now uses captured supporting language without enriching it from a newer catalog.
+
+The four-part prompt is one owned audio plan containing word → sentence → word → word; the existing host handles replay, interruption and report pause. Native Chinese composition and per-character Pinyin choices remain supported. Full-word submissions determine attempt accuracy; provisional typing and the existing spelling/candidate coaching remain unsaved. A failed write holds the submitted word in memory without advancing or showing its reviewed correctness, and retries the same checkpoint.
+
+An initial tablet run on `ecdd8d7` reproduced a delayed-caret race: a pending focus callback collapsed the next edit's selection, duplicating the preceding character. `c0b2ad9` replaces that deferred callback with synchronous focus during the input gesture. The failed trace and log are retained under `family-beta-artifacts/reviews/c2-dictation/failures/`; the outdated run was interrupted after retaining the evidence. This is a repaired application issue, not a waived flaky test.
+
+Verified gates: **896 unit tests**, typecheck, lint, format check, build/performance (**549,990/550,000 initial JS; 42,745/60,000 CSS**), **11 family-policy emulator cases** including Dictation isolation/conditional writes/immutable completion/retirement, zero production dependency vulnerabilities and the existing 11-finding firebase-tools-only development exception (expiry November 4). Final exact-package browser acceptance passes **32/32** in 3.4 minutes, with no retries/skips: 18 Dictation desktop/tablet cases, six cross-grade menu checks, two explicitly opted-in guarded C1 recovery cases, and six existing Context/Shadow Strike/Sushi failed-save regressions. Logs are retained alongside the packages.
+
+| Grade | Both tiers / earlier relevant source | Full four-part prompt / character input | Reviewed error / offline reload / completion / fresh-browser details |
+| --- | --- | --- | --- |
+| Kindergarten | Pass | Pass on desktop and tablet emulation | Pass |
+| Grade 2 | Pass; reading and writing may come from different weeks | Pass on desktop and tablet emulation | Pass |
+| Grade 5 | Pass | Pass on desktop and tablet emulation | Pass |
+
+Additional Dictation cases cover newest unfinished cross-device continuation, native composition, report-pause preservation of provisional input and confirmed saves, explicit discard retirement, audio failure/replay, and exact failed-write retry. Guarded recovery blocks the older engine before reading credentials or changing storage; returning to the candidate resumes the original reviewed Dictation checkpoint. Physical device sound/keyboard behavior remains a later release smoke check, not an automated-test claim.
+
+Independently verified retained packages:
+
+- Candidate: `family-beta-artifacts/reviews/c2-dictation/candidate-c0b2ad9`, 145 files, tree `f24a616c40f9cf9caf880a05ed9d3dcba292744d100d3e9f70b2b149bc481f7e`.
+- Guarded C1 recovery: `family-beta-artifacts/reviews/c2-dictation/guarded-c1-recovery`, 146 files, tree `ed3f622852a364fc96e2cca867ec976393d2e27d3391dc13dcc3041007a0995a`, previous source `c4f4057`, compatibility source `c0b2ad9`. Never substitute unguarded C1 when a device contains C2 records.
+
+At the October 5 fixture week, usable supporting content covers Kindergarten 5/5 targets, Grade 2 6/16 and Grade 5 6/14; the UI discloses subset coverage. Other weeks require corresponding validated support. Physical iMac/iPad voice and touch acceptance is not established by browser emulation. Acquisition games and full Spirit Realm game integration remain later stages.
+
+No C2 push, merge, deployment, production authentication/security change or real-child-record change has occurred. C1 `c4f4057` remains the published release. Next gate: independent **GPT-6 Astra · High** review, then separately authorized PR/release work. No C2 owner smoke testing yet.
+
 ## C1 Shadow Strike implementation — published and live-verified
 
 The owner confirmed **GPT-6.1 Sol · High** for C1. The implementation extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or existing records. **The independent C1 release review is complete with no blocking findings**, as recorded below. PR #63 is merged and C1 is published from `c4f4057`; the earlier preparation notes below are historical.
