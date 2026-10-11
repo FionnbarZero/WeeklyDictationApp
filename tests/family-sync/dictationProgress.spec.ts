@@ -140,7 +140,7 @@ test('Dictation interrupted replay and coaching ignore stale failures but show c
   const initial = await checkpoint(page)
   const spoken = () => frame.locator('html').evaluate(() =>
     (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.length)
-  const finish = (fail = false) => frame.locator('html').evaluate(failed => {
+  const finish = (fail = false) => frame.locator('html').evaluate((_element, failed) => {
     const utterance = (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.at(-1)!
     if (failed) utterance.onerror?.({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent)
     else utterance.onend?.({} as SpeechSynthesisEvent)
