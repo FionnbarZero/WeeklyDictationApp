@@ -24,6 +24,9 @@ const SpeedMatch = lazy(() =>
 const TargetBlast = lazy(() =>
   import('../learningModules/target-blast/Game.tsx').then((module) => ({ default: module.TargetBlast })),
 )
+const DictationStreak = lazy(() =>
+  import('../learningModules/dictation-streak/Game.tsx').then(module => ({ default: module.DictationStreak })),
+)
 
 export function SavedLearningGame({
   pack,
@@ -33,7 +36,7 @@ export function SavedLearningGame({
 }: {
   pack: Extract<
     LearningModulePack,
-    { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' | 'speed-match' | 'target-blast' }
+    { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' | 'speed-match' | 'target-blast' | 'dictation-streak' }
   >
   playAudio: PlayLearningModuleAudio
   onExit: () => void
@@ -135,6 +138,8 @@ export function SavedLearningGame({
           <MemoryFlip {...shared} pairs={initial.pack.pairs} />
         ) : initial.pack.moduleId === 'target-blast' ? (
           <TargetBlast {...shared} rounds={initial.pack.rounds} />
+        ) : initial.pack.moduleId === 'dictation-streak' ? (
+          <DictationStreak {...shared} rounds={initial.pack.rounds} />
         ) : initial.pack.moduleId === 'sentence-scramble' ? (
           <SentenceScramble {...shared} rounds={initial.pack.rounds} />
         ) : initial.pack.moduleId === 'context-gap-dash' ? (

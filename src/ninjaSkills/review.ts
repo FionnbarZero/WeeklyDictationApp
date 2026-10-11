@@ -11,7 +11,7 @@ export function assertGamePack(pack: LearningModulePack) {
   const profile = NINJA_SKILLS_PROFILES[pack.cohort.grade as SupportedGrade]
   if (!profile || !pack.selection || pack.selection.policyVersion !== GAME_POLICY_VERSION)
     throw new Error('This game needs a current validated selection. Return to Ninja Skills.')
-  const expected = learningModuleCapability(pack.moduleId, pack.cohort, profile, pack.selection.visit)
+  const expected = learningModuleCapability(pack.moduleId, pack.cohort, profile, pack.selection.visit, true)
   if (expected.status !== 'ready') throw new Error('This game’s required content is not ready.')
   const prompts = (value: LearningModulePack) => ('pairs' in value ? value.pairs : value.rounds)
   if (
@@ -22,6 +22,14 @@ export function assertGamePack(pack: LearningModulePack) {
 }
 
 function reviewedCorrect(pack: LearningModulePack, attempt: LearningModuleAttempt) {
+  if (pack.moduleId === 'dictation-streak') {
+    const round = pack.rounds.find(round => round.id === attempt.promptId && round.targetId === attempt.targetId)
+    if (!round || typeof attempt.response !== 'string' ||
+        !/^[\u3400-\u9fff]+$/u.test(attempt.response) ||
+        Array.from(attempt.response).length !== Array.from(round.targetText).length)
+      throw new Error('Submit a complete Chinese word for this Dictation prompt.')
+    return attempt.response === round.targetText
+  }
   if ('pairs' in pack) {
     if (!Array.isArray(attempt.response) || attempt.response.length !== 2 || new Set(attempt.response).size !== 2)
       throw new Error('Invalid matching response.')

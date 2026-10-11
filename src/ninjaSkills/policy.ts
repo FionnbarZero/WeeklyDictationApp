@@ -8,7 +8,7 @@ type Policy = {
   content: readonly string[]
   audio: string
   scoring: 'reviewed-game-attempts' | 'grade-acquisition'
-  implementation: 'stage-b' | 'stage-c1' | 'later-stage'
+  implementation: 'stage-b' | 'stage-c1' | 'stage-c2' | 'later-stage'
 }
 
 /** Approved product rules. Availability is separate from the intended contract. */
@@ -59,7 +59,7 @@ export const GAME_POLICIES = {
     content: ['pinyin-choices', 'sentence'],
     audio: 'word-sentence-word-word',
     scoring: 'reviewed-game-attempts',
-    implementation: 'later-stage',
+    implementation: 'stage-c2',
   },
   'whispering-scrolls': {
     tiers: ['tier-2'],
@@ -95,11 +95,12 @@ export function rotatingGameTerms(
   if (!terms.length) return []
   // Mixed rounds reserve a slot for the other tier. A whole-window stride can
   // permanently skip that replaced slot when pool length is divisible by limit.
-  const stride = id === 'speed-match' ? 1 : Math.min(limit, terms.length)
+  const mixed = id === 'speed-match' || id === 'dictation-streak'
+  const stride = mixed ? 1 : Math.min(limit, terms.length)
   const start = ((visit % terms.length) * stride) % terms.length
   const rotated = [...terms.slice(start), ...terms.slice(0, start)]
   const selected = rotated.slice(0, limit)
-  if (id === 'speed-match') {
+  if (mixed) {
     // Every mixed round needs both tiers, including when one tier is much smaller.
     for (const tier of GAME_POLICIES[id].tiers) {
       if (!selected.some((term) => term.tier === tier)) {

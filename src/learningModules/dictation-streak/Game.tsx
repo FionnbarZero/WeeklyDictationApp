@@ -1,5 +1,5 @@
 import { activityClock } from '../../activity/activityLifecycle.ts'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Headphones, PencilLine } from 'lucide-react'
 import type { LearningGameBaseProps, PlayLearningAudio, ProductionGameRound } from './runtime/contracts'
 import { ProductionRunner } from './runtime/ProductionGameShared'
@@ -56,6 +56,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   const composingRef = useRef(false)
   const messageTimerRef = useRef<number | undefined>(undefined)
   const restartTimerRef = useRef<number | undefined>(undefined)
+  const audioRequest = useRef(0)
   const stepCandidates = useMemo(() => shuffledStepCandidates(round), [round])
   const guidedPinyin = Boolean(round.pinyinSteps)
   const selectedCharacters = Array.from(answer).filter((character) => HANZI_CHARACTER.test(character)).join('')
@@ -68,23 +69,27 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     ? currentStepIndex === round.pinyinSteps?.length && !pinyinInput.trim()
     : selectedCharacters.length === Array.from(round.targetText.trim()).length && !pinyinInput.trim()
 
-  async function speakWord() {
+  const playCurrentAudio = useCallback(async (text: string, language = 'zh-CN', reportFailure = true) => {
+    // Starting a replay/coaching cue cancels the previous host audio plan.
+    // Only the latest request may report a failure, including after unmount.
+    const request = ++audioRequest.current
     setAudioError(false)
     try {
-      await playAudio(round.audioText || round.targetText)
+      await playAudio(text, language)
     } catch {
-      setAudioError(true)
+      if (request === audioRequest.current && reportFailure) setAudioError(true)
     }
+  }, [playAudio])
+
+  async function speakWord() {
+    if (activityClock.paused) return
+    await playCurrentAudio(round.audioText || round.targetText)
   }
 
   useEffect(() => {
-    let active = true
-    setAudioError(false)
-    Promise.resolve(playAudio(round.audioText || round.targetText)).catch(() => {
-      if (active) setAudioError(true)
-    })
-    return () => { active = false }
-  }, [playAudio, round.audioText, round.id, round.targetText])
+    void playCurrentAudio(round.audioText || round.targetText)
+    return () => { audioRequest.current += 1 }
+  }, [playCurrentAudio, round.audioText, round.id, round.targetText])
 
   useEffect(() => () => {
     if (messageTimerRef.current !== undefined) activityClock.clearTimeout(messageTimerRef.current)
@@ -92,19 +97,15 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }, [])
 
   function speakFeedback(message: string) {
-    try {
-      void Promise.resolve(playAudio(message, 'en-US')).catch(() => undefined)
-    } catch {
-      // Spoken coaching is helpful, but it must never trap the learner.
-    }
+    // Coaching is optional, but still supersedes any in-flight word cue.
+    void playCurrentAudio(message, 'en-US', false)
   }
 
   function focusAtEnd() {
-    activityClock.requestAnimationFrame(() => {
-      const input = inputRef.current
-      input?.focus()
-      input?.setSelectionRange(input.value.length, input.value.length)
-    })
+    // A deferred caret reset can run after the next input/IME edit has selected
+    // text, duplicating the previous character. Focus during the user gesture;
+    // let the controlled value update place the caret without a later callback.
+    inputRef.current?.focus({ preventScroll: true })
   }
 
   function restartTrial() {
@@ -113,11 +114,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     setCharacterCorrection(null)
     setSpellingMessage('')
     spellingErrorsRef.current = 0
-    try {
-      void Promise.resolve(playAudio(round.audioText || round.targetText)).catch(() => undefined)
-    } catch {
-      // The typing trial can continue if replay is unavailable.
-    }
+    void speakWord()
     focusAtEnd()
   }
 
@@ -141,6 +138,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }
 
   function updateAnswer(nextAnswer: string) {
+    if (activityClock.paused) return
     setAnswer(nextAnswer)
     if (composingRef.current || correctionPinyin || characterCorrection) return
     if (!guidedPinyin) return
@@ -155,11 +153,12 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   function submit(event: FormEvent) {
     event.preventDefault()
     const response = answer.trim()
-    if (!response || !wordComplete) return
+    if (!response || !wordComplete || composingRef.current || activityClock.paused) return
     onAssess(response === round.targetText.trim(), response)
   }
 
   function selectCandidate(candidate: string) {
+    if (activityClock.paused || correctionPinyin || characterCorrection || !showCandidates || !candidates.includes(candidate)) return
     const correctCharacter = Array.from(round.targetText.trim())[currentStepIndex]
     if (correctCharacter && !isCorrectCharacterAt(candidate, round.targetText, currentStepIndex)) {
       setAnswer(selectedCharacters)
@@ -249,8 +248,8 @@ export function DictationStreak({
     playAudio={playAudio}
     gameId="dictation-streak"
     defaultTitle="Dictation Streak"
-    defaultEyebrow="Tier 1 · Writing"
-    completionMessage="Every writing target is complete."
+    defaultEyebrow="Tier 1 + Tier 2 · Dictation"
+    completionMessage="Every selected dictation target is complete."
     validateRound={validDictationRound}
     invalidContentMessage="Each guided Dictation prompt needs one valid Pinyin step per Chinese character. Prompts without Pinyin steps remain available for direct Chinese-keyboard entry."
     feedbackAnswer={(round) => <span className="lg-dictation-answer-key"><b lang="zh-Hans">{round.targetText}</b>{round.pinyinText && <><i aria-hidden="true">·</i><span lang="zh-Latn-pinyin">{round.pinyinText}</span></>}</span>}

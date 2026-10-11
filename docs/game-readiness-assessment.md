@@ -1,8 +1,140 @@
 # EduGame readiness assessment
 
-## C1 Shadow Strike implementation — local, unpublished
+## C2 final formatting gate
 
-The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. The branch is now pushed and PR #63 is open; no C1 merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+Source `313bc17`, quality run `38172199530`, passes all 372 canonical family browser cases with eight intentional opt-in recovery skips, plus all 11 production-intended family-policy emulator cases. Its other four jobs pass, including all 58 general-browser cases and unchanged visual references. The family job fails its subsequent formatting/import-order check: three errors in `dictationProgress.spec.ts` and `offlineTransition.spec.ts`. The failed final job and all five job logs are retained under `family-beta-artifacts/releases/c2-pr64-313bc17/`; this run is not an all-green release gate.
+
+The repair applies only mechanical formatting and type-only import ordering in those two test files. Parsed TypeScript syntax trees and type-only import sets match before and after normalization; original files, diagnostic output and the equivalence receipt are retained under `family-beta-artifacts/reviews/c2-dictation/failures/pr64-final-format/`. No application code, assertions, timings, test selection, scoring, persistence or production policy changed. Fresh local checks pass 896 unit tests, typecheck, the complete 45-file family formatting/lint gate and six-file offline gate.
+
+The preceding local follow-up passes 44 game-policy cases, 58 general-browser cases, and 28 final-source Dictation/opted-in recovery cases on desktop/tablet. That recovery run executes all eight cases intentionally skipped by ordinary CI. The exact `313bc17` candidate (145 files, tree `57514a0504feb120f169b7959c5f6beeb7e21eb0b2c812a66eb44838acf7bd90`) and guarded C1 recovery (146 files, tree `8d025d1d215ee90df0f88f130954fc6945c7e3f1892f7dd0ddb2bea804047b24`) are retained alongside those logs and independently hash-verified.
+
+All five checks must pass on the repaired final PR head before owner merge approval. Package the actual approved merge revision afterward; grade publication approvals and exact served-build verification remain separate. C2 is unpublished, no owner smoke test is ready, and C1 `c4f4057` remains the recorded live source.
+
+## C2 test-gate follow-up
+
+The first final-head CI run (`38170925709`, source `3506f49`) passed quality, builds and the root-policy emulator, but its general browser suite was 57/58 because the unchanged Grade 2 prototype screenshot differed by 635 pixels around text edges. Original images, trace and GitHub log are retained under `family-beta-artifacts/reviews/c2-dictation/failures/pr64-grade2-visual/`. Ten unchanged local repetitions pass; the reference image and comparison tolerance were not changed. The run also exposed obsolete menu assertions that expected Dictation to remain Coming soon, despite its approved activation. A local pre-fix case reproduced the same assertion and retained its trace under `failures/pr64-obsolete-menu/`.
+
+A full local general-browser run additionally exposed an environment-dependent microphone fixture: the Kindergarten fallback test waited for denial without simulating it, and its trace remained at “Waiting for microphone permission.” That 57/58 run and trace are retained under `failures/pr64-microphone-fixture/`; they are not counted as passing.
+
+Test-only `8d096f6` asserts six temporarily unavailable games when history is unreadable and zero Coming soon game buttons in the validated fixture. It preserves every history-preservation and game-result assertion. The microphone test now explicitly rejects its synthetic permission request and checks all nine collection positions before the same final-review assertions. Both changed files pass formatting/lint checks; all 58 general browser cases pass in 2.2 minutes. The full 44-case game-policy verification is running locally, and all five checks must pass on the new final PR head. No application, scoring, persistence or production policy code changed. Original failed/superseded runs are not release evidence; no merge or publication occurred.
+
+## C2 PR and release preparation
+
+The owner approved continuing with push and pull request preparation after the repair re-review. [PR #64](https://github.com/FionnbarZero/WeeklyDictationApp/pull/64) targets `main` from `codex/c2-dictation-streak`. The branch includes the reviewed implementation and its documentation; no application changes were made during preparation. GitHub reported no base conflicts when the PR opened. All five required checks must pass on the final PR head before requesting merge approval.
+
+Source `c41fe957c264ec103244fdb293fa0e76cfea69f4` has two retained packages under `family-beta-artifacts/releases/c2-pr64-c41fe95/`, independently rehashed after copying:
+
+- Candidate: 145 files; tree `0e19660ab94a631681a63b063a41eaac108bc4d5baaa6951953c826389241105`.
+- Guarded C1 recovery: 146 files; source `c4f4057`; compatibility source `c41fe95`; tree `bebf45ca25ebc96be81d39e42008d9f32e1a26e645e4360018ad5df6aa2afead`.
+
+The package and recovery logs are retained alongside them. Subsequent documentation commits do not change the reviewed application. Merge remains separately approved; afterward, package the actual merge revision and verify its application tree and recovery contract before seeking grade-publication approvals. C2 remains unpublished and smoke testing premature. The C1 publication record below remains the latest verified live release.
+
+## C2 repair re-review
+
+The October 11 focused re-review of `eeeac09..72f2aca` found no blocking defects in the audio-request invalidation or discard-regression repairs. Review covered cancellation ownership, optional coaching, genuine current failures, effect cleanup, and lock-delayed retirement. No application code changed during this review.
+
+Fresh checks on `252337f`, whose changes after `72f2aca` are documentation only, pass 896 unit tests and four packaged desktop/tablet regressions in 38.7 seconds, with no skips or retries. The exact retained `72f2aca` candidate (145 files) and guarded C1 recovery (146 files) were rehashed against their complete inventories; both match the identities below. The previous 34-case browser, 12 repeated regression, emulator and quality-gate evidence was inspected, not counted as a new run.
+
+Fresh logs are retained alongside the repair packages as `ninja-c2-rereview-unit.log` and `ninja-c2-rereview-browser.log`. Next is GPT-6.1 Sol · High for separately authorized push/PR/CI and release preparation. Merge and grade publication remain separate approval gates. C2 is unpublished and owner smoke testing remains premature. Physical sound/keyboard behavior, validated-subset coverage and later acquisition/Spirit Realm work remain outstanding; the initial JavaScript budget has only 10 bytes of headroom.
+
+## C2 review repairs
+
+The October 11 review of `c0b2ad9` reproduced a false audio warning after interrupting a prompt with Replay. It also produced a 17/18 browser result: the tablet discard test read a checkpoint immediately after the confirmation click, before the asynchronous retirement finished. A controlled storage-lock diagnostic reproduced that intermediate checkpoint and verified its removal after the lock was released. The original review failure is retained in `family-beta-artifacts/reviews/c2-dictation/failures/review-discard/`.
+
+Application repair `e6e856b` gives each Dictation audio request an identity. Replay, automatic prompts and coaching invalidate older error callbacks; cleanup invalidates outstanding callbacks. A genuine failure of the current word cue still displays the replay action, while optional coaching failures do not block practice. Scoring, saving, synchronization and production policy are unchanged. The discard test now holds the real browser storage lock, verifies that saved work stays intact while retirement waits, then waits for confirmed removal and checks the retirement and new-run identities.
+
+The first new replay regression had a test-helper argument error: it treated the locator element as its failure flag, reporting failure even when instructed to finish successfully. That partial run was interrupted and retained in `failures/replay-driver/`. Test-only commit `72f2aca` corrects the helper; the application repair did not change. Neither initial failed run is counted as passing.
+
+Final candidate **`72f2aca2f9a212b8aa9f902926256d7c61da4909`** passes:
+
+- 896 unit tests; typecheck, lint, format and build/performance checks (549,990/550,000 initial JS bytes and 42,745/60,000 CSS bytes).
+- **34/34** exact-package desktop/tablet cases in 4.5 minutes, without retries or skips: 20 Dictation cases, six cross-grade menu cases, two guarded C1 recovery cases and six Context/Shadow Strike/Sushi save-failure regressions.
+- **12/12 additional repetitions**: interrupted replay/coaching/current audio failure and lock-delayed discard, each repeated three times on desktop and tablet emulation.
+- 11/11 family-policy emulator cases, zero production dependency vulnerabilities and the existing 11-finding firebase-tools-only tooling exception expiring November 4.
+
+The final packages are retained under `family-beta-artifacts/reviews/c2-dictation/repair-72f2aca/` and verified against their full file inventories:
+
+- `candidate`: 145 files; tree `29edd625ab2ff71e0d17de1ebc12f5aabeee9672c0670333154f5cd7117943d8`.
+- `recovery`: 146 files; C1 source `c4f4057`, compatibility source `72f2aca`; tree `468d1a0a09e552976ef0260607746a245ecef06a5e3a6f49b1fd440ce2751ffb`.
+
+Verification logs are retained alongside those packages. Next is an independent **GPT-6 Astra · High** re-review of `eeeac09..72f2aca` and its evidence, followed by separately authorized PR/merge/publication work. No push, merge, deployment, production security/authentication change or real-child-record change occurred. No C2 owner smoke testing yet; physical sound/keyboard behavior and the previously disclosed content/acquisition/Spirit Realm limits remain outstanding. The earlier C2 implementation record below is historical.
+
+## C2 implementation baseline — October 11, 2026
+
+The owner confirmed GPT-6 Astra · High for C2. Dictation currently has a prototype per-character Pinyin candidate console, native Chinese composition support and spelling/character coaching, but its capability is disabled. `content.ts` selects Tier 1 only, omits contextual audio and selection metadata; `ProductionGameShared.tsx` does not await reviewed saving. Neither family entry path uses the durable adapter for Dictation. The existing resolver already finds each tier's most recent earlier relevant week independently.
+
+The bounded implementation will add validated mixed-tier subsets and versioned supporting Pinyin/contexts, the complete word → sentence → word → word prompt, and the existing pinned checkpoint/immutable completion adapter. Full-word submissions are reviewed; unfinished typing and existing per-character coaching remain provisional and are not saved as child responses. It will preserve report pause and failed-save retry, verify both menus and cross-device recovery, and leave acquisition games and Spirit Realm rules outside C2. No new database schema or production policy is proposed. C2 remains unpublished; owner smoke testing is premature until its separate review/release gates pass.
+
+### C2 local candidate and acceptance evidence
+
+Candidate source `c0b2ad986c30ab75d1dc16f6ca54580167a822bd` implements the bounded C2 contract. Both family entry paths use `SavedLearningGame`, the existing reviewed checkpoint/completion ledger, newest-reviewed cross-device reconciliation and immutable per-target facts. Dictation reserves both tiers, rotates usable subsets and resolves each tier's earlier relevant week independently. Generated supporting language is versioned and restricted to exact authoritative-source targets; unavailable content does not fall back to placeholders. Saved-pack review now uses captured supporting language without enriching it from a newer catalog.
+
+The four-part prompt is one owned audio plan containing word → sentence → word → word; the existing host handles replay, interruption and report pause. Native Chinese composition and per-character Pinyin choices remain supported. Full-word submissions determine attempt accuracy; provisional typing and the existing spelling/candidate coaching remain unsaved. A failed write holds the submitted word in memory without advancing or showing its reviewed correctness, and retries the same checkpoint.
+
+An initial tablet run on `ecdd8d7` reproduced a delayed-caret race: a pending focus callback collapsed the next edit's selection, duplicating the preceding character. `c0b2ad9` replaces that deferred callback with synchronous focus during the input gesture. The failed trace and log are retained under `family-beta-artifacts/reviews/c2-dictation/failures/`; the outdated run was interrupted after retaining the evidence. This is a repaired application issue, not a waived flaky test.
+
+Verified gates: **896 unit tests**, typecheck, lint, format check, build/performance (**549,990/550,000 initial JS; 42,745/60,000 CSS**), **11 family-policy emulator cases** including Dictation isolation/conditional writes/immutable completion/retirement, zero production dependency vulnerabilities and the existing 11-finding firebase-tools-only development exception (expiry November 4). Final exact-package browser acceptance passes **32/32** in 3.4 minutes, with no retries/skips: 18 Dictation desktop/tablet cases, six cross-grade menu checks, two explicitly opted-in guarded C1 recovery cases, and six existing Context/Shadow Strike/Sushi failed-save regressions. Logs are retained alongside the packages.
+
+| Grade | Both tiers / earlier relevant source | Full four-part prompt / character input | Reviewed error / offline reload / completion / fresh-browser details |
+| --- | --- | --- | --- |
+| Kindergarten | Pass | Pass on desktop and tablet emulation | Pass |
+| Grade 2 | Pass; reading and writing may come from different weeks | Pass on desktop and tablet emulation | Pass |
+| Grade 5 | Pass | Pass on desktop and tablet emulation | Pass |
+
+Additional Dictation cases cover newest unfinished cross-device continuation, native composition, report-pause preservation of provisional input and confirmed saves, explicit discard retirement, audio failure/replay, and exact failed-write retry. Guarded recovery blocks the older engine before reading credentials or changing storage; returning to the candidate resumes the original reviewed Dictation checkpoint. Physical device sound/keyboard behavior remains a later release smoke check, not an automated-test claim.
+
+Independently verified retained packages:
+
+- Candidate: `family-beta-artifacts/reviews/c2-dictation/candidate-c0b2ad9`, 145 files, tree `f24a616c40f9cf9caf880a05ed9d3dcba292744d100d3e9f70b2b149bc481f7e`.
+- Guarded C1 recovery: `family-beta-artifacts/reviews/c2-dictation/guarded-c1-recovery`, 146 files, tree `ed3f622852a364fc96e2cca867ec976393d2e27d3391dc13dcc3041007a0995a`, previous source `c4f4057`, compatibility source `c0b2ad9`. Never substitute unguarded C1 when a device contains C2 records.
+
+At the October 5 fixture week, usable supporting content covers Kindergarten 5/5 targets, Grade 2 6/16 and Grade 5 6/14; the UI discloses subset coverage. Other weeks require corresponding validated support. Physical iMac/iPad voice and touch acceptance is not established by browser emulation. Acquisition games and full Spirit Realm game integration remain later stages.
+
+No C2 push, merge, deployment, production authentication/security change or real-child-record change has occurred. C1 `c4f4057` remains the published release. Next gate: independent **GPT-6 Astra · High** review, then separately authorized PR/release work. No C2 owner smoke testing yet.
+
+## C1 Shadow Strike implementation — published and live-verified
+
+The owner confirmed **GPT-6.1 Sol · High** for C1. The implementation extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or existing records. **The independent C1 release review is complete with no blocking findings**, as recorded below. PR #63 is merged and C1 is published from `c4f4057`; the earlier preparation notes below are historical.
+
+### C1 publication and live acceptance — October 11, 2026
+
+The owner separately approved publication of build `c4f4057` for Kindergarten, Grade 2 and Grade 5. The retained candidate was uploaded without rebuilding and activated once on existing Cloudflare Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`. Provider readback confirms activation at `2026-10-11T17:28:09.029Z` (10:28 a.m. Pacific):
+
+- Active version `221970a1-cfb8-4b5b-818e-a2a00b0eeba5`, 100% traffic, exact source `c4f4057f7bc3a04bb0f9e5811132539a06908b66`, candidate tree `6b02979f1ac0a1a03c1ed143bb2ea819a540419dbc8258e72a279744e3227a99`.
+- Inactive guarded Stage B recovery `240aafb8-6abf-42a6-9c40-6511d8253e40`, tree `726c3e6c61c208a5f72ce0f202d5f3167a8eac0d156ee636a2e39eb71f70260e`. It protects newer saved-game records before the older engine can read credentials or normalize storage. Ordinary unguarded Stage B rollback is not the reviewed recovery path.
+- Canonical manifest equals the retained manifest; all **143 public asset sizes and SHA-256 hashes** match. The two remaining inventory entries are hosting/build controls. Six canonical grade × desktop/tablet checks pass sign-in visibility, preserved grade selection, report open/close and no page errors.
+- The release-specific synthetic driver passes against the retained local candidate with the real backend before activation and against the canonical HTTPS site afterward. In each grade it saves a correct Shadow Strike target, checks report pause, recovers and finishes that pinned round in a fresh signed-in browser, drains both completion/detail queues, and recovers the same graph point and exact per-target completion. All target tiers are Tier 2; no raw responses are retained. Anonymous family reads are denied. Each successful run removed its disposable parent and 20 test documents; no existing real-family account or records were used by the driver.
+
+The initial pre-publication driver failed after Grade 5 because its checkpoint lookup selected an old Grade 5 test checkpoint while testing Grade 2. The correction filters both checkpoints and completions by expected grade. Its initial disposable family and 14 test documents were cleaned up; the original log is retained. The corrected all-grade local and live runs both passed. This was a driver-only correction; the approved app and package did not change.
+
+The existing signed-in in-app browser initially showed cached `e9c5a54` and the expected update-ready notice. Closing only the agent-created Dojo tab (no unfinished activity) and reopening allowed `c4f4057` to activate with the existing profile and confirmed-sync status preserved. No browser data was cleared or user-owned tabs closed. This is separate from fresh-browser hash and acceptance checks, and explains the safe owner update instruction below.
+
+Evidence is retained under ignored `family-beta-artifacts/releases/c1-c4f4057/`, with source logs `/tmp/ninja-c1-{recovery-upload,candidate-upload,activation,active-provider,live-assets,live-acceptance}.log` and `/tmp/ninja-c1-prepublication-acceptance{,-corrected}.log`. The publication changes no domain/routes, security rules or authentication configuration. Existing problem-report controls and batched on-device reports remain unchanged. Real-device audio/touch quality is not proved by synthetic speech or Chromium touch emulation.
+
+#### Bounded owner smoke check
+
+Live canonical links, all verified build **c4f4057**: [Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten), [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2), [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5). Allow **5–8 minutes total**, not one full test per grade. Start with Grade 2 → Ninja Skills → Shadow Strike Dojo. On iMac check audible prompts, smooth movement and reliable mouse clicks; on iPad check audible prompts and reliable touch targets. Make a correct strike, open/close Report a problem, reload and resume, then finish and check the score. If both devices are available, use the same parent account to check the saved game or finished score on the second device. Save issues through Report a problem and email the batch at session end. If the build label is older, close all Dojo tabs and reopen the usual link; do not clear browser data.
+
+Do not test Dictation Streak, Whispering Scrolls, Stroke Order Slay, Shadow Strike Spirit Realm warmup, unrelated acquisition, recording or handwriting for this release. Those later stages remain unfinished; the existing Context startup-timing limitation is not declared fixed. Next engineering stage: **C2 Dictation Streak, GPT-6 Astra · High**, with the same model/reasoning for its separate release review. Confirm the stage's model selection before application code changes.
+
+### C1 merged release candidate — October 11, 2026
+
+The owner's “proceed” approved merging PR #63 only after all five checks passed, with publication separate. GitHub confirms merge `c4f4057f7bc3a04bb0f9e5811132539a06908b66` at `2026-10-11T17:15:02Z`. Local `main` was fast-forwarded to `origin/main`; a complete tree comparison against final head `d5af459caa40a758a5542737c1ed2cc71bb462bc` is empty. No application changes were made during release preparation.
+
+All five final-head jobs in workflow run `38153831564`, attempt 2, succeeded: quality/unit, builds, browser parity, root-policy emulator, and canonical family/production-family rules. The canonical job `114517342874` passed **352 browser cases**, with six intentional opt-in recovery skips, followed by **10 family-policy emulator tests**. Quality passed **890 unit tests**. The browser job passed 58 behavior, 32 visual-reference, three package and three public-preview checks. This is final-head CI evidence, not live publication evidence.
+
+The first canonical attempt was mistakenly canceled because GitHub's displayed log looked stale. Its downloaded log showed normal progress, not a proven test failure or stalled runner. Only that canceled job was rerun, unchanged; the replacement reached success. A separate unchanged Lantern diagnostic passed 6/6. Both original and final logs are retained; the canceled attempt is not reported as passing.
+
+Built with Node 24.21.0 and npm 11.19.0, then independently verified and retained under ignored `family-beta-artifacts/releases/c1-c4f4057/`:
+
+| Package | Source | Files | File-tree SHA-256 |
+| --- | --- | --- | --- |
+| Candidate | `c4f4057f7bc3a04bb0f9e5811132539a06908b66` | 145 | `6b02979f1ac0a1a03c1ed143bb2ea819a540419dbc8258e72a279744e3227a99` |
+| Guarded recovery | Stage B `d846981434f61534f584da22b67f2bdebc356cef`, compatibility `c4f4057` | 146 | `726c3e6c61c208a5f72ce0f202d5f3167a8eac0d156ee636a2e39eb71f70260e` |
+
+Fresh merged-build checks pass **22/22 in 3.0 minutes** across desktop and touch emulation: 16 Shadow Strike cases and all six opted-in predecessor/candidate/guarded-recovery cases. Log: `/tmp/ninja-c1-c4f4057-release-check.log`. The preceding exact `d5af459` run passed the same 22 cases; broader prior results retain their recorded source identities.
+
+Read-only pre-merge verification confirmed the canonical Stage B manifest and all 143 public asset hashes against retained source `d846981`, tree `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a`. No C1 package has been uploaded or activated. Remaining gates: separate publication approvals for each grade, exact-artifact activation, served-build verification and bounded live acceptance. No security/authentication change or real-child data access occurred. Physical iMac/iPad audio/touch, full Shadow Strike Spirit Realm warmup, later games and the earlier Context startup-timing limitation remain outside the passing C1 synthetic checks. **No C1 smoke-test handoff or C2 work yet.** Release work remains **GPT-6.1 Sol · High**.
 
 ### C1 PR and release preparation — October 11, 2026
 

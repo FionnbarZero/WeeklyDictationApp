@@ -6,7 +6,7 @@ import { grades, installFamilyFixtures } from './fixtures.ts'
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
 for (const [slug, grade, childId] of grades) {
-  test(`${grade}: embedded Ninja Skills menu shares the same five-game policy`, async ({ page }) => {
+  test(`${grade}: embedded Ninja Skills menu shares the same six-game policy`, async ({ page }) => {
     await page.goto(`/?grade=${slug}`)
     const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
@@ -16,14 +16,11 @@ for (const [slug, grade, childId] of grades) {
       'Context Gap Dash',
       'Sushi Scramble',
       'Shadow Strike Dojo',
+      'Dictation Streak',
     ]) {
       const button = frame.getByRole('button', { name: title, exact: true })
       await expect(button).toBeEnabled()
       await expect(button.locator('..')).toContainText('source targets')
-    }
-    for (const title of ['Dictation Streak']) {
-      const card = frame.getByRole('heading', { name: title, exact: true }).locator('..')
-      await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
     }
     await frame.getByRole('button', { name: 'Sushi Scramble', exact: true }).click()
     await expect(frame.locator('.lg-sushi-bar button').first()).toBeVisible()
@@ -110,8 +107,8 @@ for (const [slug, grade, childId] of grades) {
     await page.evaluate((key) => localStorage.setItem(key, '{}'), brokenKey)
     await launch.click()
     await expect(frame.locator('.lg-memory-card')).toHaveCount(0)
-    await expect(frame.getByRole('button', { name: 'Temporarily unavailable', exact: true })).toHaveCount(5)
-    await expect(frame.getByRole('button', { name: 'Coming soon', exact: true })).toHaveCount(1)
+    await expect(frame.getByRole('button', { name: 'Temporarily unavailable', exact: true })).toHaveCount(6)
+    await expect(frame.getByRole('button', { name: 'Coming soon', exact: true })).toHaveCount(0)
     expect(await page.evaluate((key) => localStorage.getItem(key), brokenKey)).toBe('{}')
     await page.evaluate((key) => localStorage.removeItem(key), brokenKey)
     await frame.getByRole('button', { name: 'Check saved history again', exact: true }).click()
@@ -126,7 +123,7 @@ for (const [slug, grade, childId] of grades) {
       test.setTimeout(120000)
       await page.goto(`/?grade=${slug}`)
       await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
-      await expect(page.getByRole('button', { name: 'Coming soon', exact: true })).toHaveCount(1)
+      await expect(page.getByRole('button', { name: 'Coming soon', exact: true })).toHaveCount(0)
       const launch = page.getByRole('button', { name: title, exact: true })
       await expect(launch.locator('..')).toContainText('source targets')
       await launch.click()

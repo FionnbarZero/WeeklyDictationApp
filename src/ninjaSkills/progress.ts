@@ -44,7 +44,7 @@ export type GameRetirement = {
   retiredAt: string
 }
 
-const supported = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast']
+const supported = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast', 'dictation-streak']
 const id = (value: unknown): value is string => typeof value === 'string' && /^[\w-]{1,160}$/.test(value)
 const iso = (value: unknown): value is string =>
   typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value
@@ -181,7 +181,19 @@ function validatePack(pack: LearningModulePack) {
         'sentenceAfter',
         'tokens',
         'correctTokenIds',
+        'instruction',
+        'pinyinText',
+        'pinyinSteps',
       ])
+      if ('pinyinSteps' in prompt) {
+        if (!Array.isArray(prompt.pinyinSteps)) throw new Error('Invalid prompt Pinyin steps.')
+        for (const step of prompt.pinyinSteps) {
+          keys(step, ['pinyin', 'candidates'])
+          text(step.pinyin)
+          if (!Array.isArray(step.candidates)) throw new Error('Invalid prompt Pinyin choices.')
+          step.candidates.forEach((candidate: unknown) => text(candidate))
+        }
+      }
       const choices = 'tokens' in prompt ? prompt.tokens : 'choices' in prompt ? prompt.choices : []
       for (const choice of choices) keys(choice, ['id', 'label', 'accessibleLabel'])
     }
@@ -288,7 +300,7 @@ export function validateGameCheckpoint(value: GameCheckpoint): GameCheckpoint {
       : value.remainingMs !== null || value.cycle !== 0
   )
     throw new Error('Invalid game timer checkpoint.')
-  if (['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(value.scope.gameId)) {
+  if (['context-gap-dash', 'sentence-scramble', 'target-blast', 'dictation-streak'].includes(value.scope.gameId)) {
     if (
       !same(
         value.cleared,
@@ -357,7 +369,7 @@ export function checkpointGameAnswer(
   )
     throw new Error('This game prompt is no longer available for assessment.')
   if (
-    ['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(value.scope.gameId) &&
+    ['context-gap-dash', 'sentence-scramble', 'target-blast', 'dictation-streak'].includes(value.scope.gameId) &&
     attempt.promptId !== value.prompts[value.cleared.length]?.promptId
   )
     throw new Error('Review the current game prompt first.')
