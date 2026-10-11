@@ -99,7 +99,7 @@ async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()
     Storage.prototype.setItem = function (key, value) {
       if ((window as TestWindow).failScrollSave && key.startsWith('family-beta-acquisition-v1:'))
         throw new DOMException('Synthetic storage full', 'QuotaExceededError')
-      if ((window as TestWindow).failScrollScore && key.startsWith('family-beta-preview-pending-v1:'))
+      if ((window as TestWindow).failScrollScore && key.startsWith('family-beta-preview-results-v1:'))
         throw new DOMException('Synthetic score storage full', 'QuotaExceededError')
       set.call(this, key, value)
     }
@@ -175,6 +175,8 @@ for (const [slug, grade] of grades) {
     })
     await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
     await expect(frame.getByText(/Your reviewed work is preserved/)).toBeVisible()
+    await expect(frame.getByRole('button', { name: 'Retry saving score', exact: true })).toBeVisible()
+    await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toHaveCount(0)
     expect((await checkpoint(page)).envelope).toEqual(saved.envelope)
     await frame.locator('body').evaluate(() => {
       ;(window as TestWindow).failScrollScore = false
@@ -314,6 +316,33 @@ test('Scrolls microphone denial retains the grade timer before fallback comparis
   await frame.getByRole('button', { name: 'Yes', exact: true }).click()
   await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(1)
   expect(await frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.starts)).toBe(0)
+})
+
+test('Scrolls reopening a queued score cannot append answers to its immutable attempt', async ({ page }) => {
+  await setup(page)
+  await page.route('**/betaResults/**', (route) => route.abort('internetdisconnected'))
+  const frame = await open(page)
+  for (const teaching of [false, false, true, false]) await review(frame, teaching)
+  const before = await checkpoint(page)
+  await frame.locator('body').evaluate(() => {
+    ;(window as TestWindow).failScrollScore = true
+  })
+  await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Retry saving score', exact: true })).toBeVisible()
+  await frame.locator('body').evaluate(() => location.reload())
+  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await frame.getByRole('button', { name: 'Whispering Scrolls', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Retry saving score', exact: true })).toBeVisible()
+  await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toHaveCount(0)
+  expect((await checkpoint(page)).envelope).toEqual(before.envelope)
+  await frame.getByRole('button', { name: 'Retry saving score', exact: true }).click()
+  const results = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
+      .map((key) => JSON.parse(localStorage.getItem(key)!)),
+  )
+  expect(results).toHaveLength(1)
+  expect(results[0]).toMatchObject({ id: before.sessionId, activity: 'Whispering Scrolls', attempted: 1, correct: 1 })
 })
 
 test('Scrolls guarded C2 recovery preserves the new lesson and returns to the same prompt', async ({

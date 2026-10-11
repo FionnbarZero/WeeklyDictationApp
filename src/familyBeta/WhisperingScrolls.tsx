@@ -7,7 +7,7 @@ import type { Dataset } from '../domain/contracts.ts'
 import { ReadingResponsePanel } from '../readingPractice/ReadingResponsePanel.tsx'
 import type { Tier2ReadingTarget } from '../tier2/contracts.ts'
 import { familyAcquisitionStore } from './acquisitionRuntime.ts'
-import { savePreviewResult } from './runtime.ts'
+import { pendingResults, savePreviewResult } from './runtime.ts'
 import { WHISPERING_SCROLLS_MODULE, WHISPERING_SCROLLS_TITLE, whisperingScrollsLesson } from './whisperingScrolls.ts'
 import './whisperingScrolls.css'
 
@@ -26,9 +26,14 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
   const [current, setCurrent] = useState(store.current)
   const [error, setError] = useState('')
   const [reviewPending, setReviewPending] = useState(false)
+  // A queued completion is already an immutable score intent. Reopening may
+  // retry its confirmation, but must not append answers to the same attempt.
+  const [finishing, setFinishing] = useState(() =>
+    pendingResults().some((result) => result.id === store.current.sessionId),
+  )
   const flow = current.envelope.flow
   const prompt = flow.prompt
-  const complete = flow.complete || !prompt
+  const complete = flow.complete || !prompt || finishing
   const targets = store.context.targetSet.targets
   const scored = current.assessments.filter((assessment) => assessment.countsTowardWeeklyScore)
   const audio = gradeAudioProfileFor(current.envelope.grade)
@@ -45,6 +50,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
   }
   function finish() {
     if (activityClock.paused || reviewPending) return
+    if (scored.length) setFinishing(true)
     try {
       store.assertActive()
       if (scored.length) {
@@ -96,13 +102,13 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
       <section className="whispering-scroll" aria-label="Reading scroll">
         {complete ? (
           <>
-            <h2>Scrolls complete</h2>
+            <h2>{finishing && !flow.complete ? 'Save today’s reading' : 'Scrolls complete'}</h2>
             <p>
               {scored.filter((assessment) => assessment.correct).length} of {scored.length} scored responses marked
               correct.
             </p>
             <button className="primary-button" type="button" onClick={finish}>
-              Save and finish
+              {finishing ? 'Retry saving score' : 'Save and finish'}
             </button>
           </>
         ) : (
