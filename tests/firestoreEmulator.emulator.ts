@@ -117,20 +117,21 @@ test('family beta results persist across independent clients, retry once, and re
   await assertFails(setDoc(doc(owner, `${path}/score`), { ...result, id: 'score', correct: 10 }))
 })
 
-test('family game progress is private, conditional, immutable when completed, and permanently retired per run', {
+for (const gameId of ['memory-flip', 'target-blast'] as const) {
+test(`family ${gameId} progress is private, conditional, immutable when completed, and permanently retired per run`, {
   skip: candidateFamilyGameRules ? false : 'The separate root hardening policy does not include Stage B game collections.',
 }, async () => {
   const datasets = inspectSnapshot(
     JSON.parse(await readFile(new URL('../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
   ).datasets
   const capability = reinforcementGames(datasets, '2026-10-05', 'Grade 2').find(
-    ({ capability: value }) => value.status === 'ready' && value.pack.moduleId === 'memory-flip',
+    ({ capability: value }) => value.status === 'ready' && value.pack.moduleId === gameId,
   )!.capability
   if (capability.status !== 'ready') throw new Error('Missing emulator game fixture.')
   const checkpoint = startGameCheckpoint(
-    { childId: 'maya', grade: 'Grade 2', week: '2026-10-05', gameId: 'memory-flip' },
+    { childId: 'maya', grade: 'Grade 2', week: '2026-10-05', gameId },
     capability.pack,
-    'game-attempt-one',
+    `game-${gameId}-attempt-one`,
     'game-writer-one',
     '2026-10-09T01:00:00.000Z',
   )
@@ -147,17 +148,17 @@ test('family game progress is private, conditional, immutable when completed, an
   const created = await first.writeCheckpoint(checkpoint, null)
   assert.deepEqual((await second.readCheckpoint(checkpoint.scope))?.value, checkpoint)
 
-  const pair = 'pairs' in checkpoint.pack ? checkpoint.pack.pairs[0] : null
-  if (!pair) throw new Error('Expected memory pair.')
+  const prompts = 'pairs' in checkpoint.pack ? checkpoint.pack.pairs : checkpoint.pack.rounds
+  const pair = prompts[0]
   const reviewed = checkpointGameAnswer(
     checkpoint,
     {
-      gameId: 'memory-flip',
+      gameId,
       promptId: pair.id,
       targetId: pair.targetId,
       correct: true,
       assessmentMode: 'automatic',
-      response: [`${pair.id}:left`, `${pair.id}:right`],
+      response: 'correctChoiceId' in pair ? pair.correctChoiceId : [`${pair.id}:left`, `${pair.id}:right`],
     },
     '2026-10-09T01:01:00.000Z',
   )
@@ -200,21 +201,20 @@ test('family game progress is private, conditional, immutable when completed, an
   let completed = startGameCheckpoint(
     { ...checkpoint.scope, week: '2026-09-28' },
     capability.pack,
-    'game-attempt-two',
+    `game-${gameId}-attempt-two`,
     'game-writer-one',
     '2026-10-09T01:03:00.000Z',
   )
-  if (!('pairs' in completed.pack)) throw new Error('Expected memory pack.')
-  for (const item of completed.pack.pairs) {
+  for (const item of prompts) {
     completed = checkpointGameAnswer(
       completed,
       {
-        gameId: 'memory-flip',
+        gameId,
         promptId: item.id,
         targetId: item.targetId,
         correct: true,
         assessmentMode: 'automatic',
-        response: [`${item.id}:left`, `${item.id}:right`],
+        response: 'correctChoiceId' in item ? item.correctChoiceId : [`${item.id}:left`, `${item.id}:right`],
       },
       '2026-10-09T01:04:00.000Z',
     )
@@ -237,6 +237,7 @@ test('family game progress is private, conditional, immutable when completed, an
   )
   await assertFails(deleteDoc(doc(owner, completionPath)))
 })
+}
 
 test('family result history paginates by completion and stable identity without dropping same-time attempts', async () => {
   const childId = 'history-child'

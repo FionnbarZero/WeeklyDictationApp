@@ -23,7 +23,7 @@ const grades = [
   ['grade2', 'Grade 2'],
   ['grade5', 'Grade 5'],
 ] as const
-const stageB: LearningModuleId[] = [
+const readyReinforcement: LearningModuleId[] = [
   'memory-flip',
   'speed-match',
   'context-gap-dash',
@@ -85,7 +85,7 @@ for (const [slug, grade] of grades) {
   test(`${grade}: both-menu resolver uses each game's policy and earlier relevant weeks`, () => {
     const datasets = source(slug)
     const games = reinforcementGames(datasets, '2026-10-05', grade)
-    for (const id of stageB) {
+    for (const id of readyReinforcement) {
       const pack = ready(id, grade)
       assertGamePack(pack)
       assert.ok(
@@ -234,6 +234,17 @@ test('Lanterns and Shadow Strike never fall back to Tier 1 or Tier 3; Shuriken r
       'unavailable',
     )
   }
+  const singleReadingTarget = {
+    ...cohort,
+    terms: cohort.terms.map((term, index) => ({
+      ...term,
+      tier: index === 0 ? ('tier-2' as const) : ('tier-1' as const),
+    })),
+  }
+  assert.equal(
+    learningModuleCapability('target-blast', singleReadingTarget, NINJA_SKILLS_PROFILES['Grade 5']).status,
+    'unavailable',
+  )
 })
 
 test('Shadow Strike rotates validated Tier 2 subsets without borrowing distractors from other tiers', () => {
@@ -338,7 +349,7 @@ test('Sushi supports longer sentences and interchangeable identical printed toke
 })
 
 test('launch and scoring reject tampered targets, prompt identities, totals, and correctness', () => {
-  for (const id of stageB) {
+  for (const id of readyReinforcement) {
     const pack = ready(id)
     const summary = perfect(pack)
     assert.throws(() => reviewGameSummary(pack, { ...summary, correct: summary.correct + 1 }))
