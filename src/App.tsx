@@ -86,12 +86,14 @@ const LocalRestoreGate = lazy(() =>
 const ProfileModal = lazy(() =>
   import('./profiles/ProfileModal.tsx').then((module) => ({ default: module.ProfileModal })),
 )
-const LazyHomeView = lazy(() => import('./home/HomeViews.tsx').then((module) => ({ default: module.HomeView })))
+// Share the deferred loader without loading any home presentation at startup.
+const loadHomeViews = () => import('./home/HomeViews.tsx')
+const LazyHomeView = lazy(() => loadHomeViews().then((module) => ({ default: module.HomeView })))
 const LazyUnsupportedPracticeView = lazy(() =>
-  import('./home/HomeViews.tsx').then((module) => ({ default: module.UnsupportedPracticeView })),
+  loadHomeViews().then((module) => ({ default: module.UnsupportedPracticeView })),
 )
 const LazyNoDatasetView = lazy(() =>
-  import('./home/HomeViews.tsx').then((module) => ({ default: module.NoDatasetView })),
+  loadHomeViews().then((module) => ({ default: module.NoDatasetView })),
 )
 
 type BaseView = 'home' | 'history'
