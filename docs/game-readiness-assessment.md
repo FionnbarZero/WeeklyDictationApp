@@ -1,5 +1,29 @@
 # EduGame readiness assessment
 
+## C2 publication and live acceptance
+
+C2 Dictation Streak is published for Kindergarten, Grade 2 and Grade 5 from owner-approved merge `d62a427afde15a486c0f5124856ffe88ed6d9360`. Cloudflare Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`, activated version `302d2778-2485-45b1-9cf4-cbf007d56d85` once at `2026-10-11T22:26:03.382Z` (October 11, 3:26 p.m. Pacific). Provider readback confirms 100% traffic. Guarded C1 recovery `be090e22-28ae-4daf-8850-c75f70b30523` is retained inactive; unguarded C1 is not the approved recovery path for devices containing newer saved records.
+
+The merge tree matches final PR head `6b53486`, whose five jobs passed in [quality run 38175843916](https://github.com/FionnbarZero/WeeklyDictationApp/actions/runs/38175843916): 896 unit tests, 372 canonical browser cases with eight intentional opt-in recovery skips, 11 family-policy emulator cases, and the remaining build/browser/policy gates. Fresh merged-source checks pass 896 unit tests, typecheck, build/performance and dependency gates, plus all 28 desktop/tablet Dictation and opted-in recovery cases. The eight CI recovery skips are covered by that local run.
+
+The retained 145-file candidate has tree `66a08e0e892e34d030c1666089d5eb67aac9490142dfd756fdc8ba25871bb7b2` and exactly matches the browser-tested merged package. Its 146-file guarded C1 recovery has tree `e0b78f0809a2124f3b521538d38a9749bb93340d22c3d06c16f41e947a0ef5d5`, previous source `c4f4057` and compatibility source `d62a427`. Both inventories/hashes were independently verified before activation. The exact canonical manifest and all **143 public asset sizes/hashes** match the candidate; the other two entries are hosting/build controls. All six grade × desktop/tablet entry-and-report checks pass.
+
+Pre-publication acceptance against the retained package and real backend, followed by canonical HTTPS acceptance, verifies every grade's mixed tiers, word → contextual sentence → word → word prompt/replay, Pinyin character choices, report pause, reviewed checkpoint recovery in a fresh touch browser, completion/graph recovery and exact per-target detail recovery. Both result/detail queues drain, anonymous reads are denied, and no raw responses are retained. Each successful run removed its disposable parent and 20 test documents. Existing real-family records, batched on-device reports, routes and authentication/security configuration were not changed. Synthetic speech and Chromium touch do not establish physical sound or keyboard acceptance.
+
+The initial pre-publication driver selected `2026-10-05` for Grade 5, which was absent from the selector; the retained Grade 5 snapshot's newest dataset is `2026-09-28`. Its failed log is retained and its six disposable documents were removed. The driver now selects the real **Current teacher lesson** option; corrected pre-publication and canonical live runs pass. Application code, teacher documents and the exact reviewed package were unchanged.
+
+Release packages, provider readbacks, approval/activation receipts, failed/corrected driver logs, live checks and cleanup evidence are retained under ignored `family-beta-artifacts/releases/c2-d62a427/`. The public release marker identifies source `d62a427`; local documentation updates do not change that deployed artifact. Earlier preparation records below are historical.
+
+### Bounded owner Dictation check
+
+Live canonical links, verified build **d62a427**: [Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten), [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2), [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5). Allow **5–8 minutes total**, not a full journey per grade. Choose the matching child profile and open **Ninja Skills → Dictation Streak**.
+
+- **iMac:** Hear the four-part prompt and replay; type a Pinyin syllable, click the correct character and submit a word. Open/close Report a problem, then reload and resume the reviewed checkpoint. Finish one round and check the score.
+- **iPad:** Check sound, keyboard and reliable character-candidate taps. If both devices are available, use the same parent account to recover the saved game or score on the second device.
+- **Reports and updates:** Save issues through Report a problem and email the batch at session end. If the build label is older, finish or pause the activity, close all Dojo tabs and reopen the usual link. Do not clear browser data. Unsubmitted typing is provisional and is not a saved checkpoint.
+
+This is not a request to audit unrelated screens, recording or handwriting. Supporting content remains a validated subset (Kindergarten 5/5, Grade 2 6/16, Grade 5 6/14 for the recorded cohort); other weeks without suitable support stay unavailable. Whispering Scrolls, Stroke Order Slay, full Spirit Realm game integration and the earlier Context startup-timing limitation remain unfinished. Next engineering is **D1 Whispering Scrolls, GPT-6 Astra · Extra High**, with model confirmation before application edits and a separate release review.
+
 ## C2 final formatting gate
 
 Source `313bc17`, quality run `38172199530`, passes all 372 canonical family browser cases with eight intentional opt-in recovery skips, plus all 11 production-intended family-policy emulator cases. Its other four jobs pass, including all 58 general-browser cases and unchanged visual references. The family job fails its subsequent formatting/import-order check: three errors in `dictationProgress.spec.ts` and `offlineTransition.spec.ts`. The failed final job and all five job logs are retained under `family-beta-artifacts/releases/c2-pr64-313bc17/`; this run is not an all-green release gate.

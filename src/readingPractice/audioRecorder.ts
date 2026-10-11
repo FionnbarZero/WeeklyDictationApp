@@ -10,7 +10,7 @@ export const READING_AUDIO_MIME_CANDIDATES = [
 ] as const
 
 export type AudioMediaStream = {
-  getTracks: () => Array<{ stop: () => void }>
+  getTracks: () => Array<{ stop: () => void; enabled?: boolean }>
 }
 
 export type AudioMediaRecorder = {
@@ -21,6 +21,8 @@ export type AudioMediaRecorder = {
   onstop: (() => void) | null
   start: () => void
   stop: () => void
+  pause?: () => void
+  resume?: () => void
 }
 
 export type AudioRecorderDependencies = {
@@ -30,12 +32,15 @@ export type AudioRecorderDependencies = {
   revokeObjectURL: (url: string) => void
   schedule: (callback: () => void, delayMs: number) => ReturnType<typeof setTimeout>
   cancelSchedule: (timer: ReturnType<typeof setTimeout>) => void
+  now?: () => number
 }
 
 export type ActiveAudioRecording = {
   readonly finished: Promise<EphemeralAudioClip>
   stop: () => void
   cancel: () => void
+  pause: () => boolean
+  resume: () => void
 }
 
 export function selectReadingAudioMimeType(isTypeSupported: (mimeType: string) => boolean): string | undefined {
@@ -120,6 +125,10 @@ export async function startEphemeralAudioRecording(
   let discarded = false
   let settled = false
   let timer: ReturnType<typeof setTimeout> | undefined
+  const now = dependencies.now || (() => performance.now())
+  let remaining = maximumDurationMs
+  let startedAt = now()
+  let paused = false
   let resolveFinished!: (clip: EphemeralAudioClip) => void
   let rejectFinished!: (error: ReadingRecorderError) => void
 
@@ -217,6 +226,30 @@ export async function startEphemeralAudioRecording(
     }
   }
 
-  timer = dependencies.schedule(stop, maximumDurationMs)
-  return { finished, stop, cancel }
+  const pause = () => {
+    if (settled || discarded) return true
+    if (paused) return true
+    if (!recorder.pause || !recorder.resume) return false
+    try {
+      recorder.pause()
+      for (const track of stream.getTracks()) track.enabled = false
+      remaining = Math.max(0, remaining - (now() - startedAt))
+      clearLimit()
+      paused = true
+      return true
+    } catch { return false }
+  }
+  const resume = () => {
+    if (!paused || settled || discarded) return
+    try {
+      for (const track of stream.getTracks()) track.enabled = true
+      recorder.resume!()
+      paused = false
+      startedAt = now()
+      timer = dependencies.schedule(stop, remaining)
+    } catch (error) { rejectOnce(error) }
+  }
+  startedAt = now()
+  timer = dependencies.schedule(stop, remaining)
+  return { finished, stop, cancel, pause, resume }
 }

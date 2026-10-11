@@ -27,6 +27,7 @@ import { SkyWriting } from '../skywriting/SkyWriting.tsx'
 const ModuleHost = lazy(() =>
   import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
+const WhisperingScrolls = lazy(() => import('./WhisperingScrolls.tsx').then(module => ({ default: module.WhisperingScrolls })))
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
@@ -34,6 +35,7 @@ type ExtraLaunch =
   | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel | 'mixed'; datasets: Dataset[] }
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
+  | { previewAction: 'scrolls'; channel: 'reading'; datasets: Dataset[] }
 
 const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
 
@@ -141,6 +143,17 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           !(section.id === 'ninja-skills') &&
           !spirit,
       )
+      if (['current-week', 'dojo', 'homework'].includes(section.id)) {
+        const eligible = section.available && scope.length === 1 && channelWords(scope[0], 'reading').length > 0
+        const reason = 'A current Tier 2 reading cohort is needed for this acquisition activity.'
+        activities.push({
+          id: 'dojo-whispering-scrolls', title: 'Whispering Scrolls', eyebrow: 'Tier 2 · Reading acquisition',
+          description: 'Read each scroll, compare your recording with the model, and learn through your grade’s teaching sequence. Progress saves separately.',
+          icon: '📜', action: eligible
+            ? { kind: 'launch', label: 'Whispering Scrolls', launch: { previewAction: 'scrolls', channel: 'reading', datasets: scope } }
+            : { kind: 'disabled', label: 'Coming soon', reason },
+        })
+      }
       if (spirit)
         for (const channel of ['writing', 'reading'] as const) {
           if (!scope.some((d) => channelWords(d, channel).length)) continue
@@ -291,11 +304,14 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
     }),
   }
   const resumeChannel = (window.frameElement as HTMLIFrameElement | null)?.dataset.familyResumeChannel
+  const resumeExperience = (window.frameElement as HTMLIFrameElement | null)?.dataset.familyResumeExperience
   if (resumeChannel === 'writing' || resumeChannel === 'reading') {
     // A retained source is a route to this unfinished Dojo only, never a menu
     // for starting unrelated games/tests from obsolete teacher content.
     model.sections = model.sections.map(section => ({ ...section,
-      activities: section.activities.filter(activity => activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`),
+      activities: section.activities.filter(activity => resumeExperience === 'whispering-scrolls'
+        ? activity.id === 'dojo-whispering-scrolls'
+        : activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`),
     })).filter(section => section.activities.length > 0)
   }
   return (
@@ -346,6 +362,9 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
       {active?.previewAction === 'reenter' && (
         <ReentryPractice datasets={active.datasets} channel={active.channel} onExit={exit} />
       )}
+      {active?.previewAction === 'scrolls' && <Suspense fallback={<p>Opening Whispering Scrolls…</p>}>
+        <WhisperingScrolls datasets={active.datasets} onExit={exit} />
+      </Suspense>}
       {active?.previewAction === 'lily' && (
         <Suspense fallback={<p>Loading game…</p>}>
           <ListeningLilyPads

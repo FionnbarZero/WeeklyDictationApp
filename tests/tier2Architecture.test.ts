@@ -66,6 +66,9 @@ test('the Tier 2 boundary is imported only by approved reading integration surfa
   const approvedConsumers = new Set([
     'src/App.tsx',
     'src/familyBeta/ReentryPractice.tsx',
+    // D1 reuses grade-owned reading strategies; it does not introduce a new engine.
+    'src/familyBeta/WhisperingScrolls.tsx',
+    'src/familyBeta/whisperingScrolls.ts',
     'src/grade2/learningHub.ts',
     'src/home/HomeViews.tsx',
     'src/grade5Lab/readingPractice.ts',

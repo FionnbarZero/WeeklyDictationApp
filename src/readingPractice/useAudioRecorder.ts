@@ -13,15 +13,18 @@ export type AudioRecorderState = {
   readonly clip: EphemeralAudioClip | null
   readonly error: ReadingRecorderError | null
   readonly supported: boolean
+  readonly pauseNotice: string | null
   start: () => Promise<void>
   stop: () => void
   reset: () => void
 }
 
-export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderDependencies): AudioRecorderState {
+export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderDependencies,
+  options?: { maximumDurationMs: number; preserveOnPause: boolean }): AudioRecorderState {
   const [status, setStatus] = useState<ReadingRecordingStatus>('idle')
   const [clip, setClip] = useState<EphemeralAudioClip | null>(null)
   const [error, setError] = useState<ReadingRecorderError | null>(null)
+  const [pauseNotice, setPauseNotice] = useState<string | null>(null)
   const activeRef = useRef<ActiveAudioRecording | null>(null)
   const clipRef = useRef<EphemeralAudioClip | null>(null)
   const generationRef = useRef(0)
@@ -54,14 +57,21 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
   }, [promptId, reset, releaseCurrent])
 
   useEffect(() => activityClock.subscribe(paused => {
-    if (paused && (statusRef.current === 'requesting' || statusRef.current === 'recording')) reset()
-  }), [reset])
+    if (paused && statusRef.current === 'requesting') reset()
+    else if (paused && statusRef.current === 'recording') {
+      if (!options?.preserveOnPause || !activeRef.current?.pause()) {
+        reset()
+        if (options?.preserveOnPause) setPauseNotice('This browser could not pause the microphone safely. Please record this unfinished word again; your reviewed work is saved.')
+      }
+    } else if (!paused && options?.preserveOnPause) activeRef.current?.resume()
+  }), [reset, options?.preserveOnPause])
 
   const start = useCallback(async () => {
     if (activityClock.paused) return
     releaseCurrent()
     setClip(null)
     setError(null)
+    setPauseNotice(null)
     setStatus('requesting')
     statusRef.current = 'requesting'
     const generation = generationRef.current
@@ -69,7 +79,7 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
     permissionRef.current = permission
 
     try {
-      const active = await startEphemeralAudioRecording(dependencies, undefined, permission.signal)
+      const active = await startEphemeralAudioRecording(dependencies, options?.maximumDurationMs, permission.signal)
       if (generation !== generationRef.current) {
         active.cancel()
         return
@@ -108,9 +118,9 @@ export function useAudioRecorder(promptId: string, dependencies?: AudioRecorderD
       setError(normalized)
       setStatus('error')
     }
-  }, [dependencies, releaseCurrent])
+  }, [dependencies, releaseCurrent, options?.maximumDurationMs])
 
   const stop = useCallback(() => activeRef.current?.stop(), [])
 
-  return { status, clip, error, supported, start, stop, reset }
+  return { status, clip, error, supported, pauseNotice, start, stop, reset }
 }
