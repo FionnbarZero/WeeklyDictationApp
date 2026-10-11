@@ -1,5 +1,16 @@
 # EduGame readiness assessment
 
+## C2 PR and release preparation
+
+The owner approved continuing with push and pull request preparation after the repair re-review. [PR #64](https://github.com/FionnbarZero/WeeklyDictationApp/pull/64) targets `main` from `codex/c2-dictation-streak`. The branch includes the reviewed implementation and its documentation; no application changes were made during preparation. GitHub reported no base conflicts when the PR opened. All five required checks must pass on the final PR head before requesting merge approval.
+
+Source `c41fe957c264ec103244fdb293fa0e76cfea69f4` has two retained packages under `family-beta-artifacts/releases/c2-pr64-c41fe95/`, independently rehashed after copying:
+
+- Candidate: 145 files; tree `0e19660ab94a631681a63b063a41eaac108bc4d5baaa6951953c826389241105`.
+- Guarded C1 recovery: 146 files; source `c4f4057`; compatibility source `c41fe95`; tree `bebf45ca25ebc96be81d39e42008d9f32e1a26e645e4360018ad5df6aa2afead`.
+
+The package and recovery logs are retained alongside them. Subsequent documentation commits do not change the reviewed application. Merge remains separately approved; afterward, package the actual merge revision and verify its application tree and recovery contract before seeking grade-publication approvals. C2 remains unpublished and smoke testing premature. The C1 publication record below remains the latest verified live release.
+
 ## C2 repair re-review
 
 The October 11 focused re-review of `eeeac09..72f2aca` found no blocking defects in the audio-request invalidation or discard-regression repairs. Review covered cancellation ownership, optional coaching, genuine current failures, effect cleanup, and lock-delayed retirement. No application code changed during this review.
