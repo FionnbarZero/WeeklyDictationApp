@@ -10,7 +10,7 @@ type Probe = {
   events: string[]
   revoked: number
 }
-type TestWindow = Window & { scrollProbe: Probe; failScrollSave?: boolean }
+type TestWindow = Window & { scrollProbe: Probe; failScrollSave?: boolean; failScrollScore?: boolean }
 
 async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map(), canPause = true) {
   await installFamilyFixtures(page, documents)
@@ -33,7 +33,7 @@ async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()
         return true
       }
       state = 'inactive'
-      mimeType = 'audio/webm'
+      mimeType = 'audio/wav'
       ondataavailable?: (event: { data: Blob }) => void
       onstop?: () => void
       start() {
@@ -42,7 +42,26 @@ async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()
       }
       stop() {
         this.state = 'inactive'
-        this.ondataavailable?.({ data: new Blob(['private-scroll-audio']) })
+        // Valid silent PCM avoids racing native decode errors from fake text
+        // bytes against the controlled playback-completion event below.
+        const bytes = new ArrayBuffer(1644)
+        const view = new DataView(bytes)
+        const tag = (offset: number, text: string) =>
+          [...text].forEach((letter, i) => view.setUint8(offset + i, letter.charCodeAt(0)))
+        tag(0, 'RIFF')
+        view.setUint32(4, 1636, true)
+        tag(8, 'WAVE')
+        tag(12, 'fmt ')
+        view.setUint32(16, 16, true)
+        view.setUint16(20, 1, true)
+        view.setUint16(22, 1, true)
+        view.setUint32(24, 8000, true)
+        view.setUint32(28, 16000, true)
+        view.setUint16(32, 2, true)
+        view.setUint16(34, 16, true)
+        tag(36, 'data')
+        view.setUint32(40, 1600, true)
+        this.ondataavailable?.({ data: new Blob([bytes], { type: this.mimeType }) })
         this.onstop?.()
       }
       pause() {
@@ -80,6 +99,8 @@ async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()
     Storage.prototype.setItem = function (key, value) {
       if ((window as TestWindow).failScrollSave && key.startsWith('family-beta-acquisition-v1:'))
         throw new DOMException('Synthetic storage full', 'QuotaExceededError')
+      if ((window as TestWindow).failScrollScore && key.startsWith('family-beta-preview-pending-v1:'))
+        throw new DOMException('Synthetic score storage full', 'QuotaExceededError')
       set.call(this, key, value)
     }
   }, canPause)
@@ -122,10 +143,11 @@ async function review(frame: FrameLocator, teaching = false, correct = true) {
 for (const [slug, grade] of grades) {
   test(`${grade} Scrolls uses the grade sequence, saves reviewed facts and resumes its own pinned lesson`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await setup(page)
     let frame = await open(page, slug)
     const initial = await checkpoint(page)
+    await page.screenshot({ path: testInfo.outputPath('scrolls-entry.png'), fullPage: true })
     expect(initial.envelope.flow.prompt.kind).toBe('familiar-dt')
     for (const teaching of [false, false, true, false]) await review(frame, teaching)
     await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(4)
@@ -148,12 +170,29 @@ for (const [slug, grade] of grades) {
         .getByRole('button', { name: slug === 'kindergarten' ? 'High-frequency words' : 'Read the Words', exact: true })
         .count(),
     ).toBe(0)
+    await frame.locator('body').evaluate(() => {
+      ;(window as TestWindow).failScrollScore = true
+    })
+    await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+    await expect(frame.getByText(/Your reviewed work is preserved/)).toBeVisible()
+    expect((await checkpoint(page)).envelope).toEqual(saved.envelope)
+    await frame.locator('body').evaluate(() => {
+      ;(window as TestWindow).failScrollScore = false
+    })
     await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
     await expect
       .poll(() =>
         page.evaluate(() => Object.values(localStorage).some((raw) => raw.includes('"activity":"Whispering Scrolls"'))),
       )
       .toBe(true)
+    const results = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
+        .map((key) => JSON.parse(localStorage.getItem(key)!))
+        .filter((result) => result.activity === 'Whispering Scrolls'),
+    )
+    expect(results).toHaveLength(1)
+    expect(results[0]).toMatchObject({ id: saved.sessionId, channel: 'reading', attempted: 1, correct: 1 })
     const stored = await page.evaluate(() => Object.values(localStorage).join('\n'))
     expect(stored).not.toMatch(/private-scroll-audio|blob:|data:audio/)
   })
@@ -174,7 +213,10 @@ test('Scrolls report pause silences the microphone and preserves the remaining r
   expect((await checkpoint(page)).envelope.revision).toBe(0)
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
   await expect.poll(() => frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.enabled)).toBe(true)
-  await expect(frame.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled({ timeout: 7000 })
+  await expect
+    .poll(() => frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.stops), { timeout: 5500 })
+    .toBe(1)
+  await expect(frame.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled()
   const probe = await frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe)
   expect(probe.starts).toBe(1)
   expect(probe.pauses).toBe(1)
@@ -245,6 +287,75 @@ test('Scrolls reviewed progress recovers on a fresh device, while recordings rem
     expect((await checkpoint(second)).sessionId).not.toBe(saved.sessionId)
     expect(JSON.stringify([...documents.values()])).not.toMatch(/private-scroll-audio|blob:|data:audio/)
   } finally {
+    await context.close()
+  }
+})
+
+test('Scrolls microphone denial retains the grade timer before fallback comparison and assessment', async ({
+  page,
+}) => {
+  await setup(page)
+  const frame = await open(page)
+  await frame.locator('body').evaluate(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          throw new DOMException('Denied', 'NotAllowedError')
+        },
+      },
+    })
+  })
+  await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+  await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+  await expect(frame.getByRole('timer')).toContainText('5 seconds')
+  expect(await frame.getByRole('button', { name: 'Yes', exact: true }).count()).toBe(0)
+  await expect(frame.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled({ timeout: 6500 })
+  await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+  await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(1)
+  expect(await frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.starts)).toBe(0)
+})
+
+test('Scrolls guarded C2 recovery preserves the new lesson and returns to the same prompt', async ({
+  browser,
+  request,
+}) => {
+  test.skip(!process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT, 'Requires the verified retained C2 release artifact.')
+  // This case isolates the new module's rollback guard. offlineTransition.spec
+  // separately exercises the real installed-worker replacement lifecycle.
+  const context = await browser.newContext({ serviceWorkers: 'block' })
+  const select = async (version: string) =>
+    expect((await request.post(`/__rehearsal__/version?version=${version}`)).ok()).toBe(true)
+  const page = await context.newPage()
+  const records = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith('family-beta-'))
+          .sort()
+          .map((key) => [key, localStorage.getItem(key)]),
+      ),
+    )
+  try {
+    await setup(page)
+    const frame = await open(page)
+    await review(frame)
+    await page.getByRole('button', { name: 'Progress', exact: true }).click()
+    await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
+    const before = await records()
+    const saved = await checkpoint(page)
+    await select('rollback')
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
+    expect(await records()).toEqual(before)
+    await select('candidate')
+    await page.reload()
+    await page.getByText('Saved lessons', { exact: true }).click()
+    await page.getByRole('button', { name: /Resume saved Whispering Scrolls/ }).click()
+    await open(page, 'grade5', true)
+    expect((await checkpoint(page)).envelope).toEqual(saved.envelope)
+  } finally {
+    await select('candidate')
     await context.close()
   }
 })
