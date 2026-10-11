@@ -1,5 +1,27 @@
 # EduGame readiness assessment
 
+## C2 review repairs
+
+The October 11 review of `c0b2ad9` reproduced a false audio warning after interrupting a prompt with Replay. It also produced a 17/18 browser result: the tablet discard test read a checkpoint immediately after the confirmation click, before the asynchronous retirement finished. A controlled storage-lock diagnostic reproduced that intermediate checkpoint and verified its removal after the lock was released. The original review failure is retained in `family-beta-artifacts/reviews/c2-dictation/failures/review-discard/`.
+
+Application repair `e6e856b` gives each Dictation audio request an identity. Replay, automatic prompts and coaching invalidate older error callbacks; cleanup invalidates outstanding callbacks. A genuine failure of the current word cue still displays the replay action, while optional coaching failures do not block practice. Scoring, saving, synchronization and production policy are unchanged. The discard test now holds the real browser storage lock, verifies that saved work stays intact while retirement waits, then waits for confirmed removal and checks the retirement and new-run identities.
+
+The first new replay regression had a test-helper argument error: it treated the locator element as its failure flag, reporting failure even when instructed to finish successfully. That partial run was interrupted and retained in `failures/replay-driver/`. Test-only commit `72f2aca` corrects the helper; the application repair did not change. Neither initial failed run is counted as passing.
+
+Final candidate **`72f2aca2f9a212b8aa9f902926256d7c61da4909`** passes:
+
+- 896 unit tests; typecheck, lint, format and build/performance checks (549,990/550,000 initial JS bytes and 42,745/60,000 CSS bytes).
+- **34/34** exact-package desktop/tablet cases in 4.5 minutes, without retries or skips: 20 Dictation cases, six cross-grade menu cases, two guarded C1 recovery cases and six Context/Shadow Strike/Sushi save-failure regressions.
+- **12/12 additional repetitions**: interrupted replay/coaching/current audio failure and lock-delayed discard, each repeated three times on desktop and tablet emulation.
+- 11/11 family-policy emulator cases, zero production dependency vulnerabilities and the existing 11-finding firebase-tools-only tooling exception expiring November 4.
+
+The final packages are retained under `family-beta-artifacts/reviews/c2-dictation/repair-72f2aca/` and verified against their full file inventories:
+
+- `candidate`: 145 files; tree `29edd625ab2ff71e0d17de1ebc12f5aabeee9672c0670333154f5cd7117943d8`.
+- `recovery`: 146 files; C1 source `c4f4057`, compatibility source `72f2aca`; tree `468d1a0a09e552976ef0260607746a245ecef06a5e3a6f49b1fd440ce2751ffb`.
+
+Verification logs are retained alongside those packages. Next is an independent **GPT-6 Astra · High** re-review of `eeeac09..72f2aca` and its evidence, followed by separately authorized PR/merge/publication work. No push, merge, deployment, production security/authentication change or real-child-record change occurred. No C2 owner smoke testing yet; physical sound/keyboard behavior and the previously disclosed content/acquisition/Spirit Realm limits remain outstanding. The earlier C2 implementation record below is historical.
+
 ## C2 implementation baseline — October 11, 2026
 
 The owner confirmed GPT-6 Astra · High for C2. Dictation currently has a prototype per-character Pinyin candidate console, native Chinese composition support and spelling/character coaching, but its capability is disabled. `content.ts` selects Tier 1 only, omits contextual audio and selection metadata; `ProductionGameShared.tsx` does not await reviewed saving. Neither family entry path uses the durable adapter for Dictation. The existing resolver already finds each tier's most recent earlier relevant week independently.
