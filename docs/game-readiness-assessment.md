@@ -1,5 +1,15 @@
 # EduGame readiness assessment
 
+## C2 final formatting gate
+
+Source `313bc17`, quality run `38172199530`, passes all 372 canonical family browser cases with eight intentional opt-in recovery skips, plus all 11 production-intended family-policy emulator cases. Its other four jobs pass, including all 58 general-browser cases and unchanged visual references. The family job fails its subsequent formatting/import-order check: three errors in `dictationProgress.spec.ts` and `offlineTransition.spec.ts`. The failed final job and all five job logs are retained under `family-beta-artifacts/releases/c2-pr64-313bc17/`; this run is not an all-green release gate.
+
+The repair applies only mechanical formatting and type-only import ordering in those two test files. Parsed TypeScript syntax trees and type-only import sets match before and after normalization; original files, diagnostic output and the equivalence receipt are retained under `family-beta-artifacts/reviews/c2-dictation/failures/pr64-final-format/`. No application code, assertions, timings, test selection, scoring, persistence or production policy changed. Fresh local checks pass 896 unit tests, typecheck, the complete 45-file family formatting/lint gate and six-file offline gate.
+
+The preceding local follow-up passes 44 game-policy cases, 58 general-browser cases, and 28 final-source Dictation/opted-in recovery cases on desktop/tablet. That recovery run executes all eight cases intentionally skipped by ordinary CI. The exact `313bc17` candidate (145 files, tree `57514a0504feb120f169b7959c5f6beeb7e21eb0b2c812a66eb44838acf7bd90`) and guarded C1 recovery (146 files, tree `8d025d1d215ee90df0f88f130954fc6945c7e3f1892f7dd0ddb2bea804047b24`) are retained alongside those logs and independently hash-verified.
+
+All five checks must pass on the repaired final PR head before owner merge approval. Package the actual approved merge revision afterward; grade publication approvals and exact served-build verification remain separate. C2 is unpublished, no owner smoke test is ready, and C1 `c4f4057` remains the recorded live source.
+
 ## C2 test-gate follow-up
 
 The first final-head CI run (`38170925709`, source `3506f49`) passed quality, builds and the root-policy emulator, but its general browser suite was 57/58 because the unchanged Grade 2 prototype screenshot differed by 635 pixels around text edges. Original images, trace and GitHub log are retained under `family-beta-artifacts/reviews/c2-dictation/failures/pr64-grade2-visual/`. Ten unchanged local repetitions pass; the reference image and comparison tolerance were not changed. The run also exposed obsolete menu assertions that expected Dictation to remain Coming soon, despite its approved activation. A local pre-fix case reproduced the same assertion and retained its trace under `failures/pr64-obsolete-menu/`.

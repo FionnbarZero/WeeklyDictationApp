@@ -225,7 +225,9 @@ for (const title of ['Memory Lanterns', 'Shadow Strike Dojo', 'Dictation Streak'
     if (title === 'Dictation Streak') {
       await expect(frame.locator('input')).toBeVisible()
       const saved = await page.evaluate(() => {
-        const key = Object.keys(localStorage).find(key => key.startsWith('family-beta-games-v1:') && key.includes(':checkpoint:'))!
+        const key = Object.keys(localStorage).find(
+          (key) => key.startsWith('family-beta-games-v1:') && key.includes(':checkpoint:'),
+        )!
         return JSON.parse(localStorage.getItem(key)!)
       })
       shadowCount = saved.pack.rounds.length
@@ -304,7 +306,9 @@ for (const title of ['Memory Lanterns', 'Shadow Strike Dojo', 'Dictation Streak'
     await expect(page.getByRole('button', { name: `Resume ${title}`, exact: true })).toBeVisible()
     await page.getByRole('button', { name: `Resume ${title}`, exact: true }).click()
     if (title === 'Dictation Streak')
-      await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(`Prompt 2 of ${shadowCount}`)
+      await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
+        `Prompt 2 of ${shadowCount}`,
+      )
     else if (title === 'Shadow Strike Dojo')
       await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
         `Training strike 2 of ${shadowCount}`,

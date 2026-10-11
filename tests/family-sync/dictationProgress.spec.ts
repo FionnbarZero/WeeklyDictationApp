@@ -1,6 +1,6 @@
 import { expect, type FrameLocator, type Page, test } from '@playwright/test'
-import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import type { LearningModuleProductionRound } from '../../src/ninjaSkills/contracts.ts'
+import type { GameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import { grades, installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 test('Dictation newest reviewed checkpoint continues across devices without provisional typing', async ({
@@ -101,16 +101,22 @@ test('Dictation preserves provisional candidate selection over report pause and 
     const target = window as Window & { discardLocked?: boolean; releaseDiscard?: () => void }
     void navigator.locks.request('ninja-game-storage-v1:family-synthetic-parent', async () => {
       target.discardLocked = true
-      await new Promise<void>(resolve => { target.releaseDiscard = resolve })
+      await new Promise<void>((resolve) => {
+        target.releaseDiscard = resolve
+      })
     })
   })
-  await expect.poll(() => page.evaluate(() => (window as Window & { discardLocked?: boolean }).discardLocked)).toBe(true)
+  await expect
+    .poll(() => page.evaluate(() => (window as Window & { discardLocked?: boolean }).discardLocked))
+    .toBe(true)
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Discard unfinished Dictation Streak', exact: true }).click()
   expect((await checkpoint(page)).runId).toBe(initial.runId)
   await expect(page.getByRole('button', { name: 'Discard unfinished Dictation Streak', exact: true })).toBeVisible()
   await page.evaluate(() => (window as Window & { releaseDiscard?: () => void }).releaseDiscard?.())
-  await expect.poll(async () => Object.keys(await records(page)).some(key => key.includes(':checkpoint:'))).toBe(false)
+  await expect
+    .poll(async () => Object.keys(await records(page)).some((key) => key.includes(':checkpoint:')))
+    .toBe(false)
   await expect(page.getByRole('button', { name: 'Discard unfinished Dictation Streak', exact: true })).toHaveCount(0)
   const retired = await records(page)
   expect(Object.keys(retired).some((key) => key.includes(':checkpoint:'))).toBe(false)
@@ -124,12 +130,14 @@ test('Dictation preserves provisional candidate selection over report pause and 
   expect((await checkpoint(page)).runId).not.toBe(initial.runId)
 })
 
-test('Dictation interrupted replay and coaching ignore stale failures but show current audio failure', async ({ page }) => {
+test('Dictation interrupted replay and coaching ignore stale failures but show current audio failure', async ({
+  page,
+}) => {
   await setup(page)
   await page.addInitScript(() => {
     const target = window as Window & { pendingSpeech?: SpeechSynthesisUtterance[] }
     target.pendingSpeech = []
-    speechSynthesis.speak = utterance => {
+    speechSynthesis.speak = (utterance) => {
       target.pendingSpeech!.push(utterance)
       utterance.onstart?.({} as SpeechSynthesisEvent)
       // Deliberately keep speech in flight. Instant speech mocks cannot expose
@@ -138,13 +146,16 @@ test('Dictation interrupted replay and coaching ignore stale failures but show c
   })
   const frame = await open(page)
   const initial = await checkpoint(page)
-  const spoken = () => frame.locator('html').evaluate(() =>
-    (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.length)
-  const finish = (fail = false) => frame.locator('html').evaluate((_element, failed) => {
-    const utterance = (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.at(-1)!
-    if (failed) utterance.onerror?.({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent)
-    else utterance.onend?.({} as SpeechSynthesisEvent)
-  }, fail)
+  const spoken = () =>
+    frame
+      .locator('html')
+      .evaluate(() => (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.length)
+  const finish = (fail = false) =>
+    frame.locator('html').evaluate((_element, failed) => {
+      const utterance = (window as Window & { pendingSpeech: SpeechSynthesisUtterance[] }).pendingSpeech.at(-1)!
+      if (failed) utterance.onerror?.({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent)
+      else utterance.onend?.({} as SpeechSynthesisEvent)
+    }, fail)
   await expect.poll(spoken).toBe(1)
   for (const count of [2, 3]) {
     await frame.getByRole('button', { name: 'Replay transmission', exact: true }).click()
