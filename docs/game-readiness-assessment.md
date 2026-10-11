@@ -1,8 +1,54 @@
 # EduGame readiness assessment
 
-## C1 Shadow Strike implementation — local, unpublished
+## C2 implementation baseline — October 11, 2026
 
-The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. The branch is now pushed and PR #63 is open; no C1 merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+The owner confirmed GPT-6 Astra · High for C2. Dictation currently has a prototype per-character Pinyin candidate console, native Chinese composition support and spelling/character coaching, but its capability is disabled. `content.ts` selects Tier 1 only, omits contextual audio and selection metadata; `ProductionGameShared.tsx` does not await reviewed saving. Neither family entry path uses the durable adapter for Dictation. The existing resolver already finds each tier's most recent earlier relevant week independently.
+
+The bounded implementation will add validated mixed-tier subsets and versioned supporting Pinyin/contexts, the complete word → sentence → word → word prompt, and the existing pinned checkpoint/immutable completion adapter. Full-word submissions are reviewed; unfinished typing and existing per-character coaching remain provisional and are not saved as child responses. It will preserve report pause and failed-save retry, verify both menus and cross-device recovery, and leave acquisition games and Spirit Realm rules outside C2. No new database schema or production policy is proposed. C2 remains unpublished; owner smoke testing is premature until its separate review/release gates pass.
+
+## C1 Shadow Strike implementation — published and live-verified
+
+The owner confirmed **GPT-6.1 Sol · High** for C1. The implementation extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or existing records. **The independent C1 release review is complete with no blocking findings**, as recorded below. PR #63 is merged and C1 is published from `c4f4057`; the earlier preparation notes below are historical.
+
+### C1 publication and live acceptance — October 11, 2026
+
+The owner separately approved publication of build `c4f4057` for Kindergarten, Grade 2 and Grade 5. The retained candidate was uploaded without rebuilding and activated once on existing Cloudflare Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`. Provider readback confirms activation at `2026-10-11T17:28:09.029Z` (10:28 a.m. Pacific):
+
+- Active version `221970a1-cfb8-4b5b-818e-a2a00b0eeba5`, 100% traffic, exact source `c4f4057f7bc3a04bb0f9e5811132539a06908b66`, candidate tree `6b02979f1ac0a1a03c1ed143bb2ea819a540419dbc8258e72a279744e3227a99`.
+- Inactive guarded Stage B recovery `240aafb8-6abf-42a6-9c40-6511d8253e40`, tree `726c3e6c61c208a5f72ce0f202d5f3167a8eac0d156ee636a2e39eb71f70260e`. It protects newer saved-game records before the older engine can read credentials or normalize storage. Ordinary unguarded Stage B rollback is not the reviewed recovery path.
+- Canonical manifest equals the retained manifest; all **143 public asset sizes and SHA-256 hashes** match. The two remaining inventory entries are hosting/build controls. Six canonical grade × desktop/tablet checks pass sign-in visibility, preserved grade selection, report open/close and no page errors.
+- The release-specific synthetic driver passes against the retained local candidate with the real backend before activation and against the canonical HTTPS site afterward. In each grade it saves a correct Shadow Strike target, checks report pause, recovers and finishes that pinned round in a fresh signed-in browser, drains both completion/detail queues, and recovers the same graph point and exact per-target completion. All target tiers are Tier 2; no raw responses are retained. Anonymous family reads are denied. Each successful run removed its disposable parent and 20 test documents; no existing real-family account or records were used by the driver.
+
+The initial pre-publication driver failed after Grade 5 because its checkpoint lookup selected an old Grade 5 test checkpoint while testing Grade 2. The correction filters both checkpoints and completions by expected grade. Its initial disposable family and 14 test documents were cleaned up; the original log is retained. The corrected all-grade local and live runs both passed. This was a driver-only correction; the approved app and package did not change.
+
+The existing signed-in in-app browser initially showed cached `e9c5a54` and the expected update-ready notice. Closing only the agent-created Dojo tab (no unfinished activity) and reopening allowed `c4f4057` to activate with the existing profile and confirmed-sync status preserved. No browser data was cleared or user-owned tabs closed. This is separate from fresh-browser hash and acceptance checks, and explains the safe owner update instruction below.
+
+Evidence is retained under ignored `family-beta-artifacts/releases/c1-c4f4057/`, with source logs `/tmp/ninja-c1-{recovery-upload,candidate-upload,activation,active-provider,live-assets,live-acceptance}.log` and `/tmp/ninja-c1-prepublication-acceptance{,-corrected}.log`. The publication changes no domain/routes, security rules or authentication configuration. Existing problem-report controls and batched on-device reports remain unchanged. Real-device audio/touch quality is not proved by synthetic speech or Chromium touch emulation.
+
+#### Bounded owner smoke check
+
+Live canonical links, all verified build **c4f4057**: [Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten), [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2), [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5). Allow **5–8 minutes total**, not one full test per grade. Start with Grade 2 → Ninja Skills → Shadow Strike Dojo. On iMac check audible prompts, smooth movement and reliable mouse clicks; on iPad check audible prompts and reliable touch targets. Make a correct strike, open/close Report a problem, reload and resume, then finish and check the score. If both devices are available, use the same parent account to check the saved game or finished score on the second device. Save issues through Report a problem and email the batch at session end. If the build label is older, close all Dojo tabs and reopen the usual link; do not clear browser data.
+
+Do not test Dictation Streak, Whispering Scrolls, Stroke Order Slay, Shadow Strike Spirit Realm warmup, unrelated acquisition, recording or handwriting for this release. Those later stages remain unfinished; the existing Context startup-timing limitation is not declared fixed. Next engineering stage: **C2 Dictation Streak, GPT-6 Astra · High**, with the same model/reasoning for its separate release review. Confirm the stage's model selection before application code changes.
+
+### C1 merged release candidate — October 11, 2026
+
+The owner's “proceed” approved merging PR #63 only after all five checks passed, with publication separate. GitHub confirms merge `c4f4057f7bc3a04bb0f9e5811132539a06908b66` at `2026-10-11T17:15:02Z`. Local `main` was fast-forwarded to `origin/main`; a complete tree comparison against final head `d5af459caa40a758a5542737c1ed2cc71bb462bc` is empty. No application changes were made during release preparation.
+
+All five final-head jobs in workflow run `38153831564`, attempt 2, succeeded: quality/unit, builds, browser parity, root-policy emulator, and canonical family/production-family rules. The canonical job `114517342874` passed **352 browser cases**, with six intentional opt-in recovery skips, followed by **10 family-policy emulator tests**. Quality passed **890 unit tests**. The browser job passed 58 behavior, 32 visual-reference, three package and three public-preview checks. This is final-head CI evidence, not live publication evidence.
+
+The first canonical attempt was mistakenly canceled because GitHub's displayed log looked stale. Its downloaded log showed normal progress, not a proven test failure or stalled runner. Only that canceled job was rerun, unchanged; the replacement reached success. A separate unchanged Lantern diagnostic passed 6/6. Both original and final logs are retained; the canceled attempt is not reported as passing.
+
+Built with Node 24.21.0 and npm 11.19.0, then independently verified and retained under ignored `family-beta-artifacts/releases/c1-c4f4057/`:
+
+| Package | Source | Files | File-tree SHA-256 |
+| --- | --- | --- | --- |
+| Candidate | `c4f4057f7bc3a04bb0f9e5811132539a06908b66` | 145 | `6b02979f1ac0a1a03c1ed143bb2ea819a540419dbc8258e72a279744e3227a99` |
+| Guarded recovery | Stage B `d846981434f61534f584da22b67f2bdebc356cef`, compatibility `c4f4057` | 146 | `726c3e6c61c208a5f72ce0f202d5f3167a8eac0d156ee636a2e39eb71f70260e` |
+
+Fresh merged-build checks pass **22/22 in 3.0 minutes** across desktop and touch emulation: 16 Shadow Strike cases and all six opted-in predecessor/candidate/guarded-recovery cases. Log: `/tmp/ninja-c1-c4f4057-release-check.log`. The preceding exact `d5af459` run passed the same 22 cases; broader prior results retain their recorded source identities.
+
+Read-only pre-merge verification confirmed the canonical Stage B manifest and all 143 public asset hashes against retained source `d846981`, tree `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a`. No C1 package has been uploaded or activated. Remaining gates: separate publication approvals for each grade, exact-artifact activation, served-build verification and bounded live acceptance. No security/authentication change or real-child data access occurred. Physical iMac/iPad audio/touch, full Shadow Strike Spirit Realm warmup, later games and the earlier Context startup-timing limitation remain outside the passing C1 synthetic checks. **No C1 smoke-test handoff or C2 work yet.** Release work remains **GPT-6.1 Sol · High**.
 
 ### C1 PR and release preparation — October 11, 2026
 
