@@ -1,5 +1,5 @@
 import { activityClock } from '../../../activity/activityLifecycle.ts'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Volume2 } from 'lucide-react'
 import type {
   LearningGameAttempt,
@@ -83,14 +83,24 @@ export function ProductionRunner({
   onExit,
   onAttempt,
   onComplete,
+  savedProgress,
 }: ProductionRunnerProps) {
-  const [index, setIndex] = useState(0)
+  const [index, setIndex] = useState(savedProgress?.cleared.length || 0)
   const [revealed, setRevealed] = useState(false)
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
   const [feedback, setFeedback] = useState<AssessmentFeedback | null>(null)
   const [feedbackResponse, setFeedbackResponse] = useState('')
+  const pending = useRef<LearningGameAttempt | null>(null)
+  const saving = useRef(false)
+  const [holding, setHolding] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const lifetime = useRef(new AbortController())
+  useEffect(() => {
+    if (lifetime.current.signal.aborted) lifetime.current = new AbortController()
+    return () => lifetime.current.abort()
+  }, [])
   const round = rounds[index]
   const valid = validProductionRounds(rounds) && (!validateRound || rounds.every(validateRound))
   const complete = valid && index >= rounds.length
@@ -107,7 +117,7 @@ export function ProductionRunner({
   }, [feedback, incorrectFeedbackDuration])
 
   function assess(correct: boolean, response = correct ? 'correct' : 'practice-again') {
-    if (!round || feedback) return
+    if (!round || feedback || pending.current || activityClock.paused) return
     const attempt: LearningGameAttempt = {
       gameId,
       promptId: round.id,
@@ -116,17 +126,39 @@ export function ProductionRunner({
       response,
       assessmentMode,
     }
-    setAttempts((current) => [...current, attempt])
-    const nextStreak = correct ? streak + 1 : 0
-    setStreak(nextStreak)
-    setBestStreak((current) => Math.max(current, nextStreak))
-    onAttempt?.(attempt)
-    playGameSound(correct ? 'correct' : 'incorrect')
-    setFeedbackResponse(response)
-    setFeedback(correct ? 'correct' : 'incorrect')
+    pending.current = attempt
+    setHolding(true)
+    void saveTurn()
   }
 
-  const summary = summarizeLearningGame(gameId, attempts)
+  async function saveTurn() {
+    const attempt = pending.current
+    const signal = lifetime.current.signal
+    if (!attempt || saving.current || signal.aborted) return
+    saving.current = true
+    setSaveError('')
+    try {
+      await onAttempt?.(attempt)
+      await activityClock.waitUntilRunning(signal)
+      if (signal.aborted) return
+      pending.current = null
+      setAttempts(current => [...current, attempt])
+      const nextStreak = attempt.correct ? streak + 1 : 0
+      setStreak(nextStreak)
+      setBestStreak(current => Math.max(current, nextStreak))
+      playGameSound(attempt.correct ? 'correct' : 'incorrect')
+      setFeedbackResponse(attempt.response as string)
+      setFeedback(attempt.correct ? 'correct' : 'incorrect')
+      setHolding(false)
+    } catch (error) {
+      if (!signal.aborted) setSaveError(`${error instanceof Error ? error.message : 'Saving failed.'} This word has not advanced. Retry saving.`)
+    } finally {
+      saving.current = false
+    }
+  }
+
+  const reviewed = summarizeLearningGame(gameId, attempts)
+  const summary = { ...reviewed, attempted: reviewed.attempted + (savedProgress?.attempted || 0), correct: reviewed.correct + (savedProgress?.correct || 0) }
   return <LearningGameShell gameId={gameId} title={title || defaultTitle} eyebrow={eyebrow || defaultEyebrow} progress={`${Math.min(index + (feedback === 'correct' ? 1 : 0), rounds.length)}/${rounds.length} completed`} onExit={onExit}>
     {!valid ? <LearningGameEmpty onExit={onExit} message={invalidContentMessage} /> : complete ? <LearningGameComplete
       summary={summary}
@@ -138,7 +170,10 @@ export function ProductionRunner({
         <span><strong>{streak}</strong> momentum</span>
         <span><strong>{bestStreak}</strong> best run</span>
       </div>
-      {feedback === 'incorrect' && incorrectFeedback
+      {holding ? <div role={saveError ? 'alert' : 'status'}>
+        <p>{saveError || 'Saving reviewed word…'}</p>
+        {saveError && <button type="button" onClick={() => void saveTurn()}>Retry saving word</button>}
+      </div> : feedback === 'incorrect' && incorrectFeedback
         ? incorrectFeedback(round, feedbackResponse)
         : feedback
           ? <AutoAssessmentFeedback feedback={feedback} lastRound={index + 1 === rounds.length}>{feedbackAnswer?.(round)}</AutoAssessmentFeedback>

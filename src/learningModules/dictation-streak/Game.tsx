@@ -69,6 +69,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     : selectedCharacters.length === Array.from(round.targetText.trim()).length && !pinyinInput.trim()
 
   async function speakWord() {
+    if (activityClock.paused) return
     setAudioError(false)
     try {
       await playAudio(round.audioText || round.targetText)
@@ -141,6 +142,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }
 
   function updateAnswer(nextAnswer: string) {
+    if (activityClock.paused) return
     setAnswer(nextAnswer)
     if (composingRef.current || correctionPinyin || characterCorrection) return
     if (!guidedPinyin) return
@@ -155,11 +157,12 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   function submit(event: FormEvent) {
     event.preventDefault()
     const response = answer.trim()
-    if (!response || !wordComplete) return
+    if (!response || !wordComplete || composingRef.current || activityClock.paused) return
     onAssess(response === round.targetText.trim(), response)
   }
 
   function selectCandidate(candidate: string) {
+    if (activityClock.paused || correctionPinyin || characterCorrection || !showCandidates || !candidates.includes(candidate)) return
     const correctCharacter = Array.from(round.targetText.trim())[currentStepIndex]
     if (correctCharacter && !isCorrectCharacterAt(candidate, round.targetText, currentStepIndex)) {
       setAnswer(selectedCharacters)
@@ -249,8 +252,8 @@ export function DictationStreak({
     playAudio={playAudio}
     gameId="dictation-streak"
     defaultTitle="Dictation Streak"
-    defaultEyebrow="Tier 1 · Writing"
-    completionMessage="Every writing target is complete."
+    defaultEyebrow="Tier 1 + Tier 2 · Dictation"
+    completionMessage="Every selected dictation target is complete."
     validateRound={validDictationRound}
     invalidContentMessage="Each guided Dictation prompt needs one valid Pinyin step per Chinese character. Prompts without Pinyin steps remain available for direct Chinese-keyboard entry."
     feedbackAnswer={(round) => <span className="lg-dictation-answer-key"><b lang="zh-Hans">{round.targetText}</b>{round.pinyinText && <><i aria-hidden="true">·</i><span lang="zh-Latn-pinyin">{round.pinyinText}</span></>}</span>}

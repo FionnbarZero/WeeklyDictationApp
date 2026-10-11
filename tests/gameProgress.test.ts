@@ -41,7 +41,7 @@ const grades = [
   ['grade2', 'Grade 2'],
   ['grade5', 'Grade 5'],
 ] as const
-const games = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast'] as const
+const games = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast', 'dictation-streak'] as const
 function fixture(gameId: (typeof games)[number] = 'memory-flip', grade: (typeof grades)[number] = grades[2]) {
   const datasets = inspectSnapshot(
     JSON.parse(readFileSync(new URL(`../public/curriculum/beta/${grade[0]}.json`, import.meta.url), 'utf8')),
@@ -61,6 +61,10 @@ function fixture(gameId: (typeof games)[number] = 'memory-flip', grade: (typeof 
   return checkpoint
 }
 function answers(pack: LearningModulePack): LearningModuleAttempt[] {
+  if (pack.moduleId === 'dictation-streak') return pack.rounds.map(round => ({
+    gameId: pack.moduleId, promptId: round.id, targetId: round.targetId,
+    correct: true, assessmentMode: 'automatic', response: round.targetText,
+  }))
   if ('pairs' in pack)
     return pack.pairs.map((pair) => ({
       gameId: pack.moduleId,

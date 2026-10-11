@@ -38,6 +38,7 @@ function FamilyGame() {
       game.pack.moduleId === 'sentence-scramble' ||
       game.pack.moduleId === 'context-gap-dash' ||
       game.pack.moduleId === 'target-blast' ||
+      game.pack.moduleId === 'dictation-streak' ||
       game.pack.moduleId === 'speed-match' ? (
         <SavedLearningGame
           pack={game.pack}

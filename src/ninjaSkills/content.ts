@@ -15,8 +15,10 @@ import type {
   LearningModuleTerm,
 } from './contracts.ts'
 import type { NinjaSkillsProfile } from './profiles.ts'
-import { eligibleGameTier, GAME_POLICIES, GAME_POLICY_VERSION, rotatingGameTerms } from './policy.ts'
+import { eligibleGameTier, GAME_POLICY_VERSION, rotatingGameTerms } from './policy.ts'
 import { withSupplementalContent } from './supplemental.ts'
+import { dictationAudioText, withDictationContent } from './dictationContent.ts'
+import { isExactPinyin } from '../learningModules/dictation-streak/runtime/pinyin.ts'
 
 function distinctTerms(terms: readonly LearningModuleTerm[]) {
   const seen = new Set<string>()
@@ -35,12 +37,6 @@ function distinctTermsByText(terms: readonly LearningModuleTerm[]) {
     seen.add(text)
     return true
   })
-}
-
-function scopeNote(included: number, eligible: number) {
-  return eligible > included
-    ? `This practice visit uses the first ${included} of ${eligible} eligible source targets in source order.`
-    : undefined
 }
 
 function selectedScope(id: LearningModuleId, cohort: LearningModuleCohort, included: number, eligible: number, visit: number) {
@@ -177,37 +173,41 @@ function exactContextParts(term: LearningModuleTerm) {
   return { before: sentence.slice(0, first), after: sentence.slice(first + term.text.length) }
 }
 
-function dictationPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfile): LearningModuleCapability {
-  const eligible = cohort.terms.filter((term) => {
+function dictationPack(source: LearningModuleCohort, profile: NinjaSkillsProfile, visit = 0): LearningModuleCapability {
+  const cohort = withDictationContent(source)
+  const eligible = distinctTermsByText(cohort.terms).filter((term) => {
     const characters = Array.from(term.text)
     return (
-      term.tier === 'tier-1' &&
+      eligibleGameTier('dictation-streak', term.tier) &&
+      /^[\u3400-\u9fff]+$/u.test(term.text) &&
+      exactContextParts(term) &&
       term.pinyinSteps?.length === characters.length &&
       term.pinyinSteps.every(
         (step, index) =>
-          step.pinyin.trim() &&
-          step.candidates.length > 0 &&
-          step.candidates.every((candidate) => Array.from(candidate).length === 1) &&
+          isExactPinyin(step.pinyin, step.pinyin) &&
+          step.candidates.length >= 2 && step.candidates.length <= 8 &&
+          new Set(step.candidates).size === step.candidates.length &&
+          step.candidates.every((candidate) => /^[\u3400-\u9fff]$/u.test(candidate)) &&
           step.candidates.includes(characters[index]),
       )
     )
   })
-  const terms = eligible.slice(0, profile.maximumItems['dictation-streak'])
+  const terms = rotatingGameTerms('dictation-streak', eligible, profile.maximumItems['dictation-streak'], visit)
   if (!terms.length)
     return unavailable(
       'dictation-streak',
-      'This cohort does not yet include reviewed Pinyin steps for Dictation Streak.',
+      'Coming soon: Dictation Streak needs validated Pinyin choices and context sentences from both tiers.',
     )
   return ready({
     moduleId: 'dictation-streak',
     title: learningModuleCatalogEntry('dictation-streak').title,
     cohort,
-    ...(scopeNote(terms.length, eligible.length) ? { scopeNote: scopeNote(terms.length, eligible.length) } : {}),
+    ...selectedScope('dictation-streak', cohort, terms.length, eligible.length, visit),
     rounds: terms.map((term) => ({
       id: `dictation:${term.occurrenceId}`,
       targetId: term.occurrenceId,
       targetText: term.text,
-      audioText: term.text,
+      audioText: dictationAudioText(term.text, term.context!.sentence.trim()),
       instruction: 'Listen, type each Pinyin syllable, then choose the correct character.',
       ...(term.pinyinText ? { pinyinText: term.pinyinText } : {}),
       pinyinSteps: term.pinyinSteps!,
@@ -388,8 +388,6 @@ export function learningModuleCapabilities(
 export function learningModuleCapability(
   id: LearningModuleId, cohort: LearningModuleCohort | null, profile: NinjaSkillsProfile, visit = 0,
 ): LearningModuleCapability {
-  if (GAME_POLICIES[id].implementation === 'later-stage')
-    return unavailable(id, 'Coming soon: this game’s teaching, audio and interaction rules are still being completed.')
   if (!cohort || !cohort.provenance.length || cohort.grade !== profile.grade)
     return unavailable(id, `Validated ${profile.grade} source targets are needed for this game.`)
   const builders = {

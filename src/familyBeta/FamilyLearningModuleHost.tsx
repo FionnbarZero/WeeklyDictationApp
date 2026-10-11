@@ -12,6 +12,7 @@ export function FamilyLearningModuleHost(
     props.pack.moduleId === 'sentence-scramble' ||
     props.pack.moduleId === 'context-gap-dash' ||
     props.pack.moduleId === 'target-blast' ||
+    props.pack.moduleId === 'dictation-streak' ||
     props.pack.moduleId === 'speed-match' ? (
     <SavedLearningGame
       pack={props.pack}

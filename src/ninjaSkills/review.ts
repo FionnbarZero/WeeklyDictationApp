@@ -22,6 +22,14 @@ export function assertGamePack(pack: LearningModulePack) {
 }
 
 function reviewedCorrect(pack: LearningModulePack, attempt: LearningModuleAttempt) {
+  if (pack.moduleId === 'dictation-streak') {
+    const round = pack.rounds.find(round => round.id === attempt.promptId && round.targetId === attempt.targetId)
+    if (!round || typeof attempt.response !== 'string' ||
+        !/^[\u3400-\u9fff]+$/u.test(attempt.response) ||
+        Array.from(attempt.response).length !== Array.from(round.targetText).length)
+      throw new Error('Submit a complete Chinese word for this Dictation prompt.')
+    return attempt.response === round.targetText
+  }
   if ('pairs' in pack) {
     if (!Array.isArray(attempt.response) || attempt.response.length !== 2 || new Set(attempt.response).size !== 2)
       throw new Error('Invalid matching response.')

@@ -6,7 +6,7 @@ import { grades, installFamilyFixtures } from './fixtures.ts'
 test.beforeEach(async ({ page }) => installFamilyFixtures(page))
 
 for (const [slug, grade, childId] of grades) {
-  test(`${grade}: embedded Ninja Skills menu shares the same five-game policy`, async ({ page }) => {
+  test(`${grade}: embedded Ninja Skills menu shares the same six-game policy`, async ({ page }) => {
     await page.goto(`/?grade=${slug}`)
     const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
@@ -16,14 +16,11 @@ for (const [slug, grade, childId] of grades) {
       'Context Gap Dash',
       'Sushi Scramble',
       'Shadow Strike Dojo',
+      'Dictation Streak',
     ]) {
       const button = frame.getByRole('button', { name: title, exact: true })
       await expect(button).toBeEnabled()
       await expect(button.locator('..')).toContainText('source targets')
-    }
-    for (const title of ['Dictation Streak']) {
-      const card = frame.getByRole('heading', { name: title, exact: true }).locator('..')
-      await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
     }
     await frame.getByRole('button', { name: 'Sushi Scramble', exact: true }).click()
     await expect(frame.locator('.lg-sushi-bar button').first()).toBeVisible()

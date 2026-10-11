@@ -29,6 +29,7 @@ const readyReinforcement: LearningModuleId[] = [
   'context-gap-dash',
   'sentence-scramble',
   'target-blast',
+  'dictation-streak',
 ]
 function source(slug: string) {
   return inspectSnapshot(
@@ -77,14 +78,16 @@ function perfect(pack: LearningModulePack): LearningModuleSummary {
               assessmentMode: 'automatic' as const,
               response: round.correctTokenIds,
             }))
-          : []
+          : pack.moduleId === 'dictation-streak'
+            ? pack.rounds.map(round => ({ gameId: pack.moduleId, promptId: round.id, targetId: round.targetId,
+                correct: true, assessmentMode: 'automatic' as const, response: round.targetText }))
+            : []
   return { gameId: pack.moduleId, correct: attempts.length, attempted: attempts.length, attempts }
 }
 
 for (const [slug, grade] of grades) {
   test(`${grade}: both-menu resolver uses each game's policy and earlier relevant weeks`, () => {
     const datasets = source(slug)
-    const games = reinforcementGames(datasets, '2026-10-05', grade)
     for (const id of readyReinforcement) {
       const pack = ready(id, grade)
       assertGamePack(pack)
@@ -108,10 +111,6 @@ for (const [slug, grade] of grades) {
         ),
       )
       assert.ok(pack.scopeNote?.includes('source targets'))
-    }
-    for (const id of ['dictation-streak']) {
-      const game = games.find(({ capability }) => capability.status === 'unavailable' && capability.moduleId === id)
-      assert.ok(game, `${id} remains Coming soon until its separate stage`)
     }
     if (grade === 'Grade 2') {
       const pack = ready('speed-match', grade)
