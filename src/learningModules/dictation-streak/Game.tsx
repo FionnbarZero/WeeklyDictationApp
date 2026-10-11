@@ -101,11 +101,10 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }
 
   function focusAtEnd() {
-    activityClock.requestAnimationFrame(() => {
-      const input = inputRef.current
-      input?.focus()
-      input?.setSelectionRange(input.value.length, input.value.length)
-    })
+    // A deferred caret reset can run after the next input/IME edit has selected
+    // text, duplicating the previous character. Focus during the user gesture;
+    // let the controlled value update place the caret without a later callback.
+    inputRef.current?.focus({ preventScroll: true })
   }
 
   function restartTrial() {
