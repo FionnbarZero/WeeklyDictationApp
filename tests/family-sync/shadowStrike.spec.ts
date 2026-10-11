@@ -89,6 +89,9 @@ for (const [slug, grade, childId] of grades) {
     await expect(frame.getByRole('heading', { name: 'Master rank reached!', exact: true })).toBeVisible()
     await expect(frame.locator('.lg-complete-stats')).toContainText('1 learning retries')
     await frame.getByRole('button', { name: 'Celebrate and return', exact: true }).click()
+    // The shared write lock commits asynchronously; clicking alone is not
+    // evidence that the score or navigation callback has been saved.
+    await expect(frame.getByRole('button', { name: 'Celebrate and return', exact: true })).toHaveCount(0)
     const savedRecords = await records(page)
     const scores = Object.entries(savedRecords)
       .filter(([key]) => key.startsWith('family-beta-preview-results-v1:'))
@@ -290,6 +293,10 @@ test('Shadow Strike journey movement uses a transform without per-frame layout',
   await test
     .info()
     .attach('movement-metrics', { body: JSON.stringify({ layoutCount }), contentType: 'application/json' })
+  await frame
+    .locator('.lg-training-field')
+    .evaluate((node) => (node as HTMLElement).style.setProperty('--training-ninja-x', '6%'))
+  await page.waitForTimeout(1000)
   // Capture separately from a tapping journey: full-page capture can reset
   // touch emulation in this Chromium version.
   await page.screenshot({ path: test.info().outputPath('shadow-strike.png'), fullPage: true })
