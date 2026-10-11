@@ -1,5 +1,13 @@
 # EduGame readiness assessment
 
+## C2 test-gate follow-up
+
+The first final-head CI run (`38170925709`, source `3506f49`) passed quality, builds and the root-policy emulator, but its general browser suite was 57/58 because the unchanged Grade 2 prototype screenshot differed by 635 pixels around text edges. Original images, trace and GitHub log are retained under `family-beta-artifacts/reviews/c2-dictation/failures/pr64-grade2-visual/`. Ten unchanged local repetitions pass; the reference image and comparison tolerance were not changed. The run also exposed obsolete menu assertions that expected Dictation to remain Coming soon, despite its approved activation. A local pre-fix case reproduced the same assertion and retained its trace under `failures/pr64-obsolete-menu/`.
+
+A full local general-browser run additionally exposed an environment-dependent microphone fixture: the Kindergarten fallback test waited for denial without simulating it, and its trace remained at “Waiting for microphone permission.” That 57/58 run and trace are retained under `failures/pr64-microphone-fixture/`; they are not counted as passing.
+
+Test-only `8d096f6` asserts six temporarily unavailable games when history is unreadable and zero Coming soon game buttons in the validated fixture. It preserves every history-preservation and game-result assertion. The microphone test now explicitly rejects its synthetic permission request and checks all nine collection positions before the same final-review assertions. Both changed files pass formatting/lint checks; all 58 general browser cases pass in 2.2 minutes. The full 44-case game-policy verification is running locally, and all five checks must pass on the new final PR head. No application, scoring, persistence or production policy code changed. Original failed/superseded runs are not release evidence; no merge or publication occurred.
+
 ## C2 PR and release preparation
 
 The owner approved continuing with push and pull request preparation after the repair re-review. [PR #64](https://github.com/FionnbarZero/WeeklyDictationApp/pull/64) targets `main` from `codex/c2-dictation-streak`. The branch includes the reviewed implementation and its documentation; no application changes were made during preparation. GitHub reported no base conflicts when the PR opened. All five required checks must pass on the final PR head before requesting merge approval.
