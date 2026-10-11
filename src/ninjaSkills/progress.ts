@@ -44,7 +44,7 @@ export type GameRetirement = {
   retiredAt: string
 }
 
-const supported = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble']
+const supported = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast']
 const id = (value: unknown): value is string => typeof value === 'string' && /^[\w-]{1,160}$/.test(value)
 const iso = (value: unknown): value is string =>
   typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value
@@ -288,7 +288,7 @@ export function validateGameCheckpoint(value: GameCheckpoint): GameCheckpoint {
       : value.remainingMs !== null || value.cycle !== 0
   )
     throw new Error('Invalid game timer checkpoint.')
-  if (value.scope.gameId === 'context-gap-dash' || value.scope.gameId === 'sentence-scramble') {
+  if (['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(value.scope.gameId)) {
     if (
       !same(
         value.cleared,
@@ -357,7 +357,7 @@ export function checkpointGameAnswer(
   )
     throw new Error('This game prompt is no longer available for assessment.')
   if (
-    (value.scope.gameId === 'context-gap-dash' || value.scope.gameId === 'sentence-scramble') &&
+    ['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(value.scope.gameId) &&
     attempt.promptId !== value.prompts[value.cleared.length]?.promptId
   )
     throw new Error('Review the current game prompt first.')

@@ -41,7 +41,7 @@ const grades = [
   ['grade2', 'Grade 2'],
   ['grade5', 'Grade 5'],
 ] as const
-const games = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble'] as const
+const games = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble', 'target-blast'] as const
 function fixture(gameId: (typeof games)[number] = 'memory-flip', grade: (typeof grades)[number] = grades[2]) {
   const datasets = inspectSnapshot(
     JSON.parse(readFileSync(new URL(`../public/curriculum/beta/${grade[0]}.json`, import.meta.url), 'utf8')),
@@ -71,7 +71,7 @@ function answers(pack: LearningModulePack): LearningModuleAttempt[] {
       response:
         pack.moduleId === 'memory-flip' ? [`${pair.id}:left`, `${pair.id}:right`] : [pair.left.id, pair.right.id],
     }))
-  if (pack.moduleId === 'context-gap-dash')
+  if (pack.moduleId === 'context-gap-dash' || pack.moduleId === 'target-blast')
     return pack.rounds.map((round) => ({
       gameId: pack.moduleId,
       promptId: round.id,
@@ -95,6 +95,33 @@ const finish = (value: GameCheckpoint) =>
   answers(value.pack)
     .filter((answer) => !value.cleared.includes(answer.promptId))
     .reduce((checkpoint, answer) => checkpointGameAnswer(checkpoint, answer, later), value)
+
+test('Shadow Strike retries the same target after errors and rejects skipped or dishonest reviews', () => {
+  const start = fixture('target-blast')
+  assert.equal(start.pack.moduleId, 'target-blast')
+  if (start.pack.moduleId !== 'target-blast') throw new Error('Wrong fixture.')
+  const turns = answers(start.pack)
+  const round = start.pack.rounds[0]
+  const wrong = {
+    ...turns[0],
+    correct: false,
+    response: round.choices.find((choice) => choice.id !== round.correctChoiceId)!.id,
+  }
+  assert.throws(() => checkpointGameAnswer(start, turns[1], later), /current game prompt/)
+  assert.throws(() => checkpointGameAnswer(start, { ...wrong, correct: true }, later))
+  const retried = checkpointGameAnswer(start, wrong, later)
+  assert.equal(retried.prompts[0].attempted, 1)
+  assert.equal(retried.prompts[0].correct, 0)
+  assert.deepEqual(retried.cleared, [])
+  assert.throws(() => checkpointGameAnswer(retried, turns[1], later), /current game prompt/)
+  assert.throws(() => validateGameCheckpoint({ ...retried, cleared: [round.id] }))
+  const final = finish(checkpointGameAnswer(retried, turns[0], later))
+  const completed = completeGameCheckpoint(final, later)
+  assert.equal(completed.result.correct, turns.length)
+  assert.equal(completed.result.attempted, turns.length + 1)
+  assert.ok(completed.targets.every((target) => target.tier === 'tier-2'))
+  assert.equal(JSON.stringify(completed).includes('"response"'), false)
+})
 function memory() {
   const values = new Map<string, string>()
   const storage = {

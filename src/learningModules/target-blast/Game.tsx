@@ -14,12 +14,26 @@ import { playGameSound } from './runtime/gameFeel'
 type TargetBlastProps = LearningGameBaseProps & {
   readonly rounds: readonly SelectionGameRound[]
   readonly playAudio?: PlayLearningAudio
+  readonly savedProgress?: { readonly cleared: readonly string[]; readonly attempted: number; readonly correct: number }
 }
 
-type TargetBlastPhase = 'idle' | 'throwing' | 'impact' | 'teacher-entering' | 'bonk' | 'feedback' | 'resetting'
+type TargetBlastPhase =
+  | 'idle'
+  | 'saving'
+  | 'throwing'
+  | 'impact'
+  | 'teacher-entering'
+  | 'bonk'
+  | 'feedback'
+  | 'resetting'
 type TargetBlastAudioState = 'waiting' | 'playing' | 'played' | 'error'
 
-function TargetBlastPlayfield({ round, selectedChoiceId, phase, onChoose }: {
+function TargetBlastPlayfield({
+  round,
+  selectedChoiceId,
+  phase,
+  onChoose,
+}: {
   readonly round: SelectionGameRound
   readonly selectedChoiceId: string | null
   readonly phase: TargetBlastPhase
@@ -55,47 +69,104 @@ function TargetBlastPlayfield({ round, selectedChoiceId, phase, onChoose }: {
     return () => window.removeEventListener('resize', aimProjectile)
   }, [round.id, selectedChoiceId])
 
-  return <div ref={playfieldRef} className={`lg-active-playfield lg-target-blast-playfield phase-${phase}${selectedChoiceId ? ` lane-${Math.max(0, selectedIndex)} ${correct ? 'is-success' : 'is-miss'}` : ''}`} style={stageStyle}>
-    <div className="lg-dojo-depth" aria-hidden="true">
-      <span className="lg-dojo-mountains" />
-      <span className="lg-dojo-wall" />
-      <span className="lg-dojo-floor" />
-      <span className="lg-dojo-lantern is-left"><i /></span>
-      <span className="lg-dojo-lantern is-right"><i /></span>
+  const reviewed = Boolean(selectedChoiceId) && phase !== 'saving'
+  return (
+    <div
+      ref={playfieldRef}
+      className={`lg-active-playfield lg-target-blast-playfield phase-${phase}${reviewed ? ` lane-${Math.max(0, selectedIndex)} ${correct ? 'is-success' : 'is-miss'}` : ''}`}
+      style={stageStyle}
+    >
+      <div className="lg-dojo-depth" aria-hidden="true">
+        <span className="lg-dojo-mountains" />
+        <span className="lg-dojo-wall" />
+        <span className="lg-dojo-floor" />
+        <span className="lg-dojo-lantern is-left">
+          <i />
+        </span>
+        <span className="lg-dojo-lantern is-right">
+          <i />
+        </span>
+      </div>
+      <div className="lg-strike-ninja" aria-hidden="true">
+        <span />
+        <i />
+        <b />
+        <em />
+        <small className="lg-ninja-sash" />
+        <u className="lg-ninja-arm-wrap" />
+      </div>
+      <div className="lg-shuriken-shot" aria-hidden="true">
+        <i />
+      </div>
+      <div className="lg-dojo-scenery" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
+      {!correct && ['teacher-entering', 'bonk', 'feedback'].includes(phase) && (
+        <div className="lg-ninja-teacher" aria-hidden="true">
+          <span />
+          <i />
+          <b />
+          <em />
+          <small className="lg-sensei-beard" />
+          <u className="lg-sensei-sleeve" />
+          <strong>Bu Hao!!</strong>
+        </div>
+      )}
+      {!correct && phase === 'bonk' && (
+        <div className="lg-bonk-impact" aria-hidden="true">
+          <i />
+          <b />
+          <span>WHACK!</span>
+        </div>
+      )}
+      <div className="lg-world-choice-grid" role="group" aria-label="Answer choices">
+        {round.choices.map((choice, choiceIndex) => {
+          const selected = selectedChoiceId === choice.id
+          const answer = reviewed && round.correctChoiceId === choice.id && (correct || phase === 'feedback')
+          const choiceStyle = { '--choice-index': choiceIndex } as CSSProperties
+          return (
+            <button
+              key={choice.id}
+              type="button"
+              style={choiceStyle}
+              data-choice-id={choice.id}
+              className={`lg-world-choice${reviewed && selected ? (choice.id === round.correctChoiceId ? ' is-correct' : ' is-incorrect') : ''}${answer ? ' is-answer' : ''}`}
+              disabled={phase !== 'idle'}
+              aria-label={choice.accessibleLabel || choice.label}
+              onClick={() => onChoose(choice.id)}
+            >
+              <span className="lg-dojo-target-face">{choice.label}</span>
+              <i aria-hidden="true" />
+              <b className="lg-dojo-burst" aria-hidden="true">
+                {Array.from({ length: 8 }, (_, index) => (
+                  <i key={index} />
+                ))}
+              </b>
+            </button>
+          )
+        })}
+      </div>
+      {selectedChoiceId && phase === 'impact' && (
+        <div className="lg-impact-callout is-correct" role="status">
+          <strong>SHADOW STRIKE!</strong>
+          <span>Correct answer</span>
+        </div>
+      )}
     </div>
-    <div className="lg-strike-ninja" aria-hidden="true"><span /><i /><b /><em /><small className="lg-ninja-sash" /><u className="lg-ninja-arm-wrap" /></div>
-    <div className="lg-shuriken-shot" aria-hidden="true"><i /></div>
-    <div className="lg-dojo-scenery" aria-hidden="true"><i /><i /><i /><i /></div>
-    {!correct && ['teacher-entering', 'bonk', 'feedback'].includes(phase) && <div className="lg-ninja-teacher" aria-hidden="true"><span /><i /><b /><em /><small className="lg-sensei-beard" /><u className="lg-sensei-sleeve" /><strong>Bu Hao!!</strong></div>}
-    {!correct && phase === 'bonk' && <div className="lg-bonk-impact" aria-hidden="true"><i /><b /><span>WHACK!</span></div>}
-    <div className="lg-world-choice-grid" role="group" aria-label="Answer choices">
-      {round.choices.map((choice, choiceIndex) => {
-        const selected = selectedChoiceId === choice.id
-        const answer = Boolean(selectedChoiceId) && round.correctChoiceId === choice.id && (correct || phase === 'feedback')
-        const choiceStyle = { '--choice-index': choiceIndex } as CSSProperties
-        return <button
-          key={choice.id}
-          type="button"
-          style={choiceStyle}
-          data-choice-id={choice.id}
-          className={`lg-world-choice${selected ? choice.id === round.correctChoiceId ? ' is-correct' : ' is-incorrect' : ''}${answer ? ' is-answer' : ''}`}
-          disabled={Boolean(selectedChoiceId)}
-          aria-label={choice.accessibleLabel || choice.label}
-          onClick={() => onChoose(choice.id)}
-        ><span className="lg-dojo-target-face">{choice.label}</span><i aria-hidden="true" />
-          <b className="lg-dojo-burst" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <i key={index} />)}</b>
-        </button>
-      })}
-    </div>
-    {selectedChoiceId && phase === 'impact' && <div className="lg-impact-callout is-correct" role="status">
-      <strong>SHADOW STRIKE!</strong>
-      <span>Correct answer</span>
-    </div>}
-  </div>
+  )
 }
 
 function TargetBlastJourneyActor({ className = '' }: { readonly className?: string }) {
-  return <span className={`lg-journey-actor is-target-blast${className ? ` ${className}` : ''}`} aria-hidden="true"><i /><b /><em /></span>
+  return (
+    <span className={`lg-journey-actor is-target-blast${className ? ` ${className}` : ''}`} aria-hidden="true">
+      <i />
+      <b />
+      <em />
+    </span>
+  )
 }
 
 function TargetBlastJourney({ completed, total }: { readonly completed: number; readonly total: number }) {
@@ -105,59 +176,110 @@ function TargetBlastJourney({ completed, total }: { readonly completed: number; 
     '--training-ninja-x': `${6 + progress * 88}%`,
     '--training-field-scroll': `${progress * -58}%`,
   } as CSSProperties
-  return <section className="lg-journey-map is-target-blast lg-training-field" style={journeyStyle} aria-label={`${completed} of ${total} training posts reached`}>
-    <div className="lg-journey-copy">
-      <span>Training field</span>
-      <strong>{completed === total ? 'Master dojo reached' : `Training post ${completed} of ${total}`}</strong>
-      <span>Master dojo</span>
-    </div>
-    <div className="lg-training-viewport" aria-hidden="true">
-      <div className="lg-training-world">
-        <span className="lg-training-moon" />
-        <span className="lg-training-mountains" />
-        <span className="lg-training-bamboo"><i /><i /><i /><i /><i /></span>
-        <span className="lg-training-path" />
-        <span className="lg-training-posts">
-          {Array.from({ length: total + 1 }, (_, checkpoint) => <i
-            key={checkpoint}
-            className={checkpoint <= completed ? 'is-cleared' : ''}
-            style={{ '--training-post-x': `${6 + (checkpoint / Math.max(1, total)) * 88}%` } as CSSProperties}
-          ><b>{checkpoint}</b></i>)}
-        </span>
-        <TargetBlastJourneyActor className="lg-training-ninja" />
-        <span className="lg-training-dojo"><i /><b /><em /></span>
+  return (
+    <section
+      className="lg-journey-map is-target-blast lg-training-field"
+      style={journeyStyle}
+      aria-label={`${completed} of ${total} training posts reached`}
+    >
+      <div className="lg-journey-copy">
+        <span>Training field</span>
+        <strong>{completed === total ? 'Master dojo reached' : `Training post ${completed} of ${total}`}</strong>
+        <span>Master dojo</span>
       </div>
-    </div>
-  </section>
+      <div className="lg-training-viewport" aria-hidden="true">
+        <div className="lg-training-world">
+          <span className="lg-training-moon" />
+          <span className="lg-training-mountains" />
+          <span className="lg-training-bamboo">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="lg-training-path" />
+          <span className="lg-training-posts">
+            {Array.from({ length: total + 1 }, (_, checkpoint) => (
+              <i
+                key={checkpoint}
+                className={checkpoint <= completed ? 'is-cleared' : ''}
+                style={{ '--training-post-x': `${6 + (checkpoint / Math.max(1, total)) * 88}%` } as CSSProperties}
+              >
+                <b>{checkpoint}</b>
+              </i>
+            ))}
+          </span>
+          <span className="lg-training-ninja-track">
+            <TargetBlastJourneyActor className="lg-training-ninja" />
+          </span>
+          <span className="lg-training-dojo">
+            <i />
+            <b />
+            <em />
+          </span>
+        </div>
+      </div>
+    </section>
+  )
 }
 
-function TargetBlastComplete({ summary, total, onDone }: {
+function TargetBlastComplete({
+  summary,
+  total,
+  onDone,
+}: {
   readonly summary: ReturnType<typeof summarizeLearningGame>
   readonly total: number
   readonly onDone: () => void
 }) {
   const accuracy = summary.attempted ? Math.round((summary.correct / summary.attempted) * 100) : 0
-  return <section className="lg-card lg-journey-complete is-target-blast" aria-live="polite">
-    <div className="lg-finale-sky" aria-hidden="true">
-      {Array.from({ length: 18 }, (_, index) => <i key={index} />)}
-    </div>
-    <div className="lg-finale-stage" aria-hidden="true">
-      <TargetBlastJourneyActor />
-      <span className="lg-finale-destination"><i /><b /><em /></span>
-      <span className="lg-finale-rays"><i /><i /><i /><i /><i /><i /></span>
-    </div>
-    <div className="lg-finale-copy">
-      <span className="lg-finale-trophy"><Trophy size={28} /></span>
-      <p className="lg-kicker">{total} checkpoints cleared</p>
-      <h2>Master rank reached!</h2>
-      <p>You completed every shadow-strike target. Your character made it safely and the whole route is now glowing.</p>
-      <div className="lg-complete-stats">
-        <span><strong>{accuracy}%</strong> attempt accuracy</span>
-        <span><strong>{summary.attempted - summary.correct}</strong> learning retries</span>
+  return (
+    <section className="lg-card lg-journey-complete is-target-blast" aria-live="polite">
+      <div className="lg-finale-sky" aria-hidden="true">
+        {Array.from({ length: 18 }, (_, index) => (
+          <i key={index} />
+        ))}
       </div>
-      <button className="lg-primary" type="button" onClick={onDone}>Celebrate and return</button>
-    </div>
-  </section>
+      <div className="lg-finale-stage" aria-hidden="true">
+        <TargetBlastJourneyActor />
+        <span className="lg-finale-destination">
+          <i />
+          <b />
+          <em />
+        </span>
+        <span className="lg-finale-rays">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+      </div>
+      <div className="lg-finale-copy">
+        <span className="lg-finale-trophy">
+          <Trophy size={28} />
+        </span>
+        <p className="lg-kicker">{total} checkpoints cleared</p>
+        <h2>Master rank reached!</h2>
+        <p>
+          You completed every shadow-strike target. Your character made it safely and the whole route is now glowing.
+        </p>
+        <div className="lg-complete-stats">
+          <span>
+            <strong>{accuracy}%</strong> attempt accuracy
+          </span>
+          <span>
+            <strong>{summary.attempted - summary.correct}</strong> learning retries
+          </span>
+        </div>
+        <button className="lg-primary" type="button" onClick={onDone}>
+          Celebrate and return
+        </button>
+      </div>
+    </section>
+  )
 }
 
 export function TargetBlast({
@@ -168,8 +290,9 @@ export function TargetBlast({
   onExit,
   onAttempt,
   onComplete,
+  savedProgress,
 }: TargetBlastProps) {
-  const [index, setIndex] = useState(0)
+  const [index, setIndex] = useState(savedProgress?.cleared.length || 0)
   const [attempts, setAttempts] = useState<readonly LearningGameAttempt[]>([])
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
   const [phase, setPhase] = useState<TargetBlastPhase>('idle')
@@ -178,6 +301,14 @@ export function TargetBlast({
   const [bestStreak, setBestStreak] = useState(0)
   const playAudioRef = useRef(playAudio)
   const audioCycleRef = useRef(0)
+  const pending = useRef<LearningGameAttempt | null>(null)
+  const saving = useRef(false)
+  const [saveError, setSaveError] = useState('')
+  const lifetime = useRef(new AbortController())
+  useEffect(() => {
+    if (lifetime.current.signal.aborted) lifetime.current = new AbortController()
+    return () => lifetime.current.abort()
+  }, [])
   const round = rounds[index]
   const valid = validSelectionRounds(rounds)
   const complete = valid && index >= rounds.length
@@ -190,16 +321,18 @@ export function TargetBlast({
   const speakPrompt = useCallback(async () => {
     const audioText = round?.audioText
     const play = playAudioRef.current
-    if (!audioText || !play) return
+    const signal = lifetime.current.signal
+    if (!audioText || !play || activityClock.paused || signal.aborted) return
     const cycle = ++audioCycleRef.current
     setAudioState('playing')
     try {
       await play(audioText)
+      await activityClock.waitUntilRunning(signal)
       if (cycle === audioCycleRef.current) setAudioState('played')
     } catch {
       if (cycle === audioCycleRef.current) setAudioState('error')
     }
-  }, [round?.audioText, round?.id])
+  }, [round?.audioText, round?.id, lifetime])
 
   useEffect(() => {
     if (!round?.audioText || !playAudioRef.current) return
@@ -254,7 +387,8 @@ export function TargetBlast({
   }, [phase])
 
   function choose(choiceId: string) {
-    if (!round || selectedChoiceId) return
+    if (!round || selectedChoiceId || phase !== 'idle' || pending.current || activityClock.paused) return
+    if (!round.choices.some((choice) => choice.id === choiceId)) return
     const correct = choiceId === round.correctChoiceId
     const attempt: LearningGameAttempt = {
       gameId: 'target-blast',
@@ -265,47 +399,125 @@ export function TargetBlast({
       assessmentMode: 'automatic',
     }
     setSelectedChoiceId(choiceId)
-    setPhase('throwing')
-    setAttempts((current) => [...current, attempt])
-    const nextStreak = correct ? streak + 1 : 0
-    setStreak(nextStreak)
-    setBestStreak((current) => Math.max(current, nextStreak))
-    onAttempt?.(attempt)
+    setPhase('saving')
+    pending.current = attempt
+    void saveTurn()
   }
 
-  const summary = summarizeLearningGame('target-blast', attempts)
+  async function saveTurn() {
+    const attempt = pending.current
+    const signal = lifetime.current.signal
+    if (!attempt || saving.current || signal.aborted) return
+    saving.current = true
+    setSaveError('')
+    try {
+      await onAttempt?.(attempt)
+      await activityClock.waitUntilRunning(signal)
+      if (signal.aborted) return
+      pending.current = null
+      setAttempts((current) => [...current, attempt])
+      const nextStreak = attempt.correct ? streak + 1 : 0
+      setStreak(nextStreak)
+      setBestStreak((current) => Math.max(current, nextStreak))
+      setPhase('throwing')
+    } catch (error) {
+      if (!signal.aborted)
+        setSaveError(
+          `${error instanceof Error ? error.message : 'Saving failed.'} This strike has not advanced. Retry saving.`,
+        )
+    } finally {
+      saving.current = false
+    }
+  }
+
+  const reviewed = summarizeLearningGame('target-blast', attempts)
+  const summary = {
+    ...reviewed,
+    attempted: reviewed.attempted + (savedProgress?.attempted || 0),
+    correct: reviewed.correct + (savedProgress?.correct || 0),
+  }
   const correctChoice = round?.choices.find((choice) => choice.id === round.correctChoiceId)
   const showFeedback = Boolean(selectedChoiceId) && (phase === 'impact' || phase === 'feedback')
-  return <LearningGameShell
-    gameId="target-blast"
-    title={title}
-    eyebrow={eyebrow}
-    progress={`${index}/${rounds.length} completed`}
-    onExit={onExit}
-  >
-    {!valid ? <LearningGameEmpty onExit={onExit} /> : complete ? <TargetBlastComplete
-      summary={summary}
-      total={rounds.length}
-      onDone={() => onComplete(summary)}
-    /> : round ? <section className="lg-card lg-blast-card">
-      <p className="lg-round-label">Training strike {index + 1} of {rounds.length}</p>
-      <h2>{round.cueText || 'Strike the correct practice target'}</h2>
-      <TargetBlastJourney completed={index} total={rounds.length} />
-      {round.audioText && playAudio && <div className={`lg-auto-prompt-status is-${audioState}`} role="status">
-        <Volume2 size={18} aria-hidden="true" />
-        <span>{audioState === 'playing' ? 'Playing the word…' : audioState === 'played' ? 'Word played automatically' : audioState === 'error' ? 'Audio needs another try' : 'Get ready — the word will play automatically'}</span>
-        <button type="button" onClick={() => void speakPrompt()}>Replay word</button>
-      </div>}
-      <div className="lg-stat-row">
-        <span><strong>{streak}</strong> momentum</span>
-        <span><strong>{bestStreak}</strong> best run</span>
-      </div>
-      <TargetBlastPlayfield round={round} selectedChoiceId={selectedChoiceId} phase={phase} onChoose={choose} />
-      {showFeedback && <div className={`lg-feedback is-${selectedCorrect ? 'correct' : 'incorrect'} is-auto`} role="status">
-        <strong>{selectedCorrect ? `Perfect strike — ${correctChoice?.label || round.targetText}` : `Correct target: ${correctChoice?.label || round.targetText}`}</strong>
-        <span className="lg-feedback-detail">{selectedCorrect ? 'The target shattered. Advancing one training mark.' : 'Study the glowing practice target, then strike again.'}</span>
-        <span className="lg-auto-status">{selectedCorrect ? index + 1 === rounds.length ? 'Preparing the master trial…' : 'Advancing to the next training mark…' : 'Your retry is almost ready…'}</span>
-      </div>}
-    </section> : null}
-  </LearningGameShell>
+  return (
+    <LearningGameShell
+      gameId="target-blast"
+      title={title}
+      eyebrow={eyebrow}
+      progress={`${index}/${rounds.length} completed`}
+      onExit={onExit}
+    >
+      {!valid ? (
+        <LearningGameEmpty onExit={onExit} />
+      ) : complete ? (
+        <TargetBlastComplete summary={summary} total={rounds.length} onDone={() => onComplete(summary)} />
+      ) : round ? (
+        <section className="lg-card lg-blast-card">
+          <p className="lg-round-label">
+            Training strike {index + 1} of {rounds.length}
+          </p>
+          <h2>{round.cueText || 'Strike the correct practice target'}</h2>
+          <TargetBlastJourney completed={index} total={rounds.length} />
+          {round.audioText && playAudio && (
+            <div className={`lg-auto-prompt-status is-${audioState}`} role="status">
+              <Volume2 size={18} aria-hidden="true" />
+              <span>
+                {audioState === 'playing'
+                  ? 'Playing the word…'
+                  : audioState === 'played'
+                    ? 'Word played automatically'
+                    : audioState === 'error'
+                      ? 'Audio needs another try'
+                      : 'Get ready — the word will play automatically'}
+              </span>
+              <button type="button" onClick={() => void speakPrompt()}>
+                Replay word
+              </button>
+            </div>
+          )}
+          <div className="lg-stat-row">
+            <span>
+              <strong>{streak}</strong> momentum this visit
+            </span>
+            <span>
+              <strong>{bestStreak}</strong> best run this visit
+            </span>
+          </div>
+          <div className="lg-strike-save-status">
+            {saveError ? (
+              <div role="alert">
+                <p>{saveError}</p>
+                <button type="button" onClick={() => void saveTurn()}>
+                  Retry saving strike
+                </button>
+              </div>
+            ) : phase === 'saving' ? (
+              <p role="status">Saving this strike…</p>
+            ) : null}
+          </div>
+          <TargetBlastPlayfield round={round} selectedChoiceId={selectedChoiceId} phase={phase} onChoose={choose} />
+          {showFeedback && (
+            <div className={`lg-feedback is-${selectedCorrect ? 'correct' : 'incorrect'} is-auto`} role="status">
+              <strong>
+                {selectedCorrect
+                  ? `Perfect strike — ${correctChoice?.label || round.targetText}`
+                  : `Correct target: ${correctChoice?.label || round.targetText}`}
+              </strong>
+              <span className="lg-feedback-detail">
+                {selectedCorrect
+                  ? 'The target shattered. Advancing one training mark.'
+                  : 'Study the glowing practice target, then strike again.'}
+              </span>
+              <span className="lg-auto-status">
+                {selectedCorrect
+                  ? index + 1 === rounds.length
+                    ? 'Preparing the master trial…'
+                    : 'Advancing to the next training mark…'
+                  : 'Your retry is almost ready…'}
+              </span>
+            </div>
+          )}
+        </section>
+      ) : null}
+    </LearningGameShell>
+  )
 }

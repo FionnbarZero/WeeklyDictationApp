@@ -23,7 +23,13 @@ const grades = [
   ['grade2', 'Grade 2'],
   ['grade5', 'Grade 5'],
 ] as const
-const stageB: LearningModuleId[] = ['memory-flip', 'speed-match', 'context-gap-dash', 'sentence-scramble']
+const stageB: LearningModuleId[] = [
+  'memory-flip',
+  'speed-match',
+  'context-gap-dash',
+  'sentence-scramble',
+  'target-blast',
+]
 function source(slug: string) {
   return inspectSnapshot(
     JSON.parse(readFileSync(new URL(`../public/curriculum/beta/${slug}.json`, import.meta.url), 'utf8')),
@@ -53,7 +59,7 @@ function perfect(pack: LearningModulePack): LearningModuleSummary {
           response:
             pack.moduleId === 'memory-flip' ? [`${pair.id}:left`, `${pair.id}:right`] : [pair.left.id, pair.right.id],
         }))
-      : pack.moduleId === 'context-gap-dash'
+      : pack.moduleId === 'context-gap-dash' || pack.moduleId === 'target-blast'
         ? pack.rounds.map((round) => ({
             gameId: pack.moduleId,
             promptId: round.id,
@@ -103,7 +109,7 @@ for (const [slug, grade] of grades) {
       )
       assert.ok(pack.scopeNote?.includes('source targets'))
     }
-    for (const id of ['target-blast', 'dictation-streak']) {
+    for (const id of ['dictation-streak']) {
       const game = games.find(({ capability }) => capability.status === 'unavailable' && capability.moduleId === id)
       assert.ok(game, `${id} remains Coming soon until its separate stage`)
     }
@@ -150,18 +156,39 @@ test('saved game menu keeps unfinished and undelivered rounds but hides delivere
   const scope = { childId: 'child', grade: 'Grade 5' as const, week: '2026-09-28', gameId: pack.moduleId }
   const started = startGameCheckpoint(scope, pack, 'attempt-one', 'writer-one', '2026-10-05T12:00:00.000Z')
   const first = pack.rounds[0]
-  const answer = (round: typeof first) => ({ gameId: pack.moduleId, promptId: round.id, targetId: round.targetId,
-    correct: true, assessmentMode: 'automatic' as const, response: round.correctChoiceId })
+  const answer = (round: typeof first) => ({
+    gameId: pack.moduleId,
+    promptId: round.id,
+    targetId: round.targetId,
+    correct: true,
+    assessmentMode: 'automatic' as const,
+    response: round.correctChoiceId,
+  })
   const unfinished = checkpointGameAnswer(started, answer(first), '2026-10-05T12:01:00.000Z')
   let finished = unfinished
   for (const round of pack.rounds.slice(1))
-    finished = checkpointGameAnswer(finished, answer(round), new Date(Date.parse(finished.reviewedAt!) + 60_000).toISOString())
+    finished = checkpointGameAnswer(
+      finished,
+      answer(round),
+      new Date(Date.parse(finished.reviewedAt!) + 60_000).toISOString(),
+    )
   const completion = completeGameCheckpoint(finished, '2026-10-05T13:00:00.000Z')
 
-  assert.equal(resumableGameCheckpoints([unfinished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId, 'attempt-one')
-  assert.equal(resumableGameCheckpoints([finished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId, 'attempt-one')
+  assert.equal(
+    resumableGameCheckpoints([unfinished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId,
+    'attempt-one',
+  )
+  assert.equal(
+    resumableGameCheckpoints([finished], [], 'child', 'Grade 5').get(pack.moduleId)?.attemptId,
+    'attempt-one',
+  )
   assert.equal(resumableGameCheckpoints([finished], [completion.result], 'child', 'Grade 5').has(pack.moduleId), false)
-  assert.equal(resumableGameCheckpoints([finished], [{ ...completion.result, childId: 'other-child' }], 'child', 'Grade 5').has(pack.moduleId), true)
+  assert.equal(
+    resumableGameCheckpoints([finished], [{ ...completion.result, childId: 'other-child' }], 'child', 'Grade 5').has(
+      pack.moduleId,
+    ),
+    true,
+  )
 })
 
 test('generated support never adds targets, changes tiers, overwrites existing content, or claims teacher authorship', () => {
@@ -190,7 +217,7 @@ test('generated support never adds targets, changes tiers, overwrites existing c
   assert.match(pack.scopeNote!, /not teacher-authored/)
 })
 
-test('Lanterns never falls back to Tier 1 or Tier 3; Shuriken requires both eligible tiers', () => {
+test('Lanterns and Shadow Strike never fall back to Tier 1 or Tier 3; Shuriken requires both eligible tiers', () => {
   const cohort = ready('speed-match').cohort
   for (const tier of ['tier-1', 'tier-3'] as const) {
     const changed = { ...cohort, terms: cohort.terms.map((term) => ({ ...term, tier })) }
@@ -199,10 +226,42 @@ test('Lanterns never falls back to Tier 1 or Tier 3; Shuriken requires both elig
       'unavailable',
     )
     assert.equal(
+      learningModuleCapability('target-blast', changed, NINJA_SKILLS_PROFILES['Grade 5']).status,
+      'unavailable',
+    )
+    assert.equal(
       learningModuleCapability('speed-match', changed, NINJA_SKILLS_PROFILES['Grade 5']).status,
       'unavailable',
     )
   }
+})
+
+test('Shadow Strike rotates validated Tier 2 subsets without borrowing distractors from other tiers', () => {
+  const sourcePack = ready('target-blast')
+  const tier2 = sourcePack.cohort.terms.find((term) => term.tier === 'tier-2')!
+  const terms = Array.from({ length: 13 }, (_, index) => ({
+    ...tier2,
+    occurrenceId: `shadow-${index}`,
+    text: `词${index}`,
+  }))
+  const cohort = {
+    ...sourcePack.cohort,
+    terms: [...terms, { ...tier2, occurrenceId: 'writing', text: '写', tier: 'tier-1' as const }],
+  }
+  const reached = new Set<string>()
+  for (let visit = 0; visit < 3; visit++) {
+    const capability = learningModuleCapability('target-blast', cohort, NINJA_SKILLS_PROFILES['Grade 5'], visit)
+    assert.equal(capability.status, 'ready')
+    if (capability.status !== 'ready' || capability.pack.moduleId !== 'target-blast') throw new Error('Wrong fixture.')
+    const pack = capability.pack
+    assert.equal(pack.selection!.visit, visit)
+    for (const round of pack.rounds) {
+      reached.add(round.targetId)
+      assert.ok(round.choices.every((choice) => terms.some((term) => choice.id === `choice:${term.occurrenceId}`)))
+      assert.equal(round.choices.find((choice) => choice.id === round.correctChoiceId)!.label, round.targetText)
+    }
+  }
+  assert.equal(reached.size, terms.length)
 })
 
 test('validated subsets rotate across completed attempts, deduplicate retries, and stay child/cohort scoped', () => {

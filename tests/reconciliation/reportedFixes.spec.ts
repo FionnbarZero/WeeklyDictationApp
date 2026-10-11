@@ -123,12 +123,12 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
   })
 }
 
-test('unfinished Shadow Strike stays visible but unavailable until its dedicated stage', async ({
-  page,
-}) => {
+test('Shadow Strike launches its Tier 2 training field', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=kindergarten')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   const card = page.getByRole('heading', { name: 'Shadow Strike Dojo', exact: true }).locator('..')
-  await expect(card.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
-  await expect(card).toContainText('interaction rules are still being completed')
+  await card.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
+  const frame = page.frameLocator('iframe:visible')
+  await expect(frame.locator('.lg-target-blast-playfield')).toBeVisible()
+  await expect(frame.locator('.lg-world-choice').first()).toBeEnabled()
 })

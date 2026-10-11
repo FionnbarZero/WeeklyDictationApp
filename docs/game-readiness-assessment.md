@@ -1,5 +1,15 @@
 # EduGame readiness assessment
 
+## C1 Shadow Strike baseline — October 11, 2026
+
+Stage B `d846981` is published; the owner confirmed **GPT-6.1 Sol · High** for C1. This stage covers Shadow Strike's existing modular Dojo; the visually distinct Lilypad prototype is retained and is not replaced by the Dojo.
+
+The current `targetBlastPack` in `src/ninjaSkills/content.ts` falls back to other tiers when fewer than two Tier 2 targets exist and has no rotating selection metadata. Central policy currently blocks launch. The modular `TargetBlast` starts its throwing animation and adds a scored attempt before awaiting its optional save callback; it cannot restore reviewed rounds, failures or counts. The shared saved-game adapter, response validation and checkpoint allowlist cover four games and need a bounded selection-game extension. Existing production family rules accept the same scoped game envelope; no new collections, fields or policy publication are required for this extension.
+
+The journey actor transitions its `left` position for 900 ms while its surrounding world scrolls with a transform. This causes layout work during motion; a retained Chromium desktop/tablet probe measures the original behavior before edits. Use a separate transform track for horizontal movement, preserving the actor's existing vertical animation and interruption boundary. Browser measurements will establish the rendering-work change, not physical iMac/iPad smoothness.
+
+Shortest ready path: Tier 2-only rotating packs with validated choices; sequential reviewed checkpoints and exact failed-turn retries through both family menus; report-aware feedback/audio and reload recovery; then cross-grade mouse/touch, offline, result-detail and compatibility checks. An independent **GPT-6 Astra · High** release review remains required before publication. C1 is not published or ready for a new owner smoke test.
+
 Status: the baseline inventory below was prepared after the local A3.3 final review (October 8, 2026). The [Stage B local evidence](#stage-b-policy-and-content-slice-local) records subsequent implementation and supersedes its matching missing-work descriptions. This is not a claim that any game is student-ready or published.
 
 ## Shared integration facts
