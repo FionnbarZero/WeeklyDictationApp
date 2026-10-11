@@ -119,11 +119,22 @@ test('Kindergarten Final Boss confirms before discarding an unfinished response'
 })
 
 test('Kindergarten reading Final Boss defers microphone fallbacks to one final review', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        async getUserMedia() {
+          throw new DOMException('Microphone denied by the test fixture.', 'NotAllowedError')
+        },
+      },
+    })
+  })
   await openFinalBoss(page, 'Reading Test')
   await expect(page.getByText('Reading responses · 1 of 9')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Yes' })).toHaveCount(0)
 
   for (let index = 0; index < 9; index += 1) {
+    await expect(page.getByText(`Reading responses · ${index + 1} of 9`)).toBeVisible()
     await page.getByRole('button', { name: 'Record my reading' }).click()
     await expect(page.getByText('Microphone recording is unavailable.')).toBeVisible()
     await page.getByRole('button', { name: 'Continue without a recording' }).click()
