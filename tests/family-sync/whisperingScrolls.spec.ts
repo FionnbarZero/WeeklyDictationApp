@@ -126,7 +126,7 @@ for (const [slug, grade] of grades) {
     await setup(page)
     let frame = await open(page, slug)
     const initial = await checkpoint(page)
-    expect(initial.envelope.flow.prompt.kind).toBe('familiar')
+    expect(initial.envelope.flow.prompt.kind).toBe('familiar-dt')
     for (const teaching of [false, false, true, false]) await review(frame, teaching)
     await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(4)
     const saved = await checkpoint(page)
