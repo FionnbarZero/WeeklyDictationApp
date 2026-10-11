@@ -2,7 +2,17 @@
 
 ## C1 Shadow Strike implementation — local, unpublished
 
-The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. No C1 push, merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. The branch is now pushed and PR #63 is open; no C1 merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+
+### C1 PR and release preparation — October 11, 2026
+
+[PR #63](https://github.com/FionnbarZero/WeeklyDictationApp/pull/63) targets `main`. Initial CI run `38153751398` started at `b803cc9600ffe3cd8ae071f335e90843e25830cb`; checks are pending, not verified green. Recheck the final head after any documentation update. The fetched base was `d846981434f61534f584da22b67f2bdebc356cef`, with no divergent base commits.
+
+- Candidate source `b803cc9600ffe3cd8ae071f335e90843e25830cb`: all **145 files** match manifest tree `232e3f2884a2c67d8f2c052f38fede9ecf43e867c301f28a560efdacd8454fdf`. Built with the supported Node 24 runtime and retained in `family-beta-artifacts/releases/c1-b803cc9/candidate/`.
+- Guarded recovery: Stage B source `d846981434f61534f584da22b67f2bdebc356cef`, compatibility revision `b803cc9600ffe3cd8ae071f335e90843e25830cb`, all **146 files** independently verified against tree `737a37823e3927fe73cbe39ce941328316d340f4f4d6707007edf462caf3b8e9`. Retained in `family-beta-artifacts/releases/c1-b803cc9/guarded-rollback/`; not uploaded or activated.
+- Read-only canonical manifest verification still reports Stage B `d846981` and tree `693fb59532e92c2201d1819a17206d0ce0edab8bf7923b378e8153920f5d9e1a`. This check is manifest-only, not a fresh verification of every served asset.
+
+Remaining gates: all final-head CI jobs, owner merge approval, packaging the approved merged source, separate publication approval for each grade, exact-artifact activation and served-build verification. No production, security, authentication or child-record mutation occurred during this preparation. No C1 smoke-test handoff yet.
 
 ### Independent C1 review — October 11, 2026
 
