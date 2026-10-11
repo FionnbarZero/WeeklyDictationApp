@@ -1,5 +1,5 @@
 import { activityClock } from '../../activity/activityLifecycle.ts'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Headphones, PencilLine } from 'lucide-react'
 import type { LearningGameBaseProps, PlayLearningAudio, ProductionGameRound } from './runtime/contracts'
 import { ProductionRunner } from './runtime/ProductionGameShared'
@@ -56,6 +56,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   const composingRef = useRef(false)
   const messageTimerRef = useRef<number | undefined>(undefined)
   const restartTimerRef = useRef<number | undefined>(undefined)
+  const audioRequest = useRef(0)
   const stepCandidates = useMemo(() => shuffledStepCandidates(round), [round])
   const guidedPinyin = Boolean(round.pinyinSteps)
   const selectedCharacters = Array.from(answer).filter((character) => HANZI_CHARACTER.test(character)).join('')
@@ -68,24 +69,27 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     ? currentStepIndex === round.pinyinSteps?.length && !pinyinInput.trim()
     : selectedCharacters.length === Array.from(round.targetText.trim()).length && !pinyinInput.trim()
 
-  async function speakWord() {
-    if (activityClock.paused) return
+  const playCurrentAudio = useCallback(async (text: string, language = 'zh-CN', reportFailure = true) => {
+    // Starting a replay/coaching cue cancels the previous host audio plan.
+    // Only the latest request may report a failure, including after unmount.
+    const request = ++audioRequest.current
     setAudioError(false)
     try {
-      await playAudio(round.audioText || round.targetText)
+      await playAudio(text, language)
     } catch {
-      setAudioError(true)
+      if (request === audioRequest.current && reportFailure) setAudioError(true)
     }
+  }, [playAudio])
+
+  async function speakWord() {
+    if (activityClock.paused) return
+    await playCurrentAudio(round.audioText || round.targetText)
   }
 
   useEffect(() => {
-    let active = true
-    setAudioError(false)
-    Promise.resolve(playAudio(round.audioText || round.targetText)).catch(() => {
-      if (active) setAudioError(true)
-    })
-    return () => { active = false }
-  }, [playAudio, round.audioText, round.id, round.targetText])
+    void playCurrentAudio(round.audioText || round.targetText)
+    return () => { audioRequest.current += 1 }
+  }, [playCurrentAudio, round.audioText, round.id, round.targetText])
 
   useEffect(() => () => {
     if (messageTimerRef.current !== undefined) activityClock.clearTimeout(messageTimerRef.current)
@@ -93,11 +97,8 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
   }, [])
 
   function speakFeedback(message: string) {
-    try {
-      void Promise.resolve(playAudio(message, 'en-US')).catch(() => undefined)
-    } catch {
-      // Spoken coaching is helpful, but it must never trap the learner.
-    }
+    // Coaching is optional, but still supersedes any in-flight word cue.
+    void playCurrentAudio(message, 'en-US', false)
   }
 
   function focusAtEnd() {
@@ -113,11 +114,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     setCharacterCorrection(null)
     setSpellingMessage('')
     spellingErrorsRef.current = 0
-    try {
-      void Promise.resolve(playAudio(round.audioText || round.targetText)).catch(() => undefined)
-    } catch {
-      // The typing trial can continue if replay is unavailable.
-    }
+    void speakWord()
     focusAtEnd()
   }
 
