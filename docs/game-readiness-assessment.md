@@ -1,5 +1,13 @@
 # EduGame readiness assessment
 
+## C2 repair re-review
+
+The October 11 focused re-review of `eeeac09..72f2aca` found no blocking defects in the audio-request invalidation or discard-regression repairs. Review covered cancellation ownership, optional coaching, genuine current failures, effect cleanup, and lock-delayed retirement. No application code changed during this review.
+
+Fresh checks on `252337f`, whose changes after `72f2aca` are documentation only, pass 896 unit tests and four packaged desktop/tablet regressions in 38.7 seconds, with no skips or retries. The exact retained `72f2aca` candidate (145 files) and guarded C1 recovery (146 files) were rehashed against their complete inventories; both match the identities below. The previous 34-case browser, 12 repeated regression, emulator and quality-gate evidence was inspected, not counted as a new run.
+
+Fresh logs are retained alongside the repair packages as `ninja-c2-rereview-unit.log` and `ninja-c2-rereview-browser.log`. Next is GPT-6.1 Sol · High for separately authorized push/PR/CI and release preparation. Merge and grade publication remain separate approval gates. C2 is unpublished and owner smoke testing remains premature. Physical sound/keyboard behavior, validated-subset coverage and later acquisition/Spirit Realm work remain outstanding; the initial JavaScript budget has only 10 bytes of headroom.
+
 ## C2 review repairs
 
 The October 11 review of `c0b2ad9` reproduced a false audio warning after interrupting a prompt with Replay. It also produced a 17/18 browser result: the tablet discard test read a checkpoint immediately after the confirmation click, before the asynchronous retirement finished. A controlled storage-lock diagnostic reproduced that intermediate checkpoint and verified its removal after the lock was released. The original review failure is retained in `family-beta-artifacts/reviews/c2-dictation/failures/review-discard/`.
