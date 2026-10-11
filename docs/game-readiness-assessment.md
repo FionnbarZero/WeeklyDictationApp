@@ -2,7 +2,17 @@
 
 ## C1 Shadow Strike implementation — local, unpublished
 
-The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **Independent GPT-6 Astra · High release review is still required.** No C1 push, merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+The owner confirmed **GPT-6.1 Sol · High** for C1. Branch `codex/c1-shadow-strike` extends the existing saved-game contract; it does not add a second persistence system or change production policy, authentication or records. **The independent C1 release review is complete with no blocking findings**, as recorded below. No C1 push, merge, publication or owner smoke-test handoff has occurred. Stage B `d846981` remains the published baseline.
+
+### Independent C1 review — October 11, 2026
+
+Reviewed source: `54d36af4a0c7470734834f5177a261befc0e471f` against published Stage B `d846981`. Requested review routing: **GPT-6 Astra · High**, following C1's specific roadmap assignment. Verdict: **no actionable release-blocking findings in the C1 diff**. No application fixes were needed during this review.
+
+The review traced both launch surfaces through pinned Tier 2 packs, selection validation, sequential reviewed progress, write-before-feedback, exact retry, immutable completion and per-target detail. It checked the existing family ownership, cloud reconciliation and retirement boundaries; the added adapter retains their contracts without new schema fields or security changes. It also inspected report/navigation pause, stable mouse/touch hit areas, transform movement, Spirit Realm exclusion and guarded rollback evidence. The existing four games' selection and completion behavior is unchanged by the added game.
+
+Fresh independent checks pass **62/62 targeted policy/progress unit tests** and **16/16 packaged desktop/tablet Shadow Strike cases**. The review package at `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-aTOMBZ` contains **145 independently verified files**, source `54d36af4a0c7470734834f5177a261befc0e471f`, tree `2a03636ffceee968c4b21c368f897dd51db9b22ebbf1146bbf5a7c4a5f53c78f`; it is retained with logs under ignored `family-beta-artifacts/releases/c1-review-54d36af/`. The review also inspected the recorded 890-unit, 78-browser, 10-policy, five-reconciliation, quality/build/dependency and six guarded rollback results below. Those broader gates were not rerun during this review; application source has not changed since their tested candidate.
+
+Remaining release requirements: PR integration and final-head CI, final approved source packaging, approval-gated merge/publication, and exact served-build verification. Physical iMac/iPad sound and smoothness remain unverified; browser audio is synthetic. The earlier Context startup-timing limitation remains open, and later-stage games/full Shadow Strike Spirit Realm warmup remain unfinished. No owner C1 smoke test is appropriate before publication and verified links.
 
 ### Implemented scope
 
