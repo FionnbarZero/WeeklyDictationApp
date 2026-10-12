@@ -1,6 +1,6 @@
 # Whispering Scrolls acquisition
 
-D1 adds a separately saved Tier 2 reading choice inside the Dojo for all three grades. Its controller uses the existing acquisition engine and each grade's reading strategy. Ordinary reading remains independently selectable. This work is local and unpublished.
+D1 adds a separately saved Tier 2 reading choice inside the Dojo for all three grades. Its controller uses the existing acquisition engine and each grade's reading strategy. Ordinary reading remains independently selectable. This work is in [PR #65](https://github.com/FionnbarZero/WeeklyDictationApp/pull/65), unmerged and unpublished.
 
 ## Teaching contract
 
@@ -113,4 +113,21 @@ The broader `c991148` recording/Scrolls/recovery run passed **71 of 72 cases**, 
 
 Final evidence is retained under `family-beta-artifacts/releases/d1-ab94b93/evidence/`, including `ninja-d1-final-scrolls.log`, `ninja-d1-final-artifacts.log`, `ninja-d1-final-quality.log` and `final-scrolls/`, alongside the earlier passing and failed runs. Documentation-only successors do not change the retained package's embedded identity.
 
-This is local implementation and review evidence, not remote CI or publication. D1 has not been pushed, merged or deployed; C2 `d62a427` remains the recorded live release. No real child records, production authentication/security settings or problem reports changed. Next is **GPT-6.1 Sol · High** for separately authorized PR/CI and release preparation, then merge and per-grade publication approvals. Physical iMac/iPad sound, microphone and touch acceptance follows reviewed publication; no D1 smoke testing yet. D2 remains pending.
+This is local implementation and review evidence, not remote CI or publication. At this checkpoint D1 had not been pushed, merged or deployed; the next section records the later PR preparation. No real child records, production authentication/security settings or problem reports changed. Physical iMac/iPad sound, microphone and touch acceptance follows reviewed publication; no D1 smoke testing yet. D2 remains pending.
+
+## Pull request and release preparation
+
+On October 12, the owner authorized the next PR/release-preparation step. The branch `codex/d1-whispering-scrolls` was fetched, checked against current `main` (`d62a427`), pushed without force, and opened as [PR #65](https://github.com/FionnbarZero/WeeklyDictationApp/pull/65). It was 13 commits ahead and zero behind when opened. No application code changed: candidate `d5cbb1e79f3e134acf389a76d17333daa27d3768` differs from independently reviewed `ab94b93` only in documentation.
+
+Fresh local checks pass all **912 unit tests**, typecheck, lint, format and the explicit 46-file canonical family reliability check. GitHub checks started on the initial PR head; all five jobs must pass on the final PR head before merge. A superseded run is not final-head acceptance. The previously documented 58 general-browser, 38 final Scrolls and emulator evidence remains applicable to the unchanged application; those suites were not rerun as part of this documentation-only preparation.
+
+Exact packages under `family-beta-artifacts/releases/d1-pr65-d5cbb1e/` were copied from clean-source builds, then independently checked against their complete inventories and SHA-256 hashes:
+
+| Package | Source / compatibility | Files | SHA-256 file tree |
+| --- | --- | --- | --- |
+| `candidate` | `d5cbb1e79f3e134acf389a76d17333daa27d3768` | 148 | `589df68974ed376748826dc62e7b6ebbf4ea3b04d9db155a73aa4fc5874bf6c4` |
+| `guarded-c2-recovery` | C2 `d62a427`, guarded for `d5cbb1e` | 146 | `4a4e29e455b89c4b90abc8e8b2413f2fe53757f2080b06154d0b197bbb3b17d8` |
+
+Packaging and recovery logs and the explicit family-check log are retained in that directory's `evidence/` folder. The canonical manifest returned HTTP 200 and still identifies C2 `d62a427afde15a486c0f5124856ffe88ed6d9360`, with file tree `66a08e0e892e34d030c1666089d5eb67aac9490142dfd756fdc8ba25871bb7b2`; this read-only manifest check is not a new full live acceptance run.
+
+Next is **GPT-6.1 Sol · High** for final-head CI verification and owner merge approval, then packaging the actual merge revision, verifying its recovery contract, and obtaining separate publication approvals for Kindergarten, Grade 2 and Grade 5. No merge or hosting activation occurred during PR preparation. D1 remains unpublished; no owner D1 smoke testing or D2 work yet. Existing records, authentication/security and batched reports are unchanged.
