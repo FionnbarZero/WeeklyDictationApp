@@ -118,15 +118,17 @@ async function open(page: Page, slug = 'grade5', resuming = false) {
   return frame
 }
 
+function readScrollsCheckpoint() {
+  for (const key of Object.keys(localStorage)) {
+    if (!key.startsWith('family-beta-acquisition-v1:') || key.includes(':completed:')) continue
+    const value = JSON.parse(localStorage.getItem(key)!)
+    if (value.envelope?.activityModule.split(':restart-')[0] === 'whispering-scrolls') return value
+  }
+  return null
+}
+
 async function checkpoint(page: Page) {
-  return page.evaluate(() => {
-    for (const key of Object.keys(localStorage)) {
-      if (!key.startsWith('family-beta-acquisition-v1:') || key.includes(':completed:')) continue
-      const value = JSON.parse(localStorage.getItem(key)!)
-      if (value.envelope?.activityModule.split(':restart-')[0] === 'whispering-scrolls') return value
-    }
-    return null
-  })
+  return page.evaluate(readScrollsCheckpoint)
 }
 
 async function record(frame: FrameLocator) {
@@ -136,8 +138,14 @@ async function record(frame: FrameLocator) {
 }
 
 async function review(frame: FrameLocator, teaching = false, correct = true) {
+  const before = await frame.locator('body').evaluate(readScrollsCheckpoint)
   await record(frame)
   await frame.getByRole('button', { name: teaching ? 'Continue' : correct ? 'Yes' : 'Not yet', exact: true }).click()
+  // Native cross-tab locking is asynchronous. Clicking an assessment does not
+  // prove its checkpoint has committed; capture fixtures only after readback.
+  await expect
+    .poll(async () => (await frame.locator('body').evaluate(readScrollsCheckpoint)).envelope.revision)
+    .toBe(before.envelope.revision + 1)
 }
 
 for (const [slug, grade] of grades) {
@@ -336,6 +344,11 @@ test('Scrolls reopening a queued score cannot append answers to its immutable at
   await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toHaveCount(0)
   expect((await checkpoint(page)).envelope).toEqual(before.envelope)
   await frame.getByRole('button', { name: 'Retry saving score', exact: true }).click()
+  await expect
+    .poll(() =>
+      page.evaluate((id) => Boolean(localStorage.getItem(`family-beta-preview-results-v1:${id}`)), before.sessionId),
+    )
+    .toBe(true)
   const results = await page.evaluate(() =>
     Object.keys(localStorage)
       .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
@@ -405,6 +418,14 @@ for (const [slug, grade] of grades) {
       expect(next.reviewedTrials).toEqual(before.reviewedTrials)
       await review(reopened, false, false)
       await reopened.getByRole('button', { name: 'Done for today', exact: true }).click()
+      await expect
+        .poll(() =>
+          secondPage.evaluate(
+            (id) => Boolean(localStorage.getItem(`family-beta-preview-results-v1:${id}`)),
+            next.sessionId,
+          ),
+        )
+        .toBe(true)
       const results = await secondPage.evaluate(() =>
         Object.keys(localStorage)
           .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
