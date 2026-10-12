@@ -31,13 +31,15 @@ The new activity uses `whispering-scrolls` as its acquisition module identity an
 
 Once a completion has entered the pending score queue, that attempt is frozen. A failed confirmation, including reopening before confirmation, offers score retry without allowing more answers to change the immutable attempt. A failed reviewed-trial save likewise retains the exact assessment for retry rather than allowing a different answer.
 
+Answer and completion writes share an exclusive browser lock for the saved lesson. After acquiring it, an answer rechecks both pending and confirmed scores before changing the checkpoint. A mounted copy of an already-finished attempt rejects the extra response and offers **Return to Dojo**; its temporary recording stays available until the child leaves. A new visit retains teaching progress but uses a distinct score identity. Browsers without safe cross-tab locking preserve the reviewed response and show a retryable error without writing it.
+
 ## Acceptance
 
 Verify all three grade sequences, timers and correction/earned-DT behavior against the existing engine; separate ordinary-reading state; frozen curriculum on resume; failed-save retry; completed score idempotence; fresh-browser practice synchronization; pause/resume and microphone cleanup; and absence of recording material in storage. Browser checks cover desktop and touch layouts. Physical microphone, sound and iPad behavior remain owner acceptance after reviewed publication.
 
 ## Local candidate and review handoff
 
-Application candidate **`f38e085dea915740b86da980b99b5ee557316479`** is local on `codex/d1-whispering-scrolls`, based on published C2 `d62a427`. Its independent release review is blocked by the cross-tab score-finalization defect below. It has not been pushed, merged or published. Repair and independent **GPT-6 Astra · Extra High** re-review are required before release preparation. D2 and full Spirit Realm integration remain out of scope. No D1 owner smoke testing yet.
+This is the historical **`f38e085dea915740b86da980b99b5ee557316479`** candidate on `codex/d1-whispering-scrolls`, based on published C2 `d62a427`. The independent review below found a cross-tab score-finalization defect. It is superseded by the [October 12 repair](#cross-tab-repair-and-independent-review-october-12-2026); do not promote this older package. D1 remains local and unpublished. D2 and full Spirit Realm integration remain out of scope, with no D1 owner smoke testing yet.
 
 Verified automated evidence:
 
@@ -67,7 +69,7 @@ Synthetic audio and Chromium touch tests do not certify physical iMac/iPad micro
 
 ## Independent release review October 12 2026
 
-The separately authorized read-only **GPT-6 Astra · Extra High** reviewer examined the complete C2-to-D1 diff and found **one actionable P2**. The release-review gate remains blocked; no application fix was made during review.
+The initial separately authorized read-only **GPT-6 Astra · Extra High** review examined the complete C2-to-D1 diff and found **one actionable P2**, blocking that candidate. No application fix was made during that review. The repair and subsequent independent re-review are recorded below.
 
 ### Recheck immutable completion before accepting another answer
 
@@ -85,3 +87,24 @@ The pending-only variant also reproduces: block cloud result delivery and fail t
 The repair must protect finalization across mounted copies before checkpoint mutation. Add separate regressions for pending and confirmed scores, retain the original immutable score, and ensure the second copy cannot accept work that is stranded under that score identity. Reuse the existing acquisition and result boundaries; do not erase records or weaken immutable-result validation. Repair and re-review use **GPT-6 Astra · Extra High**.
 
 No other actionable introduced defect was found. The reviewer ran **53 focused checks**, all passing. Main-review evidence on documentation-only successor `5fcf44b` passes **907 unit tests, 54 packaged desktop/tablet cases**, typecheck, lint, formatting and the explicit new-file checks. Candidate/recovery hashes were reverified October 12. These passing tests do not resolve the reproduced two-tab defect. Main-review logs are retained in `family-beta-artifacts/releases/d1-f38e085/evidence/` as `ninja-d1-review-unit.log`, `ninja-d1-release-review.log`, and `ninja-d1-review-quality.log`. Final-head CI, physical acceptance and release approvals remain separate gates after the repair.
+
+## Cross tab repair and independent review October 12 2026
+
+Application repair `62ecb2fae4e1a657cf85ca435244ba1c6bea3634` resolves the P2 without a storage migration or a change to immutable-result validation. Test-only successor **`c99114895a85ad45d06d327a839fb04434a1b920`** contains the same application source and is the retained packaged candidate.
+
+The shared lock covers completion-check plus checkpoint write, and prepare-result plus score write. If completion wins, the second answer is refused before mutation. If an answer wins, the stale completion fails the existing checkpoint comparison before creating a score. Pending-only and confirmed-only completions both freeze the old attempt. Review callbacks now await the write, retain the exact assessment and temporary recording on failure, and reject duplicate retries while a save is waiting. Pause, profile and retirement checks run after acquiring the lock.
+
+The independent **GPT-6 Astra · Extra High** reviewer found the original issue resolved and no new actionable introduced defects in `f38e085..62ecb2f`. Its fresh focused unit run passed **58/58**. A separate read-only check accepted the `c991148` test-only follow-up: it waits for exactly one durable revision increment and the expected result ID, while retaining the existing equality, score-count, identity and privacy assertions.
+
+Verified local gates on the repaired application pass **912 unit tests**, **58 general browser cases**, and **19 emulator cases with one intentional strict-policy skip**, including all 11 family-policy cases. Typecheck, lint, format, explicit new-file/family-test checks, build/performance and dependency gates pass. The size budgets remain unchanged at **549,884 / 550,000 initial JavaScript bytes** and **42,745 / 60,000 CSS bytes**. Production dependencies report no vulnerabilities; the existing tooling exception remains 11 firebase-tools-only findings, expiring November 4. Checks use Node **24.21.0** without changing project dependencies.
+
+Retained packages in `family-beta-artifacts/releases/d1-c991148/` have verified full inventories and hashes:
+
+| Package | Source / compatibility | Files | SHA-256 file tree |
+| --- | --- | --- | --- |
+| `candidate` | `c99114895a85ad45d06d327a839fb04434a1b920` | 148 | `c7f1575181b8c958422ac89a0eb12ed34a6982a7d77ab3133175a90e3490274d` |
+| `guarded-c2-recovery` | C2 `d62a427`, guarded for `c991148` | 146 | `042b77437ebd6afd06080e970267923189595e92f0e3f5af011e38be1c3c2d4d` |
+
+The regression first failed against test-only `f4eac83`, whose application source still matched the defective candidate. The first repaired packaged run passed 24 cases, then stopped at two premature test reads: a fresh-device baseline was captured at revision 0 before revision 1 committed, and a queued-score baseline at revision 3 before revision 4 committed. The readback waits in `c991148` correct those assumptions; they do not relax the assertions. Original failure logs and traces remain under the retained candidate's `evidence/` directory alongside unit, quality, build, dependency, general-browser and emulator logs.
+
+This is local implementation and review evidence, not remote CI or publication. D1 has not been pushed, merged or deployed; C2 `d62a427` remains the recorded live release. No real child records, production authentication/security settings or problem reports changed. Physical iMac/iPad sound, microphone and touch acceptance remains after reviewed publication. D2 remains pending.

@@ -224,7 +224,10 @@ test('Scrolls report pause silences the microphone and preserves the remaining r
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
   await expect.poll(() => frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.enabled)).toBe(true)
   await expect
-    .poll(() => frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.stops), { timeout: 5500 })
+    .poll(() => frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe.stops), {
+      timeout: 5500,
+      intervals: [100],
+    })
     .toBe(1)
   await expect(frame.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled()
   const probe = await frame.locator('body').evaluate(() => (window as TestWindow).scrollProbe)
