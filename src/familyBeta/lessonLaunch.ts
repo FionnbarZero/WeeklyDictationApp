@@ -17,7 +17,7 @@ export type LessonLaunch = {
   week: string
   channel: 'writing' | 'reading'
 }
-export type SavedLessonLaunch = LessonLaunch & { source: CurriculumSnapshot }
+export type SavedLessonLaunch = LessonLaunch & { source: CurriculumSnapshot; experience?: 'whispering-scrolls' }
 const prefix = (childId: string) => `family-beta-activity:${childId}:lesson-launch-v1:`
 const sourceKey = (childId: string, hash: string) => `family-beta-activity:${childId}:lesson-source-v1:${hash}`
 const launchKey = (launch: LessonLaunch) =>
@@ -194,7 +194,10 @@ export async function readSavedLesson(
   if (!current || current.lessonSnapshot?.fingerprint !== launch.lessonFingerprint) return null
   verifyEnvelope(current, profile)
   if (isAcquisitionRetired(storage, envelopeIdentity(current))) return null
-  return { ...launch, source: snapshot }
+  // Derive the experience from the validated checkpoint, not mutable route
+  // metadata. Older routes without this field continue to open ordinary Dojo.
+  return { ...launch, source: snapshot,
+    experience: current.activityModule.split(':restart-')[0] === 'whispering-scrolls' ? 'whispering-scrolls' : undefined }
 }
 
 export function discardSavedLesson(storage: Store, profile: BetaProfile, lesson: { progressionId: string; fingerprint: string }) {

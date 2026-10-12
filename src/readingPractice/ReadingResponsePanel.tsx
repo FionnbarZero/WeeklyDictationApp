@@ -3,6 +3,7 @@ import { Headphones, Mic, RotateCcw, Square, Volume2 } from 'lucide-react'
 import { playManagedMediaElement, stopActiveAudio } from '../audio/promptAudio.ts'
 import { SelfAssessmentActions } from '../practice/SelfAssessmentActions.tsx'
 import { useAudioRecorder } from './useAudioRecorder.ts'
+import { activityClock } from '../activity/activityLifecycle.ts'
 
 export type ReadingResponsePanelProps = {
   promptId: string
@@ -12,8 +13,11 @@ export type ReadingResponsePanelProps = {
   allowSkipTimer?: boolean
   onPlayReference: () => Promise<void>
   onPlayTeachingIntroduction?: () => Promise<void>
-  onAnswer: (correct: boolean) => void
-  onContinue: () => void
+  onAnswer: (correct: boolean) => void | Promise<void>
+  onContinue: () => void | Promise<void>
+  /** Acquisition games time the response after permission and teaching audio. */
+  responseSeconds?: number
+  onReviewPending?: (pending: boolean) => void
 }
 
 type ComparisonStatus = 'idle' | 'playing' | 'complete' | 'error'
@@ -29,8 +33,12 @@ export function ReadingResponsePanel({
   onPlayTeachingIntroduction,
   onAnswer,
   onContinue,
+  responseSeconds,
+  onReviewPending,
 }: ReadingResponsePanelProps) {
-  const recorder = useAudioRecorder(promptId)
+  const recorder = useAudioRecorder(promptId, undefined, responseSeconds === undefined ? undefined : {
+    maximumDurationMs: responseSeconds * 1000, preserveOnPause: true,
+  })
   const audioRef = useRef<HTMLAudioElement>(null)
   const submittedRef = useRef(false)
   const teachingPlaybackRef = useRef(0)
@@ -45,6 +53,19 @@ export function ReadingResponsePanel({
   const [withoutRecording, setWithoutRecording] = useState(false)
   const [comparisonError, setComparisonError] = useState<string | null>(null)
   const [teachingAudioError, setTeachingAudioError] = useState<string | null>(null)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const pendingReview = useRef<{ correct: boolean; teaching: boolean } | null>(null)
+  const savingReview = useRef(false)
+  const [remaining, setRemaining] = useState(responseSeconds || 0)
+
+  useEffect(() => {
+    if (responseSeconds === undefined || (recorder.status !== 'recording' && !(withoutRecording && comparison === 'idle'))) return
+    const end = activityClock.now() + responseSeconds * 1000
+    setRemaining(responseSeconds)
+    const interval = activityClock.setInterval(() => setRemaining(Math.max(0, Math.ceil((end - activityClock.now()) / 1000))), 100)
+    const timeout = withoutRecording ? activityClock.setTimeout(() => { void compareReadings(true) }, responseSeconds * 1000) : undefined
+    return () => { activityClock.clearInterval(interval); activityClock.clearTimeout(timeout) }
+  }, [responseSeconds, recorder.status, withoutRecording, comparison])
 
   teachingIntroductionRef.current = onPlayTeachingIntroduction
 
@@ -74,6 +95,8 @@ export function ReadingResponsePanel({
     setWithoutRecording(false)
     setComparisonError(null)
     setTeachingAudioError(null)
+    setReviewError(null)
+    pendingReview.current = null
     if (teachingPrompt && teachingIntroductionRef.current) void playTeachingIntroduction()
     return () => {
       stopActiveAudio()
@@ -109,21 +132,42 @@ export function ReadingResponsePanel({
     recorder.reset()
     setWithoutRecording(true)
     setComparisonError(null)
-    void compareReadings(true)
+    if (responseSeconds === undefined) void compareReadings(true)
   }
 
-  function submit(correct: boolean) {
-    if (submittedRef.current || !canCompare || comparison !== 'complete') return
+  async function commitReview() {
+    const pending = pendingReview.current
+    if (!pending || activityClock.paused || savingReview.current) return
+    savingReview.current = true
+    try {
+      if (pending.teaching) await onContinue()
+      else await onAnswer(pending.correct)
+      if (pendingReview.current !== pending) return
+      setReviewError(null)
+      pendingReview.current = null
+      onReviewPending?.(false)
+      // The next prompt normally unmounts this panel. Release even if an owner
+      // keeps the completed presentation mounted briefly.
+      if (responseSeconds !== undefined) recorder.reset()
+    } catch (error) {
+      if (pendingReview.current !== pending) return
+      setReviewError(error instanceof Error ? error.message : 'The response could not be saved. Please retry.')
+    } finally {
+      savingReview.current = false
+    }
+  }
+
+  function submit(correct: boolean, teaching = false) {
+    if (submittedRef.current || !canCompare || comparison !== 'complete' || activityClock.paused) return
     submittedRef.current = true
     stopActiveAudio()
-    onAnswer(correct)
+    pendingReview.current = { correct, teaching }
+    onReviewPending?.(true)
+    commitReview()
   }
 
   function continueInstruction() {
-    if (submittedRef.current || !canCompare || comparison !== 'complete') return
-    submittedRef.current = true
-    stopActiveAudio()
-    onContinue()
+    submit(true, true)
   }
 
   const recordingUnavailable = !recorder.supported || recorder.status === 'error'
@@ -134,6 +178,8 @@ export function ReadingResponsePanel({
   }, [recorder.status, comparison])
 
   return <div className="reading-response">
+    {recorder.pauseNotice && <p role="status">{recorder.pauseNotice}</p>}
+    {reviewError && <div role="alert"><p>{reviewError}</p><button type="button" className="primary-button" onClick={commitReview}>Retry saving response</button></div>}
     <div className="review-heading">
       <p className="answer-label">{teachingPrompt ? 'Listen, then read this word aloud' : 'Read this word aloud'}</p>
       <div className="answer-word reading-answer-word" lang="zh-Hans">{targetText}</div>
@@ -178,6 +224,9 @@ export function ReadingResponsePanel({
       </button>
     </>}
 
+    {responseSeconds !== undefined && (recorder.status === 'recording' || (withoutRecording && comparison === 'idle')) &&
+      <p className="practice-helper" role="timer" aria-label="Reading time remaining">{remaining} seconds remaining{withoutRecording ? ' · Say the word aloud.' : ''}</p>}
+
     {recordingUnavailable && !withoutRecording && <div className="recording-fallback" role="alert">
       <strong>Recording is unavailable.</strong>
       <p>{recorder.error?.message || 'This browser cannot record microphone audio.'} You can try again or continue by saying the word aloud.</p>
@@ -196,13 +245,13 @@ export function ReadingResponsePanel({
       </div>
       {assessed
         ? <><SelfAssessmentActions
-          disabled={comparison !== 'complete'}
+          disabled={comparison !== 'complete' || submittedRef.current}
           onIncorrect={() => submit(false)}
           onCorrect={() => submit(true)}
           incorrectLabel="Not yet"
           correctLabel="Yes"
         /><p className="answer-note">Be honest with yourself — that’s how you grow.</p></>
-        : <button className="primary-button reading-continue-button" type="button" disabled={comparison !== 'complete'} onClick={continueInstruction}>Continue</button>}
+        : <button className="primary-button reading-continue-button" type="button" disabled={comparison !== 'complete' || submittedRef.current} onClick={continueInstruction}>Continue</button>}
     </div>}
   </div>
 }

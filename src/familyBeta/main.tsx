@@ -509,6 +509,7 @@ function FamilyPreview() {
       if (!existing) setSlots(current => [...current, {
         id, workspace: savedWorkspace, profile: { ...child }, week: saved.week,
         curriculumVersion: saved.sourceHash, source: saved.source, resumeChannel: saved.channel,
+        resumeExperience: saved.experience,
         savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
         teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local', kind: 'activities',
         src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
@@ -637,7 +638,7 @@ function FamilyPreview() {
         <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
         {savedLessons.owner === child.id && savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
         {savedLessons.owner === child.id && savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
-          Resume saved {lesson.channel} · {lesson.week}
+          Resume saved {lesson.experience === 'whispering-scrolls' ? 'Whispering Scrolls' : lesson.channel} · {lesson.week}
         </button>)}
         {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && <p>No saved lessons are available yet.</p>}
       </details>}
@@ -653,6 +654,7 @@ function FamilyPreview() {
           data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
           data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
           data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
+          data-family-resume-experience={slot.resumeExperience}
           data-family-resume-lesson={slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined}
           data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
           hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />

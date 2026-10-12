@@ -8,7 +8,7 @@ type Policy = {
   content: readonly string[]
   audio: string
   scoring: 'reviewed-game-attempts' | 'grade-acquisition'
-  implementation: 'stage-b' | 'stage-c1' | 'stage-c2' | 'later-stage'
+  implementation: 'stage-b' | 'stage-c1' | 'stage-c2' | 'stage-d1' | 'later-stage'
 }
 
 /** Approved product rules. Availability is separate from the intended contract. */
@@ -67,7 +67,7 @@ export const GAME_POLICIES = {
     content: ['temporary-recording-comparison'],
     audio: 'grade-reading-acquisition',
     scoring: 'grade-acquisition',
-    implementation: 'later-stage',
+    implementation: 'stage-d1',
   },
   'stroke-order-slay': {
     tiers: ['tier-1'],

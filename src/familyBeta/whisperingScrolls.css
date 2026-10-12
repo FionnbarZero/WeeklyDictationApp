@@ -1,0 +1,10 @@
+.whispering-scrolls { max-width: 860px; margin: 0 auto; padding: 24px 16px 40px; }
+.whispering-scrolls > h1 { margin-bottom: 8px; }
+.whispering-scrolls .practice-top { display: flex; justify-content: space-between; gap: 12px; }
+.whispering-scrolls .practice-top button { min-height: 44px; padding: 10px 16px; border: 1px solid #735123; border-radius: 10px; background: #fff8e9; color: #27221b; font: inherit; cursor: pointer; }
+.whispering-scrolls .practice-top button:disabled { opacity: .55; cursor: not-allowed; }
+.whispering-scroll { margin: 24px 0; padding: 28px 24px; border: 2px solid #b78d42; border-top: 10px solid #735123; border-bottom: 10px solid #735123; border-radius: 16px; background: #fff8e9; color: #27221b; box-shadow: 0 8px 28px #0002; }
+.whispering-scroll .prompt-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.whispering-scroll .reading-answer-word { color: #27221b; }
+.whispering-scroll button { min-height: 44px; }
+@media (max-width: 600px) { .whispering-scroll { padding: 20px 12px; } .whispering-scrolls .practice-top { flex-wrap: wrap; gap: 12px; } }

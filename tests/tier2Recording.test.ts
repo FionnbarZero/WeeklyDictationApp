@@ -148,3 +148,49 @@ test('recorder start failure releases the microphone without leaving an unreacha
   )
   assert.equal(harness.stopCount(), 1)
 })
+
+test('paused reading retains its single recording, silences the microphone, and resumes only the unused interval', async () => {
+  const harness = recorderHarness()
+  let time = 0
+  let scheduled = 0
+  let callback: (() => void) | undefined
+  let stopped = 0
+  const track = { enabled: true, stop() { stopped++ } }
+  harness.dependencies.getUserMedia = async () => ({ getTracks: () => [track] })
+  harness.dependencies.now = () => time
+  harness.dependencies.schedule = (next, ms) => { callback = next; scheduled = ms; return 1 as unknown as ReturnType<typeof setTimeout> }
+  harness.dependencies.cancelSchedule = () => { callback = undefined }
+  harness.recorder.pause = function () { this.state = 'paused' }
+  harness.recorder.resume = function () { this.state = 'recording' }
+  const active = await startEphemeralAudioRecording(harness.dependencies, 10_000)
+  assert.equal(scheduled, 10_000)
+  time = 2_500
+  assert.equal(active.pause(), true)
+  assert.equal(track.enabled, false)
+  assert.equal(harness.recorder.state, 'paused')
+  assert.equal(callback, undefined)
+  time = 60_000
+  active.resume()
+  assert.equal(track.enabled, true)
+  assert.equal(scheduled, 7_500)
+  assert.equal(harness.recorder.state, 'recording')
+  time += 1_500
+  active.pause()
+  active.resume()
+  assert.equal(scheduled, 6_000)
+  callback?.()
+  const clip = await active.finished
+  assert.equal(stopped, 1)
+  clip.dispose()
+  assert.deepEqual(harness.revoked, ['blob:reading-1'])
+})
+
+test('a browser without recorder pause support reports the limitation for safe cancellation', async () => {
+  const harness = recorderHarness()
+  const active = await startEphemeralAudioRecording(harness.dependencies)
+  assert.equal(active.pause(), false)
+  active.cancel()
+  await assert.rejects(active.finished, /cancelled/)
+  assert.equal(harness.stopCount(), 1)
+  assert.deepEqual(harness.revoked, [])
+})
