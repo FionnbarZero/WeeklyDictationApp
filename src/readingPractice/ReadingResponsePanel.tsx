@@ -13,8 +13,8 @@ export type ReadingResponsePanelProps = {
   allowSkipTimer?: boolean
   onPlayReference: () => Promise<void>
   onPlayTeachingIntroduction?: () => Promise<void>
-  onAnswer: (correct: boolean) => void
-  onContinue: () => void
+  onAnswer: (correct: boolean) => void | Promise<void>
+  onContinue: () => void | Promise<void>
   /** Acquisition games time the response after permission and teaching audio. */
   responseSeconds?: number
   onReviewPending?: (pending: boolean) => void
@@ -55,6 +55,7 @@ export function ReadingResponsePanel({
   const [teachingAudioError, setTeachingAudioError] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const pendingReview = useRef<{ correct: boolean; teaching: boolean } | null>(null)
+  const savingReview = useRef(false)
   const [remaining, setRemaining] = useState(responseSeconds || 0)
 
   useEffect(() => {
@@ -134,12 +135,14 @@ export function ReadingResponsePanel({
     if (responseSeconds === undefined) void compareReadings(true)
   }
 
-  function commitReview() {
+  async function commitReview() {
     const pending = pendingReview.current
-    if (!pending || activityClock.paused) return
+    if (!pending || activityClock.paused || savingReview.current) return
+    savingReview.current = true
     try {
-      if (pending.teaching) onContinue()
-      else onAnswer(pending.correct)
+      if (pending.teaching) await onContinue()
+      else await onAnswer(pending.correct)
+      if (pendingReview.current !== pending) return
       setReviewError(null)
       pendingReview.current = null
       onReviewPending?.(false)
@@ -147,7 +150,10 @@ export function ReadingResponsePanel({
       // keeps the completed presentation mounted briefly.
       if (responseSeconds !== undefined) recorder.reset()
     } catch (error) {
+      if (pendingReview.current !== pending) return
       setReviewError(error instanceof Error ? error.message : 'The response could not be saved. Please retry.')
+    } finally {
+      savingReview.current = false
     }
   }
 

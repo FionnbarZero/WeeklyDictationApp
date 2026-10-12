@@ -355,12 +355,13 @@ for (const [slug, grade] of grades) {
       await setup(page, documents)
       const first = await open(page, slug)
       for (const teaching of [false, false, true, false]) await review(first, teaching)
+      await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(4)
       const before = await checkpoint(page)
       const secondPage = await context.newPage()
       await setup(secondPage, documents)
       // Keep queued-only completion deterministic: neither tab can acknowledge
       // its outbox via the synthetic server before the explicit local retry.
-      await context.route('**/betaResults/**', (route) => route.abort('internetdisconnected'))
+      if (pendingOnly) await context.route('**/betaResults/**', (route) => route.abort('internetdisconnected'))
       const second = await open(secondPage, slug)
       expect((await checkpoint(secondPage)).sessionId).toBe(before.sessionId)
       await record(second)
@@ -368,29 +369,24 @@ for (const [slug, grade] of grades) {
         ;(window as TestWindow).failScrollScore = fail
       }, pendingOnly)
       await first.getByRole('button', { name: 'Done for today', exact: true }).click()
-      await expect
-        .poll(() =>
-          page.evaluate(
-            (id) => Boolean(localStorage.getItem(`family-beta-preview-pending-v1:${id}`)),
-            before.sessionId,
-          ),
-        )
-        .toBe(true)
-      const frozenScore = await page.evaluate(
-        (id) => localStorage.getItem(`family-beta-preview-pending-v1:${id}`),
-        before.sessionId,
-      )
+      const scoreKey = `${pendingOnly ? 'family-beta-preview-pending-v1' : 'family-beta-preview-results-v1'}:${before.sessionId}`
+      await expect.poll(() => page.evaluate((key) => Boolean(localStorage.getItem(key)), scoreKey)).toBe(true)
+      const frozenScore = await page.evaluate((key) => localStorage.getItem(key), scoreKey)
       if (pendingOnly) {
         expect(
           await page.evaluate((id) => localStorage.getItem(`family-beta-preview-results-v1:${id}`), before.sessionId),
         ).toBeNull()
+      } else {
+        await expect
+          .poll(() =>
+            page.evaluate((id) => localStorage.getItem(`family-beta-preview-pending-v1:${id}`), before.sessionId),
+          )
+          .toBeNull()
       }
       await second.getByRole('button', { name: 'Not yet', exact: true }).click()
       await expect(second.getByText(/This attempt is already being saved or is complete/)).toBeVisible()
       expect(await checkpoint(secondPage)).toEqual(before)
-      expect(
-        await page.evaluate((id) => localStorage.getItem(`family-beta-preview-pending-v1:${id}`), before.sessionId),
-      ).toBe(frozenScore)
+      expect(await page.evaluate((key) => localStorage.getItem(key), scoreKey)).toBe(frozenScore)
       // The rejected, temporary response stays available until the child
       // explicitly leaves; it never becomes an extra fact in the frozen score.
       await expect(second.getByRole('button', { name: 'Replay comparison', exact: true })).toBeVisible()
@@ -420,6 +416,101 @@ for (const [slug, grade] of grades) {
     })
   }
 }
+
+for (const finishFirst of [true, false]) {
+  test(`Scrolls native lock serializes overlapping ${finishFirst ? 'finish before answer' : 'answer before finish'}`, async ({
+    page,
+    context,
+  }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await setup(page, documents)
+    const first = await open(page)
+    for (const teaching of [false, false, true, false]) await review(first, teaching)
+    await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(4)
+    const before = await checkpoint(page)
+    const secondPage = await context.newPage()
+    await setup(secondPage, documents)
+    const second = await open(secondPage)
+    await record(second)
+    const name = await page.evaluate(async () => {
+      const key = Object.keys(localStorage).find(
+        (key) =>
+          key.startsWith('family-beta-acquisition-v1:') &&
+          JSON.parse(localStorage.getItem(key)!).envelope?.activityModule === 'whispering-scrolls',
+      )!
+      const name = `ninja-scrolls-write:${key}`
+      await new Promise<void>((held) => {
+        void navigator.locks.request(
+          name,
+          () =>
+            new Promise<void>((release) => {
+              Object.assign(window, { releaseScrollsWrite: release })
+              held()
+            }),
+        )
+      })
+      return name
+    })
+    const count = async () =>
+      page.evaluate(
+        async (name) => (await navigator.locks.query()).pending!.filter((lock) => lock.name === name).length,
+        name,
+      )
+    const finish = () => first.getByRole('button', { name: 'Done for today', exact: true }).click()
+    const answer = () => second.getByRole('button', { name: 'Not yet', exact: true }).click()
+    try {
+      await (finishFirst ? finish() : answer())
+      await expect.poll(count).toBe(1)
+      await (finishFirst ? answer() : finish())
+      await expect.poll(count).toBe(2)
+      expect(await checkpoint(page)).toEqual(before)
+      await expect(second.getByRole('button', { name: 'Done for today', exact: true })).toBeDisabled()
+    } finally {
+      await page.evaluate(() => (window as Window & { releaseScrollsWrite: () => void }).releaseScrollsWrite())
+    }
+    if (finishFirst) {
+      await expect(second.getByText(/This attempt is already being saved or is complete/)).toBeVisible()
+      expect(await checkpoint(page)).toEqual(before)
+    } else {
+      await expect(first.getByText(/Reopen the saved lesson before submitting its score/)).toBeVisible()
+      expect((await checkpoint(page)).envelope.revision).toBe(before.envelope.revision + 1)
+      expect(
+        await page.evaluate(() =>
+          Object.keys(localStorage).filter((key) => key.startsWith('family-beta-preview-results-v1:')),
+        ),
+      ).toEqual([])
+      await second.getByRole('button', { name: 'Done for today', exact: true }).click()
+    }
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (id) => JSON.parse(localStorage.getItem(`family-beta-preview-results-v1:${id}`) || 'null')?.attempted,
+          before.sessionId,
+        ),
+      )
+      .toBe(finishFirst ? 1 : 2)
+  })
+}
+
+test('Scrolls without cross-tab locking keeps the reviewed response for retry without changing a checkpoint', async ({
+  page,
+}) => {
+  await setup(page)
+  const frame = await open(page)
+  const before = await checkpoint(page)
+  await record(frame)
+  await frame
+    .locator('body')
+    .evaluate(() => Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined }))
+  await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+  await expect(frame.getByText(/cannot safely coordinate saved reading across tabs/)).toBeVisible()
+  expect(await checkpoint(page)).toEqual(before)
+  await frame.locator('body').evaluate(() => {
+    Reflect.deleteProperty(navigator, 'locks')
+  })
+  await frame.getByRole('button', { name: 'Retry saving response', exact: true }).click()
+  await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(1)
+})
 
 test('Scrolls guarded C2 recovery preserves the new lesson and returns to the same prompt', async ({
   browser,

@@ -12,6 +12,9 @@ import {
   readSavedLesson,
   rememberLessonLaunch,
 } from '../src/familyBeta/lessonLaunch.ts'
+import { makeResult } from '../src/familyBeta/model.ts'
+import { PENDING_KEY, RESULT_KEY } from '../src/familyBeta/resultLedger.ts'
+import { assertScrollsAnswerOpen, ScrollsAttemptClosedError } from '../src/familyBeta/scrollsCompletion.ts'
 import { WHISPERING_SCROLLS_MODULE, whisperingScrollsLesson } from '../src/familyBeta/whisperingScrolls.ts'
 import type { Tier2ReadingTarget } from '../src/tier2/contracts.ts'
 
@@ -47,6 +50,39 @@ function fixture(slug: string) {
   }
   return { source, dataset, profile, context, records, storage }
 }
+
+for (const key of [PENDING_KEY, RESULT_KEY]) {
+  for (const legacy of [false, true]) {
+    test(`Scrolls completion fence protects ${key} ${legacy ? 'legacy' : 'keyed'} scores without changing records`, () => {
+      const { storage, records } = fixture('grade5')
+      const result = makeResult(
+        { id: 'scroll-child', nickname: 'Synthetic', grade: 'Grade 5', active: true },
+        {
+          id: 'closed-scrolls',
+          activity: 'Whispering Scrolls',
+          channel: 'reading',
+          datasetIds: ['week'],
+          schoolYear: '2026-27',
+          attempted: 1,
+          correct: 1,
+        },
+      )
+      storage.setItem(legacy ? key : `${key}:${result.id}`, JSON.stringify(legacy ? [result] : result))
+      const before = [...records]
+      assert.throws(() => assertScrollsAnswerOpen(storage, result.id), ScrollsAttemptClosedError)
+      assert.doesNotThrow(() => assertScrollsAnswerOpen(storage, 'different-attempt'))
+      assert.deepEqual([...records], before)
+    })
+  }
+}
+
+test('Scrolls completion fence refuses unreadable scores rather than assuming the attempt is open', () => {
+  const { storage, records } = fixture('grade5')
+  storage.setItem(`${PENDING_KEY}:damaged`, '{')
+  const before = [...records]
+  assert.throws(() => assertScrollsAnswerOpen(storage, 'closed-scrolls'))
+  assert.deepEqual([...records], before)
+})
 
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
   test(`${slug} scrolls: all transitions and target timers match the grade reading engine; ordinary progress stays separate`, () => {

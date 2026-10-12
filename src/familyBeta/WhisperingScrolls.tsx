@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { activityClock, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
 import { withKindergartenAudio } from '../audio/kindergartenAudio.ts'
@@ -7,7 +7,8 @@ import type { Dataset } from '../domain/contracts.ts'
 import { ReadingResponsePanel } from '../readingPractice/ReadingResponsePanel.tsx'
 import type { Tier2ReadingTarget } from '../tier2/contracts.ts'
 import { familyAcquisitionStore } from './acquisitionRuntime.ts'
-import { pendingResults, savePreviewResult } from './runtime.ts'
+import { pendingResults, previewProfile, savePreviewResult } from './runtime.ts'
+import { assertScrollsAnswerOpen, ScrollsAttemptClosedError, withScrollsWrite } from './scrollsCompletion.ts'
 import { WHISPERING_SCROLLS_MODULE, WHISPERING_SCROLLS_TITLE, whisperingScrollsLesson } from './whisperingScrolls.ts'
 import './whisperingScrolls.css'
 
@@ -26,6 +27,9 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
   const [current, setCurrent] = useState(store.current)
   const [error, setError] = useState('')
   const [reviewPending, setReviewPending] = useState(false)
+  const [closedElsewhere, setClosedElsewhere] = useState(false)
+  const saving = useRef(false)
+  const [savingScore, setSavingScore] = useState(false)
   // A queued completion is already an immutable score intent. Reopening may
   // retry its confirmation, but must not append answers to the same attempt.
   const [finishing, setFinishing] = useState(() =>
@@ -41,35 +45,58 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
     current.envelope.grade === 'Kindergarten' ? withKindergartenAudio(target) : target
   useEffect(() => () => stopActiveAudio(), [])
 
-  function answer(correct: boolean) {
+  function assertWritable() {
     if (activityClock.paused) throw new Error('Close the report or return to this activity before saving.')
-    // Throw back to the panel: its exact reviewed response stays locked for retry.
-    const saved = store.answer(correct, 'recording-comparison')
-    setCurrent(saved)
-    setError('')
+    const profile = previewProfile()
+    if (profile?.id !== store.current.envelope.childId || profile.grade !== store.current.envelope.grade)
+      throw new Error('The child profile changed. Your saved work is preserved.')
+    store.assertActive()
   }
-  function finish() {
-    if (activityClock.paused || reviewPending) return
+  async function answer(correct: boolean) {
+    // Throw back to the panel: its exact reviewed response stays locked for retry.
+    try {
+      const saved = await withScrollsWrite(store.key, () => {
+        assertWritable()
+        assertScrollsAnswerOpen(localStorage, store.current.sessionId)
+        return store.answer(correct, 'recording-comparison')
+      })
+      setCurrent(saved)
+      setError('')
+    } catch (failure) {
+      if (failure instanceof ScrollsAttemptClosedError) setClosedElsewhere(true)
+      throw failure
+    }
+  }
+  async function finish() {
+    if (activityClock.paused || reviewPending || saving.current) return
+    saving.current = true
+    setSavingScore(true)
     if (scored.length) setFinishing(true)
     try {
-      store.assertActive()
-      if (scored.length) {
-        const saved = store.prepareResult()
-        const result = savePreviewResult({
-          id: saved.sessionId,
-          activity: WHISPERING_SCROLLS_TITLE,
-          channel: 'reading',
-          datasetIds: [saved.envelope.datasetId],
-          schoolYear: saved.envelope.schoolYear,
-          correct: scored.filter((assessment) => assessment.correct).length,
-          attempted: scored.length,
-        })
-        if (!result) throw new Error('The Whispering Scrolls score could not be confirmed.')
-      }
+      await withScrollsWrite(store.key, () => {
+        assertWritable()
+        if (scored.length) {
+          const saved = store.prepareResult()
+          const facts = saved.assessments.filter((assessment) => assessment.countsTowardWeeklyScore)
+          const result = savePreviewResult({
+            id: saved.sessionId,
+            activity: WHISPERING_SCROLLS_TITLE,
+            channel: 'reading',
+            datasetIds: [saved.envelope.datasetId],
+            schoolYear: saved.envelope.schoolYear,
+            correct: facts.filter((assessment) => assessment.correct).length,
+            attempted: facts.length,
+          })
+          if (!result) throw new Error('The Whispering Scrolls score could not be confirmed.')
+        }
+      })
       stopActiveAudio()
       onExit()
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The score could not be saved. Please retry.')
+    } finally {
+      saving.current = false
+      setSavingScore(false)
     }
   }
 
@@ -91,7 +118,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
         >
           Pause and return
         </button>
-        <button className="secondary-button" type="button" disabled={reviewPending} onClick={finish}>
+        <button className="secondary-button" type="button" disabled={reviewPending || savingScore} onClick={finish}>
           Done for today
         </button>
       </div>
@@ -99,6 +126,24 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
       <h1>Whispering Scrolls</h1>
       <p>Unroll each word. Read it aloud, listen to your voice and the model, then check your reading.</p>
       {error && <p role="alert">{error} Your reviewed work is preserved; try Done for today again.</p>}
+      {closedElsewhere && (
+        <section aria-label="Finished in another tab">
+          <p>
+            Your earlier score and teaching progress are safe. Return to the Dojo and reopen Scrolls to repeat only this
+            unfinished response in a new visit. The temporary recording will be released when you leave.
+          </p>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              stopActiveAudio()
+              onExit()
+            }}
+          >
+            Return to Dojo
+          </button>
+        </section>
+      )}
       <section className="whispering-scroll" aria-label="Reading scroll">
         {complete ? (
           <>
@@ -107,7 +152,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
               {scored.filter((assessment) => assessment.correct).length} of {scored.length} scored responses marked
               correct.
             </p>
-            <button className="primary-button" type="button" onClick={finish}>
+            <button className="primary-button" type="button" disabled={savingScore} onClick={finish}>
               {finishing ? 'Retry saving score' : 'Save and finish'}
             </button>
           </>
