@@ -4,7 +4,7 @@
 
 Whispering Scrolls is implemented locally at `f38e085` as a separate Tier 2 acquisition activity across all three grades. It reuses the grade-owned engine rather than introducing another teaching sequence, preserves separate ordinary-reading progress, and adds response timing, temporary recording pause/comparison, reviewed-trial retry, pinned resume and frozen queued completions. The code-grounded readiness contract, exact-source verification, candidate/recovery hashes and limitations are in [Whispering Scrolls acquisition](./whispering-scrolls-acquisition.md#local-candidate-and-review-handoff).
 
-**Next: independent GPT-6 Astra · Extra High release review.** This is not a release approval or a smoke-test handoff. C2 `d62a427` remains live. D2 and full Spirit Realm integration remain unfinished; existing content and physical-device limitations are unchanged.
+**October 12 review outcome: one P2 blocks release.** An already-mounted second tab can add scored responses after the first tab queues or confirms that attempt's score, leaving the second tab unable to finalize conflicting totals. Next: **GPT-6 Astra · Extra High** repair, pending/confirmed two-tab regressions, then independent re-review. [Reproduction and repair boundary](./whispering-scrolls-acquisition.md#independent-release-review-october-12-2026). C2 `d62a427` remains the recorded live release. No D1 smoke-test handoff; D2 and full Spirit Realm integration remain unfinished.
 
 ## C2 publication and live acceptance
 

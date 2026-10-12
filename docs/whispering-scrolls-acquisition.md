@@ -37,7 +37,7 @@ Verify all three grade sequences, timers and correction/earned-DT behavior again
 
 ## Local candidate and review handoff
 
-Application candidate **`f38e085dea915740b86da980b99b5ee557316479`** is local on `codex/d1-whispering-scrolls`, based on published C2 `d62a427`. It has not been pushed, independently reviewed, merged or published. The next gate is **independent GPT-6 Astra · Extra High release review** of the complete D1 diff, with special attention to shared recorder behavior, paused media, grade-engine parity, checkpoint routing and immutable score finalization. D2 and full Spirit Realm integration remain out of scope. No D1 owner smoke testing yet.
+Application candidate **`f38e085dea915740b86da980b99b5ee557316479`** is local on `codex/d1-whispering-scrolls`, based on published C2 `d62a427`. Its independent release review is blocked by the cross-tab score-finalization defect below. It has not been pushed, merged or published. Repair and independent **GPT-6 Astra · Extra High** re-review are required before release preparation. D2 and full Spirit Realm integration remain out of scope. No D1 owner smoke testing yet.
 
 Verified automated evidence:
 
@@ -64,3 +64,24 @@ Initial browser failures exposed a fixture prompt-kind mismatch and invalid fake
 Detailed logs and final browser screenshots/traces are retained under `family-beta-artifacts/releases/d1-f38e085/evidence/`, including `ninja-d1-head-unit.log`, `ninja-d1-general-final.log`, `ninja-d1-completion-browser.log`, `ninja-d1-final-head.log`, `ninja-d1-emulator.log`, and `ninja-d1-loader-build.log`. Local logs and ignored packages are not remote CI or publication evidence. Final-head CI and the applicable release approvals remain required before publication.
 
 Synthetic audio and Chromium touch tests do not certify physical iMac/iPad microphone, speaker or touch behavior. A permission failure uses the disclosed say-aloud fallback. Browsers without native recorder pause repeat only the unfinished recording after a report interruption. Recordings never become durable data. D1 uses the selected supported reading cohort; absent usable targets remain unavailable. Existing C2 content-subset and Context startup-timing limitations are unchanged.
+
+## Independent release review October 12 2026
+
+The separately authorized read-only **GPT-6 Astra · Extra High** reviewer examined the complete C2-to-D1 diff and found **one actionable P2**. The release-review gate remains blocked; no application fix was made during review.
+
+### Recheck immutable completion before accepting another answer
+
+In [WhisperingScrolls.tsx](../src/familyBeta/WhisperingScrolls.tsx), `finishing` checks the pending ledger only at mount (lines 31–33), while `answer()` (lines 44–48) writes another checkpoint without rechecking queued or confirmed completion. A score write does not change the acquisition record, so its compare-and-swap guard cannot reject an already-mounted second copy solely because the first copy finalized the score.
+
+The reviewer reproduced this twice against the retained exact `f38e085` package with synthetic Grade 5 data:
+
+1. Open the same lesson in two tabs at session S, checkpoint revision 4, with one scored response.
+2. Finish in tab A; immutable result S records one attempted response.
+3. Review the next scored target in tab B; its checkpoint advances to revision 5 with two scored responses, still under S.
+4. Finish in tab B; saving fails with “This attempt conflicts with an existing result.” Retrying cannot reconcile the counts.
+
+The pending-only variant also reproduces: block cloud result delivery and fail the confirmed-result write after the pending score is queued in tab A. Tab B still adds another response under S, which now conflicts with the immutable pending score. No real family records were used or changed.
+
+The repair must protect finalization across mounted copies before checkpoint mutation. Add separate regressions for pending and confirmed scores, retain the original immutable score, and ensure the second copy cannot accept work that is stranded under that score identity. Reuse the existing acquisition and result boundaries; do not erase records or weaken immutable-result validation. Repair and re-review use **GPT-6 Astra · Extra High**.
+
+No other actionable introduced defect was found. The reviewer ran **53 focused checks**, all passing. Main-review evidence on documentation-only successor `5fcf44b` passes **907 unit tests, 54 packaged desktop/tablet cases**, typecheck, lint, formatting and the explicit new-file checks. Candidate/recovery hashes were reverified October 12. These passing tests do not resolve the reproduced two-tab defect. Main-review logs are retained in `family-beta-artifacts/releases/d1-f38e085/evidence/` as `ninja-d1-review-unit.log`, `ninja-d1-release-review.log`, and `ninja-d1-review-quality.log`. Final-head CI, physical acceptance and release approvals remain separate gates after the repair.
