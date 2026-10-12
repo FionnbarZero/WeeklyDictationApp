@@ -345,6 +345,82 @@ test('Scrolls reopening a queued score cannot append answers to its immutable at
   expect(results[0]).toMatchObject({ id: before.sessionId, activity: 'Whispering Scrolls', attempted: 1, correct: 1 })
 })
 
+for (const [slug, grade] of grades) {
+  for (const pendingOnly of [false, true]) {
+    test(`${grade} Scrolls rejects a mounted tab's answer after another tab ${pendingOnly ? 'queues' : 'confirms'} its score`, async ({
+      page,
+      context,
+    }) => {
+      const documents: SyntheticFamilyDocuments = new Map()
+      await setup(page, documents)
+      const first = await open(page, slug)
+      for (const teaching of [false, false, true, false]) await review(first, teaching)
+      const before = await checkpoint(page)
+      const secondPage = await context.newPage()
+      await setup(secondPage, documents)
+      // Keep queued-only completion deterministic: neither tab can acknowledge
+      // its outbox via the synthetic server before the explicit local retry.
+      await context.route('**/betaResults/**', (route) => route.abort('internetdisconnected'))
+      const second = await open(secondPage, slug)
+      expect((await checkpoint(secondPage)).sessionId).toBe(before.sessionId)
+      await record(second)
+      await first.locator('body').evaluate((fail) => {
+        ;(window as TestWindow).failScrollScore = fail
+      }, pendingOnly)
+      await first.getByRole('button', { name: 'Done for today', exact: true }).click()
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (id) => Boolean(localStorage.getItem(`family-beta-preview-pending-v1:${id}`)),
+            before.sessionId,
+          ),
+        )
+        .toBe(true)
+      const frozenScore = await page.evaluate(
+        (id) => localStorage.getItem(`family-beta-preview-pending-v1:${id}`),
+        before.sessionId,
+      )
+      if (pendingOnly) {
+        expect(
+          await page.evaluate((id) => localStorage.getItem(`family-beta-preview-results-v1:${id}`), before.sessionId),
+        ).toBeNull()
+      }
+      await second.getByRole('button', { name: 'Not yet', exact: true }).click()
+      await expect(second.getByText(/This attempt is already being saved or is complete/)).toBeVisible()
+      expect(await checkpoint(secondPage)).toEqual(before)
+      expect(
+        await page.evaluate((id) => localStorage.getItem(`family-beta-preview-pending-v1:${id}`), before.sessionId),
+      ).toBe(frozenScore)
+      // The rejected, temporary response stays available until the child
+      // explicitly leaves; it never becomes an extra fact in the frozen score.
+      await expect(second.getByRole('button', { name: 'Replay comparison', exact: true })).toBeVisible()
+      await second.getByRole('button', { name: 'Return to Dojo', exact: true }).click()
+      if (pendingOnly) {
+        await first.locator('body').evaluate(() => {
+          ;(window as TestWindow).failScrollScore = false
+        })
+        await first.getByRole('button', { name: 'Retry saving score', exact: true }).click()
+      }
+      await secondPage.reload()
+      const reopened = await open(secondPage, slug)
+      const next = await checkpoint(secondPage)
+      expect(next.sessionId).not.toBe(before.sessionId)
+      expect(next.envelope).toEqual(before.envelope)
+      expect(next.reviewedTrials).toEqual(before.reviewedTrials)
+      await review(reopened, false, false)
+      await reopened.getByRole('button', { name: 'Done for today', exact: true }).click()
+      const results = await secondPage.evaluate(() =>
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith('family-beta-preview-results-v1:'))
+          .map((key) => JSON.parse(localStorage.getItem(key)!)),
+      )
+      expect(results).toHaveLength(2)
+      expect(results.find((result) => result.id === before.sessionId)).toEqual(JSON.parse(frozenScore!))
+      expect(results.find((result) => result.id === next.sessionId)).toMatchObject({ attempted: 1, correct: 0 })
+    })
+  }
+}
+
 test('Scrolls guarded C2 recovery preserves the new lesson and returns to the same prompt', async ({
   browser,
   request,
