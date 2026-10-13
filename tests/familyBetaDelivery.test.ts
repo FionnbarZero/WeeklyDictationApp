@@ -16,17 +16,17 @@ import {
   artifactFileRecords,
   candidateChannelId,
   FAMILY_BETA_ARTIFACT_SCHEMA,
-  GRADE2_CURRICULUM_DOCUMENT_ID,
-  GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
-  GRADE2_CURRICULUM_SOURCE_PATH,
   type FamilyBetaArtifactManifest,
   type FamilyBetaGrade,
   familyBetaGradeConfig,
   fileTreeSha256,
+  GRADE2_CURRICULUM_DOCUMENT_ID,
+  GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
+  GRADE2_CURRICULUM_SOURCE_PATH,
   requireMatchingSourceRevision,
   rollbackChannelId,
-  verifyFamilyBetaArtifact,
   sha256,
+  verifyFamilyBetaArtifact,
 } from '../scripts/familyBetaRelease.ts'
 import {
   GRADE2_PAGES_ORIGIN,
@@ -238,10 +238,10 @@ test('family beta routes bypass caches while fingerprinted assets remain immutab
   assert.deepEqual(config.hosting.rewrites, [{ source: '**', destination: '/index.html' }])
 })
 
-test('the packaging workflow includes Grade 2 but stable delivery remains locked to its existing origin', () => {
+test('historical reference delivery plans retain their original safeguards but their publishers are archived', () => {
   const workflow = readFileSync(resolve('.github/workflows/family-beta-artifacts.yml'), 'utf8')
-  const deployScript = readFileSync(resolve('scripts/deploy-family-beta.ts'), 'utf8')
-  const grade2DeployScript = readFileSync(resolve('scripts/deploy-grade2-pages.ts'), 'utf8')
+  const deployScript = readFileSync(resolve('archive/deployment/deploy-family-beta.ts.disabled'), 'utf8')
+  const grade2DeployScript = readFileSync(resolve('archive/deployment/deploy-grade2-pages.ts.disabled'), 'utf8')
   const deliveryPlans = readFileSync(resolve('scripts/familyBetaDelivery.ts'), 'utf8')
   assert.match(workflow, /grade: \[kindergarten, grade2, grade5\]/)
   assert.match(workflow, /actions\/upload-artifact@v4/)

@@ -1,4 +1,4 @@
-name: Package independent family beta artifacts
+name: Package isolated reference artifacts (not live releases)
 
 on:
   workflow_dispatch:

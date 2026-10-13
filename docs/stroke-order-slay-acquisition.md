@@ -2,6 +2,8 @@
 
 ## D2 readiness baseline
 
+**Current release:** D2 `937a51e` is published and live-verified October 13. See [publication and live acceptance](#publication-and-live-acceptance) for current evidence, exact links and the bounded physical-device check. The baseline and implementation checkpoints below are historical.
+
 D1 is published as `092c57f`. D2 starts from that application source and its two local release-documentation commits. The owner confirmed **GPT-6 Astra · Extra High** for D2 on October 12. D2 is not published or ready for owner testing.
 
 The existing `StrokeOrderActivity` is a session-only copy/review/memory/review loop. Grade 2 and Kindergarten launch it from their ordinary hubs; the family wrapper separately adds it for Grade 5. Its fixed 10/20-second rounds do not execute the approved acquisition engine. Replacing those family launches with a presentation over the existing engine is the shortest coherent path. Development-only prototypes remain unchanged.
@@ -153,3 +155,53 @@ Completed local verification:
 Evidence is retained under ignored `family-beta-artifacts/reviews/d2-ci-repair/`: the complete failed CI job log, original 22-file CI evidence ZIP (SHA-256 `c48d8bed18eea21987d6b09bbbe03dc3777af46efbcba6c17fe9b0746e1279af`), and separate repeat/full-file browser outputs. The original failed run remains failed; it is not superseded by an identical rerun or represented as green.
 
 **Next: obtain authorization to push the test-only repair, then verify all five jobs on the new final PR head.** Ask for merge approval only after that gate passes; merged-source packaging and separate per-grade publication approvals remain afterward. No remote write, merge, hosting action, real-child-record or authentication/security change occurred in this repair. No owner smoke testing yet; D1 `092c57f` remains the last verified live release.
+
+## Merged-source release preparation
+
+All five jobs passed on final PR head `64ff943681ea8ccb2a80fe571209c1e153b69831` in [quality run 38350620237](https://github.com/FionnbarZero/WeeklyDictationApp/actions/runs/38350620237). The family browser matrix reports **444 passed, 16 intentionally skipped and zero failures** in 59.4 minutes. The skips require explicit retained-predecessor fixtures, rather than weakened assertions or retries. The same job subsequently passes all **11 family-policy emulator cases**, the 47-file family check and the six-file offline check. The unit job passes all **930 cases**; the production/reference builds, general-browser checks and root-policy emulator jobs also pass. The earlier `7268f50` failure remains recorded above.
+
+The owner then explicitly approved merge. [PR #66](https://github.com/FionnbarZero/WeeklyDictationApp/pull/66) merged at `2026-10-13T12:22:47Z` (October 13, 5:22 a.m. Pacific) as `937a51e47df995a49ba3c46d6930dcc6234fd5ec`. The connector could read the PR but could not perform the merge; the owner's existing signed-in GitHub browser completed the approved action without any permission changes. Both the merge and reviewed head have Git tree `672927500a8184b3b28a6cd50dc7571f3039e050`; no source or test changes were introduced by merging. Remote and local `main` are updated. The branch was not deleted.
+
+Exact clean merged-source packages are retained under ignored `family-beta-artifacts/releases/d2-937a51e/`. Both complete file inventories and every SHA-256 hash were verified after copying. The standard browser server independently built the same 155-file candidate; its complete manifest, inventory and file tree match the retained candidate exactly.
+
+| Package | Source / compatibility | Files | SHA-256 file tree |
+| --- | --- | --- | --- |
+| `candidate` | `937a51e47df995a49ba3c46d6930dcc6234fd5ec` | 155 | `6ee72ecd7c7bf204476c0d97de48aa211e31654869b306869f696d4dbf7844d2` |
+| `guarded-d1-recovery` | D1 `092c57f`, guarded for `937a51e` | 149 | `54e7fb4971aa4a518c1c21c91ed2c6adde36dbdfa0f4a87f6f97e48ec1fa468f` |
+
+Fresh merged-source verification passes **930 unit tests**, typecheck, production build and unchanged performance budgets (**546,027/550,000 initial JavaScript bytes; 42,745/60,000 CSS bytes**). The family-policy emulator and dependency checks pass. Production dependencies report zero vulnerabilities; the existing 11-finding firebase-tools-only development exception expires November 4. All **78 merged-package Stroke Order/Scrolls desktop/tablet cases pass** in 9.6 minutes, with no retries or skips, including all eight explicit retained D1 recovery cases. Fresh desktop Kindergarten and tablet Grade 2 screenshots were visually inspected: square guide cells, readable controls and global report/batched-email access are present. These synthetic checks do not establish physical sound, handwriting or iPad/Safari acceptance.
+
+The `evidence/` directory retains packaging/recovery logs, hash and server-package comparisons, merged-source verification logs, the passing PR CI receipt and merge screenshot. Release-status documentation is maintained on `codex/d2-release-937a51e` and does not change the package's embedded merge identity. No hosting upload or activation occurred. A read-only canonical manifest check returned HTTP 200 and still identifies D1 `092c57f313631e1ddcedbddc4d5f46274249ca90`, file tree `65b2b8ea7e12053a365fbd1b66e7fc61b11348bcd97a5eb15ef78b30b2dc0c38`; this is not a new full live acceptance run.
+
+The intended destination remains Cloudflare Worker `meghangames-ninjadojo`, account `4c11957e0121dba35fe2f16be80526f8`, at `ninjadojo.meghangames.com`, using Firebase project `weeklydictationapp`. No routes, security/authentication settings, production database policy, real-child records, teacher documents or batched reports changed.
+
+**Next: GPT-6.1 Sol · High to obtain separate owner publication approvals for all three grades, then publish the exact retained candidate and verify the served build.** D2 is merged but unpublished. No owner D2 smoke testing or E1 work yet. Physical iMac/iPad audio, handwriting/touch, report pause and reload acceptance follows verified publication. Grade 5's existing session-only Warmup preview, future guide coverage and full Spirit Realm integration remain limitations.
+
+## Publication and live acceptance
+
+The owner separately approved source **`937a51e47df995a49ba3c46d6930dcc6234fd5ec`** for Kindergarten, Grade 2 and Grade 5. The exact retained 155-file candidate was uploaded without rebuilding and activated October 13 at **5:46 a.m. Pacific**. Cloudflare Worker `meghangames-ninjadojo` version **`42f8137a-de79-452c-83e5-8e1633c48268`** serves 100% on `ninjadojo.meghangames.com`. Guarded D1 recovery **`279e9451-4f60-470e-8f54-8c5109e696a2`** is retained inactive. Both retained inventories were freshly rehashed before upload. Provider readback confirms the same runtime, cache/privacy headers and empty bindings as D1; no route, DNS, authentication or database-security change occurred.
+
+The exact canonical manifest and **all 153 public file hashes** match candidate tree `6ee72ecd7c7bf204476c0d97de48aa211e31654869b306869f696d4dbf7844d2`. All **six desktop/tablet entry-and-report checks pass** on the canonical grade links. The exact local package against the real backend and the canonical HTTPS app both pass every grade's four reviewed trial checkpoints, temporary response exclusion, guide/timer/report pause, fresh-device pinned lesson recovery, independently claimed immutable completion, drained score queues and two-device reload recovery. Anonymous family reads are denied. Live Kindergarten and Grade 2 tablet-layout screenshots were visually inspected; this does not establish physical sound, handwriting or Safari acceptance.
+
+Each successful acceptance run removed its disposable parent and 20 synthetic test documents. The earlier partially completed test removed its disposable parent and 17 documents. No existing family records or batched on-device reports were touched. Synthetic deletion is confined to the accounts created by these drivers, not a migration or child-data reset.
+
+Two failed checks remain retained honestly:
+
+- The first prepublication driver assumed the latest Kindergarten cohort was guide-ready. Automatic Google refresh now supplies October 12 **土、花**, which has no validated shared guides. The app correctly keeps Stroke Order **Coming soon** and ordinary writing available. The driver was corrected to select the latest eligible October 5 **牛、羊** cohort, without changing teacher content, game policy or the release package. The corrected all-grade run passes.
+- Immediately after activation, the manifest identified D2 but one newly published JavaScript URL returned HTTP 404, and the concurrent browser could not reach Create account. Before any test signup, that browser run failed. The identical asset URL then returned HTTP 200; a fresh full asset/entry check and fresh live-backend run pass. There was no repeated deployment, cache purge or application edit. These results establish recovery after observed publication propagation, not that the initial checks passed.
+
+Approval receipts, upload/provider/activation records, initial failed and final passing driver logs, hashes, cleanup receipts and all-grade screenshots are retained under ignored `family-beta-artifacts/releases/d2-937a51e/evidence/`, with the owner approval receipt and reproducible acceptance drivers in its parent release directory. Application source remains merge `937a51e`; release-documentation edits do not change the served artifact.
+
+### Bounded owner smoke check
+
+**Live build `937a51e`; 5–8 minutes total, not a full-app audit.** Use the permanent links:
+
+- [Kindergarten](https://ninjadojo.meghangames.com/family-beta-preview.html?grade=kindergarten)
+- [Grade 2](https://ninjadojo.meghangames.com/family-beta-preview.html?grade=grade2)
+- [Grade 5](https://ninjadojo.meghangames.com/family-beta-preview.html?grade=grade5)
+
+Confirm the header says `937a51e`. If an already-open app still shows the previous build, finish/pause your current activity and follow the update-ready message, then close/reopen the app; never clear browser data. For Kindergarten select **October 5–11**; today's 土/花 guides are not ready. Grade 2's **September 21–27** cohort is the release-tested route. Grade 5 uses the current eligible teacher lesson. Older selected lessons are explicitly labelled; they do not substitute for today's lesson.
+
+On iMac, open Activities → Enter the Dojo → Stroke Order Slay, listen to a prompt, write with the mouse/trackpad, compare and review a few answers. On iPad, check finger/stylus writing, square guide alignment and usable controls. Grades 2/5 should offer their existing Warmup; skipping is allowed. Open Report a problem mid-trial: sound, countdown and guide motion should stop, and closing it should preserve the response. After reviewing an answer, pause/reload and resume from Saved lessons: reviewed progress should remain, while unfinished ink/typing starts blank by design. Use the existing report window for issues and **Finish session & email reports** to share the local batch. No microphone test is required for this writing-only change.
+
+Known unfinished work: physical sound/handwriting/touch acceptance, October 12 Kindergarten and future target guide coverage, Grade 5's session-only Warmup/undecided requirement policy, and full Spirit Realm integration. **Next engineering: E1 release-path cleanup — GPT-6.1 Sol · High**, with confirmation before application edits; **GPT-6 Astra · High** reviews publication or hosting retirement. No E1 work or hosting retirement occurred in this release.

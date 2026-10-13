@@ -1,5 +1,7 @@
 # Independent family beta delivery
 
+**Historical reference only — superseded by the canonical family origin.** E1 locally archives and disables these Firebase/Pages publishers and removes their npm publication aliases. Commands below are retained as historical evidence, not executable current instructions. Use [canonical family operations](./family-beta-operations.md#e1-canonical-release-path) and [current publication status](../STATUS.md). No old hosting has been retired by this local archival change.
+
 Status: Kindergarten and Grade 5 are independently hosted. Grade 2 is independently deployed at its existing GitHub Pages origin with automatic reviewed curriculum loading and a retained pre-change rollback deployment.
 
 This delivery path isolates all three releases while preserving the existing Grade 2 browser-storage origin. Grade 2 verified backups are deliberately origin-bound, so the Firebase Grade 2 site is preview-only and must never become the stable child destination.

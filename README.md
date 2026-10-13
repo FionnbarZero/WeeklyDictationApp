@@ -4,6 +4,8 @@ All three family apps are live at one maintained origin: [Kindergarten](https://
 
 Build the family integration with `npm run build:reconciliation` and review locally with `npm run preview:reconciliation`. A local build or GitHub push alone does not publish an app. The source supports older authenticated-app and isolated lab paths as well; the technical notes below must not be mistaken for the live family wrapper's capability inventory.
 
+Current family packaging uses `npm run package:canonical-family`; publishing must reuse the exact tested package. E1's local guarded command is `npm run release:family -- plan --record /absolute/path/release.json` (dry-run by default). Its independent repair re-review passed at `fe4627b`; PR/remote checks and real provider-operation acceptance remain separate. No hosting was changed by adding it. Old Firebase/Pages publishers are archived and stop immediately. See [canonical release operations](docs/family-beta-operations.md#e1-canonical-release-path) and the [obsolete-host dependency inventory](docs/family-beta-release-inventory.md#e1-dependency-and-retirement-inventory). Reference/prototype builds are not live family releases.
+
 React/Vite Mandarin dictation practice application with authenticated family profiles, durable Grade 2 Tier 1 practice, and isolated multi-grade development labs. Current capability and release status are tracked in [`STATUS.md`](./STATUS.md); implementation order and exit gates are tracked in [`ROADMAP.md`](./ROADMAP.md).
 
 ## Run locally
