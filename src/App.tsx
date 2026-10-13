@@ -641,7 +641,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setShowChildMenu(false)
       const id = createSessionId()
       const cloud = Boolean(auth.user && cloudScope)
-      const result = await import('./application/practice/startPractice.ts').then(({ startPractice }) => startPractice({
+      const result = await import('./application/practice/startPractice.ts').then(({ startPractice: startPracticeOperation }) => startPracticeOperation({
         state,
         resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
         child: selectedChild,
