@@ -75,6 +75,7 @@ let activeDataset: Dataset | null = null
 let activeDatasets: Dataset[] = []
 let activeSession: PracticeSession | null = null
 let currentRevealMethod: Grade5LabRevealMethod = 'timer'
+let strokeWarmupReady: (() => void) | null = null
 
 function createElement<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string) {
   const element = document.createElement(tag)
@@ -235,6 +236,7 @@ function startPrimaryReview() {
 }
 
 function leavePractice(message = 'Returned to the Grade 5 hub. This development-only run was discarded.') {
+  strokeWarmupReady = null
   stopActiveAudio()
   activePractice = null
   acquisitionStore = null
@@ -358,6 +360,12 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
 
 function renderPracticeView() {
   if (!activeSession || !activeDataset) return
+  if (strokeWarmupReady && activeSession.segment === 'primary') {
+    const ready = strokeWarmupReady
+    leavePractice('Warmup finished. Opening Stroke Order Slay.')
+    ready()
+    return
+  }
   renderAssessmentSummary()
   practiceRoot.render(
     <PracticeView
@@ -378,14 +386,14 @@ function renderPracticeView() {
   )
 }
 
-function startWritingPractice(request: Grade5ActivityLaunchRequest, label: string) {
+function startWritingPractice(request: Grade5ActivityLaunchRequest, label: string, ready?: () => void) {
   try {
     if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
     const candidate = candidateFor(request)
     activeDatasets = grade5LabDatasets(sourceExtraction)
     activeDataset = activeDatasets.find((dataset) => dataset.id === candidate.datasetId) || grade5LabDataset(candidate)
     const warmup = grade5LabWarmupSelection(sourceExtraction, latestProgressionDate(sourceExtraction))
-    activePractice = request.activityKind === 'acquisition' || request.activityKind === 'reacquisition'
+    activePractice = !ready && (request.activityKind === 'acquisition' || request.activityKind === 'reacquisition')
       ? startGrade5AcquisitionLab(candidate)
       : null
     acquisitionStore = activePractice ? familyAcquisitionStore<AcquisitionTarget, Grade5LabRevealMethod>(
@@ -396,6 +404,8 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
     if (acquisitionStore) activeDataset = { ...activeDataset, words: [...acquisitionStore.context.targetSet.targets] }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
+    strokeWarmupReady = ready || null
+    if (ready) activeSession = { ...activeSession, primaryQueue: [] }
     if (acquisitionStore) {
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }
       if (acquisitionStore.current.envelope.revision > 0) activeSession = primaryStartState(activeSession)
@@ -528,7 +538,13 @@ async function loadHub() {
     sourceExtraction = extractGrade5Presentation(normalizePayload(await response.json()))
     const date = familyPreview ? new URLSearchParams(window.location.search).get('week') || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined
     learningHubModel = buildGrade5LearningHub(sourceExtraction, date)
-    hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} hideUnavailable={familyPreview} />)
+  hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} hideUnavailable={familyPreview}
+    onStrokeOrderWarmup={(dataset, ready) => startWritingPractice({
+      cohortId: dataset.id, eligibleCohortIds: [dataset.id], stage: 'acquisition',
+      learningChannel: 'tier-1-writing', activityKind: 'acquisition',
+      warmupMaximum: grade5WritingLabProfile.warmupPreview.preActivityMaximum,
+      preActivityWarmupRequirement: 'undecided',
+    }, 'Stroke Order Slay', ready)} />)
     hubRootElement.hidden = false
     setStatus(familyPreview ? 'Teacher curriculum loaded. Choose writing or reading; completed scores appear in family progress.' : 'Loaded the validated Grade 5 fixture. Tier 1 writing and Tier 2 recorded-reading pathways are ready for local testing.')
   } catch (error) {

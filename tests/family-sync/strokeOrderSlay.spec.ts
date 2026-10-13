@@ -1,5 +1,5 @@
 import { expect, type FrameLocator, type Page, test } from '@playwright/test'
-import { grades, installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
+import { grades, installFamilyFixtures, readGrade2Workspace, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 type TestWindow = Window & { failStrokeSave?: boolean; failStrokeScore?: boolean }
 async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
@@ -20,8 +20,69 @@ async function open(page: Page, slug = 'grade5', resuming = false) {
   const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Stroke Order Slay', exact: true }).click()
+  if (slug !== 'kindergarten') {
+    await expect(frame.getByRole('button', { name: 'Begin Warmup', exact: true })).toBeVisible()
+    await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+  }
   await expect(frame.getByRole('heading', { name: 'Stroke Order Slay', exact: true })).toBeVisible()
   return frame
+}
+
+for (const slug of ['grade2', 'grade5']) {
+  test(`${slug} Stroke Order offers the grade-owned Warmup and returns to teaching only after the choice`, async ({
+    page,
+  }) => {
+    await setup(page)
+    await page.goto(`/?grade=${slug}`)
+    const frame = page.frameLocator('iframe:visible')
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame.getByRole('button', { name: 'Stroke Order Slay', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Begin Warmup', exact: true })).toBeVisible()
+    await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
+    expect(await checkpoint(page)).toBeNull()
+    await frame.getByRole('button', { name: 'Begin Warmup', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+    expect(await checkpoint(page)).toBeNull()
+    if (slug === 'grade2') {
+      await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+      await frame.getByRole('button', { name: /I got it right/i }).click()
+      await expect.poll(async () => (await page.evaluate(readGrade2Workspace))?.warmupAttemptsV1?.length).toBe(1)
+      const before = await page.evaluate(readGrade2Workspace)
+      expect(before?.acquisitionProgressEnvelopes || []).toHaveLength(0)
+      await page.reload()
+      await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+      await frame.getByRole('button', { name: 'Stroke Order Slay', exact: true }).click()
+      const resumed = await page.evaluate(readGrade2Workspace)
+      expect(resumed?.warmupVisitsV1).toEqual(before?.warmupVisitsV1)
+      expect(resumed?.adaptiveWarmup?.childStates).toEqual(before?.adaptiveWarmup?.childStates)
+      await frame.getByRole('button', { name: 'Begin Warmup', exact: true }).click()
+      await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+      await frame.getByRole('button', { name: /I got it right/i }).click()
+      await frame.getByRole('button', { name: 'Continue to activity', exact: true }).click()
+      await expect(frame.getByRole('heading', { name: 'Stroke Order Slay', exact: true })).toBeVisible()
+      const after = await page.evaluate(readGrade2Workspace)
+      expect(after?.acquisitionProgressEnvelopes || []).toHaveLength(0)
+      expect(after?.scores).toEqual(before?.scores)
+      expect(after?.warmupAttemptsV1).toHaveLength(2)
+      expect(after?.warmupAttemptsV1?.slice(0, 1)).toEqual(before?.warmupAttemptsV1)
+    } else {
+      // Grade 5's ordinary preview presents its whole (up-to-six) queue,
+      // then reviews it. Do not silently give D2 a different warmup policy.
+      while (await frame.getByRole('button', { name: 'Skip Timer', exact: true }).count()) {
+        await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+        await expect(frame.getByRole('button', { name: /Skip Timer|I got it right/i }).first()).toBeVisible()
+      }
+      while (await frame.getByRole('button', { name: /I got it right/i }).count())
+        await frame.getByRole('button', { name: /I got it right/i }).click()
+      await expect(frame.getByRole('heading', { name: 'Stroke Order Slay', exact: true })).toBeVisible()
+    }
+    expect((await checkpoint(page)).envelope.revision).toBe(0)
+    expect(
+      await page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith('family-beta-preview-results-v1:')),
+      ),
+    ).toHaveLength(0)
+  })
 }
 function readCheckpoint() {
   for (const key of Object.keys(localStorage)) {

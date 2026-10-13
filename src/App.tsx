@@ -21,19 +21,15 @@ import { writingSessionAnswers } from './application/testReview.ts'
 import { originalGrade2Dataset, sourceGrade2Datasets } from './curriculum/grade2Revisions.ts'
 import type { SavedWritingLesson } from './familyBeta/grade2LessonSelection.ts'
 import {
-  advancePracticeInterstitial,
   completeAcquisitionForToday as completeAcquisitionForTodayOperation,
   completePractice as completePracticeOperation,
-  continueAfterPartialWarmup as continueAfterPartialWarmupOperation,
   discardTestReview as discardTestReviewOperation,
-  leavePractice as leavePracticeOperation,
   prepareCloudCompletionAttempt,
-  primaryStartState,
-  recordPracticeAnswer as recordPracticeAnswerOperation,
-  skipWarmup as skipWarmupOperation,
-  startPractice as startPracticeOperation,
-  type PracticeAnswerBackgroundTask,
-} from './application/practice/index.ts'
+} from './application/practice/completion.ts'
+import { advancePracticeInterstitial } from './application/practice/advancePracticeInterstitial.ts'
+import { continueAfterPartialWarmup as continueAfterPartialWarmupOperation, leavePractice as leavePracticeOperation,
+  primaryStartState, skipWarmup as skipWarmupOperation } from './application/practice/warmupTransitions.ts'
+import { recordPracticeAnswer as recordPracticeAnswerOperation, type PracticeAnswerBackgroundTask } from './application/practice/recordPracticeAnswer.ts'
 import { prepareAdaptiveWarmupVisit } from './application/warmup/index.ts'
 import {
   isWorkspaceSynchronizationAborted,
@@ -309,6 +305,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [curriculumRefreshAttempt, setCurriculumRefreshAttempt] = useState(0)
   const [activeExperience, setActiveExperience] = useState<ActiveExperience>(null)
   const [practiceStartInFlight, setPracticeStartInFlight] = useState(false)
+  const strokeWarmupReady = useRef<(() => void) | null>(null)
+  const [strokeWarmupOpen, setStrokeWarmupOpen] = useState(false)
   const session = activeExperience?.kind === 'practice' ? activeExperience.session : null
   const readingPathway = activeExperience?.kind === 'reading' ? activeExperience.pathway : null
   const view: View = activeExperience?.kind === 'practice' ? 'practice' : activeExperience ? 'reading' : baseView
@@ -637,17 +635,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const startPractice = useCallback(
-    async (target: PracticeTarget | null) => {
+    async (target: PracticeTarget | null, externalPrimary = false) => {
       if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) return
       setPracticeStartInFlight(true)
       setShowChildMenu(false)
       const id = createSessionId()
       const cloud = Boolean(auth.user && cloudScope)
-      const result = await startPracticeOperation({
+      const result = await import('./application/practice/startPractice.ts').then(({ startPractice }) => startPractice({
         state,
         resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
         child: selectedChild,
         target,
+        externalPrimary,
         primaryDatasets,
         lifecycleResolution,
         sessionId: id,
@@ -672,7 +671,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
             ? (envelope, checkpoint) => practicePersistence.acquisition.commit(cloudScope!, envelope, checkpoint)
             : undefined,
         },
-      }).finally(() => setPracticeStartInFlight(false))
+      })).catch((error) => ({ status: 'blocked' as const, message: authErrorMessage(error), state: undefined })).finally(() => setPracticeStartInFlight(false))
+      if (result.status !== 'started' && externalPrimary) {
+        strokeWarmupReady.current = null
+        setStrokeWarmupOpen(false)
+      }
       if (result.status === 'no-op') return
       if (result.status === 'blocked') {
         if (result.state) setState(result.state)
@@ -712,6 +715,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     ],
   )
   const leavePractice = (nextView: BaseView) => {
+    strokeWarmupReady.current = null
+    setStrokeWarmupOpen(false)
     const current = session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const result = leavePracticeOperation({
@@ -729,6 +734,17 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     setView(nextView)
   }
   const exitPractice = () => leavePractice('home')
+  // The mounted hub owns D2; the existing practice coordinator owns Warmup.
+  // No ordinary Acquisition envelope or score is created for this handoff.
+  useEffect(() => {
+    if (!strokeWarmupOpen || session?.segment !== 'primary') return
+    const ready = strokeWarmupReady.current
+    strokeWarmupReady.current = null
+    setStrokeWarmupOpen(false)
+    setSession(null)
+    stopActiveAudio()
+    ready?.()
+  }, [strokeWarmupOpen, session?.segment, setSession])
   const startReading = (pathway: Tier2ReadingPathway) => {
     setShowChildMenu(false)
     setCompletedSummary(null)
@@ -764,6 +780,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const skipWarmup = () => {
     const current = session
+    if (strokeWarmupReady.current && current?.stage === 'warmup-intro' && !current.queue.length) {
+      setSession(primaryStartState(current))
+      return
+    }
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const result = skipWarmupOperation({
       state,
@@ -827,6 +847,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       return
     }
     if (result.status === 'completed') {
+      if (strokeWarmupReady.current) { setState(result.state); setSession(result.session); return }
       await completeSession(result.session, result.state)
       return
     }
@@ -1074,6 +1095,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (result.state) setState(result.state)
     runPracticeBackgroundTasks(result.background)
     if (result.completion) {
+      if (strokeWarmupReady.current) { setSession(result.completion.session); return }
       if (completedSessionRef.current === result.completion.session.id) return
       completedSessionRef.current = result.completion.session.id
       void completeSession(result.completion.session, result.completion.state)
@@ -1310,7 +1332,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               onProfiles={() => setShowProfiles(true)}
             />
           )}
-          {view === 'home' && Boolean(practiceProfile) && showLearningHome && lifecycleResolution && (
+          {(view === 'home' || strokeWarmupOpen) && Boolean(practiceProfile) && showLearningHome && lifecycleResolution && (
+            <div hidden={strokeWarmupOpen}>
             <LazyHomeView
               child={selectedChild}
               profile={practiceProfile!}
@@ -1325,11 +1348,18 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               lifecycleResolution={lifecycleResolution}
               onStart={(target) => void startPractice(target)}
               onStartStrokeOrder={(target) => setActiveExperience({ kind: 'stroke-order', target })}
+              onStrokeOrderWarmup={(dataset, ready) => {
+                if (practiceStartInFlight || !lessonRetirement || !selectedChild || !lifecycleResolution) return
+                strokeWarmupReady.current = ready
+                setStrokeWarmupOpen(true)
+                void startPractice({ dataset, phase: 'acquisition' }, true)
+              }}
               onStartWarmup={() => void startPractice(null)}
               onStartReading={startReading}
               onHistory={() => setView('history')}
               onProfiles={() => setShowProfiles(true)}
             />
+            </div>
           )}
           {view === 'home' && Boolean(practiceProfile) && !showLearningHome && (
             <LazyNoDatasetView

@@ -39,11 +39,14 @@ type ExtraLaunch =
 
 const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
 
-export function PreviewLearningHub<Launch>(props: LearningHubProps<Launch>) {
+export type StrokeWarmupLauncher = (dataset: Dataset, ready: () => void) => void
+type PreviewHubProps<Launch> = LearningHubProps<Launch> & { onStrokeOrderWarmup?: StrokeWarmupLauncher }
+
+export function PreviewLearningHub<Launch>(props: PreviewHubProps<Launch>) {
   return familyPreview ? <EnhancedHub {...props} /> : <LearningHub {...props} />
 }
 
-function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
+function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
   const grade = props.model.profileLabel as BetaGrade
   const [source, setSource] = useState<Awaited<ReturnType<typeof fetchCurriculum>> | null>(null)
   const [active, setActive] = useState<ExtraLaunch | null>(null)
@@ -336,7 +339,14 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                 catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
               }
               setSessionId(crypto.randomUUID())
-              setActive(launch as ExtraLaunch)
+              const next = launch as ExtraLaunch
+              if (next.previewAction === 'stroke' && grade !== 'Kindergarten') {
+                if (!props.onStrokeOrderWarmup) {
+                  setError('The grade’s Warmup could not be opened. No teaching progress has changed.')
+                  return
+                }
+                props.onStrokeOrderWarmup(next.datasets[0], () => setActive(next))
+              } else setActive(next)
             } else props.onLaunch(launch as Launch, context)
           }}
         />
