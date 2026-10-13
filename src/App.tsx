@@ -301,7 +301,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [lessonRetirement, setLessonRetirement] = useState<typeof import('./familyBeta/acquisitionRetirement.ts') | null>(null)
   const [requestedWritingLesson] = useState<SavedWritingLesson | null>(() => {
     const frame = familyPreview ? window.frameElement as HTMLIFrameElement | null : null
-    return frame?.dataset.familyResumeChannel === 'writing' && frame.dataset.familyResumeLesson
+    // Separate acquisition games own their checkpoints outside ordinary AppState.
+    return frame?.dataset.familyResumeChannel === 'writing' && !frame.dataset.familyResumeExperience && frame.dataset.familyResumeLesson
       ? JSON.parse(frame.dataset.familyResumeLesson) : null
   })
   const [curriculumSourceError, setCurriculumSourceError] = useState<string | null>(null)

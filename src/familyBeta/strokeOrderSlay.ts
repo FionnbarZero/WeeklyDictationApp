@@ -16,9 +16,14 @@ const strategies: Record<string, AcquisitionStrategy> = {
   'Grade 5': grade5AcquisitionStrategy,
 }
 export function strokeOrderGuide(target: Pick<AcquisitionTarget, 'id' | 'text'>) {
-  const guide = buildStrokeOrderRounds([target], grade2StrokeMedians).rounds[0]
+  const guide = supported(target.text) ? buildStrokeOrderRounds([target], grade2StrokeMedians).rounds[0] : undefined
   if (!guide) throw new Error('This saved target has no validated stroke guide. Your progress is preserved.')
   return guide
+}
+
+function supported(text: string) {
+  // The shared writing pad has six lanes. Never silently crop a longer source.
+  return [...text].length <= 6 && strokeAssetIsAvailable(text, grade2StrokeMedians)
 }
 
 /** Current writing cohort only. Every eligible supported target is included in
@@ -42,11 +47,8 @@ export function strokeOrderLesson(datasets: readonly Dataset[]) {
     new Set(words.map((w) => w.id)).size !== words.length
   )
     throw new Error('This cohort has no validated Tier 1 writing targets for Stroke Order Slay.')
-  const targets = words.filter((word) => strokeAssetIsAvailable(word.text, grade2StrokeMedians))
-  if (
-    !targets.length ||
-    strategy.familiarDtTargets.some((word) => !strokeAssetIsAvailable(word.text, grade2StrokeMedians))
-  )
+  const targets = words.filter((word) => supported(word.text))
+  if (!targets.length || strategy.familiarDtTargets.some((word) => !supported(word.text)))
     throw new Error('Stroke guides are not ready for this cohort. Ordinary writing is still available.')
   return {
     strategy,

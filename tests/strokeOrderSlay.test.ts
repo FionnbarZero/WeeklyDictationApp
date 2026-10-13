@@ -183,6 +183,7 @@ test('invalid/missing guides cannot be used; supplemental geometry does not alte
     false,
   )
   assert.throws(() => strokeOrderGuide({ id: 'missing', text: '𠮷' }))
+  assert.throws(() => strokeOrderGuide({ id: 'too-long', text: '一二三四五六七' }))
   const { dataset } = fixture('grade2')
   assert.throws(() => strokeOrderLesson([dataset, dataset]))
   assert.throws(() => strokeOrderLesson([{ ...dataset, schoolYear: '2027-28' }]))

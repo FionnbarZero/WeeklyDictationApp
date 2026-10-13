@@ -152,6 +152,25 @@ test('Stroke Order report pauses the timer and guide, preserves temporary input,
   let frame = await open(page)
   await review(frame)
   await review(frame)
+  const pad = frame.locator('svg.skywriting-pad')
+  await expect(pad).toBeVisible()
+  // Interrupt before pointer-up. A second stroke must not replace the held ink.
+  const bounds = (await pad.boundingBox())!
+  await page.mouse.move(bounds.x + 30, bounds.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + 80, bounds.y + 80)
+  await expect(frame.locator('.skywriting-stroke')).toHaveCount(1)
+  await page
+    .getByRole('button', { name: 'Report a problem', exact: true })
+    .evaluate((button: HTMLButtonElement) => button.click())
+  await page.mouse.up()
+  await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
+  await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+  await page.mouse.move(bounds.x + 110, bounds.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + 160, bounds.y + 80)
+  await page.mouse.up()
+  await expect(frame.locator('.skywriting-stroke')).toHaveCount(2)
   await frame.getByLabel('Type your word instead of drawing it').fill('private-d2-response')
   const before = await checkpoint(page)
   await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
@@ -172,6 +191,68 @@ test('Stroke Order report pauses the timer and guide, preserves temporary input,
   frame = await open(page)
   expect((await checkpoint(page)).envelope).toEqual(before.envelope)
   await expect(frame.getByLabel('Type your word instead of drawing it')).toHaveValue('')
+})
+
+test('Stroke Order waits for audible start, retries failed audio, and replays the grade cadence at comparison', async ({
+  page,
+}) => {
+  await setup(page)
+  await page.addInitScript(() => {
+    const state = window as Window & {
+      strokeCue?: SpeechSynthesisUtterance
+      strokeSpeech: string[]
+      allowStrokeAudio?: boolean
+    }
+    state.strokeSpeech = []
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        resume() {},
+        getVoices() {
+          return []
+        },
+        speak(u: SpeechSynthesisUtterance) {
+          state.strokeCue = u
+          state.strokeSpeech.push(u.text)
+          if (state.allowStrokeAudio)
+            setTimeout(() => {
+              u.onstart?.({} as SpeechSynthesisEvent)
+              u.onend?.({} as SpeechSynthesisEvent)
+            }, 0)
+        },
+      },
+    })
+  })
+  const frame = await open(page)
+  await expect(frame.getByText('Loading prompt audio…', { exact: true })).toBeVisible()
+  await page.waitForTimeout(1500)
+  await expect(frame.getByRole('timer')).toHaveText('5s')
+  await expect(frame.getByLabel('Type your word instead of drawing it')).toBeDisabled()
+  await frame.locator('body').evaluate(() => {
+    const state = window as Window & { strokeCue?: SpeechSynthesisUtterance }
+    state.strokeCue!.onerror?.({} as SpeechSynthesisErrorEvent)
+  })
+  await expect(frame.getByRole('button', { name: 'Try audio again' })).toBeVisible()
+  await frame.locator('body').evaluate(() => {
+    const state = window as Window & { allowStrokeAudio?: boolean; strokeSpeech: string[] }
+    state.allowStrokeAudio = true
+    state.strokeSpeech = []
+  })
+  await frame.getByRole('button', { name: 'Try audio again' }).click()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+  await frame.getByRole('button', { name: 'Pause timer', exact: true }).click()
+  const word = (await checkpoint(page)).envelope.flow.prompt.word
+  const cadence = [word.text, ...(word.sentence ? [word.sentence] : []), word.text, word.text]
+  await expect
+    .poll(() => frame.locator('body').evaluate(() => (window as Window & { strokeSpeech: string[] }).strokeSpeech))
+    .toEqual(cadence)
+  await frame.getByRole('button', { name: 'Resume timer', exact: true }).click()
+  await compare(frame)
+  await expect
+    .poll(() => frame.locator('body').evaluate(() => (window as Window & { strokeSpeech: string[] }).strokeSpeech))
+    .toEqual([...cadence, ...cadence])
+  expect((await checkpoint(page)).envelope.revision).toBe(0)
 })
 
 test('Stroke Order failed reviewed answer retries the same choice once and cannot finalize early', async ({ page }) => {

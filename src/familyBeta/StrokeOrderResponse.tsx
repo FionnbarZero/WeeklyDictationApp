@@ -11,7 +11,7 @@ import {
 } from '../audio/promptAudio.ts'
 import type { Word } from '../domain/contracts.ts'
 import { createPracticeCountdown } from '../practice/countdown.ts'
-import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
+import { cancelWritingStroke, emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
 import { WritingPad } from '../skywriting/WritingPad.tsx'
 import { strokeOrderGuide } from './strokeOrderSlay.ts'
 
@@ -90,14 +90,16 @@ export function StrokeOrderResponse({
     setError('')
     setTimerPaused(false)
     setStage('review')
+    setPad(cancelWritingStroke)
+    play(true)
   }
-  function play() {
-    if (activityClock.paused || reviewed.current || busy.current) return
+  function play(reference = false) {
+    if (activityClock.paused || (reviewed.current && !reference) || busy.current) return
     stopAudio()
     const generation = audioGeneration.current
     setError('')
     setAudioFailed(false)
-    setStage('listening')
+    if (!reference) setStage('listening')
     const profile = gradeAudioProfileFor(grade)
     const word = { ...prompt.word, grade } as Word
     const attempt = playCachedWordAudio(grade === 'Kindergarten' ? withKindergartenAudio(word) : word, false, {
@@ -107,15 +109,21 @@ export function StrokeOrderResponse({
     })
     audio.current = attempt
     const failed = () => {
-      if (!mounted.current || reviewed.current || audioGeneration.current !== generation) return
-      countdown.current?.pause()
-      setStage('listening')
+      if (!mounted.current || audioGeneration.current !== generation) return
+      if (!reference) {
+        countdown.current?.pause()
+        setStage('listening')
+      }
       setAudioFailed(true)
-      setError('The writing prompt could not play. Try audio again to continue this response.')
+      setError(
+        reference
+          ? 'The comparison audio could not play. Try audio again.'
+          : 'The writing prompt could not play. Try audio again to continue this response.',
+      )
     }
     void promptAudioStarted(attempt)
       .then(() => {
-        if (!mounted.current || reviewed.current || audioGeneration.current !== generation) return
+        if (!mounted.current || reference || reviewed.current || audioGeneration.current !== generation) return
         setStage('writing')
         setTimerPaused(false)
         if (!countdown.current)
@@ -130,6 +138,7 @@ export function StrokeOrderResponse({
     mounted.current = true
     const unsubscribe = activityClock.subscribe((value) => {
       setPaused(value)
+      if (value) setPad(cancelWritingStroke)
       if (!value && !audio.current && !reviewed.current) play()
     })
     play()
@@ -270,7 +279,7 @@ export function StrokeOrderResponse({
       )}
       {error && <p role="alert">{error}</p>}
       {audioFailed && (
-        <button disabled={paused} onClick={play}>
+        <button disabled={paused} onClick={() => play(reviewed.current)}>
           Try audio again
         </button>
       )}
