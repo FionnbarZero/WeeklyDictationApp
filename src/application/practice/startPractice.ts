@@ -4,11 +4,11 @@ import type {
   AcquisitionProgressEnvelope,
 } from '../../acquisition/persistence/contracts.ts'
 import {
-  createPracticeSessionForTarget,
-  localDateKey,
   type AppState,
+  createPracticeSessionForTarget,
   type Dataset,
   type DatasetLifecycleResolution,
+  localDateKey,
   type PracticeSession,
   type PracticeTarget,
   type Word,
@@ -297,6 +297,26 @@ export async function startPractice(input: {
     preparedAcquisitionProgress:
       preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined,
   })
+  const resumedAnswers = input.externalPrimary
+    ? warmupVisit.queue.flatMap((entry, position) => {
+        const attempt = state.warmupAttemptsV1?.find(
+          (item) =>
+            item.visitId === warmupVisit.id &&
+            item.childId === input.child.id &&
+            item.queueEntryId === entry.id &&
+            item.wordId === entry.prompt.wordId,
+        )
+        return attempt
+          ? [{ word: warmupWords[position], correct: attempt.correct, revealMethod: attempt.revealMethod }]
+          : []
+      })
+    : []
+  if (input.externalPrimary && resumedAnswers.length !== warmupVisit.attemptedCount) {
+    return {
+      status: 'blocked',
+      message: 'The saved Warmup responses could not be verified. Existing progress is preserved.',
+    }
+  }
   return {
     status: 'started',
     state,
@@ -308,6 +328,9 @@ export async function startPractice(input: {
             primaryDatasetIds: [input.target.dataset.id],
             primaryPhase: input.target.phase,
             warmupOnly: false,
+            // A durable visit owns the prompt order, including on reload.
+            queue: warmupWords,
+            warmupAnswers: resumedAnswers,
           }
         : {}),
       ...(preparedAcquisition?.status === 'ready' ? { acquisitionProgressionId: preparedAcquisition.envelope.id } : {}),

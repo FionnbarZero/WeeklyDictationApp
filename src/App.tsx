@@ -780,6 +780,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const skipWarmup = () => {
     const current = session
+    if (strokeWarmupReady.current && current?.stage === 'warmup-intro' && current.warmupAnswers.length) {
+      continueToPrimaryAfterPartialWarmup()
+      return
+    }
     if (strokeWarmupReady.current && current?.stage === 'warmup-intro' && !current.queue.length) {
       setSession(primaryStartState(current))
       return
@@ -1373,7 +1377,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
             />
           )}
         </Suspense>
-        {view === 'practice' && session && (
+        {strokeWarmupOpen && !session && <p role="status">Opening Warmup…</p>}
+        {view === 'practice' && session && !(strokeWarmupOpen && session.segment === 'primary') && (
           <Suspense
             fallback={
               <div className="page loading-surface" role="status">
