@@ -1,5 +1,11 @@
 # EduGame readiness assessment
 
+## D2 local implementation — unpublished
+
+Stroke Order Slay now has a separate Tier 1 writing acquisition controller for all three grades, using the grade-owned teaching, expanded-trial, correction and earned-DT rules. It adds validated ordered stroke guides, preserves the existing thinner marker, retains reviewed progress across visits/devices, and reuses the immutable completion protections without persisting drawings or provisional typing. The 37-character Grade 2 guide supplement completes geometry coverage for the bundled writing cohorts; unsupported future targets remain visibly excluded rather than replaced.
+
+Application candidate `f0abee2` and formatting-only successor `cc28b06` are local only. All 927 unit tests and all 74 final packaged desktop/tablet cases pass, alongside the quality, emulator, dependency and package-integrity gates. The [D2 acquisition record](./stroke-order-slay-acquisition.md#local-verification-and-retained-packages) contains the readiness baseline, source-cited rules, exact evidence, retained failures and limitations. The owner-authorized independent **GPT-6 Astra · Extra High** review is in progress. D1 `092c57f` is still the last verified live version; do not use its links to test unpublished D2 behavior. No D2 smoke test is ready.
+
 ## D1 publication and live acceptance
 
 Whispering Scrolls is published from [PR #65](https://github.com/FionnbarZero/WeeklyDictationApp/pull/65) merge `092c57f`, following separate owner approvals for Kindergarten, Grade 2 and Grade 5. Cloudflare version `d36f6021-0d1c-4a55-8373-da0a237c656f` serves 100%; guarded C2 recovery `e4491443-899d-48af-abdf-90f938739626` is retained inactive. It reuses each grade's Tier 2 acquisition engine, preserves separate ordinary-reading progress, and adds response timing, temporary recording comparison/pause, reviewed-trial retry, pinned resume and immutable completions protected across mounted tabs. [Whispering Scrolls acquisition](./whispering-scrolls-acquisition.md#publication-and-live-acceptance) records the exact package, release checks and bounded smoke scope.
