@@ -3,6 +3,8 @@
 The reduced median data in `strokeAssets.ts` and `grade5StrokeAssets.ts` was extracted from
 `hanzi-writer-data` for the supported curriculum targets.
 The Grade 5 extension uses upstream revision `68d10a4b21150cae5e1ebbd223eed289cf32d90c`.
+The D2 Grade 2 supplement in `grade2StrokeAssets.ts` uses that same revision,
+extracting only validated stroke medians for 37 missing curriculum characters.
 The upstream data originated in Make Me A Hanzi and
 Arphic Technology fonts.
 

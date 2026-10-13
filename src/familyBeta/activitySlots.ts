@@ -11,7 +11,7 @@ export type FamilyActivitySlot = {
   curriculumVersion: string
   source?: CurriculumSnapshot
   resumeChannel?: 'writing' | 'reading'
-  resumeExperience?: 'whispering-scrolls'
+  resumeExperience?: 'whispering-scrolls' | 'stroke-order-slay'
   savedLesson?: { progressionId: string; fingerprint: string }
   teachingVersion: string
   kind: 'activities' | 'game'

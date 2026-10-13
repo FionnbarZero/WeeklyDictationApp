@@ -638,7 +638,7 @@ function FamilyPreview() {
         <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
         {savedLessons.owner === child.id && savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
         {savedLessons.owner === child.id && savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
-          Resume saved {lesson.experience === 'whispering-scrolls' ? 'Whispering Scrolls' : lesson.channel} · {lesson.week}
+          Resume saved {lesson.experience === 'whispering-scrolls' ? 'Whispering Scrolls' : lesson.experience === 'stroke-order-slay' ? 'Stroke Order Slay' : lesson.channel} · {lesson.week}
         </button>)}
         {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && <p>No saved lessons are available yet.</p>}
       </details>}

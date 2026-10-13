@@ -1,4 +1,4 @@
-import { useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
 import { Eraser, Pencil, RotateCcw } from 'lucide-react'
 import {
   beginWritingStroke,
@@ -35,6 +35,7 @@ export function WritingPad({
   characterCount = 1,
   traceText,
   traceFont = 'songti',
+  guide,
   padState,
   onPadStateChange,
 }: {
@@ -42,6 +43,7 @@ export function WritingPad({
   characterCount?: number
   traceText?: string
   traceFont?: WritingPadTraceFont
+  guide?: ReactNode
   padState?: WritingPadState
   onPadStateChange?: (update: WritingPadStateUpdater) => void
 }) {
@@ -126,6 +128,7 @@ export function WritingPad({
             <path d={`M${center} 34V966M${left + 34} 500H${right - 34}M${left + 90} 90L${right - 90} 910M${right - 90} 90L${left + 90} 910`} className="skywriting-guide" />
           </g>
         })}
+        {guide}
         {strokes.map((stroke, index) => <polyline key={index} points={pointsFor(stroke, viewBoxWidth)} className="skywriting-stroke" />)}
       </svg>
       {!hasInk && !traceText && <p className="skywriting-pad-placeholder" aria-hidden="true">Write here</p>}

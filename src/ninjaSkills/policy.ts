@@ -8,7 +8,7 @@ type Policy = {
   content: readonly string[]
   audio: string
   scoring: 'reviewed-game-attempts' | 'grade-acquisition'
-  implementation: 'stage-b' | 'stage-c1' | 'stage-c2' | 'stage-d1' | 'later-stage'
+  implementation: 'stage-b' | 'stage-c1' | 'stage-c2' | 'stage-d1' | 'stage-d2' | 'later-stage'
 }
 
 /** Approved product rules. Availability is separate from the intended contract. */
@@ -75,7 +75,7 @@ export const GAME_POLICIES = {
     content: ['stroke-guides'],
     audio: 'grade-writing-acquisition',
     scoring: 'grade-acquisition',
-    implementation: 'later-stage',
+    implementation: 'stage-d2',
   },
 } as const satisfies Record<string, Policy>
 

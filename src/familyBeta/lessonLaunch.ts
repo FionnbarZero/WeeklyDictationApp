@@ -17,7 +17,7 @@ export type LessonLaunch = {
   week: string
   channel: 'writing' | 'reading'
 }
-export type SavedLessonLaunch = LessonLaunch & { source: CurriculumSnapshot; experience?: 'whispering-scrolls' }
+export type SavedLessonLaunch = LessonLaunch & { source: CurriculumSnapshot; experience?: 'whispering-scrolls' | 'stroke-order-slay' }
 const prefix = (childId: string) => `family-beta-activity:${childId}:lesson-launch-v1:`
 const sourceKey = (childId: string, hash: string) => `family-beta-activity:${childId}:lesson-source-v1:${hash}`
 const launchKey = (launch: LessonLaunch) =>
@@ -85,6 +85,18 @@ function sourceMatches(envelope: AcquisitionProgressEnvelope, source: Curriculum
   const words = envelope.tier === 'tier-1' ? candidate?.tier1 : candidate?.tier2
   const targets = envelope.lessonSnapshot!.targetSet.targets
   if (envelope.datasetId.includes('__rev_') && envelope.datasetId !== `${id}__rev_${candidate?.contentFingerprint.slice(-16)}`) return false
+  if (envelope.activityModule.split(':restart-')[0] === 'stroke-order-slay') {
+    // Only this separately identified writing experience permits a validated
+    // subset. Require an exact, nonempty ordered subsequence of teacher Tier 1.
+    if (envelope.tier !== 'tier-1' || !words || !targets.length) return false
+    let cursor = -1
+    return targets.every(target => {
+      const index = words.findIndex(word => word.targetOccurrenceId === target.id && word.text === target.text)
+      if (index <= cursor) return false
+      cursor = index
+      return true
+    })
+  }
   return (
     words?.length === targets.length &&
     words.every(
@@ -196,8 +208,9 @@ export async function readSavedLesson(
   if (isAcquisitionRetired(storage, envelopeIdentity(current))) return null
   // Derive the experience from the validated checkpoint, not mutable route
   // metadata. Older routes without this field continue to open ordinary Dojo.
+  const module = current.activityModule.split(':restart-')[0]
   return { ...launch, source: snapshot,
-    experience: current.activityModule.split(':restart-')[0] === 'whispering-scrolls' ? 'whispering-scrolls' : undefined }
+    experience: module === 'whispering-scrolls' || module === 'stroke-order-slay' ? module : undefined }
 }
 
 export function discardSavedLesson(storage: Store, profile: BetaProfile, lesson: { progressionId: string; fingerprint: string }) {
