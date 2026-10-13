@@ -246,30 +246,52 @@ test('Shadow Strike resumes on a second device and returns the newest reviewed c
   }
 })
 
-test('Shadow Strike explicit discard retires only its owned unfinished round', async ({ page, isMobile }) => {
-  await installFamilyFixtures(page)
-  const frame = await open(page)
-  const first = await checkpoint(page)
-  if (first.pack.moduleId !== 'target-blast') throw new Error('Wrong fixture.')
-  await strike(frame, first.pack.rounds[0].correctChoiceId, isMobile)
-  await expect.poll(async () => (await checkpoint(page)).cleared.length).toBe(1)
-  await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Discard unfinished Shadow Strike Dojo', exact: true }).click()
-  await expect(page.locator('iframe[title="Shadow Strike Dojo"]')).toHaveCount(0)
-  const retired = await records(page)
-  expect(Object.keys(retired).some((key) => key.includes(':checkpoint:'))).toBe(false)
-  expect(
-    Object.entries(retired)
-      .filter(([key]) => key.includes(':retirement:'))
-      .map(([, value]) => value.runId),
-  ).toEqual([first.runId])
-  await page.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
-  await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
-    `Training strike 1 of ${first.pack.rounds.length}`,
-  )
-  expect((await checkpoint(page)).runId).not.toBe(first.runId)
-})
+for (const offline of [false, true]) {
+  test(`Shadow Strike explicit discard retires only its owned unfinished round (${offline ? 'offline then reconnect' : 'online'})`, async ({
+    page,
+    context,
+    isMobile,
+  }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await installFamilyFixtures(page, documents)
+    const frame = await open(page)
+    const first = await checkpoint(page)
+    if (first.pack.moduleId !== 'target-blast') throw new Error('Wrong fixture.')
+    await strike(frame, first.pack.rounds[0].correctChoiceId, isMobile)
+    await expect.poll(async () => (await checkpoint(page)).cleared.length).toBe(1)
+    if (offline) await context.setOffline(true)
+    await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Discard unfinished Shadow Strike Dojo', exact: true }).click()
+    await expect(page.locator('iframe[title="Shadow Strike Dojo"]')).toHaveCount(0)
+    const localRetirements = async () =>
+      Object.entries(await records(page))
+        .filter(([key]) => key.includes(':retirement:'))
+        .map(([, value]) => value.runId)
+    const onlineRetirements = () =>
+      [...documents.entries()]
+        .filter(([key]) => key.includes('/betaGameRetirements/'))
+        .map(([, value]) => JSON.parse((value.fields.payload as { stringValue: string }).stringValue))
+    if (offline) {
+      // Only a disconnected device must retain the local outbox marker.
+      expect(await localRetirements()).toEqual([first.runId])
+      expect(onlineRetirements()).toEqual([])
+      await context.setOffline(false)
+    }
+    // Successful readback acknowledges/removes the local marker. Waiting for
+    // that durable fact avoids racing fast sync while preserving both checks.
+    await expect.poll(onlineRetirements).toEqual([expect.objectContaining({ runId: first.runId, scope: first.scope })])
+    await expect.poll(localRetirements).toEqual([])
+    const retired = await records(page)
+    expect(Object.keys(retired).some((key) => key.includes(':checkpoint:'))).toBe(false)
+    expect(Object.keys(retired).some((key) => key.startsWith('family-beta-preview-results-v1:'))).toBe(false)
+    await page.getByRole('button', { name: 'Shadow Strike Dojo', exact: true }).click()
+    await expect(page.frameLocator('iframe:visible').locator('.lg-round-label')).toHaveText(
+      `Training strike 1 of ${first.pack.rounds.length}`,
+    )
+    expect((await checkpoint(page)).runId).not.toBe(first.runId)
+  })
+}
 
 test('Shadow Strike journey movement uses a transform without per-frame layout', async ({ page, context }) => {
   await installFamilyFixtures(page)

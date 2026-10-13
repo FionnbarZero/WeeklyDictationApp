@@ -15,6 +15,7 @@ import {
 import { grade2LearningHubView, type Grade2LearningHubLaunch } from '../grade2/learningHub.ts'
 import type { LearningHubProps } from '../learningHub/LearningHub.tsx'
 import { familyPreview } from '../familyBeta/runtime.ts'
+import type { StrokeWarmupLauncher } from '../familyBeta/PreviewLearningHub.tsx'
 import type { WritingPracticeProfile } from '../practice/profiles/model.ts'
 import type { ProfileChild } from '../profiles/ProfileModal.tsx'
 import type { Tier2ReadingLifecycle, Tier2ReadingPathway } from '../tier2/contracts.ts'
@@ -62,6 +63,7 @@ export function HomeView({
   lifecycleResolution,
   onStart,
   onStartStrokeOrder,
+  onStrokeOrderWarmup,
   onStartWarmup,
   onStartReading,
   onHistory,
@@ -80,6 +82,7 @@ export function HomeView({
   lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>
   onStart: (target: PracticeTarget) => void
   onStartStrokeOrder: (target: PracticeTarget) => void
+  onStrokeOrderWarmup?: StrokeWarmupLauncher
   onStartWarmup: () => void
   onStartReading: (pathway: Tier2ReadingPathway) => void
   onHistory: () => void
@@ -120,7 +123,7 @@ export function HomeView({
             </div>
           }
         >
-          <LearningHub model={model} onLaunch={launch} showTopbar={false} hideUnavailable={familyPreview} />
+          <LearningHub model={model} onLaunch={launch} showTopbar={false} hideUnavailable={familyPreview} onStrokeOrderWarmup={onStrokeOrderWarmup} />
         </Suspense>
         <DatasetRecord
           datasets={orderedDatasets}

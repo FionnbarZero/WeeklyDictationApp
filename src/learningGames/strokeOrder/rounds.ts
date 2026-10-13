@@ -1,6 +1,6 @@
-import { strokeMedians } from './strokeAssets.ts'
-import { grade5StrokeMedians } from './grade5StrokeAssets.ts'
 import type { StrokeOrderRound, StrokePoint } from './contracts.ts'
+import { grade5StrokeMedians } from './grade5StrokeAssets.ts'
+import { strokeMedians } from './strokeAssets.ts'
 
 type StrokeTarget = {
   readonly id: string
@@ -8,7 +8,8 @@ type StrokeTarget = {
   readonly meaning?: string
 }
 
-type CharacterMedians = readonly (readonly (readonly number[])[])[]
+export type CharacterMedians = readonly (readonly (readonly number[])[])[]
+type MedianMap = Readonly<Record<string, CharacterMedians | undefined>>
 
 const cellSize = 100
 const characterScale = 0.09
@@ -26,13 +27,30 @@ function mapMedian(points: readonly (readonly number[])[], characterIndex: numbe
   )
 }
 
-export function strokeAssetIsAvailable(text: string) {
-  return [...text].length > 0 && [...text].every((character) => Boolean(mediansByCharacter[character]))
+export function strokeAssetIsAvailable(text: string, additional: MedianMap = {}) {
+  return (
+    [...text].length > 0 &&
+    [...text].every((character) => {
+      const strokes = additional[character] || mediansByCharacter[character]
+      return Boolean(
+        strokes?.length &&
+          strokes.every(
+            (stroke) =>
+              stroke.length >= 2 &&
+              stroke.every(
+                (point) =>
+                  point.length === 2 &&
+                  point.every((coordinate) => Number.isFinite(coordinate) && coordinate >= -200 && coordinate <= 1200),
+              ),
+          ),
+      )
+    })
+  )
 }
 
-function roundForTarget(target: StrokeTarget): StrokeOrderRound {
+function roundForTarget(target: StrokeTarget, additional: MedianMap): StrokeOrderRound {
   const characters = [...target.text]
-  const medians = characters.map((character) => mediansByCharacter[character]!)
+  const medians = characters.map((character) => additional[character] || mediansByCharacter[character]!)
   return {
     id: `stroke-order:${target.id}`,
     targetId: target.id,
@@ -46,14 +64,14 @@ function roundForTarget(target: StrokeTarget): StrokeOrderRound {
   }
 }
 
-export function buildStrokeOrderRounds(targets: readonly StrokeTarget[]) {
+export function buildStrokeOrderRounds(targets: readonly StrokeTarget[], additional: MedianMap = {}) {
   const unsupportedTargets = targets
-    .filter((target) => !strokeAssetIsAvailable(target.text))
+    .filter((target) => !strokeAssetIsAvailable(target.text, additional))
     .map((target) => target.text)
 
   return {
     // Fail the whole cohort closed instead of silently teaching only part of a week.
-    rounds: unsupportedTargets.length > 0 ? [] : targets.map(roundForTarget),
+    rounds: unsupportedTargets.length > 0 ? [] : targets.map((target) => roundForTarget(target, additional)),
     unsupportedTargets,
   }
 }

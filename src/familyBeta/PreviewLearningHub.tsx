@@ -18,8 +18,7 @@ import {
 } from './gamePools.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
-import { buildStrokeOrderRounds } from '../learningGames/strokeOrder/rounds.ts'
-import { StrokeOrderActivity } from '../learningGames/strokeOrder/StrokeOrderActivity.tsx'
+import { strokeOrderLesson } from './strokeOrderSlay.ts'
 import { ReentryPractice } from './ReentryPractice.tsx'
 import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
@@ -28,6 +27,7 @@ const ModuleHost = lazy(() =>
   import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
 const WhisperingScrolls = lazy(() => import('./WhisperingScrolls.tsx').then(module => ({ default: module.WhisperingScrolls })))
+const StrokeOrderSlay = lazy(() => import('./StrokeOrderSlay.tsx').then(module => ({ default: module.StrokeOrderSlay })))
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
@@ -39,11 +39,14 @@ type ExtraLaunch =
 
 const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
 
-export function PreviewLearningHub<Launch>(props: LearningHubProps<Launch>) {
+export type StrokeWarmupLauncher = (dataset: Dataset, ready: () => void) => void
+type PreviewHubProps<Launch> = LearningHubProps<Launch> & { onStrokeOrderWarmup?: StrokeWarmupLauncher }
+
+export function PreviewLearningHub<Launch>(props: PreviewHubProps<Launch>) {
   return familyPreview ? <EnhancedHub {...props} /> : <LearningHub {...props} />
 }
 
-function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
+function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
   const grade = props.model.profileLabel as BetaGrade
   const [source, setSource] = useState<Awaited<ReturnType<typeof fetchCurriculum>> | null>(null)
   const [active, setActive] = useState<ExtraLaunch | null>(null)
@@ -140,10 +143,27 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           a.action.kind !== 'disabled' &&
           !a.id.includes('reenter') &&
           !a.id.includes('reteach') &&
+          !a.id.includes('stroke-order') &&
           !(section.id === 'ninja-skills') &&
           !spirit,
       )
       if (['current-week', 'dojo', 'homework'].includes(section.id)) {
+        let writingReady = false
+        let writingNote = 'A current Tier 1 writing cohort with validated stroke guides is needed.'
+        if (section.available) {
+          try {
+            const lesson = strokeOrderLesson(scope)
+            writingReady = true
+            writingNote = `${lesson.targetSet.targets.length} of ${lesson.total} writing targets have guides.${lesson.unsupported.length ? ` Not yet supported: ${lesson.unsupported.join('、')}.` : ''}`
+          } catch (failure) { writingNote = failure instanceof Error ? failure.message : writingNote }
+        }
+        activities.push({
+          id: 'dojo-stroke-order-slay', title: 'Stroke Order Slay', eyebrow: 'Tier 1 · Writing acquisition',
+          description: 'Learn stroke order through your grade’s full writing sequence. Progress saves separately.',
+          icon: '✍️', note: writingNote, action: writingReady
+            ? { kind: 'launch', label: 'Stroke Order Slay', launch: { previewAction: 'stroke', channel: 'writing', datasets: scope } }
+            : { kind: 'disabled', label: 'Coming soon', reason: writingNote },
+        })
         const eligible = section.available && scope.length === 1 && channelWords(scope[0], 'reading').length > 0
         const reason = 'A current Tier 2 reading cohort is needed for this acquisition activity.'
         activities.push({
@@ -189,26 +209,6 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
             },
           })
         }
-      if (grade === 'Grade 5' && section.id === 'homework' && scope.length) {
-        const built = buildStrokeOrderRounds(scope.flatMap((d) => d.words))
-        const reason = `Stroke guides are unavailable for: ${built.unsupportedTargets.join('、')}. No substitute targets will be used.`
-        activities.push({
-          id: 'preview-stroke-order',
-          title: 'Stroke Order',
-          eyebrow: 'Writing targets',
-          description: 'Watch, copy, then write each current writing target from memory.',
-          icon: '✍️',
-          ...(built.unsupportedTargets.length ? { note: reason } : {}),
-          action:
-            built.rounds.length && !built.unsupportedTargets.length
-              ? {
-                  kind: 'launch',
-                  label: 'Stroke Order',
-                  launch: { previewAction: 'stroke', channel: 'writing', datasets: scope },
-                }
-              : { kind: 'disabled', label: 'Needs stroke guides', reason },
-        })
-      }
       if (ninja) {
         const anchor =
           new URLSearchParams(location.search).get('week') ||
@@ -311,6 +311,7 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
     model.sections = model.sections.map(section => ({ ...section,
       activities: section.activities.filter(activity => resumeExperience === 'whispering-scrolls'
         ? activity.id === 'dojo-whispering-scrolls'
+        : resumeExperience === 'stroke-order-slay' ? activity.id === 'dojo-stroke-order-slay'
         : activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`),
     })).filter(section => section.activities.length > 0)
   }
@@ -338,7 +339,14 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
                 catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
               }
               setSessionId(crypto.randomUUID())
-              setActive(launch as ExtraLaunch)
+              const next = launch as ExtraLaunch
+              if (next.previewAction === 'stroke' && grade !== 'Kindergarten') {
+                if (!props.onStrokeOrderWarmup) {
+                  setError('The grade’s Warmup could not be opened. No teaching progress has changed.')
+                  return
+                }
+                props.onStrokeOrderWarmup(next.datasets[0], () => setActive(next))
+              } else setActive(next)
             } else props.onLaunch(launch as Launch, context)
           }}
         />
@@ -394,21 +402,9 @@ function EnhancedHub<Launch>(props: LearningHubProps<Launch>) {
           onComplete={(summary) => complete(summary.correct, summary.total)}
         />
       )}
-      {active?.previewAction === 'stroke' && (
-        <StrokeOrderActivity
-          activityId="stroke-order-grade5"
-          grade="Grade 5"
-          title="Stroke Order"
-          eyebrow="Grade 5 · Enter the Dojo"
-          sourceId={active.datasets[0].id}
-          sourceLabel={active.datasets[0].dateRange}
-          {...buildStrokeOrderRounds(active.datasets.flatMap((d) => d.words))}
-          timing={{ copySeconds: 20, memorySeconds: 20, correctionSeconds: 20 }}
-          playAudio={audio}
-          onExit={exit}
-          onComplete={(summary) => complete(summary.correct, summary.attempted)}
-        />
-      )}
+      {active?.previewAction === 'stroke' && <Suspense fallback={<p>Opening Stroke Order Slay…</p>}>
+        <StrokeOrderSlay datasets={active.datasets} onExit={exit} />
+      </Suspense>}
     </>
   )
 }

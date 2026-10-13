@@ -20,7 +20,7 @@ export function assertScrollsAnswerOpen(storage: Parameters<typeof readResultLed
 export function withScrollsWrite<T>(key: string, operation: () => T): Promise<T> {
   if (typeof navigator === 'undefined' || !navigator.locks)
     return Promise.reject(
-      new Error('This browser cannot safely coordinate saved reading across tabs. No records were changed.'),
+      new Error('This browser cannot safely coordinate saved practice across tabs. No records were changed.'),
     )
   return navigator.locks.request(`ninja-scrolls-write:${key}`, { mode: 'exclusive' }, operation)
 }

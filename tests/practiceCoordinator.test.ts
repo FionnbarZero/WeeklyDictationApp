@@ -3,19 +3,21 @@ import test from 'node:test'
 import {
   completePractice,
   leavePractice,
-  prepareCloudCompletionAttempt,
-  startPractice,
   type PracticeCompletionPersistence,
   type PracticeTransitionPersistence,
+  prepareCloudCompletionAttempt,
+  recordPracticeAnswer,
   type StartPracticePersistence,
+  skipWarmup,
+  startPractice,
 } from '../src/application/practice/index.ts'
 import {
   createInitialState,
   createPracticeSessionForTarget,
-  resolveDatasetLifecycles,
   type Dataset,
   type PracticeSession,
   type PracticeTarget,
+  resolveDatasetLifecycles,
 } from '../src/domain.ts'
 import type { CloudSession } from '../src/persistence/cloudRecords.ts'
 
@@ -73,6 +75,156 @@ function cloudSession(primaryPhase: CloudSession['primaryPhase']): CloudSession 
     applicationVersion: 'test',
   }
 }
+
+test('external writing activities share the durable pre-activity Warmup without touching ordinary acquisition', async () => {
+  const mastered: Dataset = {
+    ...dataset,
+    id: 'mastered',
+    startDate: '2026-09-01',
+    endDate: '2026-09-04',
+    words: dataset.words.map((word) => ({ ...word, text: '天', id: 'mastered-word', datasetId: 'mastered' })),
+  }
+  const state = { ...stateWithDataset(), datasets: [mastered, dataset] }
+  const lifecycleResolution = {
+    ...resolveDatasetLifecycles(state.datasets, startedAt),
+    mastered: [mastered],
+    lifecycleByDatasetId: { [mastered.id]: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+  }
+  const ordinary = await startPractice({
+    state,
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    primaryDatasets: state.datasets,
+    lifecycleResolution,
+    sessionId: 'ordinary',
+    startedAt,
+    persistence: startPersistence(false),
+  })
+  assert.equal(ordinary.status, 'started')
+  if (ordinary.status !== 'started') return
+  let saves = 0
+  const opened = await startPractice({
+    state: ordinary.state,
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    externalPrimary: true,
+    primaryDatasets: state.datasets,
+    lifecycleResolution,
+    sessionId: 'stroke',
+    startedAt,
+    persistence: startPersistence(false, {
+      saveLocalState: () => {
+        saves++
+        return true
+      },
+      journalAcquisition: () => assert.fail('A Warmup must not checkpoint ordinary Acquisition'),
+    }),
+  })
+  assert.equal(opened.status, 'started')
+  if (opened.status !== 'started') return
+  assert.ok(saves > 0)
+  assert.equal(opened.session.adaptiveWarmupVisitId, ordinary.session.adaptiveWarmupVisitId)
+  assert.equal(opened.session.stage, 'warmup-intro')
+  assert.equal(opened.session.warmupOnly, false)
+  assert.equal(opened.session.acquisition, undefined)
+  assert.equal(opened.session.acquisitionProgressionId, undefined)
+  assert.deepEqual(opened.session.primaryQueue, [])
+  assert.deepEqual(opened.state.acquisitionProgressEnvelopes, ordinary.state.acquisitionProgressEnvelopes)
+  assert.deepEqual(opened.state.scores, ordinary.state.scores)
+  const skipped = skipWarmup({
+    state: opened.state,
+    session: opened.session,
+    occurredAt: startedAt,
+    persistence: {
+      cloud: false,
+      saveLocalState: () => true,
+      journalWarmup: () => undefined,
+      acknowledgeWarmup: () => undefined,
+    },
+  })
+  assert.equal(skipped.status, 'applied')
+  if (skipped.status !== 'applied') return
+  assert.equal(skipped.session.segment, 'primary')
+  assert.equal(skipped.session.stage, 'complete')
+  assert.deepEqual(skipped.state.scores, ordinary.state.scores)
+  assert.deepEqual(skipped.state.acquisitionProgressEnvelopes, ordinary.state.acquisitionProgressEnvelopes)
+})
+
+test('external Warmup keeps the durable queue order and restores only genuine reviewed answers', async () => {
+  const mastered: Dataset = {
+    ...dataset,
+    id: 'mastered',
+    words: ['天', '月', '日'].map((text, index) => ({
+      ...dataset.words[0],
+      text,
+      id: `mastered-${index}`,
+      datasetId: 'mastered',
+    })),
+  }
+  const state = { ...stateWithDataset(), datasets: [mastered, dataset] }
+  const request = {
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    externalPrimary: true,
+    primaryDatasets: state.datasets,
+    lifecycleResolution: {
+      ...resolveDatasetLifecycles([], startedAt),
+      mastered: [mastered],
+      lifecycleByDatasetId: { mastered: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+    },
+    sessionId: 'stroke',
+    startedAt,
+    persistence: startPersistence(false),
+  }
+  const opened = await startPractice({ ...request, state })
+  assert.equal(opened.status, 'started')
+  if (opened.status !== 'started') return
+  const visit = opened.state.warmupVisitsV1!.at(-1)!
+  assert.deepEqual(
+    opened.session.queue.map((word) => word.id),
+    visit.queue.map((entry) => entry.prompt.wordId),
+  )
+  const answered = recordPracticeAnswer({
+    state: opened.state,
+    session: { ...opened.session, stage: 'review' },
+    correct: false,
+    occurredAt: startedAt,
+    persistence: startPersistence(false),
+  })
+  assert.equal(answered.status, 'advanced')
+  if (answered.status !== 'advanced' || !answered.state) return
+  const resumed = await startPractice({ ...request, state: answered.state, sessionId: 'reopened' })
+  assert.equal(resumed.status, 'started')
+  if (resumed.status !== 'started') return
+  assert.equal(resumed.session.adaptiveWarmupVisitId, opened.session.adaptiveWarmupVisitId)
+  assert.deepEqual(resumed.session.queue, opened.session.queue)
+  assert.equal(resumed.session.index, 1)
+  assert.deepEqual(resumed.session.warmupAnswers, [
+    { word: opened.session.queue[0], correct: false, revealMethod: 'timer' },
+  ])
+  assert.deepEqual(resumed.state.warmupAttemptsV1, answered.state.warmupAttemptsV1)
+  const missing = await startPractice({
+    ...request,
+    state: { ...answered.state, warmupAttemptsV1: [] },
+    sessionId: 'invalid',
+  })
+  assert.equal(missing.status, 'blocked')
+})
+
+test('external writing Warmup refuses to open when the initial queue cannot be saved', async () => {
+  const result = await startPractice({
+    state: stateWithDataset(),
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    externalPrimary: true,
+    primaryDatasets: [dataset],
+    lifecycleResolution: resolveDatasetLifecycles([dataset], startedAt),
+    sessionId: 'stroke',
+    startedAt,
+    persistence: startPersistence(false, { saveLocalState: () => false }),
+  })
+  assert.equal(result.status, 'blocked')
+})
 
 test('local and cloud practice starts share one application operation with capability-specific writes', async () => {
   const state = stateWithDataset()

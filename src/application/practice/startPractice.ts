@@ -4,11 +4,11 @@ import type {
   AcquisitionProgressEnvelope,
 } from '../../acquisition/persistence/contracts.ts'
 import {
-  createPracticeSessionForTarget,
-  localDateKey,
   type AppState,
+  createPracticeSessionForTarget,
   type Dataset,
   type DatasetLifecycleResolution,
+  localDateKey,
   type PracticeSession,
   type PracticeTarget,
   type Word,
@@ -64,6 +64,8 @@ export async function startPractice(input: {
   state: AppState
   child: { id: string; grade: string; schoolYear: string }
   target: PracticeTarget | null
+  /** Offer the same Warmup for a separately owned primary activity, without opening ordinary Acquisition. */
+  externalPrimary?: boolean
   primaryDatasets: Dataset[]
   lifecycleResolution: DatasetLifecycleResolution
   sessionId: string
@@ -165,7 +167,7 @@ export async function startPractice(input: {
   const warmupOnly = !input.target
   let state = revalidatedWarmup.state
   let preparedAcquisition =
-    input.target?.phase === 'acquisition'
+    input.target?.phase === 'acquisition' && !input.externalPrimary
       ? prepareAcquisitionProgress(
           state,
           input.child.id,
@@ -189,6 +191,9 @@ export async function startPractice(input: {
       status: 'blocked',
       message: 'Acquisition cannot start because this browser could not save its initial progress record.',
     }
+  }
+  if (input.externalPrimary && !input.persistence.cloud && !input.persistence.saveLocalState(state)) {
+    return { status: 'blocked', message: 'Warmup cannot open until its selected queue is saved on this device.' }
   }
 
   let cloudSession: CloudSession | undefined
@@ -278,8 +283,9 @@ export async function startPractice(input: {
     id: input.sessionId,
     childId: input.child.id,
     grade: input.child.grade,
-    target:
-      input.target && preparedAcquisition?.status === 'ready'
+    target: input.externalPrimary
+      ? null
+      : input.target && preparedAcquisition?.status === 'ready'
         ? {
             ...input.target,
             dataset: { ...input.target.dataset, words: [...preparedAcquisition.context.targetSet.targets] },
@@ -291,11 +297,42 @@ export async function startPractice(input: {
     preparedAcquisitionProgress:
       preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined,
   })
+  const resumedAnswers = input.externalPrimary
+    ? warmupVisit.queue.flatMap((entry, position) => {
+        const attempt = state.warmupAttemptsV1?.find(
+          (item) =>
+            item.visitId === warmupVisit.id &&
+            item.childId === input.child.id &&
+            item.queueEntryId === entry.id &&
+            item.wordId === entry.prompt.wordId,
+        )
+        return attempt
+          ? [{ word: warmupWords[position], correct: attempt.correct, revealMethod: attempt.revealMethod }]
+          : []
+      })
+    : []
+  if (input.externalPrimary && resumedAnswers.length !== warmupVisit.attemptedCount) {
+    return {
+      status: 'blocked',
+      message: 'The saved Warmup responses could not be verified. Existing progress is preserved.',
+    }
+  }
   return {
     status: 'started',
     state,
     session: {
       ...practiceSession,
+      ...(input.externalPrimary && input.target
+        ? {
+            primaryDatasetId: input.target.dataset.id,
+            primaryDatasetIds: [input.target.dataset.id],
+            primaryPhase: input.target.phase,
+            warmupOnly: false,
+            // A durable visit owns the prompt order, including on reload.
+            queue: warmupWords,
+            warmupAnswers: resumedAnswers,
+          }
+        : {}),
       ...(preparedAcquisition?.status === 'ready' ? { acquisitionProgressionId: preparedAcquisition.envelope.id } : {}),
       adaptiveWarmupVisitId: warmupVisit.id,
       warmupResumePosition: warmupVisit.nextPosition,
