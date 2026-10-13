@@ -2,6 +2,14 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import {
+  assertServedFamilyHeaders,
+  assertTransitionBaseline,
+  assertTransitionVersion,
+  type FamilyHeaderPolicy,
+  type FamilyHeaderTransition,
+  verifyHeaderTransition,
+} from './canonicalFamilyHeaders.ts'
 import { artifactFileRecords, fileTreeSha256, requireFullGitRevision } from './familyBetaRelease.ts'
 import { rollbackGuard } from './familyOfflineRollback.ts'
 
@@ -44,6 +52,7 @@ export type ReleaseRecord = {
   candidate: PackageIdentity
   recovery: PackageIdentity
   previous: { sourceRevision: string; fileTreeSha256: string; version: string }
+  headerTransition?: FamilyHeaderTransition
   approval: { sourceRevision: string; fileTreeSha256: string; grades: string[]; reference: string }
   evidence: {
     sourceRevision: string
@@ -77,7 +86,7 @@ export type ReleasePorts = {
   version(id: string): Promise<ProviderVersion>
   upload(directory: string, tag: string, message: string): Promise<string>
   activate(id: string, message: string): Promise<void>
-  verify(identity: PackageIdentity): Promise<void>
+  verify(identity: PackageIdentity, policy?: FamilyHeaderPolicy): Promise<void>
   journal(): ReleaseJournal | null
   save(journal: ReleaseJournal): void
 }
@@ -193,6 +202,7 @@ export function verifyReleaseRecord(record: ReleaseRecord) {
       .digest('hex')
     if (actual !== digest) throw new Error(`${key} evidence changed after review.`)
   }
+  verifyHeaderTransition(record, CANONICAL_FAMILY)
   return { candidate, recovery }
 }
 export function releaseRecordHash(record: ReleaseRecord) {
@@ -208,15 +218,36 @@ function assertSameRuntime(version: ProviderVersion, previous: ProviderVersion) 
     'Provider bindings/runtime/headers changed; separate review required.',
   )
 }
-async function requireActive(ports: ReleasePorts, expected: string) {
+async function requireActive(ports: Pick<ReleasePorts, 'active'>, expected: string) {
   if ((await ports.active()) !== expected)
     throw new Error('Active hosting changed. Stop and reconcile; do not overwrite it.')
 }
-async function ownedVersion(ports: ReleasePorts, record: ReleaseRecord, kind: 'candidate' | 'recovery', id: string) {
+async function ownedVersion(
+  ports: Pick<ReleasePorts, 'version'>,
+  record: ReleaseRecord,
+  kind: 'candidate' | 'recovery',
+  id: string,
+) {
   const version = await ports.version(requireVersion(id))
   if (version.id !== id || version.annotations['workers/message'] !== uploadMessage(record, kind))
     throw new Error('Uploaded version is not bound to this candidate and package hash.')
-  assertSameRuntime(version, await ports.version(record.previous.version))
+  const previous = await ports.version(record.previous.version)
+  if (record.headerTransition) {
+    assertTransitionBaseline(record.headerTransition, previous)
+    assertTransitionVersion(record.headerTransition, kind, version)
+  } else assertSameRuntime(version, previous)
+}
+/** Read-only verification does not reconcile or modify the mutation journal. */
+export async function verifyActiveCanonicalRelease(
+  record: ReleaseRecord,
+  ports: Pick<ReleasePorts, 'active' | 'version' | 'verify'>,
+) {
+  verifyReleaseRecord(record)
+  const active = await ports.active()
+  await ownedVersion(ports, record, 'candidate', active)
+  await ports.verify(record.candidate, record.headerTransition?.candidate.policy)
+  await requireActive(ports, active)
+  return { verified: true, activeVersion: active, sourceRevision: record.candidate.sourceRevision }
 }
 /** One explicit provider invocation per phase. Wrangler may retry identical INACTIVE
  * uploads internally (at most three attempts in the pinned version); we never
@@ -234,9 +265,12 @@ export async function executeCanonicalRelease(
     if (prior)
       throw new Error('An upload was already attempted. Inspect the retained journal/provider; never blindly retry.')
     await requireActive(ports, record.previous.version)
-    if ((await ports.version(record.previous.version)).resources.bindings.length)
+    const baseline = await ports.version(record.previous.version)
+    if (baseline.resources.bindings.length)
       throw new Error('Canonical static hosting has unexpected shared bindings. Stop before uploading.')
-    await ports.verify({ ...record.previous, directory: '' })
+    if (record.headerTransition) assertTransitionBaseline(record.headerTransition, baseline)
+    await ports.verify({ ...record.previous, directory: '' }, record.headerTransition?.recovery.policy)
+    await requireActive(ports, record.previous.version)
     const journal: ReleaseJournal = { recordSha256: fingerprint, phase: 'uploading-recovery' }
     ports.save(journal)
     journal.recoveryVersion = requireVersion(
@@ -278,7 +312,11 @@ export async function executeCanonicalRelease(
   if (operation === 'reconcile') {
     const recovering = prior.phase === 'rolling-back'
     await requireActive(ports, recovering ? prior.recoveryVersion : prior.candidateVersion)
-    await ports.verify(recovering ? record.recovery : record.candidate)
+    await ports.verify(
+      recovering ? record.recovery : record.candidate,
+      record.headerTransition?.[recovering ? 'recovery' : 'candidate'].policy,
+    )
+    await requireActive(ports, recovering ? prior.recoveryVersion : prior.candidateVersion)
     const confirmed = { ...prior, phase: recovering ? 'rolled-back' : 'activated' } as ReleaseJournal
     ports.save(confirmed)
     return confirmed
@@ -292,22 +330,65 @@ export async function executeCanonicalRelease(
     `${operation} canonical family ${record.candidate.sourceRevision}; guarded recovery ${prior.recoveryVersion}`,
   )
   await requireActive(ports, target)
-  await ports.verify(operation === 'activate' ? record.candidate : record.recovery)
+  await ports.verify(
+    operation === 'activate' ? record.candidate : record.recovery,
+    record.headerTransition?.[operation === 'activate' ? 'candidate' : 'recovery'].policy,
+  )
+  await requireActive(ports, target)
   journal.phase = operation === 'activate' ? 'activated' : 'rolled-back'
   ports.save(journal)
   return journal
 }
 /** Read-only canonical verifier. Never uses old aliases as release targets. */
-export async function verifyCanonicalLive(identity: PackageIdentity, request: typeof fetch = fetch) {
+export async function verifyCanonicalLive(
+  identity: PackageIdentity,
+  request: typeof fetch = fetch,
+  policy?: FamilyHeaderPolicy,
+) {
   requireFullGitRevision(identity.sourceRevision)
   requireHash(identity.fileTreeSha256)
   const local = identity.directory ? verifyCanonicalPackage(identity) : null
-  const response = await request(`${CANONICAL_FAMILY.origin}/family-beta-manifest.json`, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(20000),
-  })
-  if (!response.ok || new URL(response.url).origin !== CANONICAL_FAMILY.origin)
-    throw new Error('Canonical manifest is unavailable or redirected off origin.')
+  let headerResponses = 0
+  async function get(path: string, allowMissing = false) {
+    const initial = new URL(path, `${CANONICAL_FAMILY.origin}/`)
+    let url = initial
+    const clean = initial.pathname === '/index.html' ? '/' : initial.pathname.replace(/\.html$/, '')
+    for (let hops = 0; hops <= 3; hops++) {
+      const response = await request(url, {
+        cache: 'no-store',
+        credentials: 'omit',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(30000),
+      })
+      if (response.url !== url.href)
+        throw new Error('Canonical response redirected off origin or followed an unchecked redirect.')
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get('location')
+        await response.body?.cancel()
+        if (!location) throw new Error('Redirect has no location.')
+        const next = new URL(location, url)
+        if (
+          next.origin !== initial.origin ||
+          next.username ||
+          next.password ||
+          next.hash ||
+          next.search !== initial.search ||
+          ![initial.pathname, clean].includes(next.pathname)
+        )
+          throw new Error('Canonical response redirected off origin or changed the entry/query.')
+        url = next
+        continue
+      }
+      if (!response.ok && !(allowMissing && response.status === 404)) throw new Error(`Asset unavailable: ${path}`)
+      if (policy) {
+        assertServedFamilyHeaders(policy, url.pathname, response.headers)
+        headerResponses++
+      }
+      return response
+    }
+    throw new Error('Too many canonical redirects.')
+  }
+  const response = await get('/family-beta-manifest.json')
   const manifest = await response.json()
   if (
     manifest.schema !== 1 ||
@@ -336,20 +417,38 @@ export async function verifyCanonicalLive(identity: PackageIdentity, request: ty
           file.path.split('/').includes('..')
         )
           throw new Error('Invalid live asset path.')
-        const url = new URL(file.path, `${CANONICAL_FAMILY.origin}/`)
-        const result = await request(url, { cache: 'no-store', signal: AbortSignal.timeout(30000) })
-        if (!result.ok || new URL(result.url).origin !== CANONICAL_FAMILY.origin)
-          throw new Error(`Asset unavailable: ${file.path}`)
+        const result = await get(file.path)
         const bytes = Buffer.from(await result.arrayBuffer())
         if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256)
           throw new Error(`Live asset differs: ${file.path}`)
       }
     }),
   )
+  if (policy) {
+    const routes = new Map<string, string>([['/', 'index.html']])
+    for (const grade of FAMILY_GRADES) {
+      for (const entry of entries.filter((entry) => entry !== 'index.html')) {
+        routes.set(`/${entry}?grade=${grade}`, entry)
+        routes.set(`/${entry.replace(/\.html$/, '')}?grade=${grade}`, entry)
+      }
+    }
+    for (const [route, entry] of routes) {
+      const expected = files.find((file: { path: string }) => file.path === entry)
+      if (!expected) throw new Error(`Missing entry from manifest: ${entry}`)
+      const result = await get(route)
+      const bytes = Buffer.from(await result.arrayBuffer())
+      if (bytes.length !== expected.bytes || createHash('sha256').update(bytes).digest('hex') !== expected.sha256)
+        throw new Error(`Live entry differs: ${route}`)
+    }
+    const missing = 'assets/__ninja_header_probe_missing__.js'
+    assert.ok(!files.some((file: { path: string }) => file.path === missing))
+    await (await get(missing, true)).body?.cancel()
+  }
   return {
     origin: CANONICAL_FAMILY.origin,
     sourceRevision: identity.sourceRevision,
     fileTreeSha256: identity.fileTreeSha256,
     publicFiles: files.length,
+    ...(policy ? { headerResponses } : {}),
   }
 }

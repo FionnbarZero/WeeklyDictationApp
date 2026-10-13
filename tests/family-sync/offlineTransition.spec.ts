@@ -61,9 +61,13 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
     .poll(async () => {
       for (const worker of context.serviceWorkers()) {
         try {
-          const ready = await worker.evaluate(
-            async () => !(await self.registration.waiting) && !self.registration.installing,
-          )
+          // A retired worker can leave evaluate pending instead of rejecting.
+          // Bound each probe so polling can inspect the replacement; the exact
+          // candidate-build and preserved-record assertions below still gate it.
+          const ready = await Promise.race([
+            worker.evaluate(async () => !(await self.registration.waiting) && !self.registration.installing),
+            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 250)),
+          ])
           if (ready) return true
         } catch {
           /* The replaced worker can become redundant during polling. */

@@ -20,9 +20,11 @@ import {
   canonicalProviderEnvironment,
   executeCanonicalRelease,
   type ReleaseJournal,
+  type ReleasePorts,
   type ReleaseRecord,
   releaseRecordHash,
   requireVersion,
+  verifyActiveCanonicalRelease,
   verifyCanonicalLive,
   verifyCanonicalPackage,
   verifyReleaseRecord,
@@ -51,10 +53,14 @@ for (const key of ['independentReview', 'checks', 'backend', 'recovery'] as cons
   const [path, digest] = record.evidence[key].split('#sha256=')
   record.evidence[key] = `${resolve(dirname(recordPath), path)}#sha256=${digest}`
 }
+if (record.headerTransition) {
+  for (const key of ['independentReview', 'securityApproval'] as const) {
+    const [path, digest] = record.headerTransition.receipts[key].split('#sha256=')
+    record.headerTransition.receipts[key] = `${resolve(dirname(recordPath), path)}#sha256=${digest}`
+  }
+}
 verifyReleaseRecord(record)
-if (operation === 'verify') {
-  console.log(JSON.stringify(await verifyCanonicalLive(record.candidate), null, 2))
-} else if (!flags.has('--execute') || operation === 'plan') {
+if ((!flags.has('--execute') && operation !== 'verify') || operation === 'plan') {
   console.log(
     JSON.stringify(
       {
@@ -65,12 +71,18 @@ if (operation === 'verify') {
         recoveryTree: record.recovery.fileTreeSha256,
         expectedActive: record.previous.version,
         recordSha256: releaseRecordHash(record),
+        headerTransition: record.headerTransition
+          ? {
+              candidatePolicy: record.headerTransition.candidate.policy.rawSha256,
+              recoveryPolicy: record.headerTransition.recovery.policy.rawSha256,
+            }
+          : null,
         operation,
         order: [
           'upload guarded recovery inactive',
           'upload exact candidate inactive',
           'activate only candidate at 100%',
-          'verify exact canonical manifest and all public assets',
+          'verify exact canonical manifest, all public assets and approved response headers',
         ],
         recovery:
           'Explicit rollback selects only the retained guarded version, never an unguarded predecessor. Runtime/browser acceptance remains a separate required check.',
@@ -81,24 +93,28 @@ if (operation === 'verify') {
     ),
   )
 } else {
+  const readOnly = operation === 'verify'
   if (
-    flags.get('--confirm-revision') !== record.candidate.sourceRevision ||
-    flags.get('--confirm-tree') !== record.candidate.fileTreeSha256
+    !readOnly &&
+    (flags.get('--confirm-revision') !== record.candidate.sourceRevision ||
+      flags.get('--confirm-tree') !== record.candidate.fileTreeSha256)
   )
     throw new Error('Repeat the exact candidate revision and tree with --confirm-revision and --confirm-tree.')
-  if (execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim())
+  if (!readOnly && execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim())
     throw new Error('Commit reviewed release tooling before executing a hosting operation.')
-  execFileSync('git', ['cat-file', '-e', `${record.candidate.sourceRevision}^{commit}`], { cwd: root })
+  if (!readOnly) execFileSync('git', ['cat-file', '-e', `${record.candidate.sourceRevision}^{commit}`], { cwd: root })
   const journalPath = resolve(flags.get('--journal') || '')
   if (
-    !flags.get('--journal') ||
-    !journalPath.endsWith('.json') ||
-    [record.candidate.directory, record.recovery.directory].some(
-      (path) => journalPath === path || journalPath.startsWith(`${path}/`),
-    )
+    !readOnly &&
+    (!flags.get('--journal') ||
+      !journalPath.endsWith('.json') ||
+      [record.candidate.directory, record.recovery.directory].some(
+        (path) => journalPath === path || journalPath.startsWith(`${path}/`),
+      ))
   )
     throw new Error('Supply a separate --journal JSON file outside both asset packages.')
-  const existing = existsSync(journalPath) ? (JSON.parse(readFileSync(journalPath, 'utf8')) as ReleaseJournal) : null
+  const existing =
+    !readOnly && existsSync(journalPath) ? (JSON.parse(readFileSync(journalPath, 'utf8')) as ReleaseJournal) : null
   const expectedActive =
     operation === 'rollback'
       ? existing?.candidateVersion
@@ -107,7 +123,7 @@ if (operation === 'verify') {
           ? existing.recoveryVersion
           : existing?.candidateVersion
         : record.previous.version
-  if (!expectedActive || flags.get('--confirm-active') !== expectedActive)
+  if (!readOnly && (!expectedActive || flags.get('--confirm-active') !== expectedActive))
     throw new Error('Repeat the exact expected active version with --confirm-active.')
   const stage = mkdtempSync(join(tmpdir(), 'ninja-canonical-release-'))
   const config = join(stage, 'wrangler.toml')
@@ -125,8 +141,10 @@ if (operation === 'verify') {
       { cwd: stage, env: environment, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     ).trim()
   try {
-    mkdirSync(dirname(journalPath), { recursive: true })
-    lock = openSync(lockPath, 'wx')
+    if (!readOnly) {
+      mkdirSync(dirname(journalPath), { recursive: true })
+      lock = openSync(lockPath, 'wx')
+    }
     const journal = () =>
       existsSync(journalPath) ? (JSON.parse(readFileSync(journalPath, 'utf8')) as ReleaseJournal) : null
     let created = existsSync(journalPath)
@@ -148,6 +166,7 @@ if (operation === 'verify') {
       }
     }
     const save = (value: ReleaseJournal) => {
+      if (readOnly) throw new Error('Read-only verification cannot write a release journal.')
       if (!created) {
         durableWrite(journalPath, value)
         syncDirectory()
@@ -159,60 +178,59 @@ if (operation === 'verify') {
       renameSync(temporary, journalPath)
       syncDirectory()
     }
-    const receipt = await executeCanonicalRelease(
-      operation as 'upload' | 'activate' | 'rollback' | 'reconcile',
-      record,
-      {
-        journal,
-        save,
-        async active() {
-          const deployments = JSON.parse(wrangler(['deployments', 'list', '--json']))
-          if (!Array.isArray(deployments) || !deployments.length)
-            throw new Error('No existing canonical deployment; initial provisioning is out of scope.')
-          const latest = deployments.sort((a, b) => a.created_on.localeCompare(b.created_on)).at(-1)
-          if (latest.versions?.length !== 1 || latest.versions[0].percentage !== 100)
-            throw new Error('Split or unknown hosting traffic; reconcile before publishing.')
-          return requireVersion(latest.versions[0].version_id)
-        },
-        async version(id) {
-          const value = JSON.parse(wrangler(['versions', 'view', requireVersion(id), '--json']))
-          return {
-            id: value.id,
-            annotations: value.annotations,
-            resources: { bindings: value.resources.bindings, script_runtime: value.resources.script_runtime },
-          }
-        },
-        async upload(directory, tag, message) {
-          const identity = directory === record.candidate.directory ? record.candidate : record.recovery
-          const snapshot = join(stage, tag)
-          cpSync(directory, snapshot, { recursive: true, errorOnExist: true, force: false })
-          verifyCanonicalPackage({ ...identity, directory: snapshot })
-          const output = wrangler([
-            'versions',
-            'upload',
-            '--assets',
-            snapshot,
-            '--tag',
-            tag,
-            '--message',
-            message,
-            '--keep-vars',
-          ])
-          const id = output.match(/Worker Version ID: ([a-f0-9-]{36})/)?.[1]
-          if (!id) throw new Error('Upload outcome uncertain. Inspect provider versions and journal; do not retry.')
-          return requireVersion(id)
-        },
-        async activate(id, message) {
-          wrangler(['versions', 'deploy', `${requireVersion(id)}@100`, '--message', message, '--yes'])
-        },
-        async verify(identity) {
-          await verifyCanonicalLive(identity)
-        },
+    const ports: ReleasePorts = {
+      journal,
+      save,
+      async active() {
+        const deployments = JSON.parse(wrangler(['deployments', 'list', '--json']))
+        if (!Array.isArray(deployments) || !deployments.length)
+          throw new Error('No existing canonical deployment; initial provisioning is out of scope.')
+        const latest = deployments.sort((a, b) => a.created_on.localeCompare(b.created_on)).at(-1)
+        if (latest.versions?.length !== 1 || latest.versions[0].percentage !== 100)
+          throw new Error('Split or unknown hosting traffic; reconcile before publishing.')
+        return requireVersion(latest.versions[0].version_id)
       },
-    )
+      async version(id) {
+        const value = JSON.parse(wrangler(['versions', 'view', requireVersion(id), '--json']))
+        return {
+          id: value.id,
+          annotations: value.annotations,
+          resources: { bindings: value.resources.bindings, script_runtime: value.resources.script_runtime },
+        }
+      },
+      async upload(directory, tag, message) {
+        const identity = directory === record.candidate.directory ? record.candidate : record.recovery
+        const snapshot = join(stage, tag)
+        cpSync(directory, snapshot, { recursive: true, errorOnExist: true, force: false })
+        verifyCanonicalPackage({ ...identity, directory: snapshot })
+        const output = wrangler([
+          'versions',
+          'upload',
+          '--assets',
+          snapshot,
+          '--tag',
+          tag,
+          '--message',
+          message,
+          '--keep-vars',
+        ])
+        const id = output.match(/Worker Version ID: ([a-f0-9-]{36})/)?.[1]
+        if (!id) throw new Error('Upload outcome uncertain. Inspect provider versions and journal; do not retry.')
+        return requireVersion(id)
+      },
+      async activate(id, message) {
+        wrangler(['versions', 'deploy', `${requireVersion(id)}@100`, '--message', message, '--yes'])
+      },
+      async verify(identity, policy) {
+        await verifyCanonicalLive(identity, fetch, policy)
+      },
+    }
+    const receipt = readOnly
+      ? await verifyActiveCanonicalRelease(record, ports)
+      : await executeCanonicalRelease(operation as 'upload' | 'activate' | 'rollback' | 'reconcile', record, ports)
     console.log(JSON.stringify(receipt, null, 2))
     console.log(
-      'Hosting operation verified. Runtime/persistence and physical-device acceptance are separate; do not infer them from this receipt.',
+      `${readOnly ? 'Read-only hosting verification passed.' : 'Hosting operation verified.'} Runtime/persistence and physical-device acceptance are separate; do not infer them from this receipt.`,
     )
   } finally {
     if (lock !== undefined) {
