@@ -527,7 +527,7 @@ test('Scrolls without cross-tab locking keeps the reviewed response for retry wi
     .locator('body')
     .evaluate(() => Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined }))
   await frame.getByRole('button', { name: 'Yes', exact: true }).click()
-  await expect(frame.getByText(/cannot safely coordinate saved reading across tabs/)).toBeVisible()
+  await expect(frame.getByText(/cannot safely coordinate saved practice across tabs/)).toBeVisible()
   expect(await checkpoint(page)).toEqual(before)
   await frame.locator('body').evaluate(() => {
     Reflect.deleteProperty(navigator, 'locks')
@@ -536,11 +536,11 @@ test('Scrolls without cross-tab locking keeps the reviewed response for retry wi
   await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(1)
 })
 
-test('Scrolls guarded C2 recovery preserves the new lesson and returns to the same prompt', async ({
+test('Scrolls guarded predecessor recovery preserves the new lesson and returns to the same prompt', async ({
   browser,
   request,
 }) => {
-  test.skip(!process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT, 'Requires the verified retained C2 release artifact.')
+  test.skip(!process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT, 'Requires the verified retained predecessor artifact.')
   // This case isolates the new module's rollback guard. offlineTransition.spec
   // separately exercises the real installed-worker replacement lifecycle.
   const context = await browser.newContext({ serviceWorkers: 'block' })

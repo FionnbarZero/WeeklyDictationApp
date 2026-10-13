@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import type { EngineAcquisitionPrompt } from '../acquisition/contracts.ts'
 import { activityClock } from '../activity/activityLifecycle.ts'
 import { gradeAudioProfileFor } from '../audio/gradeAudioProfile.ts'
@@ -225,7 +225,10 @@ export function StrokeOrderResponse({
           </button>
         </div>
       )}
-      <div className={`skywriting-workspace stroke-writing-workspace${stage === 'review' ? ' is-review' : ''}`}>
+      <div
+        className={`skywriting-workspace stroke-writing-workspace${stage === 'review' ? ' is-review' : ''}`}
+        style={{ '--stroke-lanes': [...prompt.word.text].length } as CSSProperties}
+      >
         <section aria-label={stage === 'review' ? 'Your writing' : 'Write your response'}>
           <WritingPad
             disabled={stage !== 'writing' || paused || timerPaused}

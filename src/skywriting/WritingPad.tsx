@@ -131,7 +131,7 @@ export function WritingPad({
         {guide}
         {strokes.map((stroke, index) => <polyline key={index} points={pointsFor(stroke, viewBoxWidth)} className="skywriting-stroke" />)}
       </svg>
-      {!hasInk && !traceText && <p className="skywriting-pad-placeholder" aria-hidden="true">Write here</p>}
+      {!hasInk && !traceText && !guide && <p className="skywriting-pad-placeholder" aria-hidden="true">Write here</p>}
     </div>
     <label className="skywriting-keyboard-alternative">
       <span>{disabled ? 'Typed response' : 'Keyboard or switch-input alternative'}</span>

@@ -4,11 +4,11 @@
 .stroke-acquisition button:disabled { opacity: .55; cursor: not-allowed; }
 .stroke-response { border-radius: 18px; background: #fffdf5; padding: 20px; }
 .stroke-writing-workspace { display: grid; grid-template-columns: 1fr; margin: 16px 0; }
-.stroke-writing-workspace .skywriting-pad-frame { height: 290px; }
+.stroke-acquisition .stroke-writing-workspace .skywriting-pad-shell .skywriting-pad-frame { width: min(100%, calc(var(--stroke-lanes) * 290px)); height: auto; aspect-ratio: var(--stroke-lanes); }
 .stroke-correct-model svg { display: block; width: 100%; max-height: 220px; }
 .stroke-acquisition-guide path { fill: none; stroke: #b8a7ce; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .stroke-acquisition-guide text { fill: #6c536d; font: bold 4px sans-serif; }
 .stroke-acquisition-guide.is-animated path { stroke-dasharray: 1; animation: stroke-acquisition-draw .46s both linear; }
 @keyframes stroke-acquisition-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @media (min-width: 760px) { .stroke-writing-workspace.is-review { grid-template-columns: 1fr 1fr; gap: 20px; } }
-@media (max-width: 600px) { .stroke-response { padding: 12px; } .stroke-writing-workspace .skywriting-pad-frame { height: 230px; } }
+@media (max-width: 600px) { .stroke-response { padding: 12px; } }

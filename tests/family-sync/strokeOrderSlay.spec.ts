@@ -68,6 +68,16 @@ for (const [slug, grade] of grades) {
     await expect.poll(async () => (await checkpoint(page)).envelope.revision).toBe(1)
     await review(frame)
     await expect(frame.locator('.stroke-acquisition-guide.is-animated')).toBeVisible()
+    await expect(frame.locator('.skywriting-pad-placeholder')).toHaveCount(0)
+    const modelLanes = [...(await checkpoint(page)).envelope.flow.prompt.word.text].length
+    await expect
+      .poll(() =>
+        frame.locator('svg.skywriting-pad').evaluate((pad) => {
+          const bounds = pad.getBoundingClientRect()
+          return bounds.width / bounds.height
+        }),
+      )
+      .toBeCloseTo(modelLanes, 1)
     await page.screenshot({ path: info.outputPath(`stroke-${slug}.png`), fullPage: true })
     await review(frame, true)
     await expect(frame.locator('.stroke-acquisition-guide')).toHaveCount(0)
@@ -153,7 +163,8 @@ test('Stroke Order report pauses the timer and guide, preserves temporary input,
   await review(frame)
   await review(frame)
   const pad = frame.locator('svg.skywriting-pad')
-  await expect(pad).toBeVisible()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+  await pad.scrollIntoViewIfNeeded()
   // Interrupt before pointer-up. A second stroke must not replace the held ink.
   const bounds = (await pad.boundingBox())!
   await page.mouse.move(bounds.x + 30, bounds.y + 30)
@@ -166,9 +177,11 @@ test('Stroke Order report pauses the timer and guide, preserves temporary input,
   await page.mouse.up()
   await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
-  await page.mouse.move(bounds.x + 110, bounds.y + 30)
+  await pad.scrollIntoViewIfNeeded()
+  const resumedBounds = (await pad.boundingBox())!
+  await page.mouse.move(resumedBounds.x + 110, resumedBounds.y + 30)
   await page.mouse.down()
-  await page.mouse.move(bounds.x + 160, bounds.y + 80)
+  await page.mouse.move(resumedBounds.x + 160, resumedBounds.y + 80)
   await page.mouse.up()
   await expect(frame.locator('.skywriting-stroke')).toHaveCount(2)
   await frame.getByLabel('Type your word instead of drawing it').fill('private-d2-response')
@@ -279,60 +292,65 @@ test('Stroke Order failed reviewed answer retries the same choice once and canno
   await expect(frame.getByRole('button', { name: 'Done for today' })).toBeEnabled()
 })
 
-test('Stroke Order reviewed facts sync to a fresh device without provisional writing', async ({ page, browser }) => {
-  const documents: SyntheticFamilyDocuments = new Map()
-  await setup(page, documents)
-  const first = await open(page)
-  await review(first)
-  const saved = await checkpoint(page)
-  await first.getByLabel('Type your word instead of drawing it').fill('private-d2-response')
-  await page.getByRole('button', { name: 'Progress', exact: true }).click()
-  await expect
-    .poll(() => [...documents.values()].some((doc) => JSON.stringify(doc).includes('stroke-order-slay')))
-    .toBe(true)
-  const context = await browser.newContext()
-  try {
-    const second = await context.newPage()
-    await setup(second, documents)
-    const frame = await open(second)
-    await expect.poll(async () => (await checkpoint(second))?.envelope.revision).toBe(1)
-    expect((await checkpoint(second)).envelope.flow).toEqual(saved.envelope.flow)
-    await expect(frame.getByLabel('Type your word instead of drawing it')).toHaveValue('')
-    await review(frame)
-    expect((await checkpoint(second)).sessionId).not.toBe(saved.sessionId)
-    expect(JSON.stringify([...documents.values()])).not.toMatch(/private-d2-response|"typedText"|"activeStroke"/)
-  } finally {
-    await context.close()
-  }
-})
-
-test('Stroke Order guarded D1 recovery preserves its lesson and returns to the same prompt', async ({
-  page,
-  request,
-}) => {
-  test.skip(!process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT, 'Requires retained D1 package')
-  await setup(page)
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: undefined })
-  })
-  const select = async (version: string) => {
-    const response = await request.post(`/__rehearsal__/version?version=${version}`)
-    expect(response.ok()).toBe(true)
-  }
-  try {
-    await select('candidate')
-    const frame = await open(page)
-    await review(frame)
+for (const [slug, grade] of grades) {
+  test(`${grade} Stroke Order reviewed facts sync to a fresh device without provisional writing`, async ({
+    page,
+    browser,
+  }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await setup(page, documents)
+    const first = await open(page, slug)
+    await review(first)
     const saved = await checkpoint(page)
-    await select('rollback')
-    await page.reload()
-    await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
-    expect(await checkpoint(page)).toEqual(saved)
-    await select('candidate')
-    await page.reload()
-    await open(page)
-    expect((await checkpoint(page)).envelope).toEqual(saved.envelope)
-  } finally {
-    await select('candidate')
-  }
-})
+    await first.getByLabel('Type your word instead of drawing it').fill('private-d2-response')
+    await page.getByRole('button', { name: 'Progress', exact: true }).click()
+    await expect
+      .poll(() => [...documents.values()].some((doc) => JSON.stringify(doc).includes('stroke-order-slay')))
+      .toBe(true)
+    const context = await browser.newContext()
+    try {
+      const second = await context.newPage()
+      await setup(second, documents)
+      const frame = await open(second, slug)
+      await expect.poll(async () => (await checkpoint(second))?.envelope.revision).toBe(1)
+      expect((await checkpoint(second)).envelope.flow).toEqual(saved.envelope.flow)
+      await expect(frame.getByLabel('Type your word instead of drawing it')).toHaveValue('')
+      await review(frame)
+      expect((await checkpoint(second)).sessionId).not.toBe(saved.sessionId)
+      expect(JSON.stringify([...documents.values()])).not.toMatch(/private-d2-response|"typedText"|"activeStroke"/)
+    } finally {
+      await context.close()
+    }
+  })
+
+  test(`${grade} Stroke Order guarded D1 recovery preserves its lesson and returns to the same prompt`, async ({
+    page,
+    request,
+  }) => {
+    test.skip(!process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT, 'Requires retained D1 package')
+    await setup(page)
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: undefined })
+    })
+    const select = async (version: string) => {
+      const response = await request.post(`/__rehearsal__/version?version=${version}`)
+      expect(response.ok()).toBe(true)
+    }
+    try {
+      await select('candidate')
+      const frame = await open(page, slug)
+      await review(frame)
+      const saved = await checkpoint(page)
+      await select('rollback')
+      await page.reload()
+      await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
+      expect(await checkpoint(page)).toEqual(saved)
+      await select('candidate')
+      await page.reload()
+      await open(page, slug)
+      expect((await checkpoint(page)).envelope).toEqual(saved.envelope)
+    } finally {
+      await select('candidate')
+    }
+  })
+}

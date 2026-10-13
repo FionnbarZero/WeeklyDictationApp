@@ -48,6 +48,13 @@ function fixture(slug: string) {
   return { source, datasets, dataset, lesson, context, storage, records }
 }
 
+test('the distributed stroke-guide license is an unmodified copy of its source license', () => {
+  assert.equal(
+    readFileSync('public/licenses/stroke-guides/ARPHICPL.TXT', 'utf8'),
+    readFileSync('src/learningGames/strokeOrder/ARPHICPL.TXT', 'utf8'),
+  )
+})
+
 for (const slug of ['kindergarten', 'grade2', 'grade5']) {
   test(`${slug} every bundled Tier 1 target and familiar seed has finite ordered stroke geometry`, () => {
     const { datasets } = fixture(slug)

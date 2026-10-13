@@ -1,0 +1,15 @@
+Stroke guide data
+
+The reduced median geometry is derived from hanzi-writer-data, Make Me A Hanzi,
+and Arphic Technology fonts. Copyright (C) 1999 Arphic Technology Co., Ltd.
+It is freely redistributable under the included, unmodified ARPHICPL.TXT and
+is provided without warranty. The license applies to the derived guide data,
+not unrelated application code or child-created responses.
+
+The Grade 2 supplement was extracted on October 12, 2026: 37 additional
+curriculum characters, medians only, with coordinate and stroke validation.
+The supplement and existing Grade 5 extension use upstream revision:
+https://github.com/chanind/hanzi-writer-data/tree/68d10a4b21150cae5e1ebbd223eed289cf32d90c/data
+
+The reduced source geometry and modification notices are available at:
+https://github.com/FionnbarZero/WeeklyDictationApp/tree/main/src/learningGames/strokeOrder
