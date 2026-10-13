@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import {
   CANONICAL_FAMILY,
+  canonicalProviderEnvironment,
   executeCanonicalRelease,
   type ReleaseJournal,
   type ReleaseRecord,
@@ -116,7 +117,7 @@ if (operation === 'verify') {
   )
   let lock: number | undefined
   const lockPath = join(tmpdir(), `${CANONICAL_FAMILY.worker}-${CANONICAL_FAMILY.account}.release.lock`)
-  const environment = { ...process.env, CLOUDFLARE_ACCOUNT_ID: CANONICAL_FAMILY.account }
+  const environment = canonicalProviderEnvironment(process.env)
   const wrangler = (args: string[]) =>
     execFileSync(
       'npx',

@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import test, { type TestContext } from 'node:test'
 import {
   CANONICAL_FAMILY,
+  canonicalProviderEnvironment,
   executeCanonicalRelease,
   type PackageIdentity,
   type ProviderVersion,
@@ -23,6 +24,36 @@ import { prepareOfflineRollback } from '../scripts/familyOfflineRollback.ts'
 const previousVersion = '11111111-1111-4111-8111-111111111111'
 const candidateVersion = '22222222-2222-4222-8222-222222222222'
 const recoveryVersion = '33333333-3333-4333-8333-333333333333'
+test('provider subprocess environment keeps supported authentication but strips inherited target/API/config overrides', () => {
+  const original = {
+    PATH: '/synthetic/node/bin',
+    HOME: '/synthetic/home',
+    LANG: 'en_US.UTF-8',
+    CLOUDFLARE_API_TOKEN: 'synthetic-token',
+    CF_API_KEY: 'synthetic-key',
+    CLOUDFLARE_ACCOUNT_ID: 'wrong-account',
+    WRANGLER_CI_OVERRIDE_NAME: 'other-worker',
+    CLOUDFLARE_API_BASE_URL: 'https://wrong.invalid',
+    CF_API_BASE_URL: 'https://wrong.invalid',
+    CLOUDFLARE_BASE_URL: 'https://wrong.invalid',
+    WRANGLER_API_ENVIRONMENT: 'staging',
+    CLOUDFLARE_COMPLIANCE_REGION: 'fedramp',
+    CLOUDFLARE_ENV: 'other',
+    WRANGLER_CI_MATCH_TAG: 'other',
+    WRANGLER_LOG_SANITIZE: 'false',
+    WRANGLER_UNKNOWN_OVERRIDE: 'future',
+  }
+  assert.deepEqual(canonicalProviderEnvironment(original), {
+    PATH: original.PATH,
+    HOME: original.HOME,
+    LANG: original.LANG,
+    CLOUDFLARE_API_TOKEN: 'synthetic-token',
+    CF_API_KEY: 'synthetic-key',
+    CLOUDFLARE_ACCOUNT_ID: CANONICAL_FAMILY.account,
+    WRANGLER_SEND_METRICS: 'false',
+  })
+  assert.equal(original.WRANGLER_CI_OVERRIDE_NAME, 'other-worker')
+})
 function fixture(t: TestContext) {
   const root = mkdtempSync(join(tmpdir(), 'ninja-release-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -471,6 +502,7 @@ test('active npm release commands and workflow make canonical versus reference p
   )
   const cli = readFileSync('scripts/release-family.ts', 'utf8')
   assert.match(cli, /\.release\.lock/)
+  assert.match(cli, /const environment = canonicalProviderEnvironment\(process.env\)/)
   assert.doesNotMatch(cli, /hosting:clone|git', \['push|triggers', 'deploy|firestore:rules|run', 'deploy/)
   const example = JSON.parse(readFileSync('deployment/canonical-family-release.example.json', 'utf8'))
   assert.deepEqual(example.approval.grades, [])

@@ -13,6 +13,22 @@ export const CANONICAL_FAMILY = {
   wrangler: '4.147.0',
 } as const
 export const FAMILY_GRADES = ['kindergarten', 'grade2', 'grade5'] as const
+/** Keep supported credentials, not inherited provider routing/build/debug overrides.
+ * Normal stored OAuth login and ordinary process settings remain available. */
+export function canonicalProviderEnvironment(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const auth = new Set([
+    'CLOUDFLARE_API_TOKEN',
+    'CLOUDFLARE_API_KEY',
+    'CLOUDFLARE_EMAIL',
+    'CF_API_TOKEN',
+    'CF_API_KEY',
+    'CF_EMAIL',
+  ])
+  const environment = Object.fromEntries(
+    Object.entries(input).filter(([name]) => !/^(?:WRANGLER_|CLOUDFLARE_|CF_)/.test(name) || auth.has(name)),
+  )
+  return { ...environment, CLOUDFLARE_ACCOUNT_ID: CANONICAL_FAMILY.account, WRANGLER_SEND_METRICS: 'false' }
+}
 const hashPattern = /^[a-f0-9]{64}$/
 const versionPattern = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/
 const entries = [
@@ -202,7 +218,9 @@ async function ownedVersion(ports: ReleasePorts, record: ReleaseRecord, kind: 'c
     throw new Error('Uploaded version is not bound to this candidate and package hash.')
   assertSameRuntime(version, await ports.version(record.previous.version))
 }
-/** One mutation per operation. A journal written BEFORE a provider call blocks blind retries after uncertainty. */
+/** One explicit provider invocation per phase. Wrangler may retry identical INACTIVE
+ * uploads internally (at most three attempts in the pinned version); we never
+ * repeat a failed/uncertain CLI invocation or automatically retry activation. */
 export async function executeCanonicalRelease(
   operation: 'upload' | 'activate' | 'rollback' | 'reconcile',
   record: ReleaseRecord,
