@@ -46,6 +46,10 @@ Fresh repaired-source verification passes **969 units**, including **39 canonica
 
 ## Beta boundaries
 
+### E1 pull request handoff — October 13, 2026
+
+The owner authorized pushing `codex/e1-release-path-cleanup` and opening [PR #67](https://github.com/FionnbarZero/WeeklyDictationApp/pull/67) against `main`. GitHub reports no base conflict. Initial run `38407063437` queued five quality jobs on `a949db2`; the documentation successor also requires all five final-head jobs to pass. The GitHub connector lacked PR-write permission, so the existing signed-in GitHub browser created the PR; no access permission was expanded. The PR is attached to this chat. No merge, auto-merge, hosting operation, retirement, security/authentication or family-record change occurred. Next: **GPT-6.1 Sol · High** for final-head checks, then separately approved merge. No additional owner UI smoke test is needed for this tooling-only change; actual provider-operation acceptance and retirement gates remain separate.
+
 - Kindergarten, Grade 2, and Grade 5 each receive a stable grade-specific beta destination.
 - Temporary preview deployments are for adult review and synthetic verification, not permanent child URLs.
 - Synthetic staging never receives real child data, email addresses, recordings, authentication state, or copied family documents.
