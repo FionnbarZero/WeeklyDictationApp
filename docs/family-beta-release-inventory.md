@@ -24,6 +24,29 @@ These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their origina
 
 The October 5 operation verified all 120 public files at all four origins; those results are historical, not proof the aliases serve the current release. Their exact hashes and publication details remain in the [October 5 family-sync record](./family-sync-release-2026-10-05.md).
 
+## E1 dependency and retirement inventory
+
+Read-only inspection October 13 confirms the canonical manifest is D2 `937a51e`, with all **153 public files** matching the retained package through the new local canonical verifier. The three principal obsolete copies still expose October 5 source `ef9d1f75df7046152c4829e8f7cfca635f303461`. Provider metadata lists **six Firebase sites and 22 channel records**, including already-expired entries; the legacy domain and [current custom-domain listing](https://firebase.google.com/docs/reference/hosting/rest/v1beta1/projects.sites.customDomains/list) both return no attached domains on those six sites. These checks read public manifests/hosting metadata, not private family records. A missing manifest does not prove a hosting site or preview channel is unused.
+
+| Target | Evidence / dependency | E1 disposition |
+| --- | --- | --- |
+| `ninjadojo.meghangames.com` / Worker `meghangames-ninjadojo` | Current three-grade family app; D2 live identity/hash verification passes | Keep; only supported family release target |
+| `weeklydictation-k-beta.web.app` | HTTP 200 manifest, obsolete October 5 Kindergarten source; possible origin-local reports/progress | Retirement candidate, not retired; check custom domains/channels and saved-data consequences before separate approval |
+| `fionnbarzero.github.io/WeeklyDictationApp` / `gh-pages` | HTTP 200 manifest, obsolete October 5 Grade 2 source; retained origin-bound history | Retirement candidate, not retired; inspect Pages/custom-domain dependencies and local-data consequences; preserve Git history |
+| `weeklydictation-g5-beta.web.app` | HTTP 200 manifest, obsolete October 5 Grade 5 source; possible origin-local reports/progress | Retirement candidate, not retired; check custom domains/channels and saved-data consequences before separate approval |
+| `weeklydictation-g2-preview.web.app` | Main manifest HTTP 404, but provider lists `candidate-e9c5a547031c` through October 16 plus an empty live channel | Explicit retirement approval pending; do not infer safe deletion from the main-page 404 |
+| `weeklydictation-g5-rollback.web.app` | HTTP 200 manifest, older source `a55d972ccb6f6db00c81b202d4e5bba16a889025`; not current guarded containment | Retirement candidate only; confirm channels/custom domains and superseded recovery dependencies first |
+| `weeklydictation-k-rollback.web.app` | Provider lists a separate user site with one live channel; source/runtime acceptance not inspected | Additional inventory target, not approved for retirement or use as current containment |
+| `weeklydictationapp.web.app` default site | Provider lists one live channel on the shared Firebase project's default site | Protect pending separate dependency inspection; do not bundle with obsolete grade-copy removals |
+| Firebase project `weeklydictationapp` | Canonical `src/firebaseClient.ts` and family cloud code use its Authentication/Firestore APIs; app records live here | Protect; deleting the project/database/users is NOT static-host retirement |
+| Firebase auth domains, App Check, storage/audio resources and production rules | Shared service configuration; not proof of a separate obsolete frontend | Protect; any security/configuration/retention change is E2 or separately authorized work |
+| Cloud Run `weekly-dictation-curriculum`, validated-curriculum bucket and Google OAuth secrets | Canonical family curriculum endpoint and automatic teacher refresh | Protect; retain service/backend deployment path; never treat it as an obsolete grade host |
+| `meghangames.com` homepage Worker and synthetic staging | Separate site/service; staging guards explicitly exclude production | Protect; outside obsolete-grade-host retirement |
+
+Six old publisher/alias-packager entrypoints are locally disabled before side effects. Their implementations and the old four-origin verifier remain in `archive/deployment/*.ts.disabled`, with execution-stop guards and Git history. Shared reference packaging/hash helpers and their CI remain supported as references, not a second app publication route. These safeguards exist only on the current local E1 branch until reviewed/merged; they do not disable scripts in older Git checkouts or revoke anyone's provider access.
+
+**No targets have been retired.** Firebase provider site/channel/domain metadata is now recorded; GitHub Pages configuration/attachments and residual bookmark/data consequences remain to be checked. Grade 5 and Kindergarten sites also retain named preview/recovery channels, including `candidate-e9c5a547031c`; do not treat all 22 listed records as reachable releases or delete them indiscriminately. Identify concrete removals, disclose that disabling an origin can prevent access to its unsent reports/unsynced browser progress, then obtain target-specific retirement approval after **GPT-6 Astra · High** review. Never delete shared Firebase/Google infrastructure or clear a device's records to retire a static copy. The local tooling/controller tests do not constitute a real hosting rollback exercise.
+
 ## Persistence and update boundaries
 
 - Completed writing, reading, and supported game results sync under the parent account. Reports stay local and are shared as an end-of-session batch.

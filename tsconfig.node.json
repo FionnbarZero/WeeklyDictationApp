@@ -11,7 +11,11 @@
   "include": [
     "vite.config.ts",
     "scripts/buildMetadata.ts",
-    "scripts/deploy-family-beta.ts",
+    "scripts/release-family.ts",
+    "scripts/canonicalFamilyRelease.ts",
+    "scripts/familyOfflineRollback.ts",
+    "scripts/familyOfflineShell.ts",
+    "scripts/verify-family-sync-release.ts",
     "scripts/familyBetaDelivery.ts",
     "scripts/familyBetaRelease.ts",
     "scripts/package-family-beta.ts",

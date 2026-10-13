@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "candidate": {
+    "directory": "<retained-tested-family-package>",
+    "sourceRevision": "<full-reviewed-merge-revision>",
+    "fileTreeSha256": "<exact-tested-file-tree-sha256>"
+  },
+  "recovery": {
+    "directory": "<retained-guarded-predecessor-package>",
+    "sourceRevision": "<full-previous-source-revision>",
+    "fileTreeSha256": "<guarded-recovery-file-tree-sha256>"
+  },
+  "previous": {
+    "sourceRevision": "<full-previous-source-revision>",
+    "fileTreeSha256": "<original-previous-file-tree-sha256>",
+    "version": "<exact-current-cloudflare-version-uuid>"
+  },
+  "approval": {
+    "sourceRevision": "<full-reviewed-merge-revision>",
+    "fileTreeSha256": "<exact-tested-file-tree-sha256>",
+    "grades": [],
+    "reference": "<actual-owner-approval-receipt; do-not-prefill-approval>"
+  },
+  "evidence": {
+    "sourceRevision": "<full-reviewed-merge-revision>",
+    "fileTreeSha256": "<exact-tested-file-tree-sha256>",
+    "independentReview": "<review-receipt-path>#sha256=<receipt-sha256>",
+    "checks": "<passed-checks-receipt-path>#sha256=<receipt-sha256>",
+    "backend": "<passed-exact-package-backend-receipt-path>#sha256=<receipt-sha256>",
+    "recovery": "<passed-guarded-recovery-receipt-path>#sha256=<receipt-sha256>"
+  }
+}
