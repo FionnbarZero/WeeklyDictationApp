@@ -51,7 +51,7 @@ Geometry coverage tests cover every bundled writing target in all three grades a
 
 D2 is local and unpublished. It has not changed production records, database rules, authentication, teacher documents or batched problem reports. Full Spirit Realm integration and broader supporting content remain separate unfinished work. Recordings are not part of this writing activity. Physical sound, handwriting/touch and real-device interruption acceptance cannot be established by synthetic browser tests; request only a short D2-specific check after reviewed publication, not a new full-app audit.
 
-The initial JavaScript performance budget remains unchanged at 550,000 bytes; the D2 build uses 549,944 bytes, leaving only 56 bytes of headroom. Keep acquisition UI deferred. Publishing, merging, pushing and any later production-data or security changes retain their separate approval gates.
+The initial JavaScript performance budget remains unchanged at 550,000 bytes. The Warmup-repaired `36b0f48` build uses 546,027 bytes after deferring practice startup; the earlier candidate used 549,944 bytes. Keep acquisition UI deferred. Publishing, merging, pushing and any later production-data or security changes retain their separate approval gates.
 
 ## Local verification and retained packages
 
@@ -91,8 +91,37 @@ After those local checks finished, the owner-authorized separate **GPT-6 Astra �
 
 ### Independent review outcome — October 12, 2026
 
+This finding describes the historical `cc28b06` review. The repair and successful independent re-review are recorded below; do not promote the superseded packages.
+
 **One actionable introduced P2; D2 is not ready for release.** `StrokeOrderSlay.tsx` initializes and presents acquisition directly, bypassing the configured pre-activity Warmup offer. An isolated synthetic comparison on the exact hash-verified `cc28b06` package confirmed that ordinary Grade 2 and Grade 5 writing each present **Begin Warmup / Skip Warmup**, while D2 presents neither and has already reached introduction/familiar DT at revision 0. Grade 2 explicitly configures optional Adaptive Warmup: optional permits a child to skip it, not the implementation to remove the choice. ADR 0007 requires configured Warmup parity and shared Warmup mastery. Grade 5's required-versus-optional policy remains undecided; the repair must preserve its existing offered flow without inventing a new requirement. The baseline statement that the shared Warmup/Spirit Realm policy was unchanged did not establish D2 pre-activity parity; full Spirit Realm deferral is not an exemption.
 
 The independent reviewer ran **146 targeted unit cases**, four exact-package browser comparisons and complete hash/inventory verification for all four retained candidate/recovery packages. These passed. The reviewer inspected, but did not rerun, the retained 74-case matrix and formatting-equivalence receipt. No other actionable introduced defect was confirmed in this bounded review. No tracked files or external state were changed by the reviewer; its temporary server stopped.
 
 The receipt is retained at `family-beta-artifacts/releases/d2-cc28b06/evidence/ninja-d2-independent-review-cc28b06.log` (original `/tmp/ninja-d2-independent-review-cc28b06.log`). **Next: GPT-6 Astra · Extra High Warmup repair, verification and independent re-review of the resulting package.** Do not push, merge, publish, start E1 or ask for owner D2 smoke testing from the current candidate. D1 remains the last verified live application. Physical iMac/iPad sound, touch and handwriting acceptance remain future post-publication checks.
+
+### Warmup repair and independent re-review — October 12, 2026
+
+**The P2 is resolved at `36b0f48e05faf4a9104aa7a49282fdae3bbfd5f1`.** The confirmed D2 Astra Extra High assignment covers this repair; the owner-authorized separate Astra Extra High reviewer independently re-reviewed it. No additional actionable introduced defect was confirmed. Earlier D2 packages are superseded, not release candidates.
+
+The family hub now delegates the pre-activity offer to each grade's existing writing host before mounting D2 teaching. Grade 2 uses the existing Adaptive Warmup coordinator and shared mastery, saves the selected queue, preserves its authoritative order and restores actual reviewed answers on reload. Skipping a reviewed remainder finalizes the partial visit without erasing or inventing answers. Missing or unsavable facts block safely. The external-primary handoff does not create an ordinary Acquisition envelope or score. Grade 5 reuses its existing offered writing-Warmup preview, including its presentation/review order; it does not gain a required or durable Warmup policy. Kindergarten's ordinary writing path has no pre-activity offer and is unchanged. D2's separate durable teaching checkpoint begins after this handoff.
+
+Exiting and resuming a paused Warmup retains the pending D2 destination. Confirmed cancellation removes that continuation, so a subsequent ordinary writing session cannot accidentally enter D2. Complete Warmup, skip and partial-skip all return to D2 revision 0 without ordinary acquisition/score changes. The practice-start operation is deferred to preserve the existing loading-size budget; its failure path clears the pending launch and reports the error.
+
+Final local evidence on the application candidate:
+
+- **930 unit tests**, **58 general browser cases** and **78/78 exact-package desktop/tablet cases** pass. The 78-case run took 9.9 minutes with no retries or skips: 40 Stroke Order cases, including the new offer/reload/partial-skip regressions, and 38 shared Whispering Scrolls regressions. All-grade D2 reviewed facts, pinned resume, fresh-device recovery, immutable completion and guarded D1 recovery remain covered.
+- Exact-head typecheck, lint, standard format and build/performance checks pass. The explicit 49-file family/changed-file check passes. Initial JavaScript is **546,027/550,000 bytes**; CSS is **42,745/60,000 bytes**. No budget was raised.
+- **19 emulator cases pass with one intentional skip**. Production audit reports zero vulnerabilities; the existing 11-finding firebase-tools-only development exception remains limited through November 4. No production policy/schema changes are included.
+- Fresh independent verification passes **121 targeted unit tests**, three additional coordinator scenarios and **seven exact-package browser checks**. The browser checks cover Grade 2 and Grade 5 offer → pause → resume → skip on desktop/tablet, full Grade 2 six-answer completion, and both grades' confirmed cancellation followed by ordinary writing. The reviewer inspected, rather than independently reran, the full root matrices. Synthetic Chromium/touch checks do not establish physical iPad or Safari acceptance.
+- The reviewer independently rehashed every file and both tree inventories. Candidate and guarded recovery were served/retained locally only; neither was uploaded or activated.
+
+| Retained local package | Source | Files | SHA-256 tree |
+| --- | --- | --- | --- |
+| `releases/d2-warmup-36b0f48/candidate` | `36b0f48` | 155 | `75c5b130e50cd0be47aba554d38599f8e074880d88a408ca22b40dce44ed7adc` |
+| `releases/d2-warmup-36b0f48/guarded-recovery` | D1 `092c57f`, compatibility `36b0f48` | 149 | `eeb6b207943ea42b716339543962209772a2a7de13bf6fcab72d9eaf078ac8a2` |
+
+Paths are under ignored `family-beta-artifacts/`. Completed gate logs, the independent receipt `ninja-d2-warmup-independent-review-36b0f48.log` and its reproducible browser script are retained in `releases/d2-warmup-36b0f48/evidence/`. The 78-case browser output is under `reviews/d2-warmup-final/browser/`; general browser output is under `reviews/d2-warmup-36b0f48/general-browser/`.
+
+Earlier failed and superseded checks remain evidence, not passes: initial loading-size checks exceeded the unchanged budget until the startup operation was genuinely deferred; two architecture assertions caught a renamed delegation alias, restored without weakening the checks; an explicit format check found and then resolved import ordering. The intermediate `2ce93d7` browser run was deliberately interrupted for the reload/partial-skip and queue-order repair: 10 passed, one interrupted, 67 not run. The final 78-case matrix supersedes that incomplete run. Initial fixture corrections and earlier D2 failures remain historical; no failed run was relabeled green.
+
+**Next: GPT-6.1 Sol · High for separately authorized push/PR/CI and release preparation**, followed by owner merge approval and separate publication approvals for each grade. These local checks and the independent review authorize none of those external actions. D2 remains unpublished; D1 `092c57f` remains the last verified live application. Grade 5's session-only Warmup preview, undecided required-versus-optional policy, full Spirit Realm integration and physical sound/handwriting/touch acceptance remain limitations. No E1 work or owner D2 smoke-test handoff yet; request only a bounded D2 check after reviewed publication and exact served-build verification.
