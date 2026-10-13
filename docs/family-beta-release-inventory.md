@@ -1,10 +1,10 @@
 # Family beta release inventory
 
-Canonical release verified October 7, 2026. Older alias identities below retain their October 5 verification. This inventory describes the family wrapper, not the historical standalone prototypes.
+Canonical release verified October 13, 2026. Older alias identities below retain their historical verification; they were not republished or reverified by D2. This inventory describes the family wrapper, not the historical standalone prototypes.
 
 ## Current stable destinations
 
-All three canonical grades use merge `490fe4129ec492fa8ede5450250e2a35394a72b5`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, pinned saved lessons with prepared offline reopening, bounded completed-attempt history, and local batched problem reports. The [Meghan Games homepage](https://meghangames.com/) supplies these canonical links. Cloudflare version `f3b0766b-52ab-4591-a2be-1cb690ee394d` is active; guarded version `1f36538a-04ab-4fa1-a03e-5e11f0a48422` is retained for containment. [A3.2 release evidence](./a32-release-2026-10-07.md) records all 136 public-file hashes matching the tested artifact, three-grade live saving/fresh-browser recovery, Grade 2 offline continuation, and exact rollback instructions. Do not revert to an unguarded old engine after offline-shell installation.
+All three canonical grades use merge `937a51e47df995a49ba3c46d6930dcc6234fd5ec`, automatic read-only Google curriculum refresh, parent-owned online scores/practice, pinned saved lessons with prepared offline reopening, bounded completed-attempt history, and local batched problem reports. D2 adds separate durable Stroke Order Slay acquisition alongside D1 Whispering Scrolls and the earlier reviewed games. Cloudflare version `42f8137a-de79-452c-83e5-8e1633c48268` is active at 100%; guarded D1 version `279e9451-4f60-470e-8f54-8c5109e696a2` is retained inactive for containment. [D2 publication evidence](./stroke-order-slay-acquisition.md#publication-and-live-acceptance) records the exact manifest/153 public hashes, six entry/report checks and all-grade real-backend reviewed-fact, fresh-device pinned resume, completion and reload acceptance. Do not revert to an unguarded old engine after newer reviewed work is saved. Physical iMac/iPad acceptance, future guide coverage, Grade 5's session-only Warmup and full Spirit Realm integration remain limitations.
 
 | Grade | Permanent link | Live artifact |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ All three canonical grades use merge `490fe4129ec492fa8ede5450250e2a35394a72b5`,
 | Grade 2 | [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2) | Same release |
 | Grade 5 | [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5) | Same release |
 
-## Older aliases — not republished by A3.2
+## Older aliases — not republished by subsequent canonical releases
 
 These retain source `ef9d1f75df7046152c4829e8f7cfca635f303461` and their original device records. Do not distribute them for current testing. Retirement remains a separate E1 task.
 
