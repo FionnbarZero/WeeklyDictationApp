@@ -26,6 +26,8 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run check:release-tools
+      - run: npm run check:retention-tools
+      - run: npm run check:security-tools
       - run: npm test
 
   builds:

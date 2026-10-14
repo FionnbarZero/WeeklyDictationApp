@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 import { packageOfflineShell } from './familyOfflineShell.ts'
+import { familySecurityHeaders } from './familySecurityHeaders.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
@@ -33,14 +34,11 @@ for (const [entry, grade] of [
 }
 writeFileSync(
   join(directory, '_headers'),
-  `/*
-  Cache-Control: no-store
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), geolocation=(), microphone=(self)
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-`,
+  familySecurityHeaders(
+    artifactFileRecords(directory)
+      .map((file) => file.path)
+      .filter((path) => path.startsWith('assets/')),
+  ),
 )
 packageOfflineShell(directory, revision)
 const files = artifactFileRecords(directory)

@@ -6,6 +6,13 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import test, { type TestContext } from 'node:test'
 import {
+  effectiveFamilyHeaders,
+  legacyFamilyHeaders,
+  packageHeaderPolicy,
+  sha256,
+  transitionScopeHash,
+} from '../scripts/canonicalFamilyHeaders.ts'
+import {
   CANONICAL_FAMILY,
   canonicalProviderEnvironment,
   executeCanonicalRelease,
@@ -14,12 +21,14 @@ import {
   type ReleaseJournal,
   type ReleasePorts,
   type ReleaseRecord,
+  verifyActiveCanonicalRelease,
   verifyCanonicalLive,
   verifyCanonicalPackage,
   verifyReleaseRecord,
 } from '../scripts/canonicalFamilyRelease.ts'
 import { artifactFileRecords, fileTreeSha256 } from '../scripts/familyBetaRelease.ts'
 import { prepareOfflineRollback } from '../scripts/familyOfflineRollback.ts'
+import { familySecurityHeaders } from '../scripts/familySecurityHeaders.ts'
 
 const previousVersion = '11111111-1111-4111-8111-111111111111'
 const candidateVersion = '22222222-2222-4222-8222-222222222222'
@@ -54,13 +63,14 @@ test('provider subprocess environment keeps supported authentication but strips 
   })
   assert.equal(original.WRANGLER_CI_OVERRIDE_NAME, 'other-worker')
 })
-function fixture(t: TestContext) {
+function fixture(t: TestContext, security = false) {
   const root = mkdtempSync(join(tmpdir(), 'ninja-release-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   function artifact(name: string, revision: string): PackageIdentity {
     const directory = join(root, name)
     mkdirSync(join(directory, 'assets'), { recursive: true })
-    writeFileSync(join(directory, 'assets', 'app.js'), `export const revision = '${revision}'`)
+    const asset = security ? 'assets/app-Abcd1234.js' : 'assets/app.js'
+    writeFileSync(join(directory, asset), `export const revision = '${revision}'`)
     for (const entry of [
       'index.html',
       'family-beta-preview.html',
@@ -72,7 +82,14 @@ function fixture(t: TestContext) {
         join(directory, entry),
         '<html><head><script type="module" src="./assets/app.js"></script></head><body>synthetic</body></html>',
       )
-    writeFileSync(join(directory, '_headers'), '/*\n  Cache-Control: no-store\n')
+    writeFileSync(
+      join(directory, '_headers'),
+      security
+        ? revision === 'b'.repeat(40)
+          ? familySecurityHeaders([asset])
+          : legacyFamilyHeaders
+        : '/*\n  Cache-Control: no-store\n',
+    )
     writeFileSync(join(directory, 'offline-registration.js'), '// synthetic registration')
     writeFileSync(join(directory, 'family-offline-sw.js'), '// synthetic worker')
     const files = artifactFileRecords(directory),
@@ -144,8 +161,25 @@ function provider(record: ReleaseRecord) {
   versions.set(previousVersion, {
     id: previousVersion,
     annotations: {},
-    resources: { bindings: [], script_runtime: { compatibility_date: '2026-10-04' } },
+    resources: {
+      bindings: [],
+      script_runtime: {
+        compatibility_date: '2026-10-04',
+        usage_model: 'standard',
+        // The authenticated provider readback includes BOTH representations inside
+        // script_runtime. The release adapter retains them, so equality covers them.
+        assets: {
+          raw_headers: readFileSync(join(record.recovery.directory, '_headers'), 'utf8'),
+          headers: { version: 2, rules: { '/*': { set: { 'cache-control': 'no-store' }, unset: [] } } },
+          serve_directly: true,
+          raw_run_worker_first: false,
+          base_path: '/',
+        },
+      },
+    },
   })
+  if (record.headerTransition)
+    versions.get(previousVersion)!.resources = structuredClone(record.headerTransition.previous.resources)
   const ports: ReleasePorts = {
     async active() {
       calls.push('read-active')
@@ -164,6 +198,14 @@ function provider(record: ReleaseRecord) {
         annotations: { 'workers/message': message },
         resources: structuredClone(versions.get(previousVersion)!.resources),
       })
+      if (record.headerTransition) {
+        const runtime = versions.get(id)!.resources.script_runtime as {
+          assets: { raw_headers: string; headers: unknown }
+        }
+        const policy = packageHeaderPolicy(directory)
+        runtime.assets.raw_headers = policy.raw
+        runtime.assets.headers = policy.parsed
+      }
       return id
     },
     async activate(id) {
@@ -190,6 +232,59 @@ function provider(record: ReleaseRecord) {
     },
   }
 }
+function transitionFixture(t: TestContext) {
+  const result = fixture(t, true)
+  const { record, root } = result
+  const policy = packageHeaderPolicy(record.recovery.directory)
+  record.headerTransition = {
+    schema: 1,
+    target: { ...CANONICAL_FAMILY },
+    previous: {
+      ...record.previous,
+      resources: {
+        bindings: [],
+        script_runtime: {
+          compatibility_date: '2026-10-04',
+          usage_model: 'standard',
+          assets: {
+            raw_headers: policy.raw,
+            headers: policy.parsed,
+            base_path: '/',
+            serve_directly: true,
+            raw_run_worker_first: false,
+          },
+        },
+      },
+    },
+    candidate: {
+      sourceRevision: record.candidate.sourceRevision,
+      fileTreeSha256: record.candidate.fileTreeSha256,
+      policy: packageHeaderPolicy(record.candidate.directory),
+    },
+    recovery: {
+      sourceRevision: record.recovery.sourceRevision,
+      fileTreeSha256: record.recovery.fileTreeSha256,
+      policy,
+    },
+    receipts: { independentReview: '', securityApproval: '' },
+  }
+  const transition = record.headerTransition
+  for (const kind of ['independentReview', 'securityApproval'] as const) {
+    const path = join(root, `${kind}.json`)
+    const bytes = JSON.stringify({
+      schema: 1,
+      scope: 'canonical-header-transition',
+      kind,
+      approved: true,
+      transitionSha256: transitionScopeHash(transition),
+      reference: 'Synthetic unit-test approval, never live authority',
+      ...(kind === 'securityApproval' ? { grades: ['kindergarten', 'grade2', 'grade5'] } : {}),
+    })
+    writeFileSync(path, bytes)
+    transition.receipts[kind] = `${path}#sha256=${sha256(bytes)}`
+  }
+  return { ...result, transition }
+}
 test('canonical release validates exact candidate and guarded predecessor, then uploads inactive and promotes once', async (t) => {
   const { record } = fixture(t),
     p = provider(record)
@@ -215,6 +310,197 @@ test('canonical release validates exact candidate and guarded predecessor, then 
   assert.equal((await executeCanonicalRelease('rollback', record, p.ports)).phase, 'rolled-back')
   assert.equal(p.calls.filter((c) => c.startsWith('activate-')).at(-1), `activate-${recoveryVersion}`)
   assert(p.calls.includes(`verify-${record.recovery.fileTreeSha256}`))
+})
+test('approved exact header transition verifies both policies through upload, activation, read-only verification and guarded recovery', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record)
+  const verified: Array<{ source: string; policy: string | undefined }> = []
+  const verify = p.ports.verify
+  p.ports.verify = async (identity, policy) => {
+    verified.push({ source: identity.sourceRevision, policy: policy?.rawSha256 })
+    await verify(identity)
+  }
+  assert.equal((await executeCanonicalRelease('upload', record, p.ports)).phase, 'uploaded')
+  assert.equal((await executeCanonicalRelease('activate', record, p.ports)).phase, 'activated')
+  const journal = p.ports.journal()
+  assert.equal((await verifyActiveCanonicalRelease(record, p.ports)).activeVersion, candidateVersion)
+  assert.deepEqual(p.ports.journal(), journal)
+  assert.equal((await executeCanonicalRelease('rollback', record, p.ports)).phase, 'rolled-back')
+  assert.deepEqual(
+    verified.map((entry) => entry.policy),
+    [
+      record.headerTransition!.recovery.policy.rawSha256,
+      record.headerTransition!.candidate.policy.rawSha256,
+      record.headerTransition!.candidate.policy.rawSha256,
+      record.headerTransition!.recovery.policy.rawSha256,
+    ],
+  )
+})
+for (const fault of [
+  'target',
+  'baseline-version',
+  'candidate-tree',
+  'candidate-source',
+  'raw-hash',
+  'parsed-policy',
+  'review-hash',
+  'approval-scope',
+  'approval-denied',
+  'approval-grades',
+] as const) {
+  test(`header transition refuses ${fault} before any provider call`, async (t) => {
+    const { record, transition } = transitionFixture(t),
+      p = provider(record)
+    if (fault === 'target') transition.target.worker = 'wrong-worker'
+    if (fault === 'baseline-version') transition.previous.version = candidateVersion
+    if (fault === 'candidate-tree') transition.candidate.fileTreeSha256 = 'f'.repeat(64)
+    if (fault === 'candidate-source') transition.candidate.sourceRevision = 'f'.repeat(40)
+    if (fault === 'raw-hash') transition.candidate.policy.rawSha256 = 'f'.repeat(64)
+    if (fault === 'parsed-policy') transition.candidate.policy.parsed.rules['/*'].set['x-frame-options'] = 'DENY'
+    if (fault === 'review-hash')
+      transition.receipts.independentReview = transition.receipts.independentReview.replace(
+        /sha256=.*/,
+        `sha256=${'f'.repeat(64)}`,
+      )
+    if (fault.startsWith('approval-')) {
+      const path = transition.receipts.securityApproval.split('#sha256=')[0]
+      const receipt = JSON.parse(readFileSync(path, 'utf8'))
+      if (fault === 'approval-scope') receipt.transitionSha256 = 'f'.repeat(64)
+      if (fault === 'approval-denied') receipt.approved = false
+      if (fault === 'approval-grades') receipt.grades = ['grade2']
+      const bytes = JSON.stringify(receipt)
+      writeFileSync(path, bytes)
+      transition.receipts.securityApproval = `${path}#sha256=${sha256(bytes)}`
+    }
+    await assert.rejects(executeCanonicalRelease('upload', record, p.ports))
+    assert.deepEqual(p.calls, [])
+  })
+}
+test('header transition detects baseline drift before writing a journal or uploading', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record)
+  ;(p.versions.get(previousVersion)!.resources.script_runtime as Record<string, unknown>).extra_setting = true
+  await assert.rejects(executeCanonicalRelease('upload', record, p.ports), /baseline changed/)
+  assert.equal(p.ports.journal(), null)
+  assert.equal(
+    p.calls.some((call) => call.startsWith('upload-')),
+    false,
+  )
+})
+for (const fault of [
+  'raw',
+  'parsed',
+  'unknown-policy-field',
+  'binding',
+  'runtime',
+  'asset-setting',
+  'unknown-asset-field',
+  'recovery-policy',
+] as const) {
+  test(`approved transition still refuses uploaded ${fault} drift`, async (t) => {
+    const { record } = transitionFixture(t),
+      p = provider(record),
+      upload = p.ports.upload
+    p.ports.upload = async (...args) => {
+      const id = await upload(...args)
+      if (id === (fault === 'recovery-policy' ? recoveryVersion : candidateVersion)) {
+        const resources = p.versions.get(id)!.resources
+        const runtime = resources.script_runtime as { usage_model: string; assets: Record<string, unknown> }
+        if (fault === 'raw' || fault === 'recovery-policy')
+          runtime.assets.raw_headers = legacyFamilyHeaders + '# changed\n'
+        if (fault === 'parsed') runtime.assets.headers = { version: 2, rules: {} }
+        if (fault === 'unknown-policy-field') (runtime.assets.headers as Record<string, unknown>).ignored = true
+        if (fault === 'binding') resources.bindings.push({ type: 'plain_text', name: 'UNAPPROVED', text: 'test' })
+        if (fault === 'runtime') runtime.usage_model = 'other'
+        if (fault === 'asset-setting') runtime.assets.base_path = '/different'
+        if (fault === 'unknown-asset-field') runtime.assets.new_setting = true
+      }
+      return id
+    }
+    await assert.rejects(executeCanonicalRelease('upload', record, p.ports))
+    assert.equal(
+      p.calls.some((call) => call.startsWith('activate-')),
+      false,
+    )
+    assert.equal(await p.ports.active(), previousVersion)
+  })
+}
+test('failed candidate header verification leaves activation incomplete and permits only the approved guarded recovery', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record),
+    verify = p.ports.verify
+  await executeCanonicalRelease('upload', record, p.ports)
+  p.ports.verify = async (identity, policy) => {
+    if (identity.sourceRevision === record.candidate.sourceRevision) throw new Error('Served CSP differs')
+    assert.equal(policy?.raw, legacyFamilyHeaders)
+    await verify(identity)
+  }
+  await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /Served CSP differs/)
+  assert.equal(p.ports.journal()!.phase, 'activating')
+  await assert.rejects(executeCanonicalRelease('reconcile', record, p.ports), /Served CSP differs/)
+  assert.equal(p.ports.journal()!.phase, 'activating')
+  assert.equal((await executeCanonicalRelease('rollback', record, p.ports)).phase, 'rolled-back')
+  assert.equal(await p.ports.active(), recoveryVersion)
+})
+test('policy verification does not acknowledge activation if traffic changes during the HTTP checks', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record)
+  await executeCanonicalRelease('upload', record, p.ports)
+  p.ports.verify = async () => {
+    p.setActive(previousVersion)
+  }
+  await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /Active hosting changed/)
+  assert.equal(p.ports.journal()!.phase, 'activating')
+})
+test('removing a reviewed transition after upload cannot bypass the frozen journal', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record)
+  await executeCanonicalRelease('upload', record, p.ports)
+  delete record.headerTransition
+  await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /journal belongs to another record/)
+  assert.equal(await p.ports.active(), previousVersion)
+})
+test('uncertain policy activation reconciles only after exact policy verification without replaying activation', async (t) => {
+  const { record } = transitionFixture(t),
+    p = provider(record),
+    activate = p.ports.activate
+  await executeCanonicalRelease('upload', record, p.ports)
+  p.ports.activate = async (...args) => {
+    await activate(...args)
+    throw new Error('Synthetic lost response')
+  }
+  await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /lost response/)
+  let verified = false
+  p.ports.verify = async (_identity, policy) => {
+    assert.deepEqual(policy, record.headerTransition!.candidate.policy)
+    verified = true
+  }
+  assert.equal((await executeCanonicalRelease('reconcile', record, p.ports)).phase, 'activated')
+  assert(verified)
+  assert.equal(p.calls.filter((call) => call.startsWith('activate-')).length, 1)
+})
+test('CLI policy plan resolves relative receipts and remains offline without provider commands', (t) => {
+  const { record, root, transition } = transitionFixture(t)
+  record.candidate.directory = 'candidate'
+  for (const key of ['independentReview', 'securityApproval'] as const) {
+    const digest = transition.receipts[key].split('#sha256=')[1]
+    transition.receipts[key] = `${key}.json#sha256=${digest}`
+  }
+  const path = join(root, 'policy-release.json')
+  writeFileSync(path, JSON.stringify(record))
+  const result = spawnSync(
+    process.execPath,
+    ['--experimental-strip-types', 'scripts/release-family.ts', 'plan', '--record', path],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '' },
+    },
+  )
+  assert.equal(result.status, 0, result.stderr)
+  const plan = JSON.parse(result.stdout)
+  assert.equal(plan.dryRun, true)
+  assert.equal(plan.headerTransition.candidatePolicy, transition.candidate.policy.rawSha256)
+  assert.equal(plan.headerTransition.recoveryPolicy, transition.recovery.policy.rawSha256)
 })
 for (const fault of [
   'approval',
@@ -321,6 +607,65 @@ test('changed provider runtime/headers leave uploads inactive and block promotio
     false,
   )
 })
+for (const representation of ['raw', 'parsed', 'both'] as const) {
+  test(`nested ${representation} candidate header changes preserve the failed-upload journal and refuse activation/replay`, async (t) => {
+    const { record } = fixture(t),
+      p = provider(record),
+      upload = p.ports.upload
+    p.ports.upload = async (...args) => {
+      const id = await upload(...args)
+      if (id === candidateVersion) {
+        const runtime = p.versions.get(id)!.resources.script_runtime as {
+          assets: { raw_headers: string; headers: { version: number; rules: unknown } }
+        }
+        if (representation !== 'parsed')
+          runtime.assets.raw_headers += "  Content-Security-Policy: frame-ancestors 'self'\n"
+        if (representation !== 'raw')
+          runtime.assets.headers.rules = {
+            '/*': {
+              set: { 'cache-control': 'no-store', 'content-security-policy': "frame-ancestors 'self'" },
+              unset: [],
+            },
+          }
+      }
+      return id
+    }
+    await assert.rejects(executeCanonicalRelease('upload', record, p.ports), /runtime\/headers changed/)
+    assert.deepEqual(
+      p.calls.filter((c) => c.startsWith('upload-')),
+      ['upload-recovery', 'upload-candidate'],
+    )
+    const journal = p.ports.journal()!
+    assert.equal(journal.phase, 'uploading-candidate')
+    assert.equal(journal.recoveryVersion, recoveryVersion)
+    assert.equal(journal.candidateVersion, candidateVersion)
+    await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /Require a uploaded journal/)
+    await assert.rejects(executeCanonicalRelease('upload', record, p.ports), /already attempted/)
+    assert.deepEqual(p.ports.journal(), journal)
+    assert.equal(p.calls.filter((c) => c.startsWith('upload-')).length, 2)
+    assert.equal(
+      p.calls.some((c) => c.startsWith('activate-')),
+      false,
+    )
+    assert.equal(await p.ports.active(), previousVersion)
+  })
+}
+test('activation rechecks nested parsed headers even after a previously verified inactive upload', async (t) => {
+  const { record } = fixture(t),
+    p = provider(record)
+  await executeCanonicalRelease('upload', record, p.ports)
+  const runtime = p.versions.get(candidateVersion)!.resources.script_runtime as {
+    assets: { headers: { version: number } }
+  }
+  runtime.assets.headers.version = 3
+  await assert.rejects(executeCanonicalRelease('activate', record, p.ports), /runtime\/headers changed/)
+  assert.equal(p.ports.journal()!.phase, 'uploaded')
+  assert.equal(
+    p.calls.some((c) => c.startsWith('activate-')),
+    false,
+  )
+  assert.equal(await p.ports.active(), previousVersion)
+})
 test('a forged uploaded-version annotation cannot be activated', async (t) => {
   const { record } = fixture(t),
     p = provider(record)
@@ -386,6 +731,82 @@ function liveRequest(identity: PackageIdentity, mutate?: (url: string, response:
     return mutate ? mutate(url, response) : response
   }
   return { request: request as typeof fetch, requests }
+}
+function headerLiveRequest(identity: PackageIdentity, mutate?: (url: URL, response: Response) => Response) {
+  const requests: string[] = []
+  const policy = packageHeaderPolicy(identity.directory)
+  const manifest = verifyCanonicalPackage(identity)
+  const request = async (input: string | URL | Request, options?: RequestInit) => {
+    assert.equal(options?.redirect, 'manual')
+    assert.equal(options?.credentials, 'omit')
+    const url = new URL(String(input))
+    assert.equal(url.origin, CANONICAL_FAMILY.origin)
+    requests.push(url.href)
+    let response: Response
+    if (url.pathname.endsWith('.html')) {
+      const next = new URL(url)
+      next.pathname = next.pathname === '/index.html' ? '/' : next.pathname.slice(0, -5)
+      response = new Response(null, { status: 307, headers: { location: next.href } })
+    } else {
+      const path = url.pathname === '/' ? 'index.html' : url.pathname.slice(1)
+      const file = manifest.files.find((file) => file.path === path || file.path === `${path}.html`)?.path
+      response = new Response(
+        path === 'family-beta-manifest.json'
+          ? JSON.stringify(manifest)
+          : file
+            ? readFileSync(join(identity.directory, file))
+            : 'Not found',
+        {
+          status: file || path === 'family-beta-manifest.json' ? 200 : 404,
+          headers: effectiveFamilyHeaders(policy, url.pathname),
+        },
+      )
+    }
+    Object.defineProperty(response, 'url', { value: url.href })
+    return mutate ? mutate(url, response) : response
+  }
+  return { request: request as typeof fetch, requests, policy }
+}
+test('live policy verifier checks every asset, each queried HTML/clean grade entry and the missing-asset policy for candidate and recovery', async (t) => {
+  const { record } = transitionFixture(t)
+  for (const identity of [record.candidate, record.recovery]) {
+    const live = headerLiveRequest(identity)
+    const result = await verifyCanonicalLive(identity, live.request, live.policy)
+    assert.equal(result.headerResponses, result.publicFiles + 27)
+    assert(live.requests.some((url) => url.endsWith('/family-game?grade=kindergarten')))
+    assert(live.requests.some((url) => url.endsWith('/family-beta-preview.html?grade=grade5')))
+    assert(live.requests.some((url) => url.endsWith('/assets/__ninja_header_probe_missing__.js')))
+  }
+})
+for (const fault of [
+  'missing-csp',
+  'asset-cache',
+  'missing-asset-cache',
+  'query-loss',
+  'external-redirect',
+  'route-swap',
+] as const) {
+  test(`live policy verification refuses ${fault} without unchecked redirects`, async (t) => {
+    const { record } = transitionFixture(t)
+    const live = headerLiveRequest(record.candidate, (url, response) => {
+      if (fault === 'missing-csp' && response.status === 200) response.headers.delete('content-security-policy')
+      if (fault === 'asset-cache' && url.pathname.endsWith('app-Abcd1234.js'))
+        response.headers.set('cache-control', 'no-store, public, max-age=31536000, immutable')
+      if (fault === 'missing-asset-cache' && url.pathname.endsWith('__ninja_header_probe_missing__.js'))
+        response.headers.set('cache-control', 'public, max-age=31536000, immutable')
+      if (response.status === 307 && url.search) {
+        if (fault === 'query-loss') response.headers.set('location', url.pathname.replace('.html', ''))
+        if (fault === 'external-redirect') response.headers.set('location', 'https://wrong.invalid/')
+        if (fault === 'route-swap') response.headers.set('location', `/family-game${url.search}`)
+      }
+      return response
+    })
+    await assert.rejects(
+      verifyCanonicalLive(record.candidate, live.request, live.policy),
+      /Served .* differs|redirected off origin or changed/,
+    )
+    assert(live.requests.every((url) => url.startsWith(CANONICAL_FAMILY.origin)))
+  })
 }
 test('canonical verifier checks the retained manifest and every public byte without touching older aliases', async (t) => {
   const { record } = fixture(t),
