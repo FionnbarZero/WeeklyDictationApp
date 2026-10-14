@@ -139,7 +139,12 @@ test('restarting after an unrelated conflict never uploads a staged but uncommit
     { baselineKey, local },
   )
   await page.reload()
-  await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  const entry = page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })
+  const preservedWarning = page
+    .getByRole('alert')
+    .filter({ hasText: /Practice changed on both devices|Newer practice is available/ })
+  await expect(entry).toBeVisible()
+  await expect(preservedWarning).toBeVisible()
   for (let retry = 0; retry < 2; retry += 1) {
     expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
     expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
@@ -152,7 +157,12 @@ test('restarting after an unrelated conflict never uploads a staged but uncommit
     // An already-open activity correctly blocks downloads; exercise the cold
     // restart path that permits hydration and exposed the baseline corruption.
     await page.reload()
-    await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+    // Mounting the restored activity can trigger another sync whose download
+    // ownership guard replaces the initial conflict status. Either warning
+    // preserves the same copies; entry and exact data, not transient prose,
+    // are the contract under test.
+    await expect(entry).toBeVisible()
+    await expect(preservedWarning).toBeVisible()
   }
   expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
   expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
