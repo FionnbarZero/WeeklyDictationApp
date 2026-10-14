@@ -10,6 +10,7 @@ for (const [slug, grade, childId] of grades) {
     await page.goto(`/?grade=${slug}`)
     const frame = page.frameLocator('iframe:visible')
     await frame.getByRole('button', { name: /Practice your Ninja Skills/ }).click()
+    await expect(frame.getByRole('button', { name: 'Sky Writing', exact: true })).toHaveCount(0)
     for (const title of [
       'Memory Lanterns',
       'Shuriken Match',
@@ -161,6 +162,7 @@ for (const [slug, grade, childId] of grades) {
           if (face !== unique[unique.length - 1]) await expect(cards.nth(indices[0])).toHaveClass(/is-matched/)
         }
       } else if (pack.moduleId === 'speed-match') {
+        await expect(frame.locator('.lg-word-seal small, .lg-word-seal svg')).toHaveCount(0)
         for (const pair of pack.pairs) {
           const word = frame.getByRole('button', { name: `${pair.left.label}. Click to hear and select.`, exact: true })
           const meaning = frame.getByRole('button', {

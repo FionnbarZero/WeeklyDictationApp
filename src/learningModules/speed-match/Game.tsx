@@ -1,6 +1,6 @@
 import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Clock3, RotateCcw, Volume2, Zap } from 'lucide-react'
+import { Clock3, RotateCcw, Zap } from 'lucide-react'
 import type { LearningGameAttempt } from './runtime/contracts'
 import type { PairGameProps } from './runtime/PairGameShared'
 import { summarizeLearningGame, validGamePairs } from './runtime/model'
@@ -352,9 +352,7 @@ export function SpeedMatch({
               choose(card, spoken)
             }}
           >
-            <Volume2 size={15} aria-hidden="true" />
             <span lang={card.kind === 'word' ? 'zh-Hans' : undefined}>{card.label}</span>
-            <small>{card.kind === 'word' ? 'word seal' : 'shadow meaning'}</small>
             <i aria-hidden="true" />
           </button>)}
         </div>
