@@ -13,7 +13,7 @@ import { assertSavedAttemptsMatch } from './resultHistory.ts'
 import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
 import { familyResultRepository } from './cloud.ts'
 import { deviceExport } from './deviceExport.ts'
-import { familyDeviceSyncRepository } from './deviceSync.ts'
+import { familyDeviceSyncRepository, PracticeSyncConflictError } from './deviceSync.ts'
 import { syncCompletedBeforePractice } from './syncProgress.ts'
 import { assertResultCopiesMatch } from './resultLedger.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
@@ -349,14 +349,24 @@ function FamilyPreview() {
         setReadyChildren(new Set())
       }
       const restoredOffline = !navigator.onLine && Boolean(familyId)
-      if (auth.user && isConnectionFailure(e)) {
+      const practiceConflict = e instanceof PracticeSyncConflictError
+      let continuedLocally = false
+      // Entry is separate from successful reconciliation. Only this parent's
+      // previously confirmed child/grade may continue from local work. Never
+      // turn access denials, malformed records or arbitrary errors into access.
+      if (auth.user && (isConnectionFailure(e) || practiceConflict)) {
         const cached = readOfflineFamily(localStorage, auth.user.uid)
         if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade)) {
           setReadyChildren(current => new Set([...current, child.id]))
+          continuedLocally = true
         }
       }
       setError(message(e))
-      setStatus(accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : restoredOffline ? 'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus(practiceConflict
+        ? continuedLocally
+          ? 'Using this device’s saved practice. Online practice syncing is paused by a conflict; both copies are preserved. You can continue here. Keep this browser’s data while saving retries.'
+          : 'Practice syncing needs attention before this device can open activities. Both copies are preserved. Keep this browser’s data and retry.'
+        : accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : restoredOffline ? 'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
       setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())

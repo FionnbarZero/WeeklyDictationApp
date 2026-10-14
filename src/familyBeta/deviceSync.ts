@@ -15,6 +15,15 @@ import {
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
 type Remote = { record: SyncRecord; updateTime: string }
+
+/** A preserved two-copy conflict, not an access, validation or transport failure. */
+export class PracticeSyncConflictError extends Error {
+  constructor() {
+    super('Practice changed on both devices. Both copies are preserved.')
+    this.name = 'PracticeSyncConflictError'
+  }
+}
+
 export function ownedPracticeRecord(key: string, raw: string, childId: string) {
   if (key.startsWith(`family-beta-activity:${childId}:`)) return true
   if (key.startsWith(`family-beta-mastery-v1:${childId}:`)) return true
@@ -285,10 +294,7 @@ export function createDeviceSyncRepository(options: {
             localCandidate && onlineCandidate && server
               ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
               : null
-          if (!winner?.winner)
-            throw new Error(
-              'Practice changed on both devices. Both copies are preserved. Finish one reviewed response before continuing.',
-            )
+          if (!winner?.winner) throw new PracticeSyncConflictError()
           if (winner.winner.id === onlineCandidate?.id) {
             if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
               throw new Error(
