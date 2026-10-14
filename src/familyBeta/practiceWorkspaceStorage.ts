@@ -107,6 +107,20 @@ function activityRecord(raw: string, childId: string, key: string) {
   }
 }
 
+/** Validate without staging or writing; return the decoded internal record key. */
+export function validatePracticeWorkspaceSyncPayload(syncKey: string, payload: string, childId: string) {
+  try {
+    if (!isPracticeWorkspaceSyncKey(syncKey, childId)) throw new Error(failure)
+    const name = decodeURIComponent(syncKey.slice(`${practiceWorkspaceKey(childId)}:${syncRecordPrefix}`.length))
+    if (!isInternalKey(name)) throw new Error(failure)
+    if (partitionKeys.has(name)) partitionRecord(payload, childId)
+    else activityRecord(payload, childId, name)
+    return name
+  } catch {
+    throw new Error(failure)
+  }
+}
+
 function stateFromRecords(records: Record<string, string>, childId: string) {
   const history = records[historyKey]
   const checkpoint = records[checkpointKey]
@@ -247,14 +261,10 @@ export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): P
   const initial = raw
   const records = { ...value.records }
   const names = () => Object.keys(records).filter(isInternalKey).sort()
-  const assertPayload = (name: string, payload: string) => {
-    if (!isInternalKey(name)) throw new Error(failure)
-    if (name === historyKey || name === checkpointKey) partitionRecord(payload, childId)
-    else activityRecord(payload, childId, name)
-  }
   // Validate records already present before exposing them to the sync layer;
   // malformed or oversized local partitions must never become upload payloads.
-  for (const name of Object.keys(records).filter(isInternalKey)) assertPayload(name, records[name])
+  for (const name of Object.keys(records).filter(isInternalKey))
+    validatePracticeWorkspaceSyncPayload(practiceWorkspaceSyncKey(childId, name), records[name], childId)
   return {
     keys: () => names().map((name) => practiceWorkspaceSyncKey(childId, name)),
     read: (syncKey) => {
@@ -263,9 +273,7 @@ export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): P
       return records[name] ?? null
     },
     stage: (syncKey, payload) => {
-      if (!isPracticeWorkspaceSyncKey(syncKey, childId)) throw new Error(failure)
-      const name = decodeURIComponent(syncKey.slice(`${key}:${syncRecordPrefix}`.length))
-      assertPayload(name, payload)
+      const name = validatePracticeWorkspaceSyncPayload(syncKey, payload, childId)
       records[name] = payload
     },
     commit: () => {

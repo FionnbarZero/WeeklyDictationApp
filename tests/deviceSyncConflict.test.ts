@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
-import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { createDeviceSyncRepository, PracticeSyncConflictError } from '../src/familyBeta/deviceSync.ts'
 import { documentValue, plainValue } from '../src/firestoreClient.ts'
 
 const key = 'family-beta-acquisition-v1:child:week'
@@ -75,20 +75,29 @@ test('newest reviewed remote acquisition checkpoint wins without merging local f
   assert.equal(f.storage.getItem(baseKey), remote)
 })
 
-test('competing acquisition checkpoints without reviewed answers remain blocked', async () => {
+test('competing acquisition checkpoints without reviewed answers report a distinct preserved conflict', async () => {
   const local = payload('local')
   const remote = payload('remote')
   const f = fixture(local, payload('baseline'), remote)
-  await assert.rejects(f.repository.sync(f.storage, 'child'), /one reviewed response/)
+  await assert.rejects(f.repository.sync(f.storage, 'child'), PracticeSyncConflictError)
   assert.equal(f.writes(), 0)
   assert.equal(f.storage.getItem(key), local)
+  assert.equal(f.storage.getItem(baseKey), payload('baseline'))
+  assert.equal(f.remote(), remote)
+
+  const reviewed = payload('local', '2026-10-07T04:00:00.000Z')
+  f.storage.setItem(key, reviewed)
+  await f.repository.sync(f.storage, 'child')
+  assert.equal(f.writes(), 1)
+  assert.equal(f.remote(), reviewed)
+  assert.equal(f.storage.getItem(baseKey), reviewed)
 })
 
 test('historical reviewed answers from a prior session cannot arbitrate a new checkpoint', async () => {
   const local = payload('local', '2026-10-07T04:00:00.000Z', 'local', 'previous-session')
   const remote = payload('remote')
   const f = fixture(local, payload('baseline'), remote)
-  await assert.rejects(f.repository.sync(f.storage, 'child'), /one reviewed response/)
+  await assert.rejects(f.repository.sync(f.storage, 'child'), PracticeSyncConflictError)
   assert.equal(f.writes(), 0)
   assert.equal(f.storage.getItem(key), local)
 })

@@ -10,11 +10,21 @@ import {
   practiceWorkspaceKey,
   practiceWorkspaceStorage,
   practiceWorkspaceSyncAdapter,
+  validatePracticeWorkspaceSyncPayload,
 } from './practiceWorkspaceStorage.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
 type Remote = { record: SyncRecord; updateTime: string }
+
+/** A preserved two-copy conflict, not an access, validation or transport failure. */
+export class PracticeSyncConflictError extends Error {
+  constructor() {
+    super('Practice changed on both devices. Both copies are preserved.')
+    this.name = 'PracticeSyncConflictError'
+  }
+}
+
 export function ownedPracticeRecord(key: string, raw: string, childId: string) {
   if (key.startsWith(`family-beta-activity:${childId}:`)) return true
   if (key.startsWith(`family-beta-mastery-v1:${childId}:`)) return true
@@ -183,6 +193,11 @@ export function createDeviceSyncRepository(options: {
           doc.name.split('/').pop() !== (await recordId(record.key))
         )
           throw new Error('An online practice record failed validation. Nothing was replaced.')
+        // Validate every nested partition before reconciliation starts. A
+        // missing reviewed-answer candidate must not hide malformed content,
+        // even when another record would otherwise stop at a valid conflict.
+        if (isPracticeWorkspaceSyncKey(record.key, childId))
+          validatePracticeWorkspaceSyncPayload(record.key, record.payload, childId)
         records.set(record.key, { record, updateTime: doc.updateTime })
         if (records.size > 500)
           throw new Error('This child’s online practice exceeds the safe loading limit. Device records are unchanged.')
@@ -206,6 +221,7 @@ export function createDeviceSyncRepository(options: {
         workspace = practiceWorkspaceSyncAdapter(storage, childId)
       }
       const keys = new Set(remote.keys())
+      const stagedAcknowledgements = new Map<string, string>()
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i)
         if (key && ownedPracticeRecord(key, storage.getItem(key) || '', childId)) keys.add(key)
@@ -268,9 +284,13 @@ export function createDeviceSyncRepository(options: {
               'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
             )
           // No await between checking the local base and adopting the confirmed remote.
-          if (workspaceSyncKey) workspace?.stage(key, online)
-          else storage.setItem(key, online)
-          acknowledgePractice(storage, baseKey, online)
+          if (workspaceSyncKey) {
+            workspace!.stage(key, online)
+            stagedAcknowledgements.set(baseKey, online)
+          } else {
+            storage.setItem(key, online)
+            acknowledgePractice(storage, baseKey, online)
+          }
           continue
         }
         if (online !== baseline) {
@@ -285,18 +305,19 @@ export function createDeviceSyncRepository(options: {
             localCandidate && onlineCandidate && server
               ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
               : null
-          if (!winner?.winner)
-            throw new Error(
-              'Practice changed on both devices. Both copies are preserved. Finish one reviewed response before continuing.',
-            )
+          if (!winner?.winner) throw new PracticeSyncConflictError()
           if (winner.winner.id === onlineCandidate?.id) {
             if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
               throw new Error(
                 'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
               )
-            if (workspaceSyncKey) workspace?.stage(key, online!)
-            else storage.setItem(key, online!)
-            acknowledgePractice(storage, baseKey, online!)
+            if (workspaceSyncKey) {
+              workspace!.stage(key, online!)
+              stagedAcknowledgements.set(baseKey, online!)
+            } else {
+              storage.setItem(key, online!)
+              acknowledgePractice(storage, baseKey, online!)
+            }
             continue
           }
           // The local checkpoint has the newest trusted reviewed response. The
@@ -342,6 +363,10 @@ export function createDeviceSyncRepository(options: {
         acknowledgePractice(storage, baseKey, local)
       }
       workspace?.commit()
+      // A staged download is not durable until the atomic workspace commit.
+      // Advancing its baseline sooner can make a retry upload the old local
+      // checkpoint over newer remote work after a later conflict or failed CAS.
+      for (const [baseKey, payload] of stagedAcknowledgements) acknowledgePractice(storage, baseKey, payload)
     },
   }
 }

@@ -26,6 +26,8 @@ async function openGrade2WritingReview(page: import('@playwright/test').Page, au
   await page.addInitScript((available) => {
     let enabled = available
     const pending = new Set<ReturnType<typeof setTimeout>>()
+    const startedTexts: string[] = []
+    Object.defineProperty(window, '__reviewTestSpeechStarts', { value: startedTexts })
     window.addEventListener('review-test-enable-speech', () => {
       enabled = true
     })
@@ -45,6 +47,7 @@ async function openGrade2WritingReview(page: import('@playwright/test').Page, au
             pending.delete(timer)
             if (!enabled) utterance.onerror?.({} as SpeechSynthesisErrorEvent)
             else {
+              startedTexts.push(utterance.text)
               utterance.onstart?.({} as SpeechSynthesisEvent)
               utterance.onend?.({} as SpeechSynthesisEvent)
             }
@@ -73,6 +76,21 @@ test('Grade 2 writing responses stay provisional until one final all-target revi
     await expect(
       page.getByRole('heading', { name: `Listen, then write word ${index + 1}.`, exact: true }),
     ).toBeVisible()
+    // The next heading can render with the previous prompt's ready status
+    // before its audio effect runs. Wait for this word's actual synthetic
+    // speech start, not a transient enabled button from the previous word.
+    const word = ['出生', '但是', '运动', '地方', '不同'][index]
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (word) =>
+            (window as unknown as { __reviewTestSpeechStarts: string[] }).__reviewTestSpeechStarts.some((text) =>
+              text.includes(word),
+            ),
+          word,
+        ),
+      )
+      .toBe(true)
     await page.getByRole('button', { name: 'Skip Timer' }).click()
   }
 
