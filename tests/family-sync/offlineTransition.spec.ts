@@ -39,6 +39,13 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
     sourceRevision: string
   }
   await expect(page.getByText(`Beta build ${previousManifest.sourceRevision.slice(0, 7)}`)).toBeVisible()
+  // This is an upgrade of an already-controlled predecessor, not a race
+  // against its first installation. Switching packages before its cache is
+  // complete can make the candidate a first install with no waiting update.
+  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', { timeout: 120_000 })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 }).toBe(true)
+  await expect(page.getByText(`Beta build ${previousManifest.sourceRevision.slice(0, 7)}`)).toBeVisible()
   await page.getByLabel('Practice week').selectOption('2026-09-21')
   let frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
