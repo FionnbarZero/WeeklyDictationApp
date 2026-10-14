@@ -151,8 +151,10 @@ test('local older history keeps its source and boundary across reconnect, new ar
       localStorage.setItem(`family-beta-preview-results-v1:${newArrival.id}`, JSON.stringify(newArrival))
       const original = Storage.prototype.getItem
       Storage.prototype.getItem = function (key) {
-        if (key === 'family-beta-preview-results-v1') {
-          Storage.prototype.getItem = original
+        if (
+          key === 'family-beta-preview-results-v1' &&
+          sessionStorage.getItem('family-beta-test-fail-history-read') === 'true'
+        ) {
           throw new Error('Synthetic history read failure')
         }
         return original.call(this, key)
@@ -160,8 +162,10 @@ test('local older history keeps its source and boundary across reconnect, new ar
     },
     { ...historyRecords[0], id: 'new-arrival', completedAt: '2026-10-06T23:00:01.000Z' },
   )
+  await page.evaluate(() => sessionStorage.setItem('family-beta-test-fail-history-read', 'true'))
   await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Synthetic history read failure')
+  await page.evaluate(() => sessionStorage.removeItem('family-beta-test-fail-history-read'))
   await expect(page.locator('[data-result-point="review-050"]')).toHaveCount(1)
   await page.getByRole('button', { name: 'Older attempts', exact: true }).click()
   await expect(page.locator('[data-result-point="review-100"]')).toHaveCount(1)
