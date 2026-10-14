@@ -92,7 +92,7 @@ async function seedConflict(page: Page, documents: SyntheticFamilyDocuments) {
   return { local, remote, baseline }
 }
 
-test('retrying an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({ page }) => {
+test('restarting after an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({ page }) => {
   const documents: SyntheticFamilyDocuments = new Map()
   await installFamilyFixtures(page, documents)
   await page.goto('/?grade=grade2')
@@ -129,7 +129,10 @@ test('retrying an unrelated conflict never uploads a staged but uncommitted olde
   const baselineKey = `family-beta-sync-base-v1:family-synthetic-parent:${childId}:${id}`
   await page.addInitScript(
     ({ baselineKey, local }) => {
-      if (window === window.top) localStorage.setItem(baselineKey, local)
+      if (window === window.top && !sessionStorage.getItem('synthetic-staged-baseline-seeded')) {
+        localStorage.setItem(baselineKey, local)
+        sessionStorage.setItem('synthetic-staged-baseline-seeded', 'yes')
+      }
     },
     { baselineKey, local },
   )
@@ -144,7 +147,9 @@ test('retrying an unrelated conflict never uploads a staged but uncommitted olde
         { workspaceKey, partitionRecord },
       ),
     ).toBe(local)
-    await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+    // An already-open activity correctly blocks downloads; exercise the cold
+    // restart path that permits hydration and exposed the baseline corruption.
+    await page.reload()
     await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
   }
   expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
