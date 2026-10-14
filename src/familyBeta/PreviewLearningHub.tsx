@@ -231,19 +231,6 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
               launch: { previewAction: 'lily', channel: 'reading', datasets: reading },
             },
           })
-        if (writing.length)
-          activities.push({
-            id: 'preview-sky-writing',
-            title: 'Sky Writing',
-            eyebrow: `Writing · ${writing[0].dateRange}`,
-            description: 'Practise the most recent earlier writing targets.',
-            icon: '✍️',
-            action: {
-              kind: 'launch',
-              label: 'Sky Writing',
-              launch: { previewAction: 'sky', channel: 'writing', datasets: writing },
-            },
-          })
         for (const { capability: availableCapability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)) {
           const capability = completedGames === null && availableCapability.status === 'ready'
             ? { status: 'unavailable' as const, moduleId: availableCapability.pack.moduleId, reason: gameHistoryWarning }

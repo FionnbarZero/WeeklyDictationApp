@@ -262,11 +262,8 @@
 .lg-word-seal.is-meaning { border-color: #c86369; color: #fff0d3; background: linear-gradient(150deg,#6c2835,#391b25 72%,#21141d); box-shadow: 0 6px 0 #170a10,0 10px 18px rgb(0 0 0 / 34%),inset 0 0 0 4px rgb(255 213 146 / 5%); }
 .lg-word-seal.is-meaning::before { background: rgb(255 227 179 / 11%); }
 .lg-word-seal.is-meaning::after { border-color: #e5b958; }
-.lg-word-seal > svg { flex: 0 0 auto; color: #a24345; }
-.lg-word-seal.is-meaning > svg { color: #f1c265; }
-.lg-word-seal > span { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(.82rem,1.75vw,1.12rem); font-weight: 950; line-height: 1.05; }
-.lg-word-seal.is-word > span { font-family: "STKaiti","KaiTi","Kaiti SC",serif; font-size: clamp(1.75rem,3vw,2.25rem); }
-.lg-word-seal > small { color: currentColor; font-size: .75rem; font-weight: 900; letter-spacing: .08em; opacity: .57; text-transform: uppercase; }
+.lg-word-seal > span { width: 100%; max-width: 100%; overflow-wrap: anywhere; font-size: clamp(1.05rem,2vw,1.4rem); font-weight: 950; line-height: 1.15; text-align: center; }
+.lg-word-seal.is-word > span { font-family: "STKaiti","KaiTi","Kaiti SC",serif; font-size: clamp(2rem,3.8vw,2.7rem); }
 .lg-word-seal > i { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #b64249; box-shadow: 0 0 0 3px rgb(182 66 73 / 13%); }
 .lg-word-seal:hover:not(:disabled) { border-color: #ffe17b; filter: brightness(1.09); transform: translateY(-4px) rotate(-.7deg); box-shadow: 0 8px 0 #5e3d2b,0 17px 27px rgb(0 0 0 / 38%),0 0 19px rgb(255 210 93 / 19%); }
 .lg-word-seal.is-meaning:hover:not(:disabled) { box-shadow: 0 8px 0 #170a10,0 17px 27px rgb(0 0 0 / 38%),0 0 19px rgb(255 93 116 / 22%); }
@@ -333,10 +330,8 @@
   .lg-seal-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
   .lg-word-seal { min-height: 79px; padding: 8px 3px 6px; border-width: 1px; box-shadow: 0 4px 0 #5e3d2b,0 8px 13px rgb(0 0 0 / 30%); }
   .lg-word-seal.is-meaning { box-shadow: 0 4px 0 #170a10,0 8px 13px rgb(0 0 0 / 30%); }
-  .lg-word-seal > svg { width: 12px; height: 12px; }
-  .lg-word-seal > span { font-size: clamp(.75rem,2.7vw,.8rem); }
-  .lg-word-seal.is-word > span { font-size: clamp(1.15rem,6vw,1.75rem); }
-  .lg-word-seal > small { display: none; }
+  .lg-word-seal > span { font-size: clamp(.95rem,2.9vw,1.05rem); }
+  .lg-word-seal.is-word > span { font-size: clamp(1.4rem,6.5vw,2rem); }
   .lg-word-seal::before { display: none; }
   .lg-word-seal::after { width: 11px; height: 11px; }
   .lg-word-seal > i { width: 5px; height: 5px; }
