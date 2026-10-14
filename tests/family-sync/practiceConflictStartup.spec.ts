@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
 import { documentValue, plainValue } from '../../src/firestoreClient.ts'
+import { practiceWorkspaceKey, practiceWorkspaceSyncKey } from '../../src/familyBeta/practiceWorkspaceStorage.ts'
 import { installFamilyFixtures, readGrade2Workspace, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 const childId = 'synthetic-g2'
@@ -9,6 +10,56 @@ const digest = createHash('sha256').update(key).digest('hex')
 const baseKey = `family-beta-sync-base-v1:family-synthetic-parent:${childId}:${digest}`
 const accessKey = 'family-beta-offline-access-v1:synthetic-parent'
 const name = `projects/weeklydictationapp/databases/(default)/documents/families/family-synthetic-parent/children/${childId}/betaPractice/${digest}`
+
+for (const invalid of ['malformed-json', 'wrong-child', 'oversized-nested-array'] as const) {
+  test(`valid online wrapper with ${invalid} partition remains gated and preserves saved work`, async ({ page }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await installFamilyFixtures(page, documents)
+    await page.goto('/?grade=grade2')
+    await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
+    const frame = page.frameLocator('iframe:visible')
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    const workspaceKey = practiceWorkspaceKey(childId)
+    await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), workspaceKey)).not.toBeNull()
+    const local = await page.evaluate((key) => localStorage.getItem(key)!, workspaceKey)
+    const partitionKey = practiceWorkspaceSyncKey(childId, 'weekly-dictation-checkpoint-v1')
+    const id = createHash('sha256').update(partitionKey).digest('hex')
+    const partitionName = name.slice(0, name.lastIndexOf('/') + 1) + id
+    const remote =
+      invalid === 'malformed-json'
+        ? '{'
+        : JSON.stringify({
+            schema: 1,
+            childId: invalid === 'wrong-child' ? 'other-child' : childId,
+            values: invalid === 'oversized-nested-array' ? { nested: Array(501).fill(0) } : {},
+          })
+    documents.set(partitionName, {
+      name: partitionName,
+      updateTime: new Date().toISOString(),
+      fields: Object.fromEntries(
+        Object.entries({ schema: 1, childId, key: partitionKey, payload: remote, generation: 2 }).map(
+          ([field, value]) => [field, documentValue(value)],
+        ),
+      ),
+    })
+    const baselineKey = `family-beta-sync-base-v1:family-synthetic-parent:${childId}:${id}`
+    await page.addInitScript(
+      ({ baselineKey }) => {
+        if (window === window.top) localStorage.setItem(baselineKey, 'divergent baseline')
+      },
+      { baselineKey },
+    )
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Retry saving', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Retry family sync', exact: true })).toBeVisible()
+    await expect(page.locator('iframe')).toHaveCount(0)
+    await expect(page.getByText(/Using this device’s saved practice/)).toHaveCount(0)
+    expect(await page.evaluate((key) => localStorage.getItem(key), workspaceKey)).toBe(local)
+    expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe('divergent baseline')
+    expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
+  })
+}
+
 const payload = (sessionId: string, reviewedAt?: string) =>
   JSON.stringify({
     sessionId,

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { createInitialState } from '../src/domain.ts'
-import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import { createDeviceSyncRepository, PracticeSyncConflictError } from '../src/familyBeta/deviceSync.ts'
 import {
   practiceWorkspaceKey,
   practiceWorkspaceSyncAdapter,
@@ -129,6 +130,69 @@ function serverHarness() {
 function setWorkspace(store: ReturnType<typeof device>, raw = initialPayload()) {
   store.setItem(workspace, raw)
 }
+
+const invalidPartitions = [
+  ['weekly-dictation-history-v1', '{'],
+  ['weekly-dictation-checkpoint-v1', '{'],
+  ['weekly-dictation-checkpoint-v1:activity:a', '{'],
+  ['weekly-dictation-checkpoint-v1', JSON.stringify({ schema: 1, childId: 'other', values: {} })],
+  ['weekly-dictation-checkpoint-v1', JSON.stringify({ schema: 2, childId, values: {} })],
+  ['weekly-dictation-checkpoint-v1', JSON.stringify({ schema: 1, childId, values: [] })],
+  ['weekly-dictation-checkpoint-v1', JSON.stringify({ schema: 1, childId, values: { nested: Array(501).fill(0) } })],
+  ['weekly-dictation-checkpoint-v1:activity:a', activity('wrong-activity', 'a', '2026-10-08T00:00:00.000Z')],
+] as const
+
+for (const [index, [record, invalid]] of invalidPartitions.entries()) {
+  test(`invalid remote partition ${index} fails validation before conflict fallback or any device mutation`, async () => {
+    const store = device()
+    setWorkspace(store)
+    const { repository, docs } = serverHarness()
+    await repository.sync(store, childId)
+    const key = practiceWorkspaceSyncKey(childId, record)
+    const id = createHash('sha256').update(key).digest('hex')
+    // Force a two-copy conflict, which formerly bypassed stage validation.
+    store.setItem(`family-beta-sync-base-v1:${familyId}:${childId}:${id}`, 'divergent baseline')
+    docs.get(id)!.payload = invalid
+    const before = Array.from({ length: store.length }, (_, i) => [store.key(i)!, store.getItem(store.key(i)!)])
+    const online = JSON.stringify([...docs])
+    await assert.rejects(
+      repository.sync(store, childId),
+      (error) =>
+        error instanceof Error && !(error instanceof PracticeSyncConflictError) && /preserved/.test(error.message),
+    )
+    assert.deepEqual(
+      Array.from({ length: store.length }, (_, i) => [store.key(i)!, store.getItem(store.key(i)!)]),
+      before,
+    )
+    assert.equal(JSON.stringify([...docs]), online)
+  })
+}
+
+test('an earlier ordinary conflict cannot hide an invalid remote partition later in the response', async () => {
+  const store = device()
+  setWorkspace(store)
+  const { repository, docs } = serverHarness()
+  await repository.sync(store, childId)
+  const key = practiceWorkspaceSyncKey(childId, 'weekly-dictation-checkpoint-v1')
+  const id = createHash('sha256').update(key).digest('hex')
+  const remote = [...docs]
+  docs.clear()
+  const opaque = `family-beta-activity:${childId}:legacy-opaque`
+  const opaqueId = createHash('sha256').update(opaque).digest('hex')
+  docs.set(opaqueId, { key: opaque, payload: 'remote', generation: 1, updateTime: '2026-10-08T00:00:00.000Z' })
+  for (const [key, value] of remote) docs.set(key, value)
+  docs.get(id)!.payload = '{'
+  store.setItem(opaque, 'local')
+  const before = store.getItem(workspace)
+  await assert.rejects(
+    repository.sync(store, childId),
+    (error) =>
+      error instanceof Error && !(error instanceof PracticeSyncConflictError) && /preserved/.test(error.message),
+  )
+  assert.equal(store.getItem(workspace), before)
+  assert.equal(store.getItem(opaque), 'local')
+  assert.equal(docs.get(opaqueId)!.payload, 'remote')
+})
 
 test('workspace sync exposes partitioned records and commits remote activity atomically', async () => {
   const first = device(),
