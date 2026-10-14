@@ -26,9 +26,14 @@ import type { AcquisitionPersistenceContext } from '../src/acquisition/persisten
 import { makeResult } from '../src/familyBeta/model.ts'
 import { grade2Tier1WritingAdaptiveWarmupProfile } from '../src/warmup/adaptive/profiles/grade2.ts'
 import { childMasteryStateId, createMasteryOccurrence, masteryRotationStateId } from '../src/warmup/adaptive/identity.ts'
-import { buildWarmupAnswerTransition, createWarmupVisit } from '../src/warmup/visits/reducer.ts'
+import { buildWarmupAnswerTransition, buildWarmupFinalizationTransition, createWarmupVisit } from '../src/warmup/visits/reducer.ts'
 import type { ChildMasteryState } from '../src/warmup/adaptive/contracts.ts'
 import { encodeChangedCloudWarmupQueueEntry, encodeCloudWarmupVisit } from '../src/persistence/warmup/cloudCodec.ts'
+import { createInitialState, resolveDatasetLifecycles } from '../src/domain.ts'
+import { grade2DeckProfile, importWeeklyDatasets } from '../src/slidesImporter.ts'
+import { cloudWarmupSeedForVisit, prepareAdaptiveWarmupVisit } from '../src/application/warmup/activation.ts'
+import { buildWarmupSeedRecordWrites, buildWarmupTransitionRecordWrites } from '../src/persistence/warmup/cloudWrites.ts'
+import type { WarmupCloudRecordWrite } from '../src/persistence/warmup/cloudContracts.ts'
 
 let environment: RulesTestEnvironment
 const candidateFamilyGameRules = process.env.FAMILY_SYNC_RULES_FILE?.endsWith('firestore-family-sync.rules') ?? false
@@ -820,4 +825,108 @@ test('Warmup rules reject duplicate, stale, malformed-ID, and cross-family opera
   await assertFails(warmupTransitionBatch('intruder').commit())
   const intruder = environment.authenticatedContext('intruder').firestore()
   await assertFails(getDoc(doc(intruder, `families/family-parent/children/maya/warmupVisits/${warmupVisit.id}`)))
+})
+
+function migratedRotationSeed(childId: string) {
+  const datasets = importWeeklyDatasets({
+    presentationId: grade2DeckProfile.sourceDeckId,
+    slides: [
+      { objectId: 'legacy-week', text: 'Week 9/14-9/18\nMandarin\nTier 1: 山、水、火、木、土' },
+      { objectId: 'review-week', text: 'Week 9/21-9/25\nMandarin\nTier 1: 日、月、星、天、地' },
+      { objectId: 'current-week', text: 'Week 9/28-10/2\nMandarin\nTier 1: 大、小、上、下、中' },
+    ],
+  }, [], grade2DeckProfile).datasets
+  const state = createInitialState(datasets)
+  const legacyDataset = datasets.find((dataset) => dataset.startDate === '2026-09-14')!
+  const currentDataset = datasets.find((dataset) => dataset.startDate === '2026-09-28')!
+  state.childWordStates = legacyDataset.words.map((word) => ({
+    id: `${childId}-${word.id}`,
+    childId,
+    datasetId: legacyDataset.id,
+    wordId: word.id,
+    category: 'random-rotation',
+    correctStreak: 0,
+    randomCycleId: 1,
+    randomCycleReviewed: false,
+  }))
+  const prepared = prepareAdaptiveWarmupVisit({
+    state, childId, grade: 'Grade 2', schoolYear: legacyDataset.schoolYear, datasets,
+    lifecycleResolution: resolveDatasetLifecycles(datasets, new Date('2026-09-30T16:00:00.000Z')),
+    visitType: 'pre-activity', visitId: `${childId}-visit`, createdAt: '2026-09-30T16:00:00.000Z',
+    associatedPrimaryActivity: { phase: 'acquisition', datasetId: currentDataset.id },
+    random: () => 0.999,
+  })
+  assert.equal(prepared.status, 'ready')
+  if (prepared.status !== 'ready') throw new Error(prepared.reason)
+  const seed = cloudWarmupSeedForVisit(prepared.state, prepared.visit)
+  assert.equal(prepared.visit.assignedQueueSize, 5)
+  assert.equal(seed.mastery.length, 5)
+  assert.ok(seed.mastery.every(({ state }) => state.evidence === 'unassessed'
+    && state.bucket === 'mastery-rotation' && state.consecutiveCorrect === 0 && state.legacyCheckpoint))
+  const writes = buildWarmupSeedRecordWrites(childId, prepared.visit, seed.mastery, seed.rotations)
+  assert.equal(writes.length, 12)
+  return { ...prepared, ...seed, writes }
+}
+
+function commitWarmupRecords(childId: string, records: readonly WarmupCloudRecordWrite[], uid: string | null = 'parent') {
+  const database = (uid ? environment.authenticatedContext(uid) : environment.unauthenticatedContext()).firestore()
+  const batch = writeBatch(database)
+  for (const record of records) {
+    // The REST encoder also omits undefined optional object fields.
+    batch.set(doc(database, `families/family-parent/children/${childId}/${record.collection}/${record.id}`), JSON.parse(JSON.stringify(record.value)))
+  }
+  return batch.commit()
+}
+
+test('migrated unassessed rotation seeds save and retain evidence through answers, reload and partial exit', async () => {
+  const childId = 'legacy-rotation-save'
+  const seed = migratedRotationSeed(childId)
+  await environment.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: true }))
+  await assertSucceeds(commitWarmupRecords(childId, seed.writes))
+  let visit = seed.visit
+  for (const [index, correct] of [true, false].entries()) {
+    const mastery = seed.mastery.find((item) => item.state.masteryTermId === visit.queue[index].masteryTermId)!
+    const transition = buildWarmupAnswerTransition({
+      visit, mastery, profile: grade2Tier1WritingAdaptiveWarmupProfile, correct,
+      revealMethod: 'show_answer', occurredAt: `2026-09-30T16:0${index + 1}:00.000Z`,
+    })
+    await assertSucceeds(commitWarmupRecords(childId, buildWarmupTransitionRecordWrites(childId, transition)))
+    const restored = await getDoc(doc(environment.authenticatedContext('parent').firestore(), `families/family-parent/children/${childId}/warmupMastery/${mastery.state.id}`))
+    assert.equal(restored.data()?.state.evidence, correct ? 'demonstrated' : 'support-needed')
+    assert.equal(restored.data()?.state.bucket, correct ? 'mastery-rotation' : 'needs-attention')
+    assert.equal(restored.data()?.state.consecutiveCorrect, 0)
+    visit = transition.nextVisit
+  }
+  const finalization = buildWarmupFinalizationTransition({ visit, operation: 'finalize-partial', occurredAt: '2026-09-30T16:03:00.000Z' })
+  await assertSucceeds(commitWarmupRecords(childId, buildWarmupTransitionRecordWrites(childId, finalization)))
+  const fresh = environment.authenticatedContext('parent').firestore()
+  const savedVisit = (await getDoc(doc(fresh, `families/family-parent/children/${childId}/warmupVisits/${visit.id}`))).data()!
+  assert.equal(savedVisit.status, 'partial')
+  assert.equal(savedVisit.attemptedCount, 2)
+  assert.equal(savedVisit.correctCount, 1)
+  const unanswered = seed.mastery.find((item) => item.state.masteryTermId === visit.queue[2].masteryTermId)!
+  assert.deepEqual((await getDoc(doc(fresh, `families/family-parent/children/${childId}/warmupMastery/${unanswered.state.id}`))).data(), unanswered)
+})
+
+test('migrated rotation seeds still reject invalid streaks, evidence and unauthorized owners atomically', async () => {
+  const childId = 'legacy-rotation-denied'
+  const seed = migratedRotationSeed(childId)
+  await environment.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: true }))
+  for (const invalid of [
+    { evidence: 'unassessed', consecutiveCorrect: 1 },
+    { evidence: 'demonstrated', consecutiveCorrect: 1 },
+    { evidence: 'support-needed', consecutiveCorrect: 0 },
+    { evidence: 'unknown', consecutiveCorrect: 0 },
+  ]) {
+    const writes = structuredClone(seed.writes)
+    const mastery = writes.find((record) => record.collection === 'warmupMastery')!
+    Object.assign(mastery.value.state as object, invalid)
+    await assertFails(commitWarmupRecords(childId, writes))
+  }
+  await assertFails(commitWarmupRecords(childId, seed.writes, 'intruder'))
+  await assertFails(commitWarmupRecords(childId, seed.writes, null))
+  await environment.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), `families/family-parent/children/${childId}`), { id: childId, active: false }))
+  await assertFails(commitWarmupRecords(childId, seed.writes))
+  const owner = environment.authenticatedContext('parent').firestore()
+  for (const write of seed.writes) assert.equal((await getDoc(doc(owner, `families/family-parent/children/${childId}/${write.collection}/${write.id}`))).exists(), false)
 })
