@@ -112,9 +112,13 @@ for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other
     await page.goto('/?grade=grade2')
     await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
     const copies = await seedConflict(page, documents)
-    await page.evaluate(
-      ({ accessKey, invalid, childId }) => {
-        const cached = JSON.parse(localStorage.getItem(accessKey)!)
+    const cachedRaw = await page.evaluate((accessKey) => localStorage.getItem(accessKey)!, accessKey)
+    // Set the exact cold-start condition before the replacement app executes.
+    // Mutating an active tab can race its already-successful sync acknowledgement.
+    await page.addInitScript(
+      ({ accessKey, invalid, childId, cachedRaw }) => {
+        if (window !== window.top) return
+        const cached = JSON.parse(cachedRaw)
         if (invalid === 'no-confirmation') cached.ready = []
         if (invalid === 'other-parent') cached.uid = 'another-parent'
         if (invalid === 'other-family') cached.familyId = 'another-family'
@@ -122,7 +126,7 @@ for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other
         if (invalid === 'inactive') cached.profiles.find((p: { id: string }) => p.id === childId).active = false
         localStorage.setItem(accessKey, JSON.stringify(cached))
       },
-      { accessKey, invalid, childId },
+      { accessKey, invalid, childId, cachedRaw },
     )
     await page.reload()
     await expect(page.getByText(/Practice changed on both devices/)).toBeVisible()
