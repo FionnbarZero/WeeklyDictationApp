@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
 import { documentValue, plainValue } from '../../src/firestoreClient.ts'
-import { installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
+import { installFamilyFixtures, readGrade2Workspace, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 const childId = 'synthetic-g2'
 const key = `family-beta-acquisition-v1:${childId}:startup-conflict`
@@ -65,6 +65,44 @@ test('online reload with a practice conflict permits confirmed local entry and r
   await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
   await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
   expect(plainValue(documents.get(name)!.fields.payload)).toBe(reviewed)
+})
+
+test('a saved lesson resumes and retains new reviewed work while another practice conflict remains', async ({
+  page,
+}) => {
+  const documents: SyntheticFamilyDocuments = new Map()
+  await installFamilyFixtures(page, documents)
+  await page.goto('/?grade=grade2')
+  await page.getByLabel('Practice week').selectOption('2026-09-21')
+  const frame = page.frameLocator('iframe:visible')
+  const enter = async () => {
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+  }
+  const answer = async () => {
+    await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  }
+  await enter()
+  await answer()
+  const before = (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes[0]
+  const copies = await seedConflict(page, documents)
+  await page.reload()
+  await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  await page.getByText('Saved lessons', { exact: true }).click()
+  await page.getByRole('button', { name: /Resume saved writing/ }).click()
+  await enter()
+  expect((await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes[0]).toEqual(before)
+  await answer()
+  await expect
+    .poll(async () => (await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes[0].revision)
+    .toBe(before.revision + 1)
+  await page.reload()
+  await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  expect((await page.evaluate(readGrade2Workspace))!.acquisitionProgressEnvelopes[0].revision).toBe(before.revision + 1)
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(copies.local)
+  expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
 })
 
 for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other-grade', 'inactive'] as const) {
