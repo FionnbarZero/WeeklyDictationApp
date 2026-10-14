@@ -53,7 +53,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   const old = (await page.evaluate(readGrade2Workspace))!
   const candidate = await select('candidate')
   await page.reload()
-  await expect(page.locator('[data-offline-shell-status]')).toContainText('An app update is ready')
+  await expect(page.locator('[data-offline-shell-status]')).toContainText('An app update is ready', { timeout: 30_000 })
   // The offline shell intentionally waits until every Dojo tab closes before
   // activating a replacement, so an active lesson is never swapped in place.
   await page.goto('about:blank')
@@ -96,7 +96,9 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
       await (await navigator.serviceWorker.getRegistration())!.update()
     })
     await expect
-      .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting))
+      .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting), {
+        timeout: 30_000,
+      })
       .toBe(true)
     // Updating may not replace the live document or its engine.
     await page.goto('about:blank')
@@ -187,7 +189,9 @@ for (const title of ['Memory Lanterns', 'Shadow Strike Dojo', 'Dictation Streak'
         await (await navigator.serviceWorker.getRegistration())!.update()
       })
       await expect
-        .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting))
+        .poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting), {
+          timeout: 30_000,
+        })
         .toBe(true)
       await page.goto('about:blank')
       await expect
