@@ -194,6 +194,22 @@ test('an earlier ordinary conflict cannot hide an invalid remote partition later
   assert.equal(docs.get(opaqueId)!.payload, 'remote')
 })
 
+test('valid divergent partitions without reviewed answers still report a continuable conflict', async () => {
+  const store = device()
+  setWorkspace(store)
+  const { repository, docs } = serverHarness()
+  await repository.sync(store, childId)
+  const key = practiceWorkspaceSyncKey(childId, 'weekly-dictation-checkpoint-v1')
+  const id = createHash('sha256').update(key).digest('hex')
+  const remote = JSON.stringify({ schema: 1, childId, values: { acquisitionPendingCheckpoints: [] } })
+  docs.get(id)!.payload = remote
+  store.setItem(`family-beta-sync-base-v1:${familyId}:${childId}:${id}`, 'divergent baseline')
+  const before = store.getItem(workspace)
+  await assert.rejects(repository.sync(store, childId), PracticeSyncConflictError)
+  assert.equal(store.getItem(workspace), before)
+  assert.equal(docs.get(id)!.payload, remote)
+})
+
 test('workspace sync exposes partitioned records and commits remote activity atomically', async () => {
   const first = device(),
     second = device()

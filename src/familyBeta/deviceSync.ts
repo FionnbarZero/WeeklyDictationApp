@@ -10,6 +10,7 @@ import {
   practiceWorkspaceKey,
   practiceWorkspaceStorage,
   practiceWorkspaceSyncAdapter,
+  validatePracticeWorkspaceSyncPayload,
 } from './practiceWorkspaceStorage.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
@@ -192,6 +193,11 @@ export function createDeviceSyncRepository(options: {
           doc.name.split('/').pop() !== (await recordId(record.key))
         )
           throw new Error('An online practice record failed validation. Nothing was replaced.')
+        // Validate every nested partition before reconciliation starts. A
+        // missing reviewed-answer candidate must not hide malformed content,
+        // even when another record would otherwise stop at a valid conflict.
+        if (isPracticeWorkspaceSyncKey(record.key, childId))
+          validatePracticeWorkspaceSyncPayload(record.key, record.payload, childId)
         records.set(record.key, { record, updateTime: doc.updateTime })
         if (records.size > 500)
           throw new Error('This child’s online practice exceeds the safe loading limit. Device records are unchanged.')
