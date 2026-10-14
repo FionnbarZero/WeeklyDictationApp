@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
-import { documentValue, plainValue } from '../../src/firestoreClient.ts'
 import { practiceWorkspaceKey, practiceWorkspaceSyncKey } from '../../src/familyBeta/practiceWorkspaceStorage.ts'
+import { documentValue, plainValue } from '../../src/firestoreClient.ts'
 import { installFamilyFixtures, readGrade2Workspace, type SyntheticFamilyDocuments } from './fixtures.ts'
 
 const childId = 'synthetic-g2'
