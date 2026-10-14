@@ -164,6 +164,12 @@ test('restarting after an unrelated conflict never uploads a staged but uncommit
     await expect(entry).toBeVisible()
     await expect(preservedWarning).toBeVisible()
   }
+  expect(
+    await page.evaluate(
+      ({ workspaceKey, partitionRecord }) => JSON.parse(localStorage.getItem(workspaceKey)!).records[partitionRecord],
+      { workspaceKey, partitionRecord },
+    ),
+  ).toBe(local)
   expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
   expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
   expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
