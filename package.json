@@ -10,6 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "build:stroke-teacher-preview": "tsc -b && vite build --mode stroke-teacher-preview",
+    "test:stroke-teacher-preview": "playwright test --config playwright.stroke-teacher-preview.config.ts",
     "build:reconciliation": "tsc -b && vite build --mode reconciliation --outDir reconciliation-dist",
     "preview:reconciliation": "vite preview --outDir reconciliation-dist --host 127.0.0.1 --port 5192",
     "test:reconciliation": "playwright test --config playwright.reconciliation.config.ts",

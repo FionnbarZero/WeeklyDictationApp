@@ -1,0 +1,38 @@
+/* The original EduGames styling is preserved in original/styles.css.
+   These rules only host the two distinct screens and identify the local tryout. */
+.st-original-stage {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  background: #090b17;
+}
+.st-original-content {
+  position: relative;
+  padding: 0;
+}
+.st-preview-banner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  background: #142b39;
+  color: #fff6dd;
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.st-preview-banner button {
+  border: 1px solid #a99e83;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.st-original-stage .lg-student-ink path.teacher-supplied-stroke {
+  stroke: #12131a;
+}
