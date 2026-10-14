@@ -82,7 +82,15 @@ for (const [slug, grade] of grades) {
     expect(await pending()).toHaveLength(1)
     expect((await pending())[0]).toMatchObject({ grade, channel: 'writing', correct: 1, attempted: 1 })
     await page.unroute('**/firestore.googleapis.com/**')
-    await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+    const retry = page.getByRole('button', { name: 'Retry saving', exact: true })
+    if ((await pending()).length) {
+      await retry.click().catch(async (error) => {
+        // A background retry can finish while Playwright is dispatching the
+        // click. Accept that successful recovery, but never hide a stranded
+        // pending result behind a detached retry button.
+        if ((await pending()).length) throw error
+      })
+    }
     await expect.poll(pending).toEqual([])
   })
 }
