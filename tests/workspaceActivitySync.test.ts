@@ -98,10 +98,7 @@ function serverHarness() {
           ) as { key: string; payload: string; generation: number }
           const id = write.update.name.split('/').pop()!
           const existing = docs.get(id)
-          assert.deepEqual(
-            write.currentDocument,
-            existing ? { updateTime: existing.updateTime } : { exists: false },
-          )
+          assert.deepEqual(write.currentDocument, existing ? { updateTime: existing.updateTime } : { exists: false })
           clock += 1
           docs.set(id, {
             key: fields.key,
@@ -163,7 +160,10 @@ for (const branch of ['unchanged-local', 'remote-winner', 'missing-local'] as co
     const opaqueId = createHash('sha256').update(opaque).digest('hex')
     store.setItem(opaque, 'local unresolved copy')
     docs.set(opaqueId, {
-      key: opaque, payload: 'remote unresolved copy', generation: 1, updateTime: '2026-10-08T00:00:00.000Z',
+      key: opaque,
+      payload: 'remote unresolved copy',
+      generation: 1,
+      updateTime: '2026-10-08T00:00:00.000Z',
     })
     const before = store.getItem(workspace)
     const online = JSON.stringify([...docs])
@@ -175,7 +175,17 @@ for (const branch of ['unchanged-local', 'remote-winner', 'missing-local'] as co
     }
     // Once the independent conflict is resolved, commit first, then acknowledge.
     store.setItem(opaque, 'remote unresolved copy')
+    const set = store.setItem
+    let acknowledged = false
+    store.setItem = (key, value) => {
+      if (key === base) {
+        assert.equal(practiceWorkspaceSyncAdapter(store, childId)!.read(aKey), newer)
+        acknowledged = true
+      }
+      set(key, value)
+    }
     await repository.sync(store, childId)
+    assert.equal(acknowledged, true)
     assert.equal(practiceWorkspaceSyncAdapter(store, childId)!.read(aKey), newer)
     assert.equal(store.getItem(base), newer)
     assert.equal(JSON.stringify([...docs]), online)
@@ -201,10 +211,13 @@ for (const failure of ['throw', 'ignored-write', 'concurrent-write'] as const) {
       if (key === workspace && failure === 'throw') throw new Error('synthetic quota failure')
       if (key !== workspace || failure !== 'ignored-write') set(key, value)
     }
-    await assert.rejects(repository.sync(store, childId, () => {
-      if (failure === 'concurrent-write') set(workspace, `${before} `)
-      return true
-    }), /quota|preserved/)
+    await assert.rejects(
+      repository.sync(store, childId, () => {
+        if (failure === 'concurrent-write') set(workspace, `${before} `)
+        return true
+      }),
+      /quota|preserved/,
+    )
     assert.equal(store.getItem(base), baseline)
     assert.equal(store.getItem(workspace), failure === 'concurrent-write' ? `${before} ` : before)
     assert.equal(JSON.stringify([...docs]), online)

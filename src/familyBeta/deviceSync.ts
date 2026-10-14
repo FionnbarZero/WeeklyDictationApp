@@ -221,6 +221,7 @@ export function createDeviceSyncRepository(options: {
         workspace = practiceWorkspaceSyncAdapter(storage, childId)
       }
       const keys = new Set(remote.keys())
+      const stagedAcknowledgements = new Map<string, string>()
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i)
         if (key && ownedPracticeRecord(key, storage.getItem(key) || '', childId)) keys.add(key)
@@ -283,9 +284,13 @@ export function createDeviceSyncRepository(options: {
               'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
             )
           // No await between checking the local base and adopting the confirmed remote.
-          if (workspaceSyncKey) workspace?.stage(key, online)
-          else storage.setItem(key, online)
-          acknowledgePractice(storage, baseKey, online)
+          if (workspaceSyncKey) {
+            workspace!.stage(key, online)
+            stagedAcknowledgements.set(baseKey, online)
+          } else {
+            storage.setItem(key, online)
+            acknowledgePractice(storage, baseKey, online)
+          }
           continue
         }
         if (online !== baseline) {
@@ -306,9 +311,13 @@ export function createDeviceSyncRepository(options: {
               throw new Error(
                 'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
               )
-            if (workspaceSyncKey) workspace?.stage(key, online!)
-            else storage.setItem(key, online!)
-            acknowledgePractice(storage, baseKey, online!)
+            if (workspaceSyncKey) {
+              workspace!.stage(key, online!)
+              stagedAcknowledgements.set(baseKey, online!)
+            } else {
+              storage.setItem(key, online!)
+              acknowledgePractice(storage, baseKey, online!)
+            }
             continue
           }
           // The local checkpoint has the newest trusted reviewed response. The
@@ -354,6 +363,10 @@ export function createDeviceSyncRepository(options: {
         acknowledgePractice(storage, baseKey, local)
       }
       workspace?.commit()
+      // A staged download is not durable until the atomic workspace commit.
+      // Advancing its baseline sooner can make a retry upload the old local
+      // checkpoint over newer remote work after a later conflict or failed CAS.
+      for (const [baseKey, payload] of stagedAcknowledgements) acknowledgePractice(storage, baseKey, payload)
     },
   }
 }

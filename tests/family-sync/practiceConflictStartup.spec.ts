@@ -92,6 +92,66 @@ async function seedConflict(page: Page, documents: SyntheticFamilyDocuments) {
   return { local, remote, baseline }
 }
 
+test('retrying an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({ page }) => {
+  const documents: SyntheticFamilyDocuments = new Map()
+  await installFamilyFixtures(page, documents)
+  await page.goto('/?grade=grade2')
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
+  await page
+    .frameLocator('iframe:visible')
+    .getByRole('button', { name: /Enter the Dojo/ })
+    .click()
+  const workspaceKey = practiceWorkspaceKey(childId)
+  const partitionRecord = 'weekly-dictation-checkpoint-v1'
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), workspaceKey)).not.toBeNull()
+  const local = await page.evaluate(
+    ({ workspaceKey, partitionRecord }) =>
+      JSON.parse(localStorage.getItem(workspaceKey)!).records[partitionRecord] as string,
+    { workspaceKey, partitionRecord },
+  )
+  const partitionKey = practiceWorkspaceSyncKey(childId, partitionRecord)
+  const id = createHash('sha256').update(partitionKey).digest('hex')
+  const partitionName = name.slice(0, name.lastIndexOf('/') + 1) + id
+  const remote = JSON.stringify({
+    ...JSON.parse(local),
+    values: { ...JSON.parse(local).values, rotationCycles: { [childId]: 17 } },
+  })
+  documents.set(partitionName, {
+    name: partitionName,
+    updateTime: new Date().toISOString(),
+    fields: Object.fromEntries(
+      Object.entries({ schema: 1, childId, key: partitionKey, payload: remote, generation: 2 }).map(
+        ([field, value]) => [field, documentValue(value)],
+      ),
+    ),
+  })
+  const copies = await seedConflict(page, documents)
+  const baselineKey = `family-beta-sync-base-v1:family-synthetic-parent:${childId}:${id}`
+  await page.addInitScript(
+    ({ baselineKey, local }) => {
+      if (window === window.top) localStorage.setItem(baselineKey, local)
+    },
+    { baselineKey, local },
+  )
+  await page.reload()
+  await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  for (let retry = 0; retry < 2; retry += 1) {
+    expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
+    expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
+    expect(
+      await page.evaluate(
+        ({ workspaceKey, partitionRecord }) => JSON.parse(localStorage.getItem(workspaceKey)!).records[partitionRecord],
+        { workspaceKey, partitionRecord },
+      ),
+    ).toBe(local)
+    await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+    await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  }
+  expect(await page.evaluate((key) => localStorage.getItem(key), baselineKey)).toBe(local)
+  expect(plainValue(documents.get(partitionName)!.fields.payload)).toBe(remote)
+  expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
+})
+
 test('online reload with a practice conflict permits confirmed local entry and retains both copies', async ({
   page,
 }) => {
