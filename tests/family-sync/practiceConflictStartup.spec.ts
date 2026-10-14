@@ -92,7 +92,9 @@ async function seedConflict(page: Page, documents: SyntheticFamilyDocuments) {
   return { local, remote, baseline }
 }
 
-test('restarting after an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({ page }) => {
+test('restarting after an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({
+  page,
+}) => {
   const documents: SyntheticFamilyDocuments = new Map()
   await installFamilyFixtures(page, documents)
   await page.goto('/?grade=grade2')
