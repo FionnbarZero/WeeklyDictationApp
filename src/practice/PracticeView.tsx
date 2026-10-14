@@ -3,13 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Clock3, Headphones, RotateCcw, Sparkles, Volume2, X } from 'lucide-react'
 import {
   activePracticeWord,
-  timerSecondsFor,
   type Dataset,
   type LifecyclePhase,
   type PracticeSession,
   type Word,
 } from '../domain'
 import { createPracticeCountdown } from './countdown.ts'
+import { TARGET_WRITING_RESPONSE_SECONDS, writingResponseSecondsFor } from './writingTimer.ts'
 import { practicePosition, wordIsVisibleDuringWriting } from '../practicePresentation'
 import { SkyWritingAcquisition, emptyWritingPadState, type WritingPadState, type WritingPadStateUpdater } from '../skywriting/index.ts'
 import { SelfAssessmentActions } from './SelfAssessmentActions'
@@ -35,7 +35,6 @@ export type PracticeViewProps = {
   onSpeakWord: (word: Word, warmup: boolean) => PromptAudioAttempt
   onSpeakReviewInstruction: () => PromptAudioAttempt
   reviewInstruction: string
-  timerSecondsOverride?: number
   warmupRequired?: boolean
 }
 
@@ -102,13 +101,12 @@ function SequentialPracticeView({
   onSpeakWord,
   onSpeakReviewInstruction,
   reviewInstruction,
-  timerSecondsOverride,
   warmupRequired = false,
 }: PracticeViewProps) {
   const [writingByResponse, setWritingByResponse] = useState<Record<string, WritingPadState>>({})
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [audioMessage, setAudioMessage] = useState('')
-  const [audibleStageKey, setAudibleStageKey] = useState('')
+  const [completedAudioStageKey, setCompletedAudioStageKey] = useState('')
   const activeAudioRef = useRef<PromptAudioAttempt>(undefined)
   const term = activePracticeWord(session)
   const dataset = datasets.find((item) => item.id === term?.datasetId) || datasets.find((item) => item.id === session.primaryDatasetId)
@@ -116,7 +114,7 @@ function SequentialPracticeView({
   const allowOptionalReplay = isWarmup
   const acquisitionPrompt = session.segment === 'primary' ? session.acquisition?.prompt : undefined
   const showCopy = wordIsVisibleDuringWriting(acquisitionPrompt?.kind)
-  const timerSeconds = acquisitionPrompt?.timerSeconds || timerSecondsOverride || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
+  const timerSeconds = writingResponseSecondsFor(acquisitionPrompt?.kind, session.primaryPhase)
   const stageKey = `${session.id}:${session.segment}:${session.stage}:${session.index}:${acquisitionPrompt?.id || ''}`
   const writingResponseId = term ? skyWritingResponseId(session, term, acquisitionPrompt?.id) : null
   const writingPadState = writingResponseId ? writingByResponse[writingResponseId] || emptyWritingPadState : emptyWritingPadState
@@ -132,6 +130,7 @@ function SequentialPracticeView({
   const observeAudio = useCallback((attempt: PromptAudioAttempt) => {
     stopPromptAudio(activeAudioRef.current)
     activeAudioRef.current = attempt
+    setCompletedAudioStageKey('')
     setAudioStatus('loading')
     setAudioMessage('')
     const reportFailure = (audioError: unknown) => {
@@ -139,15 +138,14 @@ function SequentialPracticeView({
       setAudioStatus('error')
       setAudioMessage(audioError instanceof Error ? audioError.message : 'The prompt audio could not play.')
     }
-    void promptAudioStarted(attempt).then(() => {
-      if (activeAudioRef.current === attempt) {
-        setAudioStatus('ready')
-        setAudibleStageKey(stageKey)
-      }
+    void promptAudioStarted(attempt).catch(reportFailure)
+    // Give the child the complete response window only after the full audio
+    // sequence finishes, including every word and contextual sentence cue.
+    void promptAudioCompleted(attempt).then(() => {
+      if (activeAudioRef.current !== attempt) return
+      setAudioStatus('ready')
+      setCompletedAudioStageKey(stageKey)
     }).catch(reportFailure)
-    // A later cue can fail after the first word starts successfully. Keep the
-    // current response and countdown intact, but make audio retry available.
-    void promptAudioCompleted(attempt).catch(reportFailure)
   }, [stageKey])
   const replayAudio = useCallback(() => observeAudio(onReplay()), [observeAudio, onReplay])
   useEffect(() => { setWritingByResponse({}) }, [session.id])
@@ -190,10 +188,10 @@ function SequentialPracticeView({
       {session.stage === 'complete' && session.primaryPhase === 'acquisition' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Teaching sequence complete · {dataset?.dateRange}</p><h1>All targets are now Earned DTs</h1><p className="review-instruction">Return anytime for ongoing Familiar and Earned DT practice.</p><button className="primary-button review-start-button" onClick={() => onAnswer('done')}>Done for today <ArrowLeft size={17} /></button></>}
       {session.stage === 'complete' && session.primaryPhase === 'test-review' && <><div className="complete-mark"><Check size={27} /></div><p className="eyebrow">Dictation finished · {dataset?.dateRange}</p><h1>Test complete</h1><p className="review-instruction">{reviewInstruction}</p><button className="primary-button review-start-button" onClick={onStartReview}>Start review <ArrowLeft size={17} /></button><button className="replay-button" onClick={replayAudio}><RotateCcw size={16} /> Replay instructions</button></>}
       {session.stage === 'dictation' && term && writingResponseId && <>
-        <div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : promptLabel} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} active={audibleStageKey === stageKey} onComplete={() => onDictationComplete('timer')} /></span></div>
+        <div className="prompt-meta"><span className={`set-chip chip-${isWarmup ? 'warmup' : session.primaryPhase}`}>{isWarmup ? 'Warmup' : promptLabel} · {dataset?.dateRange}</span><span className="timer"><Clock3 size={15} /> <PromptCountdown key={stageKey} durationSeconds={timerSeconds} active={completedAudioStageKey === stageKey} onComplete={() => onDictationComplete('timer')} /></span></div>
         <div className="tier1-writing-instructions">
           <div><h1>{showCopy ? <>Trace the word<br /><span>as you listen.</span></> : <>Listen, then write<br /><span>what you hear.</span></>}</h1><p className="practice-helper">{showCopy ? 'Write directly over the Songti characters.' : 'Write the word on the screen before the timer ends.'}</p></div>
-          <div className="tier1-writing-audio-actions"><button type="button" className="writing-hear-button" aria-label="Hear" onClick={replayAudio} disabled={!allowOptionalReplay && audioStatus !== 'error'} title={allowOptionalReplay || audioStatus === 'error' ? 'Hear the prompt audio' : 'Audio plays automatically; replay is available in Warmup or after an audio error'}><Headphones size={36} strokeWidth={2.6} aria-hidden="true" /><span aria-hidden="true">Hear</span></button><button className="replay-button" onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button></div>
+          <div className="tier1-writing-audio-actions"><button type="button" className="writing-hear-button" aria-label="Hear" onClick={replayAudio} disabled={!allowOptionalReplay && audioStatus !== 'error'} title={allowOptionalReplay || audioStatus === 'error' ? 'Hear the prompt audio' : 'Audio plays automatically; replay is available in Warmup or after an audio error'}><Headphones size={36} strokeWidth={2.6} aria-hidden="true" /><span aria-hidden="true">Hear</span></button><button className="replay-button" disabled={audioStatus !== 'ready'} onClick={() => onDictationComplete('skip_timer')}>Skip Timer</button></div>
         </div>
         <div className="tier1-writing-response"><SkyWritingAcquisition key={writingResponseId} word={term.text} phase="writing" traceTarget={showCopy} presentation="grand-scroll" pinyinPrototype={import.meta.env.DEV && session.grade === 'Grade 2' && term.text === '人'} padState={writingPadState} onPadStateChange={updateWritingPad} /></div>
         <p className="dictation-status">Your writing stays on this device only. The comparison appears when the timer ends or is skipped.</p>
@@ -213,13 +211,12 @@ function SequentialPracticeView({
 export function PracticeView(props: PracticeViewProps) {
   const { session } = props
   if (session.segment === 'primary' && session.primaryPhase === 'test-review') {
-    const timerSeconds = props.timerSecondsOverride || timerSecondsFor(session.grade, session.segment, session.primaryPhase)
     return <DeferredTestReview
       key={session.id}
       mode="writing"
       targets={session.primaryQueue}
       activityLabel="Writing Test Review"
-      writingTimerSeconds={timerSeconds}
+      writingTimerSeconds={TARGET_WRITING_RESPONSE_SECONDS}
       onPlayReference={async (word) => { await promptAudioStarted(props.onSpeakWord(word, false)) }}
       onPlayWritingPrompt={(word) => props.onSpeakWord(word, false)}
       onDiscard={() => props.onAnswer('skip-test-review')}

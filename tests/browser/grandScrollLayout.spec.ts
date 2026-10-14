@@ -30,8 +30,8 @@ test('Hear recovers when audio fails after the first cue has started', async ({ 
   await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
   await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
   await page.getByRole('button', { name: 'Skip Warmup' }).click()
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await expect(page.getByRole('timer')).toHaveText('00:10')
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
   const position = await page.locator('.practice-count').innerText()
   const typed = page.locator('.skywriting-keyboard-alternative input')
   await typed.fill('二')
@@ -43,7 +43,62 @@ test('Hear recovers when audio fails after the first cue has started', async ({ 
   await expect(hear).toBeDisabled()
   await expect(page.locator('.practice-count')).toHaveText(position)
   await expect(typed).toHaveValue('二')
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible({ timeout: 10_000 })
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
+})
+
+test('Familiar DT receives ten seconds only after its complete audio sequence', async ({ page }) => {
+  await page.addInitScript(() => {
+    const speechStarts: string[] = []
+    let activeUtterance: SpeechSynthesisUtterance | undefined
+    Object.defineProperty(window, '__writingTimerSpeechStarts', { value: speechStarts })
+    Object.defineProperty(window, '__finishWritingTimerCue', {
+      value: () => {
+        const utterance = activeUtterance
+        activeUtterance = undefined
+        utterance?.onend?.({} as SpeechSynthesisEvent)
+      },
+    })
+    HTMLMediaElement.prototype.play = () => Promise.reject(new Error('Use speech fallback'))
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() { activeUtterance = undefined },
+        resume() {},
+        getVoices() { return [] },
+        speak(utterance: SpeechSynthesisUtterance) {
+          activeUtterance = utterance
+          speechStarts.push(utterance.text)
+          utterance.onstart?.({} as SpeechSynthesisEvent)
+        },
+      },
+    })
+  })
+  await installGrade2CurriculumFixture(page)
+  await page.goto('/?testDate=2026-09-29')
+  await expect(page.locator('.curriculum-source-status')).toContainText('Loaded 4 weekly datasets')
+  await openGrade2LearningActivity(page, 'Enter the Dojo', 'Learn to Write')
+  await page.getByRole('button', { name: 'Skip Warmup' }).click()
+  const timer = page.getByRole('timer')
+  const pause = page.getByRole('button', { name: 'Pause', exact: true })
+  const skipTimer = page.getByRole('button', { name: 'Skip Timer', exact: true })
+  await expect(timer).toHaveText('00:10')
+  await expect(skipTimer).toBeDisabled()
+  for (let cue = 1; cue <= 3; cue += 1) {
+    await expect.poll(() => page.evaluate(() => (
+      window as unknown as { __writingTimerSpeechStarts: string[] }
+    ).__writingTimerSpeechStarts.length)).toBe(cue)
+    await expect(timer).toHaveText('00:10')
+    await expect(pause).toHaveCount(0)
+    await page.evaluate(() => (
+      window as unknown as { __finishWritingTimerCue: () => void }
+    ).__finishWritingTimerCue())
+  }
+  await expect(skipTimer).toBeEnabled()
+  await expect(pause).toBeVisible()
+  await expect(timer).toHaveText('00:10')
+  await expect(timer).toHaveText('00:09', { timeout: 2_000 })
 })
 
 for (const width of [802, 768]) {

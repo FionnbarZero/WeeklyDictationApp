@@ -91,7 +91,10 @@ test('Grade 2 writing responses stay provisional until one final all-target revi
         ),
       )
       .toBe(true)
-    await page.getByRole('button', { name: 'Skip Timer' }).click()
+    const skipTimer = page.getByRole('button', { name: 'Skip Timer' })
+    await expect(skipTimer).toBeEnabled()
+    await expect(page.getByRole('timer')).toHaveText(/^00:2[45]$/)
+    await skipTimer.click()
   }
 
   const provisional = await storedReviewSnapshot(page)

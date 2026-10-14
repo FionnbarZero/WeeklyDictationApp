@@ -299,9 +299,9 @@ test('Acquisition audio follows the active prompt instead of the flat primary qu
 test('phase timers remain configurable by lifecycle', () => {
   assert.equal(timerSecondsFor('Grade 2', 'warmup', 'acquisition'), 10)
   assert.equal(timerSecondsFor('Grade 2', 'primary', 'acquisition'), 10)
-  assert.equal(timerSecondsFor('Grade 2', 'primary', 'test-review'), 10)
+  assert.equal(timerSecondsFor('Grade 2', 'primary', 'test-review'), 25)
   assert.equal(timerSecondsFor('Kindergarten', 'primary', 'acquisition'), 10)
-  assert.equal(timerSecondsFor('Kindergarten', 'primary', 'test-review'), 10)
+  assert.equal(timerSecondsFor('Kindergarten', 'primary', 'test-review'), 25)
   assert.throws(() => startAcquisitionFlow({ ...currentDataset, grade: 'Grade 5' }, 'Grade 5'), /not configured/i)
   assert.throws(() => buildWarmupSelection({ grade: 'Grade 5', datasets: [], results: [], childId: 'maya' }), /not configured/i)
 })

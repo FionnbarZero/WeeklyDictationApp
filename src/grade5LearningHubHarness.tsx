@@ -381,7 +381,6 @@ function renderPracticeView() {
       onSpeakWord={speakWord}
       onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
-      timerSecondsOverride={grade5WritingLabProfile.timers.testReview}
     />,
   )
 }

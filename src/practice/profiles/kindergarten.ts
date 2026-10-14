@@ -19,7 +19,7 @@ export const kindergartenWritingPracticeProfile = {
   },
   timers: {
     warmup: 10,
-    testReview: 10,
+    testReview: 25,
   },
   acquisition: kindergartenAcquisitionStrategy,
   presentation: {

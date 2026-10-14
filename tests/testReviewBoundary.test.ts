@@ -176,7 +176,7 @@ test('shared deferred review is activated through writing practice and the Kinde
   assert.match(harness, /from '..\/testReview\/DeferredTestReview\.tsx'/)
   assert.doesNotMatch(harness, /startEphemeralAudioRecording|SelfAssessmentActions/)
   assert.match(practiceView, /mode="writing"/)
-  assert.match(practiceView, /writingTimerSeconds=\{timerSeconds\}/)
+  assert.match(practiceView, /writingTimerSeconds=\{TARGET_WRITING_RESPONSE_SECONDS\}/)
   assert.match(practiceView, /deferred-writing-test-review/)
   assert.match(source('src/testReview/WritingResponseCollector.tsx'), /<SkyWritingAcquisition/)
   assert.doesNotMatch(source('src/testReview/WritingResponseCollector.tsx'), /write the response on paper/i)

@@ -1,6 +1,22 @@
 import { expect, test } from './fixtures.ts'
+import { DICTATION_AUDIO_GAP_MS } from '../../src/audio/promptAudio.ts'
 
 test.use({ viewport: { width: 390, height: 844 }, permissions: [] })
+
+async function installCompletedPromptAudio(page: import('@playwright/test').Page) {
+  await page.addInitScript((audioGapMs) => {
+    const schedule = window.setTimeout.bind(window)
+    window.setTimeout = ((handler: TimerHandler, delay = 0, ...args: unknown[]) =>
+      schedule(handler, delay === audioGapMs ? 0 : delay, ...args)) as typeof window.setTimeout
+    HTMLMediaElement.prototype.play = function () {
+      window.setTimeout(() => {
+        this.dispatchEvent(new Event('playing'))
+        this.dispatchEvent(new Event('ended'))
+      }, 0)
+      return Promise.resolve()
+    }
+  }, DICTATION_AUDIO_GAP_MS)
+}
 
 async function openFinalBoss(
   page: import('@playwright/test').Page,
@@ -21,6 +37,7 @@ async function collectWritingResponses(page: import('@playwright/test').Page) {
 }
 
 test('Kindergarten writing Final Boss retains Sky Writing and opens an unobscured final review', async ({ page }) => {
+  await installCompletedPromptAudio(page)
   await openFinalBoss(page, 'Writing Test')
   const pad = page.getByRole('img', { name: 'Blank word drawing pad' })
   const bounds = await pad.boundingBox()
@@ -49,6 +66,7 @@ test('Kindergarten writing Final Boss retains Sky Writing and opens an unobscure
 })
 
 test('Kindergarten writing Final Boss submits one mixed final score', async ({ page }) => {
+  await installCompletedPromptAudio(page)
   await openFinalBoss(page, 'Writing Test')
   await collectWritingResponses(page)
 
@@ -99,6 +117,7 @@ test('Kindergarten writing Final Boss blocks the timer and exposes recovery when
 })
 
 test('Kindergarten Final Boss confirms before discarding an unfinished response', async ({ page }) => {
+  await installCompletedPromptAudio(page)
   await openFinalBoss(page, 'Writing Test')
   await page.getByRole('button', { name: 'Skip Timer' }).click()
   const exitButton = page.getByRole('button', { name: 'Exit without saving' })

@@ -538,7 +538,6 @@ function KindergartenLearningLab() {
         onSpeakWord={speakWord}
         onSpeakReviewInstruction={() => undefined}
         reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
-        timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
       />
     </main>
   }
@@ -560,7 +559,6 @@ function KindergartenLearningLab() {
         onSpeakWord={speakWord}
         onSpeakReviewInstruction={() => speakText(KINDERGARTEN_REVIEW_INSTRUCTION, 'en-US', 0.9)}
         reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
-        timerSecondsOverride={kindergartenWritingLabProfile.testReviewTimerSeconds}
       />
     </main>
   }
