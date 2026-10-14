@@ -48,12 +48,14 @@ function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
-function releaseIdentityHtml(fileName: string, gitRevision: string, familySync = false) {
+function releaseIdentityHtml(fileName: string, gitRevision: string, familySync = false, localPreview = false) {
   const baseIdentity = releaseIdentityByPage[fileName as keyof typeof releaseIdentityByPage]
   const identity =
     baseIdentity && familySync
       ? { ...baseIdentity, status: 'Family beta', persistence: 'Parent account sync · recordings session only' }
-      : baseIdentity
+      : baseIdentity && localPreview
+        ? { ...baseIdentity, status: 'Local preview · unpublished changes' }
+        : baseIdentity
   if (!identity) return ''
   const summary = `${identity.grade} · ${identity.status} · v${APP_VERSION} · r${gitRevision.slice(0, 7)} · ${identity.persistence}`
   const report = [
@@ -89,7 +91,12 @@ export default defineConfig(({ command, mode }) => {
       {
         name: 'release-identity',
         transformIndexHtml(html, context) {
-          const identity = releaseIdentityHtml(basename(context.filename), gitRevision, mode === 'family-sync')
+          const identity = releaseIdentityHtml(
+            basename(context.filename),
+            gitRevision,
+            mode === 'family-sync',
+            command === 'serve' && mode === 'development',
+          )
           return identity ? html.replace(/<body\b[^>]*>/, (body) => `${body}\n    ${identity}`) : html
         },
       },

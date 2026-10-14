@@ -491,7 +491,7 @@ test('Kindergarten writing exposes an actionable error when browser playback fai
 
   const alert = page.getByRole('alert')
   await expect(alert).toContainText('Audio could not play. Try again or ask a teacher for help.')
-  await expect(alert.getByRole('button', { name: 'Try audio again' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Hear', exact: true })).toBeEnabled()
   const timer = page.locator('.timer')
   const blockedTimerValue = await timer.innerText()
   await page.waitForTimeout(1_100)

@@ -84,9 +84,17 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .practice-page.has-skywriting-response .practice-top { min-height: 38px; margin-bottom: 6px; padding: 0 6px; }
 .practice-page.has-skywriting-response .practice-progress { margin: 0 6px 8px; }
 .prompt-card.tier1-writing-card { display: grid; min-height: 0; height: 100%; padding: 10px 14px 8px; gap: 8px; overflow: hidden; }
+.prompt-card.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) { border-color: #cbd6c7; background: #eef1e8; }
 .prompt-card.tier1-writing-card.is-dictation { grid-template-rows: auto auto minmax(0, 1fr) auto; }
 .prompt-card.tier1-writing-card.is-review { grid-template-rows: auto minmax(0, 1fr) auto; }
-.tier1-writing-instructions { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 56px; text-align: left; }
+.tier1-writing-instructions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 56px; text-align: left; }
+.writing-hear-button { display: inline-grid; place-items: center; align-content: center; gap: 2px; width: 88px; height: 88px; min-width: 88px; min-height: 88px; flex: 0 0 auto; align-self: center; padding: 6px; border: 3px solid #fff; border-radius: 50%; color: #fff; background: #315b86; box-shadow: 0 0 0 2px #234565, 0 5px 0 #234565, 0 8px 12px rgb(32 57 82 / 18%); }
+.writing-hear-button svg { width: 36px; height: 36px; }
+.writing-hear-button span { font-size: 20px; font-weight: 850; line-height: 1; }
+.writing-hear-button:hover:not(:disabled) { background: #254b72; }
+.writing-hear-button:focus-visible { outline: 4px solid #2b253c; outline-offset: 6px; }
+.writing-hear-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 2px #234565, 0 3px 0 #234565; }
+.writing-hear-button:disabled { cursor: not-allowed; border-style: dashed; }
 .tier1-writing-instructions .speaker-orb { width: 43px; height: 43px; margin: 0 6px; }
 .tier1-writing-instructions .orb-ring { inset: -6px; }
 .tier1-writing-instructions h1 { font-size: 1.25rem; letter-spacing: -.04em; }
@@ -99,18 +107,38 @@ button { border: 0; font: inherit; cursor: pointer; color: inherit; }
 .tier1-review-controls .context-unavailable { margin: 0; font-size: .72rem; }
 .tier1-review-controls .answer-actions { min-width: 250px; }
 .tier1-review-controls .answer-note { grid-column: 1 / -1; margin: -3px 0 0; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .tier1-review-controls .answer-actions { grid-column: 1 / -1; width: min(100%, 570px); min-width: 0; justify-self: center; gap: 15px; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .answer-actions button { min-height: 57px; padding: 10px 14px; border: 3px solid; border-radius: 14px; color: #fff; font-size: clamp(1rem, 1.6vw, 1.125rem); font-weight: 850; gap: 9px; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .answer-actions button svg { width: 24px; height: 24px; flex-shrink: 0; stroke-width: 3; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .wrong-button { background: #a63e32; border-color: #792b24; box-shadow: 0 4px 0 #792b24; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .right-button { background: #287447; border-color: #1b5131; box-shadow: 0 4px 0 #1b5131; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .answer-actions button:focus-visible { outline: 4px solid #2b253c; outline-offset: 4px; }
+.tier1-writing-card:has(.skywriting-workspace.is-grand-scroll) .answer-actions button:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
 .tier1-writing-card .dictation-status { margin: 0 auto; max-width: none; }
 .practice-page.has-skywriting-response .practice-footnote { margin: 7px 0 0; }
+@media (min-width: 700px) and (max-width: 1099px) {
+  .tier1-writing-card.is-dictation:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .tier1-writing-audio-actions { position: relative; width: 200px; margin-right: 12px; justify-content: center; }
+  .tier1-writing-card.is-dictation:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .tier1-writing-audio-actions > .replay-button { position: absolute; right: calc(100% + 12px); align-self: center; white-space: nowrap; }
+}
+@media (min-width: 1100px) {
+  .tier1-writing-card.is-dictation:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .tier1-writing-audio-actions { position: relative; width: 180px; margin-right: 12px; justify-content: center; }
+  .tier1-writing-card.is-dictation:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .tier1-writing-audio-actions > .replay-button { position: absolute; right: calc(100% + 12px); align-self: center; white-space: nowrap; }
+  .tier1-writing-card.is-dictation:has(.skywriting-workspace.is-grand-scroll) .tier1-writing-instructions { min-height: 36px; }
+  .tier1-writing-card.is-dictation:has(.skywriting-workspace.is-grand-scroll) .tier1-writing-instructions h1 br { display: none; }
+  .tier1-writing-card.is-dictation:has(.skywriting-workspace.is-grand-scroll) .tier1-writing-instructions h1 span::before { content: " "; }
+  .tier1-writing-card.is-dictation:has(.skywriting-workspace.is-grand-scroll) .tier1-writing-instructions .practice-helper { font-size: .7rem; }
+  .tier1-writing-card.is-dictation:has(.skywriting-workspace.is-grand-scroll) .tier1-writing-instructions .speaker-orb { width: 30px; height: 30px; }
+}
 .audio-playback-error { flex-wrap: wrap; color: #a24236; }
 .audio-playback-error button { padding: 5px 8px; border-radius: 7px; color: #8f352d; background: #fff0ed; font-size: 10px; font-weight: 800; }
 @media (max-width: 800px) {
   .main-content:has(.practice-page.has-skywriting-response) { width: calc(100% - 8px); padding-top: 5px; }
   .practice-page.has-skywriting-response { height: calc(100dvh - 76px); }
   .prompt-card.tier1-writing-card { padding: 7px; border-radius: 18px; }
-  .tier1-writing-instructions { grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  .tier1-writing-instructions { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
   .tier1-writing-instructions .speaker-orb { width: 36px; height: 36px; margin-left: 2px; }
   .tier1-writing-instructions h1 { font-size: 1rem; }
-  .tier1-writing-audio-actions { grid-column: 1 / -1; justify-content: center; }
+  .tier1-writing-audio-actions { flex-direction: column; align-items: stretch; }
   .tier1-review-controls { grid-template-columns: auto minmax(0, 1fr); }
   .tier1-review-controls .answer-actions { min-width: 0; }
   .tier1-review-controls .context-box, .tier1-review-controls .context-unavailable { display: none; }

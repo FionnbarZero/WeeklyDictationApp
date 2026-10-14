@@ -1,4 +1,4 @@
-import { WritingPad, type WritingPadStateUpdater } from './WritingPad.tsx'
+import { WritingPad, type WritingPadPresentation, type WritingPadStateUpdater } from './WritingPad.tsx'
 import type { WritingPadState } from './model.ts'
 import './skywriting.css'
 
@@ -8,6 +8,8 @@ export type SkyWritingAcquisitionProps = {
   word: string
   phase: SkyWritingAcquisitionPhase
   traceTarget?: boolean
+  presentation?: WritingPadPresentation
+  pinyinPrototype?: boolean
   padState?: WritingPadState
   onPadStateChange?: (update: WritingPadStateUpdater) => void
 }
@@ -18,11 +20,11 @@ export type SkyWritingAcquisitionProps = {
  * timing, and assessment transition; this component owns only writing and
  * visual comparison.
  */
-export function SkyWritingAcquisition({ word, phase, traceTarget = true, padState, onPadStateChange }: SkyWritingAcquisitionProps) {
+export function SkyWritingAcquisition({ word, phase, traceTarget = true, presentation = 'standard', pinyinPrototype = false, padState, onPadStateChange }: SkyWritingAcquisitionProps) {
   const reviewing = phase === 'review'
   const characterCount = Math.max(1, [...word].length)
 
-  return <div className={`skywriting-workspace skywriting-acquisition${reviewing ? ' is-review' : ''}`}>
+  return <div className={`skywriting-workspace skywriting-acquisition${presentation === 'grand-scroll' ? ' is-grand-scroll' : ''}${reviewing ? ' is-review' : ''}`}>
     <section className="skywriting-child-example" aria-label={reviewing ? 'Your writing' : undefined}>
       <p className="skywriting-comparison-label" hidden={!reviewing}>Your writing</p>
       <WritingPad
@@ -31,6 +33,8 @@ export function SkyWritingAcquisition({ word, phase, traceTarget = true, padStat
         characterCount={characterCount}
         traceText={reviewing || !traceTarget ? undefined : word}
         traceFont="songti"
+        presentation={presentation}
+        pinyinPrototype={pinyinPrototype && !reviewing}
         padState={padState}
         onPadStateChange={onPadStateChange}
       />
