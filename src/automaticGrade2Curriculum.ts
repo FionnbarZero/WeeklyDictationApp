@@ -1,11 +1,12 @@
-import { createInitialState, type AppState } from './domain.ts'
 import {
   GRADE2_CURRICULUM_SOURCE_PATH,
-  parseGrade2CurriculumSnapshot,
   type Grade2CurriculumSnapshot,
+  parseGrade2CurriculumSnapshot,
 } from './curriculum/grade2CurriculumSnapshot.ts'
-import { hydrateLocalStateFromReadOnlySource } from './localHydration.ts'
 import { retainGrade2Editions } from './curriculum/grade2Revisions.ts'
+import { type AppState, createInitialState } from './domain.ts'
+import { hydrateLocalStateFromReadOnlySource } from './localHydration.ts'
+
 export { grade2WritingDatasets } from './familyBeta/grade2LessonSelection.ts'
 
 const MAX_CURRICULUM_SNAPSHOT_BYTES = 1_000_000
@@ -19,16 +20,31 @@ export function hydrateAutomaticGrade2Curriculum(
   state: AppState,
   snapshot: Grade2CurriculumSnapshot,
   retainCorrections = false,
+  options: { allowIncompleteWeeks?: boolean } = {},
 ) {
   const hydration = hydrateLocalStateFromReadOnlySource(
     retainCorrections ? createInitialState() : state,
     snapshot.presentation,
   )
-  if (hydration.batch.outcomes.some((outcome) => outcome.status === 'error' || outcome.status === 'conflict')) {
+  // The live family source may include a teacher's unfinished future slide.
+  // Its validated subset can load, but source collisions are never ignored.
+  // Reviewed standalone snapshots retain their existing strict contract.
+  if (
+    hydration.batch.outcomes.some(
+      (outcome) => outcome.status === 'conflict' || (outcome.status === 'error' && !options.allowIncompleteWeeks),
+    )
+  ) {
     throw new Error(
       'The Google Slides curriculum conflicts with existing browser lessons. Existing lessons and progress were preserved.',
     )
   }
+  if (
+    options.allowIncompleteWeeks &&
+    !hydration.batch.outcomes.some((outcome) => outcome.candidateStatus === 'valid' && outcome.dataset)
+  )
+    throw new Error(
+      'The Google Slides source has no valid weekly lessons. Existing lessons and progress were preserved.',
+    )
   return retainCorrections ? retainGrade2Editions(state, hydration.state.datasets) : hydration.state
 }
 

@@ -516,8 +516,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       }))
       .then(({ curriculum, loaded: { snapshot, datasetCount }, retirement }) => {
         if (controller.signal.aborted) return
-        const source = curriculum.hydrateAutomaticGrade2Curriculum(createInitialState(), snapshot)
-        setState((current) => curriculum.hydrateAutomaticGrade2Curriculum(current, snapshot, familyPreview))
+        const options = { allowIncompleteWeeks: familyPreview }
+        const source = curriculum.hydrateAutomaticGrade2Curriculum(createInitialState(), snapshot, false, options)
+        setState((current) => curriculum.hydrateAutomaticGrade2Curriculum(current, snapshot, familyPreview, options))
         setGrade2SourceDatasets(source.datasets)
         setGrade2CurriculumTools(curriculum)
         setLessonRetirement(retirement)
