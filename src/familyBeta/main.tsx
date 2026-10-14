@@ -286,7 +286,9 @@ function FamilyPreview() {
       if (familyId && auth.user) {
         if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
         const repository = familyResultRepository(familyId)
-        const current = () => scopeRef.current === scope && childRef.current === child.id
+        const current = () => scopeRef.current === scope && childRef.current === child.id &&
+          profilesRef.current.some(p => p.id === child.id && p.grade === child.grade && p.active)
+        const practiceSync: { conflict?: PracticeSyncConflictError } = {}
         const gameSync: { source: 'device' | 'cloud' | 'device-and-cloud' } = { source: 'device' }
         if (!await syncCompletedBeforePractice({
           isCurrent: current,
@@ -296,8 +298,17 @@ function FamilyPreview() {
           save: repository.save,
           acknowledge: acknowledgeResult,
           syncPractice: async () => {
-            await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
-              () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id))
+            try {
+              await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
+                () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id))
+            } catch (e) {
+              if (!(e instanceof PracticeSyncConflictError)) throw e
+              // A preserved conflict cannot complete practice reconciliation,
+              // but must not prevent the remaining online checks from earning
+              // first-time entry. Access/validation errors still fail closed.
+              practiceSync.conflict = e
+            }
+            if (!current()) return
             const [{ reconcileGameHistory }, { createLockedGameProgressStore }, { familyGameHistoryRepository }] =
               await Promise.all([
                 import('../ninjaSkills/gameHistory.ts'),
@@ -318,20 +329,25 @@ function FamilyPreview() {
         })) return
         const page = await repository.listPage(child.id)
         const saved = page.results
-        if (scopeRef.current !== scope) return
+        if (!current()) return
         assertSavedAttemptsMatch(saved, localStorage, RESULT_KEY)
         for (const result of saved) {
           const key = `${RESULT_KEY}:${result.id}`
           const previous = localStorage.getItem(key)
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
-        setReadyChildren(current => new Set([...current, child.id]))
         rememberOfflineFamily(localStorage, auth.user.uid, familyId, profiles, child.id)
+        setReadyChildren(current => new Set([...current, child.id]))
         if (childRef.current !== child.id) return
         // Keep the visible remote page aligned with its cursor. Newly queued
         // results remain in the outbox and appear after their confirmed refresh.
         setResults(saved)
         setHistoryCursor({ owner: `${scope}:${child.id}`, token: page.nextPageToken })
+        if (practiceSync.conflict) {
+          setError(message(practiceSync.conflict))
+          setStatus('Using this device’s saved practice. Your family account and scores are confirmed; online practice syncing is paused by a conflict. Both copies are preserved. You can continue here.')
+          return
+        }
         setStatus(`Scores, saved practice, and game detail confirmed in your private family account${
           gameSync.source === 'cloud' ? ' from this family’s online history' :
             gameSync.source === 'device-and-cloud' ? ' from this device and the family’s online history' : ''

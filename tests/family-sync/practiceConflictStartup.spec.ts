@@ -304,7 +304,7 @@ test('a saved lesson resumes and retains new reviewed work while another practic
 })
 
 for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other-grade', 'inactive'] as const) {
-  test(`practice conflict does not grant startup entry with ${invalid}`, async ({ page }) => {
+  test(`fresh online verification earns entry despite ${invalid} cached readiness`, async ({ page }) => {
     const documents: SyntheticFamilyDocuments = new Map()
     await installFamilyFixtures(page, documents)
     await page.goto('/?grade=grade2')
@@ -328,9 +328,45 @@ for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other
     )
     await page.reload()
     await expect(page.getByText(/Practice changed on both devices/)).toBeVisible()
+    await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+    await expect(page.getByText(/Your family account and scores are confirmed/)).toBeVisible()
+    expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(copies.local)
+    expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
+  })
+}
+
+for (const failure of ['game-access-denied', 'score-unavailable', 'invalid-score'] as const) {
+  test(`first-time conflict entry stays blocked when fresh verification has ${failure}`, async ({ page }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await installFamilyFixtures(page, documents)
+    await page.goto('/?grade=grade2')
+    await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
+    const copies = await seedConflict(page, documents)
+    await page.addInitScript((accessKey) => {
+      if (window !== window.top) return
+      const raw = localStorage.getItem(accessKey)
+      if (raw) localStorage.setItem(accessKey, JSON.stringify({ ...JSON.parse(raw), ready: [] }))
+    }, accessKey)
+    await page.route(
+      failure === 'game-access-denied'
+        ? `**/children/${childId}/betaGameCompletions?*`
+        : `**/children/${childId}:runQuery`,
+      (route) =>
+        route.fulfill({
+          status: failure === 'game-access-denied' ? 403 : failure === 'score-unavailable' ? 503 : 200,
+          contentType: 'application/json',
+          body: failure === 'invalid-score' ? '[{"document":{"fields":{}}}]' : '{}',
+        }),
+    )
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Retry saving', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Retry family sync', exact: true })).toBeVisible()
     await expect(page.locator('iframe')).toHaveCount(0)
+    expect(
+      await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || 'null')?.ready || [], accessKey),
+    ).not.toContain(childId)
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(copies.local)
+    expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(copies.baseline)
     expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
   })
 }

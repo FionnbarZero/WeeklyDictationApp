@@ -36,7 +36,9 @@ export function readOfflineFamily(storage: Store, uid: string): OfflineFamily | 
   }
 }
 
-/** Call only after confirmed family lookup; readiness is earned by a complete initial sync. */
+/** Call only after confirmed family lookup. A ready child requires validated
+ * practice access plus successful game/result checks. Preserved practice
+ * conflicts may defer reconciliation without blocking that confirmation. */
 export function rememberOfflineFamily(
   storage: Store,
   uid: string,
