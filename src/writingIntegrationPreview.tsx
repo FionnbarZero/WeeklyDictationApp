@@ -2,41 +2,50 @@ import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { revealAcquisition } from './acquisition/engine.ts'
 import { activityClock } from './activity/activityLifecycle.ts'
+import { writingCharacterGuides } from './application/writingAcquisition/lesson.ts'
+import {
+  createWritingCommand,
+  createWritingProgress,
+  teachingPosition,
+  type WritingCommand,
+  type WritingProgress,
+} from './application/writingAcquisition/progress.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import { playCachedWordAudio, stopActiveAudio } from './audio/promptAudio.ts'
 import type { PracticeSession, Word } from './domain.ts'
 import { ProblemReporter } from './familyBeta/ProblemReporter.tsx'
 import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
-import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
-import { StrokeTeacher } from './strokeTeacherPrototype/StrokeTeacher.tsx'
-import { FIVE_STEP_SEQUENCE } from './strokeTeacherPrototype/model.ts'
-import { writingCharacterGuides } from './application/writingAcquisition/lesson.ts'
-import {
-  createWritingProgress,
-  createWritingCommand,
-  teachingPosition,
-  type WritingCommand,
-  type WritingProgress,
-} from './application/writingAcquisition/progress.ts'
 import { openWritingStore } from './infrastructure/writingProgressStore.ts'
+import { type PracticeAnswer, PracticeView } from './practice/PracticeView.tsx'
+import { FIVE_STEP_SEQUENCE } from './strokeTeacherPrototype/model.ts'
+import { StrokeTeacher } from './strokeTeacherPrototype/StrokeTeacher.tsx'
 import {
-  writingPreviewLesson,
-  WRITING_PREVIEW_KEY,
-  WRITING_PREVIEW_OWNER,
-  WRITING_PREVIEW_VERSION,
-  WRITING_PREVIEW_POLICY,
+  IPAD_PREVIEW_KEY,
+  IPAD_PREVIEW_VERSION,
   REFINEMENT_PREVIEW_KEY,
   REFINEMENT_PREVIEW_POLICY,
   REFINEMENT_PREVIEW_VERSION,
+  WRITING_PREVIEW_KEY,
+  WRITING_PREVIEW_OWNER,
+  WRITING_PREVIEW_POLICY,
+  WRITING_PREVIEW_VERSION,
+  writingPreviewLesson,
 } from './writingAcquisition/previewLesson.ts'
+import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import './styles.css'
 import './strokeTeacherPrototype/preview.css'
 import './writingAcquisition/refinementPreview.css'
+import './writingAcquisition/ipadPreview.css'
 
-const refinement = import.meta.env.MODE === 'writing-refinement-preview'
-const previewKey = refinement ? REFINEMENT_PREVIEW_KEY : WRITING_PREVIEW_KEY
+const ipadPreview = import.meta.env.MODE === 'writing-ipad-preview'
+const refinement = import.meta.env.MODE === 'writing-refinement-preview' || ipadPreview
+const previewKey = ipadPreview ? IPAD_PREVIEW_KEY : refinement ? REFINEMENT_PREVIEW_KEY : WRITING_PREVIEW_KEY
 const previewPolicy = refinement ? REFINEMENT_PREVIEW_POLICY : WRITING_PREVIEW_POLICY
-const previewVersion = refinement ? REFINEMENT_PREVIEW_VERSION : WRITING_PREVIEW_VERSION
+const previewVersion = ipadPreview
+  ? IPAD_PREVIEW_VERSION
+  : refinement
+    ? REFINEMENT_PREVIEW_VERSION
+    : WRITING_PREVIEW_VERSION
 
 type PreviewStore = ReturnType<typeof openWritingStore>
 function openPreview() {
@@ -107,6 +116,10 @@ function Preview() {
 
   async function begin(sample = false) {
     if (busy.current) return
+    if (ipadPreview) {
+      stopActiveAudio()
+      enablePreviewSpeechFromTap()
+    }
     busy.current = true
     try {
       const opened = await withScrollsWrite(previewKey, openPreview)
@@ -193,10 +206,16 @@ function Preview() {
       : previewSession
   return (
     <div
-      className={`${teaching ? 'st-original-stage' : 'app-shell'}${refinement ? ' writing-refinement-preview' : ''}`}
+      className={`${teaching ? 'st-original-stage' : 'app-shell'}${refinement ? ' writing-refinement-preview' : ''}${ipadPreview ? ' writing-ipad-preview' : ''}`}
       data-report-grade="Grade 2"
       data-report-screen="Writing integration preview"
-      data-report-revision={refinement ? 'writing-preview-v7-trace-independent' : 'writing-preview-v6-five-step'}
+      data-report-revision={
+        ipadPreview
+          ? 'writing-preview-v8-ipad'
+          : refinement
+            ? 'writing-preview-v7-trace-independent'
+            : 'writing-preview-v6-five-step'
+      }
       data-report-week={progress?.lesson.dataset.dateRange}
     >
       <header className="st-preview-banner">

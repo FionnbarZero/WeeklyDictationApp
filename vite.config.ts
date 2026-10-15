@@ -71,7 +71,8 @@ function releaseIdentityHtml(fileName: string, gitRevision: string, familySync =
 
 export default defineConfig(({ command, mode }) => {
   const strokeTeacherPreview = mode === 'stroke-teacher-preview'
-  const writingRefinementPreview = mode === 'writing-refinement-preview'
+  const writingIpadPreview = mode === 'writing-ipad-preview'
+  const writingRefinementPreview = mode === 'writing-refinement-preview' || writingIpadPreview
   const writingIntegrationPreview = mode === 'writing-integration-preview' || writingRefinementPreview
   const isolatedWritingPreview = strokeTeacherPreview || writingIntegrationPreview
   const familyBetaGrade = process.env.VITE_FAMILY_BETA_GRADE
@@ -122,13 +123,15 @@ export default defineConfig(({ command, mode }) => {
       },
     ],
     build: {
-      outDir: writingRefinementPreview
-        ? 'writing-refinement-preview-dist'
-        : writingIntegrationPreview
-          ? 'writing-five-step-preview-dist'
-          : strokeTeacherPreview
-            ? 'stroke-teacher-preview-dist'
-            : 'dist',
+      outDir: writingIpadPreview
+        ? 'writing-ipad-preview-dist'
+        : writingRefinementPreview
+          ? 'writing-refinement-preview-dist'
+          : writingIntegrationPreview
+            ? 'writing-five-step-preview-dist'
+            : strokeTeacherPreview
+              ? 'stroke-teacher-preview-dist'
+              : 'dist',
       manifest: true,
       rollupOptions: {
         // Consolidate shared icon modules instead of weakening the canonical

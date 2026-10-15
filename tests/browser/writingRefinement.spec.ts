@@ -1,19 +1,22 @@
-import { expect, test } from './fixtures.ts'
 import type { Page } from '@playwright/test'
 import {
-  createWritingProgress,
   advanceWritingProgress,
+  createWritingProgress,
   teachingPosition,
 } from '../../src/application/writingAcquisition/progress.ts'
-import {
-  writingPreviewLesson,
-  REFINEMENT_PREVIEW_POLICY,
-  REFINEMENT_PREVIEW_KEY,
-  WRITING_PREVIEW_OWNER,
-  WRITING_PREVIEW_KEY,
-} from '../../src/writingAcquisition/previewLesson.ts'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import {
+  IPAD_PREVIEW_KEY,
+  REFINEMENT_PREVIEW_POLICY,
+  REFINEMENT_PREVIEW_KEY as V7_PREVIEW_KEY,
+  WRITING_PREVIEW_KEY,
+  WRITING_PREVIEW_OWNER,
+  writingPreviewLesson,
+} from '../../src/writingAcquisition/previewLesson.ts'
+import { expect, test } from './fixtures.ts'
+
+const REFINEMENT_PREVIEW_KEY = process.env.WRITING_IPAD_PREVIEW ? IPAD_PREVIEW_KEY : V7_PREVIEW_KEY
 
 async function audio(page: Page) {
   await page.addInitScript(() => {

@@ -1,7 +1,7 @@
 import snapshot from '../../public/curriculum/grade2-presentation.json' with { type: 'json' }
-import { parseSlide } from '../slidesImporter.ts'
-import { createWritingLesson } from '../application/writingAcquisition/lesson.ts'
 import type { WritingLesson } from '../application/writingAcquisition/contracts.ts'
+import { createWritingLesson } from '../application/writingAcquisition/lesson.ts'
+import { parseSlide } from '../slidesImporter.ts'
 
 /** The preserved teacher-source week used by approved v4, in its original order. */
 export function writingPreviewLesson(policy?: WritingLesson['policy']) {
@@ -21,3 +21,6 @@ export const REFINEMENT_PREVIEW_VERSION =
   'Grade 2 writing preview 7 · Large scrolls · Trace → independent → distractors'
 export const REFINEMENT_PREVIEW_KEY = 'ninja-writing-integration-preview-v7:synthetic-owner'
 export const REFINEMENT_PREVIEW_POLICY = 'grade2-trace-independent-preview-v7' as const
+
+export const IPAD_PREVIEW_KEY = 'ninja-writing-integration-preview-v8:synthetic-owner'
+export const IPAD_PREVIEW_VERSION = 'Grade 2 preview 8 · iPad scrolls & audio'
