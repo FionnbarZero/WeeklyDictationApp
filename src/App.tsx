@@ -261,6 +261,7 @@ export function App({ now = () => new Date(), manualTestDateLabel }: { now?: App
 
 function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const [writingPilot, setWritingPilot] = useState<typeof import('./application/writingAcquisition/pilot.ts') | null>(null)
+  const writingLaunch = useRef<ReturnType<typeof import('./application/writingAcquisition/confirmedLaunch.ts').createConfirmedWritingLaunch> | null>(null)
   const writingCommit = useRef<ReturnType<typeof import('./application/writingAcquisition/confirmedTransition.ts').createConfirmedWritingTransition<AppState>> | null>(null)
   const writingAnswer = useRef<Extract<ReturnType<typeof recordPracticeAnswerOperation>, { status: 'writing-ready' }> | null>(null)
   const writingBusy = useRef(false)
@@ -315,7 +316,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   const session = activeExperience?.kind === 'practice' ? activeExperience.session : null
   const readingPathway = activeExperience?.kind === 'reading' ? activeExperience.pathway : null
   const view: View = activeExperience?.kind === 'practice' ? 'practice' : activeExperience ? 'reading' : baseView
-  const activityControlsLocked = activeExperience !== null || practiceStartInFlight
+  const activityControlsLocked = activeExperience !== null || practiceStartInFlight || Boolean(writingLaunch.current?.pending)
   const setSession = useCallback(
     (next: PracticeSession | null | ((current: PracticeSession | null) => PracticeSession | null)) => {
       setActiveExperience((current) => {
@@ -648,8 +649,14 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       const id = createSessionId()
       const cloud = Boolean(auth.user && cloudScope)
       let pilot: typeof import('./application/writingAcquisition/pilot.ts') | undefined
-      if (familyPreview && import.meta.env.VITE_GRADE2_WRITING_PILOT === 'true' &&
-        selectedChild.grade === 'Grade 2' && target?.phase === 'acquisition' && !externalPrimary) {
+      const useWritingPilot = familyPreview && import.meta.env.VITE_GRADE2_WRITING_PILOT === 'true' &&
+        selectedChild.grade === 'Grade 2' && target?.phase === 'acquisition' && !externalPrimary
+      if (writingLaunch.current?.pending && !useWritingPilot) {
+        setCloudError('Retry Learn to Write before starting another activity. Your pending lesson is preserved.')
+        setPracticeStartInFlight(false)
+        return
+      }
+      if (useWritingPilot) {
         try { pilot = await import('./application/writingAcquisition/pilot.ts') }
         catch (error) {
           setCloudError(`The writing teacher could not load. No lesson was started: ${authErrorMessage(error)}`)
@@ -660,45 +667,49 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       if (pilot) {
         setWritingPilot(pilot)
         writingCommit.current ||= pilot.createConfirmedWritingTransition<AppState>()
+        writingLaunch.current ||= pilot.createConfirmedWritingLaunch()
       }
-      let expected = state
-      const result = await import('./application/practice/startPractice.ts').then(({ startPractice: startPracticeOperation }) => startPracticeOperation({
-        state,
-        writingPilot: pilot,
-        resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
-        child: selectedChild,
-        target,
-        externalPrimary,
-        primaryDatasets,
-        lifecycleResolution,
-        sessionId: id,
-        startedAt: now(),
-        writingTimestamp: pilot ? new Date().toISOString() : undefined,
-        formatError: authErrorMessage,
-        persistence: {
-          cloud,
-          saveLocalState: pilot && sharedWorkspace ? next => {
-            const saved = sharedWorkspace.save(expected, next, false)
-            if (saved) expected = next
-            return saved
-          } : practicePersistence.local.saveState,
-          journalWarmup: practicePersistence.warmup.journal,
-          acknowledgeWarmup: practicePersistence.warmup.acknowledge,
-          ensureWarmupSeed: cloud
-            ? (visit, mastery, rotations) =>
-                practicePersistence.warmup.ensureSeed(cloudScope!, visit, mastery, rotations)
-            : undefined,
-          commitWarmupTransition: cloud
-            ? (transition) => practicePersistence.warmup.commit(cloudScope!, transition)
-            : undefined,
-          startCloudSession: cloud ? (input) => practicePersistence.sessions.start(cloudScope!, input) : undefined,
-          journalAcquisition: practicePersistence.acquisition.journal,
-          acknowledgeAcquisition: practicePersistence.acquisition.acknowledge,
-          commitAcquisitionCheckpoint: cloud
-            ? (envelope, checkpoint) => practicePersistence.acquisition.commit(cloudScope!, envelope, checkpoint)
-            : undefined,
-        },
-      })).catch((error) => ({ status: 'blocked' as const, message: authErrorMessage(error), state: undefined })).finally(() => setPracticeStartInFlight(false))
+      const result = await import('./application/practice/startPractice.ts').then(({ startPractice: startPracticeOperation }) => {
+        const input: Parameters<typeof startPracticeOperation>[0] = {
+          state,
+          writingPilot: pilot,
+          resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
+          child: selectedChild,
+          target,
+          externalPrimary,
+          primaryDatasets,
+          lifecycleResolution,
+          sessionId: id,
+          startedAt: now(),
+          writingTimestamp: pilot ? new Date().toISOString() : undefined,
+          formatError: authErrorMessage,
+          persistence: {
+            cloud,
+            saveLocalState: practicePersistence.local.saveState,
+            journalWarmup: practicePersistence.warmup.journal,
+            acknowledgeWarmup: practicePersistence.warmup.acknowledge,
+            ensureWarmupSeed: cloud
+              ? (visit, mastery, rotations) =>
+                  practicePersistence.warmup.ensureSeed(cloudScope!, visit, mastery, rotations)
+              : undefined,
+            commitWarmupTransition: cloud
+              ? (transition) => practicePersistence.warmup.commit(cloudScope!, transition)
+              : undefined,
+            startCloudSession: cloud ? (input) => practicePersistence.sessions.start(cloudScope!, input) : undefined,
+            journalAcquisition: practicePersistence.acquisition.journal,
+            acknowledgeAcquisition: practicePersistence.acquisition.acknowledge,
+            commitAcquisitionCheckpoint: cloud
+              ? (envelope, checkpoint) => practicePersistence.acquisition.commit(cloudScope!, envelope, checkpoint)
+              : undefined,
+          },
+        }
+        if (!pilot) return startPracticeOperation(input)
+        if (!sharedWorkspace || !writingLaunch.current) throw new Error('The writing workspace is unavailable. No lesson was started.')
+        const key = JSON.stringify([selectedChild.id, target!.dataset.id, requestedWritingLesson?.progressionId || 'current'])
+        return writingLaunch.current.start(key, input, (before, next) =>
+          pilot.withScrollsWrite(`writing:${selectedChild.id}`, () => sharedWorkspace.save(before, next, false)),
+        )
+      }).catch((error) => ({ status: 'blocked' as const, message: authErrorMessage(error), state: undefined })).finally(() => setPracticeStartInFlight(false))
       if (result.status !== 'started' && externalPrimary) {
         strokeWarmupReady.current = null
         setStrokeWarmupOpen(false)
@@ -724,6 +735,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       }
       completedSessionRef.current = null
       setCompletedSummary(null)
+      if (pilot) setCloudError(null)
       if (result.warning) setCloudError(result.warning)
       setSession(result.session)
     },
@@ -777,7 +789,13 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     stopActiveAudio()
     ready?.()
   }, [strokeWarmupOpen, session?.segment, setSession])
+  const writingLaunchNeedsRetry = () => {
+    if (!writingLaunch.current?.pending) return false
+    setCloudError('Retry Learn to Write before starting another activity. Your pending lesson is preserved.')
+    return true
+  }
   const startReading = (pathway: Tier2ReadingPathway) => {
+    if (writingLaunchNeedsRetry()) return
     setShowChildMenu(false)
     setCompletedSummary(null)
     setReadingPathway(pathway)
@@ -1179,6 +1197,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     } finally { writingBusy.current = false }
   }
   const navigate = (nextView: BaseView) => {
+    if (writingLaunchNeedsRetry()) return
     stopActiveAudio()
     if (view === 'practice') {
       leavePractice(nextView)
@@ -1422,7 +1441,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               currentDate={currentDate}
               lifecycleResolution={lifecycleResolution}
               onStart={(target) => void startPractice(target)}
-              onStartStrokeOrder={(target) => setActiveExperience({ kind: 'stroke-order', target })}
+              onStartStrokeOrder={(target) => { if (!writingLaunchNeedsRetry()) setActiveExperience({ kind: 'stroke-order', target }) }}
               onStrokeOrderWarmup={(dataset, ready) => {
                 if (practiceStartInFlight || !lessonRetirement || !selectedChild || !lifecycleResolution) return
                 strokeWarmupReady.current = ready

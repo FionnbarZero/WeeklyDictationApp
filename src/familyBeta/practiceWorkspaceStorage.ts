@@ -3,7 +3,7 @@
 import { type AppState, isAppState } from '../domain.ts'
 import { partitionActivityCheckpoints } from './workspaceActivityPartition.ts'
 import { partitionWorkspaceState, WORKSPACE_CHECKPOINT_FIELDS, WORKSPACE_STATE_FIELDS } from './workspacePartition.ts'
-import { validateWritingActivity } from './writingCheckpoint.ts'
+import { validateWritingActivity, writingPayload } from './writingCheckpoint.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
@@ -373,7 +373,9 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
       if (name !== stateKey) {
         const records = { ...value.records, [name]: item }
         write({ ...value, records }, raw)
-        baselineRecords = records
+        // This writer submitted only the journal. Seeing newer activity bytes
+        // while preserving them does not mean its in-memory lesson adopted them.
+        baselineRecords = { ...baselineRecords, [name]: item }
         return
       }
       const incoming = stateRecords(baselineRecords, childId, item)
@@ -413,6 +415,11 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
           if (writingRecord && current !== before && current !== next) throw new Error(failure)
           if (writingRecord && current && JSON.parse(current).schema === 2 && JSON.parse(next).schema !== 2)
             throw new Error(failure)
+          if (writingRecord && current) {
+            const savedWriting = writingPayload(current)
+            const nextWriting = writingPayload(next)
+            if (savedWriting && nextWriting && savedWriting.revision > nextWriting.revision) throw new Error(failure)
+          }
           const currentRevision = isActivityKey(recordKey) ? activityRevision(records[recordKey]) : null
           const incomingRevision = isActivityKey(recordKey) ? activityRevision(next) : null
           if (currentRevision !== null && incomingRevision !== null && currentRevision > incomingRevision) continue
@@ -420,7 +427,10 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
         }
       }
       write({ ...value, records }, raw)
-      baselineRecords = records
+      // Track the caller's submitted snapshot, not other activities merely
+      // carried forward from disk. Otherwise an unchanged save authorizes a
+      // later stale fork to overwrite teaching steps the caller never adopted.
+      baselineRecords = incoming
     },
     removeItem: (name) => {
       if (isInternalKey(name)) throw new Error(failure)

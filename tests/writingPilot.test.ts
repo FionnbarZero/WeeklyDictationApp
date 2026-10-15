@@ -31,8 +31,8 @@ const persistence = {
   acknowledgeAcquisition() {},
 }
 const fresh = (): AppState => ({ ...createInitialState(), datasets: [dataset] })
-async function launch(state = fresh(), enabled = true) {
-  return startPractice({
+function launchInput(state = fresh(), enabled = true): Parameters<typeof startPractice>[0] {
+  return {
     state,
     child: { id: 'pilot-child', grade: 'Grade 2', schoolYear: '2026–2027' },
     target: { dataset, phase: 'acquisition' },
@@ -42,7 +42,10 @@ async function launch(state = fresh(), enabled = true) {
     startedAt: date,
     persistence,
     writingPilot: enabled ? pilot : undefined,
-  })
+  }
+}
+async function launch(state = fresh(), enabled = true) {
+  return startPractice(launchInput(state, enabled))
 }
 function memory() {
   const records = new Map<string, string>()
@@ -132,6 +135,22 @@ test('real application completes all characters and all targets with the normal 
     assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0]), null)
     assert.deepEqual(reopened.state.results, state.results)
   }
+  // The resumed DT checkpoint is also prepared and confirmed as one launch.
+  const writer = pilot.createConfirmedWritingLaunch()
+  const input = launchInput(state)
+  const candidates: AppState[] = []
+  const save = (_before: AppState, next: AppState) => {
+    candidates.push(next)
+    return candidates.length > 1
+  }
+  assert.equal((await writer.start('resume', input, save)).status, 'blocked')
+  const resumed = await writer.start('resume', { ...input, sessionId: 'must-not-replace-original' }, save)
+  assert.equal(resumed.status, 'started')
+  if (resumed.status !== 'started') return
+  assert.equal(candidates[0], candidates[1])
+  assert.equal(resumed.session.id, input.sessionId)
+  assert.equal(resumed.state.writingAcquisitionProgress![0].revision, state.writingAcquisitionProgress![0].revision + 1)
+  assert.deepEqual(resumed.state.results, state.results)
 })
 
 test('legacy in-progress target is not restarted; only subsequent new targets receive teaching', async () => {
@@ -143,6 +162,70 @@ test('legacy in-progress target is not restarted; only subsequent new targets re
   if (opened.status !== 'started') return
   assert.equal(opened.state.writingAcquisitionProgress![0].firstTeacherTargetIndex, 1)
   assert.equal(teachingPosition(opened.state.writingAcquisitionProgress![0]), null)
+})
+
+test('launch confirms Warmup eligibility changes with writing, without intermediate writes or journal acknowledgements', async () => {
+  const mastered = {
+    ...dataset,
+    id: 'mastered-week',
+    startDate: '2026-09-01',
+    endDate: '2026-09-04',
+    words: ['天', '月', '日'].map((text, index) => ({
+      ...dataset.words[0],
+      id: `mastered-${index}`,
+      datasetId: 'mastered-week',
+      text,
+    })),
+  }
+  const state = { ...fresh(), datasets: [mastered, dataset] }
+  const input = {
+    ...launchInput(state),
+    primaryDatasets: state.datasets,
+    lifecycleResolution: {
+      ...resolveDatasetLifecycles(state.datasets, date),
+      mastered: [mastered],
+      lifecycleByDatasetId: { [mastered.id]: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+    },
+  }
+  const opened = await startPractice(input)
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  assert.ok(opened.session.queue.length > 0)
+  const before = opened.state
+  const launcher = pilot.createConfirmedWritingLaunch()
+  const retryInput = {
+    ...input,
+    state: before,
+    sessionId: 'warmup-resume',
+    lifecycleResolution: {
+      ...input.lifecycleResolution,
+      mastered: [],
+      lifecycleByDatasetId: {
+        [mastered.id]: 'test-review' as const,
+        [dataset.id]: 'acquisition' as const,
+      },
+    },
+    persistence: {
+      ...persistence,
+      saveLocalState: () => assert.fail('No intermediate writes'),
+      journalWarmup: () => assert.fail('No journal before combined confirmation'),
+      acknowledgeWarmup: () => assert.fail('No acknowledgement before combined confirmation'),
+    },
+  }
+  const candidates: AppState[] = []
+  const save = (_base: AppState, next: AppState) => {
+    candidates.push(next)
+    return candidates.length > 1
+  }
+  assert.equal((await launcher.start('lesson', retryInput, save)).status, 'blocked')
+  const result = await launcher.start('lesson', retryInput, save)
+  assert.equal(result.status, 'started')
+  if (result.status !== 'started') return
+  assert.equal(candidates[0], candidates[1])
+  assert.equal(result.state.warmupVisitsV1![0].nextPosition, opened.session.queue.length)
+  assert.ok(result.state.warmupTransitionReceiptsV1!.length > (before.warmupTransitionReceiptsV1?.length || 0))
+  assert.deepEqual(result.state.writingAcquisitionProgress, before.writingAcquisitionProgress)
+  assert.deepEqual(result.state.results, before.results)
+  assert.deepEqual(result.state.warmupAttemptsV1 || [], before.warmupAttemptsV1 || [])
 })
 
 test('schema-2 combined checkpoint round trips, transfers, and rejects an equal-acquisition-revision stale writer', async () => {
@@ -174,6 +257,54 @@ test('schema-2 combined checkpoint round trips, transfers, and rejects an equal-
   receiver.commit()
   assert.deepEqual(JSON.parse(practiceWorkspaceStorage(remote, child).getItem(key)!), JSON.parse(JSON.stringify(next)))
   assert.doesNotMatch(raw, /learnerInk|handwriting|data:audio|strokePath/)
+})
+
+for (const interleaving of ['unchanged state', 'journal'] as const) {
+  test(`an intervening ${interleaving} save cannot authorize stale teaching writes`, async () => {
+    const opened = await launch()
+    if (opened.status !== 'started') throw new Error('Fixture failed')
+    const disk = memory(),
+      key = 'weekly-dictation-state-v2',
+      child = 'pilot-child'
+    const first = practiceWorkspaceStorage(disk, child)
+    first.setItem(key, JSON.stringify(opened.state))
+    const second = practiceWorkspaceStorage(disk, child)
+    const owner = createSharedWorkspace(opened.state, second, key)
+    const session = primaryStartState(opened.session)
+    let newer = opened.state
+    for (let step = 0; step < 4; step++) newer = pilot.completeStep(newer, session, step, '2026-10-01T16:01:00.000Z')
+    first.setItem(key, JSON.stringify(newer))
+    if (interleaving === 'unchanged state') assert.equal(owner.save(opened.state, opened.state, false), true)
+    else second.setItem('weekly-dictation-warmup-pending-v1', '[]')
+    const retained = disk.getItem(practiceWorkspaceKey(child))
+    let stale = opened.state
+    // Lower, equal and higher revisions from the unseen fork must all fail.
+    for (let step = 0; step < 5; step++) {
+      stale = pilot.completeStep(stale, session, step, '2026-10-01T16:02:00.000Z')
+      assert.equal(owner.save(opened.state, stale, false), false, `stale revision ${step + 1}`)
+      assert.equal(owner.getSnapshot().state, opened.state)
+      assert.equal(disk.getItem(practiceWorkspaceKey(child)), retained)
+    }
+    const continued = pilot.completeStep(newer, session, 4, '2026-10-01T16:03:00.000Z')
+    first.setItem(key, JSON.stringify(continued))
+    assert.equal(JSON.parse(first.getItem(key)!).writingAcquisitionProgress[0].revision, 5)
+  })
+}
+
+test('a writer that observed newer teaching cannot roll its outer revision backward', async () => {
+  const opened = await launch()
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  const disk = memory(),
+    key = 'weekly-dictation-state-v2'
+  const writer = practiceWorkspaceStorage(disk, 'pilot-child')
+  writer.setItem(key, JSON.stringify(opened.state))
+  const newer = pilot.completeStep(opened.state, primaryStartState(opened.session), 0, date.toISOString())
+  writer.setItem(key, JSON.stringify(newer))
+  const retained = disk.getItem(practiceWorkspaceKey('pilot-child'))
+  assert.throws(() => writer.setItem(key, JSON.stringify(opened.state)), /preserved/)
+  assert.equal(disk.getItem(practiceWorkspaceKey('pilot-child')), retained)
+  writer.setItem(key, JSON.stringify(newer))
+  assert.equal(disk.getItem(practiceWorkspaceKey('pilot-child')), retained)
 })
 
 test('failed saves never advance the owner; lost readback retries exact bytes, not a new milestone', () => {
@@ -219,6 +350,95 @@ test('failed saves never advance the owner; lost readback retries exact bytes, n
   assert.equal(writer.pending, false)
   assert.equal(disk.getItem('test'), bytes)
 })
+
+for (const failure of ['write', 'adapter readback', 'owner readback'] as const) {
+  test(`initial launch retains its session and exact candidate after a failed ${failure}`, async () => {
+    const disk = memory(),
+      child = 'pilot-child',
+      key = 'weekly-dictation-state-v2'
+    let armed = false,
+      failed = false,
+      readsAfterWrite: number | null = null,
+      prepares = 0
+    const storage = {
+      ...disk,
+      getItem(name: string) {
+        if (name === practiceWorkspaceKey(child) && readsAfterWrite !== null) {
+          readsAfterWrite++
+          if (readsAfterWrite === (failure === 'adapter readback' ? 1 : 2) && !failed) {
+            failed = true
+            throw new Error('Synthetic lost confirmation')
+          }
+        }
+        return disk.getItem(name)
+      },
+      setItem(name: string, raw: string) {
+        if (armed && name === practiceWorkspaceKey(child) && failure === 'write' && !failed) {
+          failed = true
+          throw new Error('Synthetic write failure')
+        }
+        disk.setItem(name, raw)
+        if (armed && name === practiceWorkspaceKey(child) && failure !== 'write') readsAfterWrite = 0
+      },
+    }
+    const adapter = practiceWorkspaceStorage(storage, child)
+    const before = fresh()
+    adapter.setItem(key, JSON.stringify(before))
+    const owner = createSharedWorkspace(before, adapter, key)
+    const launcher = pilot.createConfirmedWritingLaunch()
+    const input = {
+      ...launchInput(before),
+      writingPilot: {
+        ...pilot,
+        prepare: (...args: Parameters<typeof pilot.prepare>) => {
+          prepares++
+          return pilot.prepare(...args)
+        },
+      },
+      persistence: {
+        ...persistence,
+        saveLocalState: () => {
+          throw new Error('No intermediate state may be written')
+        },
+      },
+    }
+    const candidates: AppState[] = []
+    const save = (base: AppState, next: AppState) => {
+      candidates.push(next)
+      return owner.save(base, next, false)
+    }
+    armed = true
+    assert.equal((await launcher.start('lesson', input, save)).status, 'blocked')
+    assert.equal(launcher.pending, true)
+    assert.equal(owner.getSnapshot().state, before)
+    assert.equal(prepares, 1)
+    const retained = disk.getItem(practiceWorkspaceKey(child))
+    assert.equal((await launcher.start('another-lesson', input, save)).status, 'blocked')
+    assert.equal((await launcher.start('lesson', { ...input, state: { ...before } }, save)).status, 'blocked')
+    assert.equal(disk.getItem(practiceWorkspaceKey(child)), retained)
+    assert.equal(candidates.length, 1)
+    const retried = await launcher.start(
+      'lesson',
+      {
+        ...input,
+        sessionId: 'new-click-must-not-regenerate',
+        startedAt: new Date(date.getTime() + 1000),
+        writingTimestamp: new Date(date.getTime() + 1000).toISOString(),
+      },
+      save,
+    )
+    assert.equal(retried.status, 'started')
+    if (retried.status !== 'started') return
+    assert.equal(retried.session.id, input.sessionId)
+    assert.equal(retried.session.startedAt, input.startedAt.toISOString())
+    assert.equal(prepares, 1)
+    assert.equal(candidates[0], candidates[1])
+    assert.equal(retried.state, candidates[0])
+    assert.equal(launcher.pending, false)
+    assert.deepEqual(JSON.parse(adapter.getItem(key)!), JSON.parse(JSON.stringify(retried.state)))
+    if (failure !== 'write') assert.equal(disk.getItem(practiceWorkspaceKey(child)), retained)
+  })
+}
 
 test('teaching milestones choose an intact sync copy without inventing reviewed answers; skew/legacy conflicts block', async () => {
   const opened = await launch()

@@ -3,6 +3,7 @@ import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../a
 import { acquisitionDigest } from '../../acquisition/persistence/identity.ts'
 import { createWritingLesson } from './lesson.ts'
 export { createConfirmedWritingTransition } from './confirmedTransition.ts'
+export { createConfirmedWritingLaunch } from './confirmedLaunch.ts'
 export { withScrollsWrite } from '../../familyBeta/scrollsCompletion.ts'
 import {
   advanceWritingProgress,

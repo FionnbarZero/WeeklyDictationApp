@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-async function launch(page: Page, beforeSkip?: () => Promise<void>) {
+async function openDojo(page: Page) {
   await page.goto('/family-beta-preview.html?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
@@ -32,12 +32,64 @@ async function launch(page: Page, beforeSkip?: () => Promise<void>) {
     await expect(page.locator('iframe:visible')).toHaveAttribute('src', /week=2026-09-29/)
   }
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+  return frame
+}
+
+async function launch(page: Page, beforeSkip?: () => Promise<void>) {
+  const frame = await openDojo(page)
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
   await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
   await beforeSkip?.()
   await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
   return frame
 }
+
+test('Start retries the exact initial checkpoint after a lost save confirmation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const get = Storage.prototype.getItem,
+      set = Storage.prototype.setItem
+    let failRead = false,
+      failed = false
+    const writes: string[] = []
+    Object.assign(window, { writingLaunchWrites: writes })
+    Storage.prototype.getItem = function (key) {
+      if (key === 'family-beta-activity:preview-1:lesson-workspace-v1' && failRead) {
+        failRead = false
+        throw new Error('Synthetic initial save readback failure')
+      }
+      return get.call(this, key)
+    }
+    Storage.prototype.setItem = function (key, raw) {
+      set.call(this, key, raw)
+      if (key !== 'family-beta-activity:preview-1:lesson-workspace-v1') return
+      const records = JSON.parse(raw).records as Record<string, string>
+      if (
+        !Object.entries(records).some(
+          ([name, value]) =>
+            name.startsWith('weekly-dictation-checkpoint-v1:activity:') && JSON.parse(value).schema === 2,
+        )
+      )
+        return
+      writes.push(raw)
+      if (!failed) {
+        failed = true
+        failRead = true
+      }
+    }
+  })
+  const frame = await openDojo(page)
+  const start = frame.getByRole('button', { name: 'Learn to Write', exact: true })
+  await start.click()
+  await expect(frame.getByText(/could not (?:be saved|save its initial progress record)/).first()).toBeVisible()
+  await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toHaveCount(0)
+  await start.click()
+  await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
+  const writes = await page.evaluate(() => (window as unknown as { writingLaunchWrites: string[] }).writingLaunchWrites)
+  expect(writes.length).toBeGreaterThanOrEqual(2)
+  expect(writes[1]).toBe(writes[0])
+  await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+})
 
 async function drawRemaining(page: Page, frame: FrameLocator, character: string) {
   const strokes = strokeOrderGuide({ id: 'pilot-guide', text: character }).strokes
