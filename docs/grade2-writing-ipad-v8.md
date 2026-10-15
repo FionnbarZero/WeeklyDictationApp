@@ -25,6 +25,18 @@ Node 24.22.0: 1,124 unit tests, typecheck, full lint and isolated build pass. Te
 
 Earlier non-acceptance evidence: `/tmp/ninja-writing-v8-initial-fixture-failure` (test fixture omitted canonical timestamp milliseconds), `/tmp/ninja-writing-v8-ipad-recheck` (a reused test server exited mid-run), `/tmp/ninja-writing-v8-short-landscape-failure` (short landscape still too small; subsequently compacted navigation and repeated footers). No production defect was concealed by relaxing the size check.
 
-## Test scope and limitations
+## Publication evidence
+
+- Source: **`421fc2a9ec32997c4376c700dbcd9b5062aa74a9`**. Rebuilding after the source commit changed the HTML identity only; JS/CSS remained byte-identical to the locally tested files.
+- URL: https://weekly-dictation-staging--writing-ipad-v8-zwy4olph.web.app/
+- Firebase project/site `weekly-dictation-staging`, new channel `writing-ipad-v8`, version `bdc5fcecc2176acf`, release `1792086859320000`.
+- Expires **November 14, 2026 at 17:54:17 UTC**. Deployed once using the pinned Firebase CLI and `--no-authorized-domains`; no security/auth/DNS/database writes.
+- HTTPS root rewrite, source marker, all five public files and all six headers match the retained package exactly. JS SHA-256: `5d3ffdf55e9e672c9cf341922febb76ff87006a304c785b7ec3648e991f6e69a`; CSS SHA-256: `73d55b89788bd9d5e5ee2ad340e8bac1d4aed7caa9dabe4dead11bbab5f05a84`.
+- Before/after provider checks confirm unchanged v7 `e863f6ec952d2e83`, v4 `80c63f7b7d2d5602`, and staging live `821ef068daa808cb`. No Cloudflare/canonical operation occurred.
+- All 10 local Chromium cases and four local WebKit cases passed. Safari-engine measurements confirm the same drawing widths; browser viewport simulation and gesture mocks do not establish physical iPad speaker or Pencil acceptance.
+- All four hosted WebKit cases pass (29.7 seconds). The exact gesture-gated Start test deliberately fails against frozen hosted v7 (no speech start), while passing on v8, including fresh reload/resume. Expected v7 failure evidence: `/tmp/ninja-writing-v7-expected-audio-regression`; hosted WebKit evidence: `/tmp/ninja-writing-v8-hosted-webkit-results`. This is a controlled reproduction of the permission boundary, not a remote inspection of the owner's iPad.
+- All **10 hosted Chromium cases pass (2.0 minutes)** against exact source `421fc2a`, including the complete teacher-to-acquisition flow and next-word recurrence. Results: `writing-ipad-hosted-test-results/`. The isolated preview is ready for the bounded physical-device check below; no independent whole-app integration review or physical audio acceptance is claimed.
+
+## Owner handoff
 
 Grade 2 synthetic prototype, not a canonical app release. Allow 5–8 minutes on iPad: tap Start, verify the word speaks without tapping Hear, complete both characters into tracing, check larger landscape pads and direct-over-pad instructions, rotate to portrait, try one trace → one independent → distractors, then Report and Exit/resume. Record issues through Report a problem without child-identifying information. Also check laptop controls for regressions. Do not clear browser data. New-site progress is separate; local-browser saving does not sync between devices and unfinished ink is temporary. Revised correction, target editing, cloud integration and the full Warmup lifecycle remain unfinished. Owner approval is still required before whole-app integration.
