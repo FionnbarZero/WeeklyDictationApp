@@ -9,6 +9,7 @@ import { ProblemReporter } from './familyBeta/ProblemReporter.tsx'
 import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { StrokeTeacher } from './strokeTeacherPrototype/StrokeTeacher.tsx'
+import { FIVE_STEP_SEQUENCE } from './strokeTeacherPrototype/model.ts'
 import { writingCharacterGuides } from './application/writingAcquisition/lesson.ts'
 import {
   createWritingProgress,
@@ -23,6 +24,7 @@ import {
   WRITING_PREVIEW_KEY,
   WRITING_PREVIEW_OWNER,
   WRITING_PREVIEW_VERSION,
+  WRITING_PREVIEW_POLICY,
 } from './writingAcquisition/previewLesson.ts'
 import './styles.css'
 import './strokeTeacherPrototype/preview.css'
@@ -30,7 +32,12 @@ import './strokeTeacherPrototype/preview.css'
 type PreviewStore = ReturnType<typeof openWritingStore>
 function openPreview() {
   return openWritingStore(localStorage, WRITING_PREVIEW_KEY, WRITING_PREVIEW_OWNER, () =>
-    createWritingProgress(writingPreviewLesson(), WRITING_PREVIEW_OWNER, crypto.randomUUID(), new Date().toISOString()),
+    createWritingProgress(
+      writingPreviewLesson(WRITING_PREVIEW_POLICY),
+      WRITING_PREVIEW_OWNER,
+      crypto.randomUUID(),
+      new Date().toISOString(),
+    ),
   )
 }
 function sessionFor(progress: WritingProgress, revealed: boolean): PracticeSession {
@@ -155,7 +162,7 @@ function Preview() {
       className={teaching ? 'st-original-stage' : 'app-shell'}
       data-report-grade="Grade 2"
       data-report-screen="Writing integration preview"
-      data-report-revision="writing-preview-v5"
+      data-report-revision="writing-preview-v6-five-step"
       data-report-week={progress?.lesson.dataset.dateRange}
     >
       <header className="st-preview-banner">
@@ -175,8 +182,8 @@ function Preview() {
             <h1>Stroke teacher → Writing Dojo</h1>
             <p>Practice the September 29–October 2 teacher-source lesson, starting with 英雄 and 每个.</p>
             <p>
-              Each word receives six steps for every character before its usual scroll acquisition. Completed steps save
-              on this browser; unfinished handwriting stays temporary.
+              Each word receives five steps for every character before its usual scroll acquisition. Completed steps
+              save on this browser; unfinished handwriting stays temporary.
             </p>
             <button className="primary-button" onClick={() => void begin()}>
               Start or resume writing
@@ -197,6 +204,7 @@ function Preview() {
             meaning={target.meaning}
             strokes={writingCharacterGuides(target.text)[position.characterIndex]}
             initialStep={position.step}
+            sequence={FIVE_STEP_SEQUENCE}
             onStepComplete={async (step) => {
               if (step !== position.step) throw new Error('Reopen the lesson to resume its confirmed step.')
               await commit(

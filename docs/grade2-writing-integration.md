@@ -1,5 +1,23 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Five-step preview v6 — October 15
+
+The owner requested removal of original trial 3 and confirmed GPT-6 Astra · Extra High before application edits. This is a revised isolated working prototype, not five-step activation in the family app. The original `c3bf199` artifact remains in `writing-integration-preview-dist` on port 5209; its browser and saved record were not reset or reloaded.
+
+The five trials are **Watch and trace → Trace again → Finish the last third → Finish the last two-thirds → Write and compare**, repeated for every character before whole-word scroll acquisition. Stable stage identities omit only the extra full-tracing stage; the guide rendering, stroke checking, error retries, comparison retry, word audio, seven-active-second card, report pause and scroll appearance/timers are unchanged. The display and report position count five actual trials. The independent-writing comparison must still be confirmed before a character completes.
+
+The preview explicitly selects `grade2-five-step-preview-v6`, which is part of its pinned lesson fingerprint. New saves use `ninja-writing-integration-preview-v6:synthetic-owner`; older six-step saves retain their original policy and are not converted. The shared coordinator derives its count from the pinned policy. Existing family-app lesson creation and the frozen teacher default remain six-step until separate approved integration. No learner ink, typed responses or audio recordings are persisted.
+
+Verification before handoff:
+
+- 49 focused Node 24.22 tests pass, including 1–4-character five-step boundaries, save/resume and unchanged six-step records.
+- 1,115 full units pass on Node 26.8.1; this does not waive the previously documented Node 24 release-tool blocker.
+- Typecheck, lint, scoped format and five-step/reference builds pass; self-review found no unintended UI/CSS, acquisition engine, audio or timing changes.
+- Seven packaged five-step browser cases pass (1.7 minutes): responsive Skip Timer, every trial of 英雄, audio on each trial, renumbered backward-chain resume, final-trial retry, scroll/next-word handoff, direction-error retry on new trials 3–5, old-record preservation, report pause and failed-save retry.
+- Two rebuilt six-step reference browser regressions pass (1.1 minutes). A browser screenshot confirms the unchanged teacher layout, with “Step 3 of 5” now correctly displaying the last-third task.
+
+Owner check: **Grade 2, preview v6, local only**, approximately 5–8 minutes on the laptop. Follow the verified new link supplied in chat; start writing, confirm “Trace again” goes directly to “Finish the last third,” complete both characters before scrolls, check sound/trackpad strokes and Skip Timer, then exit/reopen or use Report a problem to check pause/resume. Use the existing report control for feedback. This preview uses synthetic local progress only; parent accounts, cloud/device transfer, Warmup and current-calendar selection are not connected. The actual-app pilot's independent review, backend/compatibility and release gates remain open. No website deployment is performed by this refinement.
+
 ## Pending-launch navigation guard — October 15
 
 Independent **GPT-6 Astra · Extra High** re-review of `8136625` confirmed both original saving findings closed and independently passed 69 focused tests under Node 24.22.0. It reproduced one new P2: after an initial writing save/readback failure, clicking Stroke Order Slay set `strokeWarmupOpen` before the pending-writing guard returned. The menu and Learn to Write retry disappeared behind “Opening Warmup…” although no Warmup/session had started. The saved writing checkpoint remained intact.

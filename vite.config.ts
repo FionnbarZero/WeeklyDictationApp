@@ -122,7 +122,7 @@ export default defineConfig(({ command, mode }) => {
     ],
     build: {
       outDir: writingIntegrationPreview
-        ? 'writing-integration-preview-dist'
+        ? 'writing-five-step-preview-dist'
         : strokeTeacherPreview
           ? 'stroke-teacher-preview-dist'
           : 'dist',

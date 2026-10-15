@@ -10,7 +10,11 @@ import {
 } from '../src/application/writingAcquisition/progress.ts'
 import { createWritingLesson } from '../src/application/writingAcquisition/lesson.ts'
 import { openWritingStore } from '../src/infrastructure/writingProgressStore.ts'
-import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
+import {
+  writingPreviewLesson,
+  WRITING_PREVIEW_KEY,
+  WRITING_PREVIEW_POLICY,
+} from '../src/writingAcquisition/previewLesson.ts'
 import { buildAcquisitionCheckpoint, applyAcquisitionCheckpoint } from '../src/acquisition/persistence/reducer.ts'
 
 const now = '2026-10-15T00:00:00.000Z'
@@ -102,6 +106,44 @@ test('one through four characters, including repeated characters, require separa
     assert.equal(teachingPosition(p), null)
     assert.equal(p.assessments.length, 0)
   }
+})
+
+test('five-step preview requires five confirmed steps per character without changing six-step saves', () => {
+  const storage = memory()
+  const old = openWritingStore(storage, 'ninja-writing-integration-preview-v5:synthetic-owner', owner, fresh)
+  old.apply(step(old.current), now)
+  const originalBytes = storage.getItem(old.key)
+  for (const text of ['一', '英雄', '有爱心', '一二三四']) {
+    const source = { ...lesson.dataset, words: [{ ...lesson.dataset.words[0], text }] }
+    let p = createWritingProgress(createWritingLesson(source, WRITING_PREVIEW_POLICY), owner, 'five-step-test', now, {
+      random: () => 0.25,
+    })
+    for (let i = 0; i < [...text].length * 5; i++) {
+      assert.equal(teachingPosition(p)?.characterIndex, Math.floor(i / 5))
+      assert.equal(teachingPosition(p)?.step, i % 5)
+      assert.throws(() => answer(p), /every character/)
+      p = advanceWritingProgress(p, step(p), now)
+      validateWritingProgress(JSON.parse(JSON.stringify(p)), owner)
+    }
+    assert.equal(teachingPosition(p), null)
+    assert.equal(p.completedTeachingSteps[0], [...text].length * 5)
+    assert.equal(p.assessments.length, 0)
+    assert.equal(p.acquisition.revision, 0)
+  }
+  let preview = openWritingStore(storage, WRITING_PREVIEW_KEY, owner, () =>
+    createWritingProgress(writingPreviewLesson(WRITING_PREVIEW_POLICY), owner, 'five-step-resume', now),
+  )
+  for (let i = 0; i < 7; i++) preview.apply(step(preview.current), now)
+  preview = openWritingStore(storage, WRITING_PREVIEW_KEY, owner, () => {
+    throw new Error('must resume')
+  })
+  assert.equal(teachingPosition(preview.current)?.characterIndex, 1)
+  assert.equal(teachingPosition(preview.current)?.step, 2)
+  assert.equal(storage.getItem(old.key), originalBytes)
+  validateWritingProgress(old.current, owner)
+  const relabeled = structuredClone(old.current)
+  relabeled.lesson.policy = WRITING_PREVIEW_POLICY
+  assert.throws(() => validateWritingProgress(relabeled, owner), /preserved/)
 })
 
 test('normal acquisition retains its exact engine output and next new word opens a fresh teacher', () => {

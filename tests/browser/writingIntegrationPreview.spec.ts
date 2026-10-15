@@ -5,6 +5,7 @@ import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strok
 import {
   WRITING_PREVIEW_KEY,
   WRITING_PREVIEW_OWNER,
+  WRITING_PREVIEW_POLICY,
   writingPreviewLesson,
 } from '../../src/writingAcquisition/previewLesson.ts'
 import {
@@ -15,6 +16,8 @@ import {
 
 async function syntheticAudio(page: Page) {
   await page.addInitScript(() => {
+    const spokenWords: string[] = []
+    Object.defineProperty(window, '__teacherSpokenWords', { value: spokenWords })
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
@@ -24,6 +27,7 @@ async function syntheticAudio(page: Page) {
           return []
         },
         speak(utterance: SpeechSynthesisUtterance) {
+          spokenWords.push(utterance.text)
           utterance.onstart?.({} as SpeechSynthesisEvent)
           window.setTimeout(() => utterance.onend?.({} as SpeechSynthesisEvent), 5)
         },
@@ -58,9 +62,15 @@ for (const width of [1366, 768, 390]) {
     await page.setViewportSize({ width, height: 900 })
     await syntheticAudio(page)
     const now = '2026-10-15T00:00:00.000Z'
-    let saved = createWritingProgress(writingPreviewLesson(), WRITING_PREVIEW_OWNER, 'button-style-test', now, {
-      random: () => 0.25,
-    })
+    let saved = createWritingProgress(
+      writingPreviewLesson(WRITING_PREVIEW_POLICY),
+      WRITING_PREVIEW_OWNER,
+      'button-style-test',
+      now,
+      {
+        random: () => 0.25,
+      },
+    )
     // Synthetic saved checkpoint at the real teacher-to-scroll boundary, not a bypass in app code.
     while (teachingPosition(saved)) {
       saved = advanceWritingProgress(
@@ -113,23 +123,75 @@ test('real ordered words complete teaching, retain saved steps and hand off thro
   await page.goto('/grade2-writing-preview.html')
   await page.getByRole('button', { name: 'Start or resume writing', exact: true }).click()
   const teacher = page.getByRole('region', { name: 'Stroke order teacher' })
+  let spokenCount = 0
   for (const [characterIndex, character] of [...'英雄'].entries()) {
-    for (let step = 1; step <= 6; step++) {
+    for (let step = 1; step <= 5; step++) {
       await expect(teacher).toHaveAttribute('data-character-index', String(characterIndex))
       await expect(teacher).toHaveAttribute('data-step', String(step))
-      if (characterIndex === 0 && step === 4) {
+      await expect
+        .poll(() =>
+          page.evaluate(() => (window as unknown as { __teacherSpokenWords: string[] }).__teacherSpokenWords.length),
+        )
+        .toBe(++spokenCount)
+      expect(
+        await page.evaluate(() =>
+          (window as unknown as { __teacherSpokenWords: string[] }).__teacherSpokenWords.at(-1),
+        ),
+      ).toBe('英雄')
+      await expect(teacher.locator('.lg-round-label')).toContainText(`Step ${step} of 5`)
+      const labels = [
+        'Watch and trace',
+        'Trace again',
+        'Finish the last third',
+        'Finish the last two-thirds',
+        'Write and compare',
+      ]
+      await expect(teacher.locator('.lg-phase-steps')).toHaveAttribute(
+        'aria-label',
+        `Current step: ${labels[step - 1]}`,
+      )
+      await expect(teacher.getByText('Trace one more time', { exact: true })).toHaveCount(0)
+      if (characterIndex === 0 && step === 3) {
         await page.reload()
         await page.getByRole('button', { name: 'Start or resume writing', exact: true }).click()
-        await expect(teacher).toHaveAttribute('data-step', '4')
+        await expect(teacher).toHaveAttribute('data-step', '3')
         const pad = teacher.locator('svg[role="application"]')
         await expect(pad).toHaveAttribute('data-next-stroke', '5')
         await expect(pad.locator('.teacher-supplied-stroke')).toHaveCount(5)
+        spokenCount = 1 // Reload starts a new synthetic audio log and rereads the resumed word.
+        await expect
+          .poll(() =>
+            page.evaluate(() => (window as unknown as { __teacherSpokenWords: string[] }).__teacherSpokenWords.length),
+          )
+          .toBe(spokenCount)
         await page.screenshot({ path: info.outputPath('resumed-backward-chain.png') })
       }
+      if (step === 4) {
+        const count = strokeOrderGuide({ id: 'count', text: character }).strokes.length
+        await expect(teacher.locator('.teacher-supplied-stroke')).toHaveCount(Math.floor(count / 3))
+      }
+      if (step === 5) {
+        await expect(teacher.locator('.lg-stroke-guide path')).toHaveCount(0)
+        await expect(teacher.locator('.lg-stroke-marker')).toHaveCount(0)
+      }
       await drawRemaining(page, character)
-      await page.getByRole('button', { name: step === 6 ? 'Compare' : 'Next step', exact: true }).click()
-      if (step === 6) {
+      await page.getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true }).click()
+      if (step === 5) {
         await expect(page.getByRole('img', { name: `Correct character: ${character}`, exact: true })).toBeVisible()
+        if (characterIndex === 0) {
+          await page.getByRole('button', { name: 'Trace it again', exact: true }).click()
+          await expect(teacher).toHaveAttribute('data-step', '5')
+          await expect(teacher.locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '0')
+          await expect
+            .poll(() =>
+              page.evaluate(
+                () => (window as unknown as { __teacherSpokenWords: string[] }).__teacherSpokenWords.length,
+              ),
+            )
+            .toBe(++spokenCount)
+          await drawRemaining(page, character)
+          await page.getByRole('button', { name: 'Compare', exact: true }).click()
+        }
         await page.getByRole('button', { name: 'I slayed it', exact: true }).click()
       }
     }
@@ -168,9 +230,74 @@ test('real ordered words complete teaching, retain saved steps and hand off thro
   await expect(teacher).toHaveAttribute('data-step', '2')
   await expect(teacher.locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '0')
   const saved = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), WRITING_PREVIEW_KEY))!)
-  expect(saved.completedTeachingSteps.slice(0, 2)).toEqual([12, 1])
+  expect(saved.completedTeachingSteps.slice(0, 2)).toEqual([10, 1])
   expect(saved.acquisition.flow.targetIndex).toBe(1)
   expect(JSON.stringify(saved)).not.toMatch(/handwriting|learnerInk|recordingUrl/)
+})
+
+test('five-step backward chain rejects errors in place and preserves the old preview record', async ({ page }) => {
+  await syntheticAudio(page)
+  const now = '2026-10-15T00:00:00.000Z'
+  let saved = createWritingProgress(
+    writingPreviewLesson(WRITING_PREVIEW_POLICY),
+    WRITING_PREVIEW_OWNER,
+    'five-step-errors',
+    now,
+  )
+  for (let i = 0; i < 2; i++) {
+    saved = advanceWritingProgress(
+      saved,
+      {
+        id: `error-step-${i}`,
+        kind: 'complete-teaching-step',
+        expectedRevision: i,
+        position: teachingPosition(saved)!,
+      },
+      now,
+    )
+  }
+  const oldKey = 'ninja-writing-integration-preview-v5:synthetic-owner'
+  const oldBytes = JSON.stringify(
+    createWritingProgress(writingPreviewLesson(), WRITING_PREVIEW_OWNER, 'six-step-reference', now),
+  )
+  await page.addInitScript(
+    ({ key, value, oldKey, oldBytes }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value)
+      if (!localStorage.getItem(oldKey)) localStorage.setItem(oldKey, oldBytes)
+    },
+    { key: WRITING_PREVIEW_KEY, value: JSON.stringify(saved), oldKey, oldBytes },
+  )
+  await page.goto('/grade2-writing-preview.html')
+  await page.getByRole('button', { name: 'Start or resume writing', exact: true }).click()
+  const teacher = page.getByRole('region', { name: 'Stroke order teacher' })
+  const pad = teacher.locator('svg[role="application"]')
+  const strokes = strokeOrderGuide({ id: 'error-guide', text: '英' }).strokes
+  const layout = getStrokeLayout(strokes)
+  for (const step of [3, 4, 5]) {
+    await expect(teacher).toHaveAttribute('data-step', String(step))
+    const next = Number(await pad.getAttribute('data-next-stroke'))
+    const bounds = (await pad.boundingBox())!
+    const points = [...strokes[next]].reverse()
+    const xy = (point: readonly [number, number]) =>
+      [
+        bounds.x + ((point[0] * layout.scale + layout.offsetX) * bounds.width) / 100,
+        bounds.y + ((point[1] * layout.scale + layout.offsetY) * bounds.height) / 100,
+      ] as const
+    await page.mouse.move(...xy(points[0]))
+    await page.mouse.down()
+    for (const point of points.slice(1)) await page.mouse.move(...xy(point))
+    await page.mouse.up()
+    await expect(teacher.getByRole('status')).toContainText('Go the other way')
+    await expect(teacher).toHaveAttribute('data-step', String(step))
+    await expect(pad).toHaveAttribute('data-next-stroke', String(next))
+    await expect(pad.locator('.lg-stroke-guide > path')).toHaveCount(1)
+    await expect(page.getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true })).toBeDisabled()
+    await drawRemaining(page, '英')
+    await page.getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true }).click()
+  }
+  await page.getByRole('button', { name: 'I slayed it', exact: true }).click()
+  await expect(teacher).toHaveAttribute('data-character-index', '1')
+  expect(await page.evaluate((key) => localStorage.getItem(key), oldKey)).toBe(oldBytes)
 })
 
 test('report pause preserves the seven-second clue and the teaching step', async ({ page }) => {

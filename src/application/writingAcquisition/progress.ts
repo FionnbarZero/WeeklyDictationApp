@@ -11,7 +11,7 @@ import { validateAcquisitionProgressEnvelope } from '../../acquisition/persisten
 import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
 import { schoolYearToken } from '../../curriculum/identity.ts'
 import type { Word } from '../../domain/contracts.ts'
-import { validateWritingLesson, type WritingLesson } from './lesson.ts'
+import { validateWritingLesson, writingTeacherStepCount, type WritingLesson } from './lesson.ts'
 
 export const WRITING_PROGRESS_CONTRACT = 'grade2-writing-progress-v1' as const
 const fail = 'Saved writing could not be safely continued. Your progress was preserved; please report the problem.'
@@ -73,11 +73,17 @@ export function teachingPosition(progress: WritingProgress): TeachingPosition | 
   )
     return null
   const target = progress.lesson.targets[index]
-  if (!target || progress.completedTeachingSteps[index] === [...target.text].length * 6) return null
+  const stepCount = writingTeacherStepCount(progress.lesson)
+  if (!target || progress.completedTeachingSteps[index] === [...target.text].length * stepCount) return null
   if (flow.currentTarget?.id !== target.id || flow.phase !== 'introduction' || flow.step !== 0)
     throw new Error('The writing target advanced before its teaching was complete. Your progress was preserved.')
   const completed = progress.completedTeachingSteps[index]
-  return { targetIndex: index, targetId: target.id, characterIndex: Math.floor(completed / 6), step: completed % 6 }
+  return {
+    targetIndex: index,
+    targetId: target.id,
+    characterIndex: Math.floor(completed / stepCount),
+    step: completed % stepCount,
+  }
 }
 
 export function validateWritingProgress(value: unknown, owner: string): asserts value is WritingProgress {
@@ -120,6 +126,7 @@ export function validateWritingProgress(value: unknown, owner: string): asserts 
     )
       throw new Error(fail)
     validateWritingLesson(p.lesson)
+    const stepCount = writingTeacherStepCount(p.lesson)
     const count = p.lesson.targets.length
     if (
       p.firstTeacherTargetIndex > count ||
@@ -140,10 +147,12 @@ export function validateWritingProgress(value: unknown, owner: string): asserts 
         (steps, i) =>
           !Number.isInteger(steps) ||
           steps < 0 ||
-          steps > [...p.lesson.targets[i].text].length * 6 ||
+          steps > [...p.lesson.targets[i].text].length * stepCount ||
           (i < p.firstTeacherTargetIndex && steps !== 0) ||
           (i > currentIndex && steps !== 0) ||
-          (i >= p.firstTeacherTargetIndex && i < currentIndex && steps !== [...p.lesson.targets[i].text].length * 6),
+          (i >= p.firstTeacherTargetIndex &&
+            i < currentIndex &&
+            steps !== [...p.lesson.targets[i].text].length * stepCount),
       )
     )
       throw new Error(fail)

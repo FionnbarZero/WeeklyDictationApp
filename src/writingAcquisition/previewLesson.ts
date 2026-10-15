@@ -1,16 +1,18 @@
 import snapshot from '../../public/curriculum/grade2-presentation.json' with { type: 'json' }
 import { parseSlide } from '../slidesImporter.ts'
 import { createWritingLesson } from '../application/writingAcquisition/lesson.ts'
+import type { WritingLesson } from '../application/writingAcquisition/contracts.ts'
 
 /** The preserved teacher-source week used by approved v4, in its original order. */
-export function writingPreviewLesson() {
+export function writingPreviewLesson(policy?: WritingLesson['policy']) {
   const slide = snapshot.presentation.slides.find((item) => item.text.startsWith('Week 9/29-10/2'))
   if (!slide) throw new Error('The reference Grade 2 curriculum week is unavailable.')
   const parsed = parseSlide(slide)
   if (parsed.status !== 'imported' || !parsed.dataset) throw new Error('The reference curriculum did not validate.')
-  return createWritingLesson(parsed.dataset)
+  return createWritingLesson(parsed.dataset, policy)
 }
 
-export const WRITING_PREVIEW_VERSION = 'Grade 2 writing integration preview 5'
-export const WRITING_PREVIEW_KEY = 'ninja-writing-integration-preview-v5:synthetic-owner'
+export const WRITING_PREVIEW_VERSION = 'Grade 2 writing preview 6 · Five teaching steps'
+export const WRITING_PREVIEW_POLICY = 'grade2-five-step-preview-v6' as const
+export const WRITING_PREVIEW_KEY = 'ninja-writing-integration-preview-v6:synthetic-owner'
 export const WRITING_PREVIEW_OWNER = 'synthetic-writing-preview'

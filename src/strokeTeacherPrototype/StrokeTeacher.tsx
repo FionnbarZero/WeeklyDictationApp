@@ -3,7 +3,7 @@ import { ArrowRight, Play } from 'lucide-react'
 import { activityClock } from '../activity/activityLifecycle.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import type { StrokePoint } from '../learningGames/strokeOrder/contracts.ts'
-import { TEACHER_STEPS, strokeFeedback, suppliedStrokes } from './model.ts'
+import { TEACHER_STEPS, SIX_STEP_SEQUENCE, type TeacherSequence, strokeFeedback, suppliedStrokes } from './model.ts'
 import { LearningGameShell, SelfAssessmentButtons } from './original/GameShell.tsx'
 import { DrawingTools, ReferencePad, StrokePad, VocabularyContext } from './original/StrokeUI.tsx'
 import type { StrokeOrderGameRound } from './original/contracts.ts'
@@ -19,6 +19,7 @@ export function StrokeTeacher({
   pinyin = word === '英雄' ? 'yīng xióng' : '',
   meaning = word === '英雄' ? 'hero' : '',
   initialStep = 0,
+  sequence = SIX_STEP_SEQUENCE,
   onStepComplete,
   onComplete,
   onExit,
@@ -31,13 +32,15 @@ export function StrokeTeacher({
   pinyin?: string
   meaning?: string
   initialStep?: number
+  sequence?: TeacherSequence
   onStepComplete?: (step: number) => Promise<void>
   onComplete: () => void
   onExit: () => void
 }) {
   const [step, setStep] = useState(initialStep)
+  const stage = sequence[step]
   const [drawing, setDrawing] = useState<Drawing>(() =>
-    strokes.slice(0, suppliedStrokes(initialStep, strokes.length)).map((stroke) => [...stroke]),
+    strokes.slice(0, suppliedStrokes(sequence[initialStep], strokes.length)).map((stroke) => [...stroke]),
   )
   const saving = useRef(false)
   const [savingStep, setSavingStep] = useState(false)
@@ -47,7 +50,7 @@ export function StrokeTeacher({
   const [message, setMessage] = useState(() =>
     initialStep === 0
       ? 'Start at 1. Follow the strokes in order.'
-      : `Start at stroke ${suppliedStrokes(initialStep, strokes.length) + 1}.`,
+      : `Start at stroke ${suppliedStrokes(sequence[initialStep], strokes.length) + 1}.`,
   )
   const [hasError, setHasError] = useState(false)
   const [resetKey, setResetKey] = useState(0)
@@ -70,7 +73,7 @@ export function StrokeTeacher({
         if (audioRequest.current === request) setAudioState('error')
       })
   }, [word])
-  const supplied = suppliedStrokes(step, strokes.length)
+  const supplied = suppliedStrokes(stage, strokes.length)
   const next = drawing.length
   const complete = next === strokes.length
   const round: StrokeOrderGameRound = {
@@ -126,7 +129,7 @@ export function StrokeTeacher({
   }
   async function nextStep(confirmed = false) {
     if (!complete || paused || saving.current) return
-    if (step === 5 && !confirmed) {
+    if (stage === 5 && !confirmed) {
       setComparison(true)
       return
     }
@@ -144,7 +147,7 @@ export function StrokeTeacher({
         setSavingStep(false)
       }
     }
-    if (step === 5) {
+    if (stage === 5) {
       // A durable parent may already have mounted the next character's audio.
       // Its normal unmount cleanup owns cancellation of this character.
       if (!onStepComplete) stopActiveAudio()
@@ -152,7 +155,7 @@ export function StrokeTeacher({
       return
     }
     const following = step + 1
-    const prefix = suppliedStrokes(following, strokes.length)
+    const prefix = suppliedStrokes(sequence[following], strokes.length)
     setStep(following)
     setDrawing(strokes.slice(0, prefix).map((stroke) => [...stroke]))
     setRejected(null)
@@ -169,12 +172,12 @@ export function StrokeTeacher({
     clearGesture()
   }
   const instructions =
-    step < 3
+    stage < 3
       ? 'Follow the numbered strokes in order.'
-      : step < 5
+      : stage < 5
         ? `I wrote strokes 1–${supplied}. You finish ${supplied + 1}–${strokes.length}.`
         : 'Write every stroke in order, then compare.'
-  const phase = comparison ? 2 : step < 3 ? 0 : 1
+  const phase = comparison ? 2 : stage < 3 ? 0 : 1
 
   return (
     <LearningGameShell
@@ -197,9 +200,9 @@ export function StrokeTeacher({
       >
         <div className="lg-stroke-roundbar">
           <p className="lg-round-label">
-            Character {characterIndex + 1} / {[...word].length} · Step {step + 1} of 6
+            Character {characterIndex + 1} / {[...word].length} · Step {step + 1} of {sequence.length}
           </p>
-          <div className="lg-phase-steps" aria-label={`Current step: ${TEACHER_STEPS[step]}`}>
+          <div className="lg-phase-steps" aria-label={`Current step: ${TEACHER_STEPS[stage]}`}>
             {['Trace', 'Write', 'Compare'].map((label, index) => (
               <span
                 key={label}
@@ -260,11 +263,11 @@ export function StrokeTeacher({
               onStrokesChange={paused || savingStep ? undefined : setDrawing}
               showGuide
               animationKey={animation}
-              animationStepSeconds={step === 0 ? 0.7 : 0}
+              animationStepSeconds={stage === 0 ? 0.7 : 0}
               resetKey={resetKey}
               rejectedStroke={rejected}
               suppliedStrokeCount={supplied}
-              guideMode={step < 3 ? 'full' : step < 5 ? 'faded' : 'hidden'}
+              guideMode={stage < 3 ? 'full' : stage < 5 ? 'faded' : 'hidden'}
               hintStrokeIndex={hint && !complete ? next : undefined}
               label={`Trace the guide · ${drawing.length - supplied}/${strokes.length - supplied} strokes`}
               validateStroke={(stroke, index) =>
@@ -290,7 +293,7 @@ export function StrokeTeacher({
                 <strong>
                   {drawing.length - supplied} / {strokes.length - supplied}
                 </strong>
-                <span>{TEACHER_STEPS[step]}</span>
+                <span>{TEACHER_STEPS[stage]}</span>
                 <span>{instructions}</span>
                 <span>{message}</span>
               </p>
@@ -318,7 +321,7 @@ export function StrokeTeacher({
                 disabled={paused || savingStep || !complete}
                 onClick={() => void nextStep()}
               >
-                {step === 5 ? 'Compare' : 'Next step'} <ArrowRight size={18} />
+                {stage === 5 ? 'Compare' : 'Next step'} <ArrowRight size={18} />
               </button>
             </div>
           </div>

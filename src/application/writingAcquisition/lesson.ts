@@ -9,6 +9,13 @@ export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
 import type { WritingLesson } from './contracts.ts'
 export type { WritingLesson } from './contracts.ts'
 
+/** The five-step policy is opt-in for the isolated preview; existing lessons remain six-step. */
+export function writingTeacherStepCount(lesson: Pick<WritingLesson, 'policy'>) {
+  if (lesson.policy === 'grade2-five-step-preview-v6') return 5
+  if (lesson.policy === WRITING_TEACHER_POLICY) return 6
+  throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
+}
+
 export function writingCharacterGuides(text: string) {
   const characters = [...text]
   if (!/^[\p{Script=Han}]{1,4}$/u.test(text))
@@ -22,7 +29,11 @@ export function writingCharacterGuides(text: string) {
   })
 }
 
-export function createWritingLesson(source: Dataset): WritingLesson {
+export function createWritingLesson(
+  source: Dataset,
+  policy: WritingLesson['policy'] = WRITING_TEACHER_POLICY,
+): WritingLesson {
+  writingTeacherStepCount({ policy })
   if (source.grade !== 'Grade 2' || !source.words.length || source.words.length > 100)
     throw new Error('Choose a validated Grade 2 writing lesson.')
   const dataset = JSON.parse(JSON.stringify(source)) as Dataset
@@ -49,15 +60,16 @@ export function createWritingLesson(source: Dataset): WritingLesson {
       guideFingerprint: acquisitionDigest(writingCharacterGuides(word.text)),
     }
   })
-  const payload = { schema: 1 as const, policy: WRITING_TEACHER_POLICY, dataset, targets }
+  const payload = { schema: 1 as const, policy, dataset, targets }
   return { ...payload, fingerprint: acquisitionDigest(payload) }
 }
 
 export function validateWritingLesson(lesson: WritingLesson) {
   const { fingerprint, ...payload } = lesson
-  if (lesson.schema !== 1 || lesson.policy !== WRITING_TEACHER_POLICY || fingerprint !== acquisitionDigest(payload))
+  writingTeacherStepCount(lesson)
+  if (lesson.schema !== 1 || fingerprint !== acquisitionDigest(payload))
     throw new Error('The saved writing lesson does not match its approved version. It was preserved.')
-  const checked = createWritingLesson(lesson.dataset)
+  const checked = createWritingLesson(lesson.dataset, lesson.policy)
   // Pinned pronunciation/meaning remain authoritative even after a catalog update.
   if (
     lesson.targets.length !== checked.targets.length ||

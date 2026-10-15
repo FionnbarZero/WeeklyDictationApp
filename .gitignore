@@ -2,6 +2,7 @@ node_modules
 dist
 stroke-teacher-preview-dist
 writing-integration-preview-dist
+writing-five-step-preview-dist
 writing-pilot-dist
 writing-pilot-test-results/
 reconciliation-dist

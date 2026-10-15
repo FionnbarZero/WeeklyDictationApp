@@ -9,6 +9,12 @@ export const TEACHER_STEPS = [
   'Write and compare',
 ] as const
 
+// Stable stage identities preserve the approved six-step reference while the new
+// isolated preview omits only the second repeat-tracing stage.
+export const SIX_STEP_SEQUENCE = [0, 1, 2, 3, 4, 5] as const
+export const FIVE_STEP_SEQUENCE = [0, 1, 3, 4, 5] as const
+export type TeacherSequence = typeof SIX_STEP_SEQUENCE | typeof FIVE_STEP_SEQUENCE
+
 export function suppliedStrokes(step: number, count: number) {
   if (step === 3) return count - Math.ceil(count / 3)
   if (step === 4) return Math.floor(count / 3)
