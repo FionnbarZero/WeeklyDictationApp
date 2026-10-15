@@ -52,9 +52,44 @@ The dedicated package `writing-slay-finish-dist` was rebuilt from committed `5a7
 
 Independent evidence: `/tmp/ninja-slay-finish-independent-chromium`, `/tmp/ninja-slay-finish-independent-webkit-portrait`, `/tmp/ninja-slay-finish-independent-report-layer.png`, and `/tmp/ninja-slay-finish-independent-correction-review.png`. No reviewer edits or deployment occurred. This closes the specific review finding, not the remaining backend, protected integration, release or physical-device gates.
 
+## Current-main and packaged acceptance — October 15, 2026
+
+The owner authorized continuation and confirmed **GPT-6 Astra · Extra High** for integration/saving. A fresh fetch finds `origin/main` at `af679289f56789c57379e007241976e6d02165b1`, already an ancestor of this branch (zero incoming commits). No merge or reconciliation edit was necessary. Read-only canonical manifest verification still identifies source `39715499b964d012cfb4a79925990fc0d20a271e` and tree `885482abc4f93b4ac3c0f982c9b72d0059890dce8ec2fae5103a1cc790853fdf`; the public app has not changed.
+
+The new pilot-enabled family package is built from documentation source **`5d19f9588aee419fc06b719eb240c9205f9a2394`**, with application/build/dependency files unchanged from independently reviewed `5a7314e`. Its **153 retained files / 94 header rules** remain within the existing 100-rule limit. The guard/recovery package is a separate copy; the original predecessor is preserved.
+
+| Package | Retained location | Exact file-tree SHA-256 |
+| --- | --- | --- |
+| Candidate | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-8KYRqp` | `887827259ef05352397921a3023020b2edc8f6dbf2baffa967a37eb6e997dd83` |
+| Canonical predecessor | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-4WIn2G` | `885482abc4f93b4ac3c0f982c9b72d0059890dce8ec2fae5103a1cc790853fdf` |
+| Guarded recovery | `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-offline-rollback-tzok2s/artifact` | `221192a4d5f732cc02bfafdc4b365921e9e2c5e0251a2ad614d1e42cf07f8121` |
+
+All **four packaged writing cases** pass in desktop/tablet profiles: second-browser teaching resume, offline step/reconnect, refusal of an older client's incompatible overwrite, and exact checkpoint preservation through guarded recovery and return. All **12 local provider-applied compatibility/header cases** pass across Kindergarten, Grade 2 and Grade 5 in desktop/tablet profiles. Startup verifies candidate/predecessor/recovery public files **151/153/154** and header responses **178/180/181**, respectively. These exercise the real local hosting runtime with synthetic service responses, not a production deployment or physical iPad.
+
+Fresh supported-Node-24 checks pass **1,126 units, typecheck and full lint**. The cloud test's scope/cleanup safety tests also pass 4/4. No application source, security rules or authentication configuration was changed in this stage. Evidence: `/tmp/ninja-slay-packaged-checks.log`, `/tmp/ninja-slay-provider-checks.log`, `/tmp/ninja-slay-provider-checks`, `/tmp/ninja-slay-final-units.log`, `/tmp/ninja-slay-final-typecheck.log`, `/tmp/ninja-slay-final-lint.log`, and `/tmp/ninja-slay-cloud-safety.log`.
+
+## Real-cloud acceptance — October 15, 2026
+
+The updated checker pins the exact candidate source/tree above and independently verifies all **151 served public files** before creating a unique disposable parent and synthetic Grade 2 child. Browser requests and administrative confirmation/cleanup remain restricted to that new family's subtree and user document. No existing family session or learner records are used. Existing real authentication and Firestore protections are exercised without changing their configuration.
+
+Final checker **`e33d89c`** passes against the unchanged package, with exit status 0 and a complete cleanup receipt:
+
+- First confirmed teaching step is in real cloud without an acquisition answer. A fresh browser resumes step 2 with no learner ink.
+- A completed offline teaching step is retained locally; reconnect/reload confirms that exact step and resumes step 4.
+- Both characters' five teaching steps finish before the Slay acquisition UI. One whole-word trace is unscored; a fresh browser resumes the independent trial, then one correct independent response enters Familiar DT.
+- Actual “Done for today” saves exactly one writing result with one correct / one attempted response. Another fresh browser restores that result and Familiar DT position, without duplicating or changing the completed result.
+- Nine further reviewed prompts advance confirmed writing revisions 13–21. The next word, **每个**, opens guided teaching at character 1 / step 1. A fifth fresh browser resumes exactly that teaching position, with the earlier completed result unchanged.
+- Every asserted checkpoint equals its local and remote copy. Browser errors and out-of-scope Firestore requests are absent. Speech is intentionally simulated; this is not audible iPad or physical Pencil acceptance.
+
+The initial checker `49513e8` run reached cloud-saved completion but timed out during repeated practice while requiring “Skip Timer.” It is retained as a **failed run** at `/tmp/ninja-slay-cloud-acceptance.log`. Real readback can outlast the ten-second Familiar DT response window. The bounded driver repair accepts the actual normal review screen after natural expiry, while retaining every checkpoint, scoring, result-immutability and next-teacher assertion; it does not alter application timers, force a hidden click, fabricate a response checkpoint or modify application code. The rerun explicitly observes normal review after expiry on trials 3, 4, 6, 7 and 8, and completes successfully. Failure-state diagnostic flags were added to the test driver. Typecheck, focused formatting/lint and all four synthetic-scope/cleanup tests pass after that change.
+
+Accepted log: `/tmp/ninja-slay-cloud-acceptance-timer-aware.log`. Failed-run receipt: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-writing-cloud-UgnYrV/receipt.json` (`acceptancePassed: false`, `cleanupComplete: true`). Accepted receipt: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-writing-cloud-jODhaA/receipt.json` (`acceptancePassed: true`, `cleanupComplete: true`). Both disposable auth accounts and **10 documents per run / 20 total** were deleted and verified within their exact synthetic scope; these disposable records were intentionally not retained for recovery. No real-family records were touched. The real-backend local test server on port 5198 was stopped after verified cleanup; it is not an owner handoff URL.
+
 ## Remaining gates
 
-The independent completion-control review finding is closed. Remaining: current-main reconciliation/normal protected integration, retained-package compatibility and isolated real-backend acceptance for this candidate, followed by release authorization/exact publication verification and a bounded physical iPad/iMac check. Prior candidate's cloud/review receipts do not establish acceptance of this new candidate. No new email or publication was requested for this stage. The revised correction protocol remains outside scope.
+Independent completion-control review, current-main reconciliation, retained-package compatibility and isolated real-backend acceptance are now closed for the exact candidate above. Do not repeat them without changed relevant inputs. **Next: request authorization for a separately hosted synthetic Grade 2 integrated pilot**, then verify its exact served build before an 8–12 minute owner iPad/iMac check of all-character teaching → acquisition → next word, automatic/manual audio, touch/Pencil or trackpad, orientation, report pause, Done/Exit and reload. The older hosted Slay comparison intentionally omits teaching and is not a substitute for this integrated test. A synthetic/browser-only hosted pilot must not be described as cross-device cloud saving; the real-backend acceptance above is separate engineering evidence.
+
+Bounded publication/verification routing is **GPT-6.1 Sol · High**; any new persistence/curriculum behavior uses **GPT-6 Astra · Extra High**. Normal protected integration, canonical pilot activation, exact publication verification and physical-device acceptance remain. The separate correction protocol and target-override prototype requirements recorded in the primary checkout are neither implemented nor waived by this narrow integration. No PR, merge, publication, owner-tab reload, real-family edit or email occurred in this stage.
 
 ## Original integration candidate identity — before completion repair
 
