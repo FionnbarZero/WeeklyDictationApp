@@ -158,7 +158,14 @@ async function launch(page: Page) {
   }
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
-  await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+  const skipWarmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+  // A saved acquisition can resume directly; do not invent another Warmup.
+  await expect(
+    skipWarmup
+      .or(frame.getByRole('region', { name: 'Stroke order teacher' }))
+      .or(frame.getByRole('button', { name: 'Skip Timer', exact: true })),
+  ).toBeVisible()
+  if (await skipWarmup.isVisible()) await skipWarmup.click()
   return frame
 }
 type Checkpoint = {
@@ -281,6 +288,7 @@ try {
   await synced(second.page, 2)
   await second.context.setOffline(true)
   await finishTrial(second.page, frame, '英', 3)
+  await expect(teacher()).toHaveAttribute('data-step', '4')
   assert.equal((await localCheckpoint(second.page))!.progress.revision, 3)
   assert.equal((await remoteCheckpoint())!.progress.revision, 2)
   await second.context.setOffline(false)
