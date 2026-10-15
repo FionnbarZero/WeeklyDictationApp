@@ -16,6 +16,10 @@ The reference September 29–October 2 lesson is synthetic-profile practice, not
 
 ## Verification
 
+**Local handoff:** [Grade 2 preview v7](http://127.0.0.1:5214/grade2-writing-preview.html), source **`d58a1d4`**, unpublished and this computer only. All six browser cases pass (1.5 minutes), and all five public files match the served artifacts. Rebuilding after the source commit changed the HTML build marker only: tested JS SHA-256 `6eea4c05d4f7aa55eda0af89ac82d4a1e244c2d8873648f83fe220108ee83975` and CSS SHA-256 `50e359b6af7fcd5e23a7e9e4eebfd807a4f9c6e8919886152015b4f40003aae8` are byte-identical. No hosted publication or independent integration review is claimed.
+
+Suggested laptop check: 5–8 minutes. Start/resume writing, complete both characters, check trace once → independent once → distractor, inspect large centered pads and Hear/Type/Skip Timer, then Exit/resume and Report a problem. The separate Warmup-size button demonstrates the same larger layout without changing lesson progress. Do not clear browser storage. This engineering preview is not the required hosted approval gate; request authorization for a new isolated hosted preview before deployment.
+
 Node 24.22.0: 1,124 unit tests pass, including the new exact opening sequence, next-word recurrence, error routing and unchanged old policies. Typecheck and full lint pass. Browser cases cover four viewport widths, visible writing/typing/timer controls, trace → independent → distractor, confirmed reload, both characters' five teaching steps, next-word teaching, report pause, exit/resume and non-scoring repeated Warmup layout samples.
 
 Earlier failures are retained, not accepted evidence: the initial 480px drawing-width test assumption measured 469.5px at the reported 1663px viewport (the explicit final floor is 450px); mobile review controls were obstructed by floating report buttons, now moved to the reserved top area; a test read storage before the asynchronous answer save finished, now awaits the visible review-to-next-trial transition. Evidence directories: `/tmp/writing-v7-first-layout-failure-20261015` and `/tmp/writing-v7-second-checkpoint-driver-failure-20261015`.
