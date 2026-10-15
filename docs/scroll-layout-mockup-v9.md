@@ -15,3 +15,11 @@ Chromium drawable widths: 469px at 1024×768 (v8: 390), 518px at 1180×720 (v8: 
 ## Owner check
 
 Allow 2–3 minutes on iPad. Open directly; draw in both scrolls, rotate between landscape and portrait, tap Hear, type, and try Skip Timer/Try again. Check that no controls cover the paper or input. Use Report a problem for feedback without child-identifying information. This is only a layout mockup; existing hosted lesson previews and canonical Ninja Dojo are unchanged. Working-layout approval is required before integrating this arrangement into acquisition.
+
+## Hosted comparison A — October 15
+
+Verified website: https://weekly-dictation-staging--scroll-layout-v9-atczruk5.web.app/
+
+Source `115eab03f3c61fffc7ee06352e2e47a700072b62`; hosting version `ea4a527be5ea37c5`, release `1792094008347000`, expires November 14, 2026 19:53 UTC. Exact hosted root plus all three public files and all six headers match the retained artifact. Four local Chromium, four final local WebKit, four hosted Chromium and four hosted WebKit cases pass. These checks use simulated viewports and mocked speech, not a physical iPad. The new channel is separate from v8/v7/v4 and staging live; prior identifiers remain unchanged.
+
+JS SHA-256 `52bd7f9f1e879655b854d530ab24cb53233ca03011804f953e1b8c3a7cdc2e8c`; CSS `7ee05020d3538c1cae31066d092b094ce4a6fa644cd860dc287612f340b8262d`.
