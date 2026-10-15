@@ -1,10 +1,13 @@
-import { PracticeView, type PracticeViewProps } from '../practice/PracticeView.tsx'
 import type { WritingProgress } from '../application/writingAcquisition/contracts.ts'
-import { teachingPosition } from '../application/writingAcquisition/progress.ts'
 import { writingCharacterGuides, writingTeacherStepCount } from '../application/writingAcquisition/lesson.ts'
-import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
+import { teachingPosition } from '../application/writingAcquisition/progress.ts'
+import { PracticeView, type PracticeViewProps } from '../practice/PracticeView.tsx'
 import { FIVE_STEP_SEQUENCE, SIX_STEP_SEQUENCE } from '../strokeTeacherPrototype/model.ts'
+import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
 import '../strokeTeacherPrototype/preview.css'
+import { useEffect } from 'react'
+import { hasFamilyActivityOwner } from '../activity/activityLifecycle.ts'
+import { SlayWritingAcquisition } from './SlayWritingAcquisition.tsx'
 
 export default function Grade2WritingPractice({
   progress,
@@ -14,6 +17,13 @@ export default function Grade2WritingPractice({
   progress?: WritingProgress
   onTeachingStep: (step: number) => Promise<void>
 }) {
+  const writingStage = props.session.segment === 'primary' && props.session.primaryPhase === 'acquisition'
+  useEffect(() => {
+    if (!writingStage || !hasFamilyActivityOwner()) return
+    const frame = window.frameElement!
+    frame.setAttribute('data-writing-stage', 'true')
+    return () => frame.removeAttribute('data-writing-stage')
+  }, [writingStage])
   const position = progress && props.session.segment === 'primary' ? teachingPosition(progress) : null
   const target = position && progress?.lesson.targets[position.targetIndex]
   return (
@@ -43,6 +53,8 @@ export default function Grade2WritingPractice({
             />
           </main>
         </div>
+      ) : writingStage ? (
+        <SlayWritingAcquisition {...props} />
       ) : (
         <PracticeView {...props} />
       )}

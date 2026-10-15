@@ -1,0 +1,23 @@
+/* Host the approved comparison inside the app, without restyling the teacher,
+   Warmup, other grades, or the frozen comparison site. */
+.main-content:has(> .grade2-writing-pilot .slay-writing-integration) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+.app-shell:has(.slay-writing-integration) > .topbar,
+.main-content:has(> .grade2-writing-pilot .slay-writing-integration) > .curriculum-source-status {
+  display: none;
+}
+.slay-writing-integration {
+  isolation: isolate;
+  min-height: 100dvh;
+  color: #f6f7ff;
+  background: #090d20;
+}
+#slay-acquisition-root.slay-writing-integration .slay-comparison-banner {
+  display: none;
+}
+#slay-acquisition-root.slay-writing-integration .lg-shell {
+  height: 100dvh;
+}

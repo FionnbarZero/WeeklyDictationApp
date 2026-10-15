@@ -1,7 +1,8 @@
 import { grade2AcquisitionStrategy } from '../acquisition/strategies/grade2.ts'
 import type { AcquisitionStrategy } from '../acquisition/contracts.ts'
 
-/** Isolated v7 only. The actual app continues selecting the approved v6 policy. */
+/** Owner-approved trace → independent → distractors policy. New integrated
+ * Grade 2 pilot attempts opt in; existing lessons keep their pinned strategy. */
 export const writingRefinementStrategy = {
   ...grade2AcquisitionStrategy,
   id: 'grade2-writing-trace-independent-preview-v7',

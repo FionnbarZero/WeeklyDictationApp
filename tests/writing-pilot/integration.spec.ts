@@ -1,6 +1,4 @@
-import { expect, test, type Page, type FrameLocator } from '@playwright/test'
-import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
-import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import { expect, type FrameLocator, type Page, test } from '@playwright/test'
 import { createWritingLesson } from '../../src/application/writingAcquisition/lesson.ts'
 import {
   advanceWritingProgress,
@@ -8,6 +6,8 @@ import {
   teachingPosition,
   type WritingProgress,
 } from '../../src/application/writingAcquisition/progress.ts'
+import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
+import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -187,8 +187,35 @@ test('actual Grade 2 launcher teaches a whole word, resumes a saved step, then h
   }
   await expect(teacher()).toHaveCount(0)
   const skip = frame.getByRole('button', { name: 'Skip Timer', exact: true })
-  await expect(skip).toHaveCSS('background-color', 'rgb(49, 91, 134)')
-  await page.screenshot({ path: info.outputPath('actual-scrolls.png'), fullPage: true })
+  await expect(skip).toHaveCSS('background-color', 'rgb(188, 53, 65)')
+  await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+  await expect(frame.locator('.skywriting-trace-character')).toHaveCount(2)
+  await expect(frame.getByRole('timer')).toHaveText('00:25')
+  const bounds = page.viewportSize()!
+  for (const item of [
+    frame.locator('.skywriting-pad').first(),
+    frame.locator('.skywriting-pad').last(),
+    skip,
+    frame.getByRole('button', { name: 'Hear', exact: true }),
+    frame.getByRole('textbox'),
+    frame.getByRole('button', { name: 'Exit game', exact: true }),
+    page.getByRole('button', { name: 'Report a problem', exact: true }),
+  ]) {
+    const box = (await item.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.y).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(bounds.width + 1)
+    expect(box.y + box.height).toBeLessThanOrEqual(bounds.height + 1)
+  }
+  await page.screenshot({ path: info.outputPath('actual-slay-acquisition.png'), fullPage: true })
+  await skip.click()
+  await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.locator('.skywriting-trace-character')).toHaveCount(0)
+  await expect(frame.getByRole('timer')).toHaveText('00:25')
+  await skip.click()
+  await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.locator('.set-chip')).toContainText('Familiar DT')
+  await expect(frame.getByRole('timer')).toHaveText('00:10')
   for (let i = 0; i < 30 && !(await teacher().isVisible()); i++) {
     await skip.click()
     await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
@@ -198,6 +225,8 @@ test('actual Grade 2 launcher teaches a whole word, resumes a saved step, then h
   await expect(teacher()).toHaveAttribute('data-step', '1')
   await expect(frame.getByText('每个', { exact: true }).first()).toBeVisible()
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+  await expect(page.locator('iframe:visible')).not.toHaveAttribute('data-writing-stage', 'true')
+  await expect(page.getByLabel('Practice week')).toBeVisible()
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
   expect(errors).toEqual([])
 })
@@ -249,7 +278,6 @@ test('the integrated view resumes a pinned six-step save without relabeling its 
     current.owner,
     current.attemptId,
     current.createdAt,
-    { initial: current.acquisition },
   )
   for (let i = 0; i < 5; i++)
     previous = advanceWritingProgress(
@@ -263,6 +291,7 @@ test('the integrated view resumes a pinned six-step save without relabeling its 
       current.updatedAt,
     )
   record.values.writingAcquisitionProgress = [previous]
+  record.values.acquisitionProgressEnvelopes = [previous.acquisition]
   workspace.records[entry[0]] = JSON.stringify(record)
   await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key, raw: JSON.stringify(workspace) })
   const frame = await launch(page)

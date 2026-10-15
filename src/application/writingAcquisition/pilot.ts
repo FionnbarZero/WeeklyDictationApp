@@ -1,10 +1,17 @@
+import type {
+  AcquisitionCheckpoint,
+  AcquisitionPersistenceContext,
+  AcquisitionProgressEnvelope,
+} from '../../acquisition/persistence/contracts.ts'
+import { acquisitionDigest, acquisitionProgressionId } from '../../acquisition/persistence/identity.ts'
 import type { AppState, Dataset, PracticeSession, Word } from '../../domain.ts'
-import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../acquisition/persistence/contracts.ts'
-import { acquisitionDigest } from '../../acquisition/persistence/identity.ts'
-import { createWritingLesson, FIVE_STEP_WRITING_POLICY } from './lesson.ts'
-export { createConfirmedWritingTransition } from './confirmedTransition.ts'
-export { createConfirmedWritingLaunch } from './confirmedLaunch.ts'
+import { writingRefinementStrategy } from '../../writingAcquisition/refinementStrategy.ts'
+import { createWritingLesson, FIVE_STEP_WRITING_POLICY, TRACE_INDEPENDENT_PREVIEW_POLICY } from './lesson.ts'
+
 export { withScrollsWrite } from '../../familyBeta/scrollsCompletion.ts'
+export { createConfirmedWritingLaunch } from './confirmedLaunch.ts'
+export { createConfirmedWritingTransition } from './confirmedTransition.ts'
+
 import {
   advanceWritingProgress,
   createWritingCommand,
@@ -15,6 +22,29 @@ import {
 } from './progress.ts'
 
 const unavailable = 'This lesson needs the approved writing pilot. Your saved work was preserved.'
+
+/** Select the approved sequence only for a genuinely new attempt. Pinned and
+ * legacy progress must still resolve using its original strategy. */
+export function prepareContext(
+  state: AppState,
+  context: AcquisitionPersistenceContext<Word>,
+): AcquisitionPersistenceContext<Word> {
+  const identity = context.identity
+  if (identity.grade !== 'Grade 2' || identity.tier !== 'tier-1') return context
+  const id = acquisitionProgressionId(identity)
+  const hasEnvelope = state.acquisitionProgressEnvelopes?.some(
+    (e) =>
+      e.id === id ||
+      (identity.activityModule === 'mandarin-tier1-writing' &&
+        e.childId === identity.childId &&
+        e.datasetId === identity.datasetId &&
+        !e.activityModule?.includes(':restart-')),
+  )
+  const hasLegacy =
+    identity.activityModule === 'mandarin-tier1-writing' &&
+    state.acquisitionProgressions.some((e) => e.childId === identity.childId && e.datasetId === identity.datasetId)
+  return hasEnvelope || hasLegacy ? context : { ...context, strategy: writingRefinementStrategy, strategyUpgrades: [] }
+}
 
 export function progressFor(state: AppState, progressionId?: string) {
   const matches = (state.writingAcquisitionProgress || []).filter((p) => p.acquisition.id === progressionId)
@@ -58,7 +88,9 @@ export function prepare(input: {
   if (!envelope.lessonSnapshot) throw new Error('The original writing lesson is unavailable. Nothing was changed.')
   const lesson = createWritingLesson(
     { ...input.dataset, words: [...envelope.lessonSnapshot.targetSet.targets] },
-    FIVE_STEP_WRITING_POLICY,
+    envelope.lessonSnapshot.strategy.id === writingRefinementStrategy.id
+      ? TRACE_INDEPENDENT_PREVIEW_POLICY
+      : FIVE_STEP_WRITING_POLICY,
   )
   const progress = createWritingProgress(
     lesson,
@@ -122,6 +154,7 @@ export function completeStep(state: AppState, session: PracticeSession, step: nu
 }
 
 export type WritingPilotCoordinator = {
+  prepareContext: typeof prepareContext
   prepare: typeof prepare
   withCheckpoint: typeof withCheckpoint
 }

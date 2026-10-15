@@ -60,6 +60,7 @@ import { resolveTier2ReadingLifecycle } from './tier2/lifecycle'
 import { tier2ReadingProfileForScope } from './tier2/registry'
 import { playAudioPlan, playCachedWordAudio, stopActiveAudio } from './audio/lazyPromptAudio.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
+import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import type { ProfileChild } from './profiles/ProfileModal.tsx'
 
 const Tier2ReadingPractice = lazy(() =>
@@ -651,6 +652,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       let pilot: typeof import('./application/writingAcquisition/pilot.ts') | undefined
       const useWritingPilot = familyPreview && import.meta.env.VITE_GRADE2_WRITING_PILOT === 'true' &&
         selectedChild.grade === 'Grade 2' && target?.phase === 'acquisition' && !externalPrimary
+      if (useWritingPilot) enablePreviewSpeechFromTap()
       if (writingLaunch.current?.pending && !useWritingPilot) {
         setCloudError('Retry Learn to Write before starting another activity. Your pending lesson is preserved.')
         setPracticeStartInFlight(false)

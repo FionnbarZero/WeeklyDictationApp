@@ -1,23 +1,29 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 import { createHash } from 'node:crypto'
-import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
-import { documentValue, plainValue } from '../src/firestoreClient.ts'
-import { startPractice } from '../src/application/practice/startPractice.ts'
-import { recordPracticeAnswer } from '../src/application/practice/recordPracticeAnswer.ts'
-import { primaryStartState } from '../src/application/practice/warmupTransitions.ts'
-import * as pilot from '../src/application/writingAcquisition/pilot.ts'
-import { teachingPosition, createWritingProgress } from '../src/application/writingAcquisition/progress.ts'
-import { createWritingLesson, FIVE_STEP_WRITING_POLICY } from '../src/application/writingAcquisition/lesson.ts'
-import { createInitialState, resolveDatasetLifecycles, revealAcquisitionPrompt, type AppState } from '../src/domain.ts'
-import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
+import test from 'node:test'
 import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
+import { acquisitionPersistenceContext } from '../src/application/acquisitionPersistence.ts'
+import { recordPracticeAnswer } from '../src/application/practice/recordPracticeAnswer.ts'
+import { startPractice } from '../src/application/practice/startPractice.ts'
+import { primaryStartState } from '../src/application/practice/warmupTransitions.ts'
 import {
-  practiceWorkspaceStorage,
+  createWritingLesson,
+  FIVE_STEP_WRITING_POLICY,
+  TRACE_INDEPENDENT_PREVIEW_POLICY,
+} from '../src/application/writingAcquisition/lesson.ts'
+import * as pilot from '../src/application/writingAcquisition/pilot.ts'
+import { createWritingProgress, teachingPosition } from '../src/application/writingAcquisition/progress.ts'
+import { type AppState, createInitialState, resolveDatasetLifecycles, revealAcquisitionPrompt } from '../src/domain.ts'
+import { createDeviceSyncRepository } from '../src/familyBeta/deviceSync.ts'
+import {
   practiceWorkspaceKey,
+  practiceWorkspaceStorage,
   practiceWorkspaceSyncAdapter,
 } from '../src/familyBeta/practiceWorkspaceStorage.ts'
 import { chooseWritingPayload } from '../src/familyBeta/writingCheckpoint.ts'
+import { documentValue, plainValue } from '../src/firestoreClient.ts'
+import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
+import { writingRefinementStrategy } from '../src/writingAcquisition/refinementStrategy.ts'
 
 const dataset = writingPreviewLesson().dataset
 const date = new Date('2026-10-01T16:00:00.000Z')
@@ -32,6 +38,23 @@ const persistence = {
   acknowledgeAcquisition() {},
 }
 const fresh = (): AppState => ({ ...createInitialState(), datasets: [dataset] })
+
+test('new-attempt policy selection is Grade 2-only and preserves existing and retired attempts', async () => {
+  const base = acquisitionPersistenceContext('pilot-child', dataset)
+  assert.equal(pilot.prepareContext(fresh(), base).strategy, writingRefinementStrategy)
+  const otherGrade = { ...base, identity: { ...base.identity, grade: 'Grade 5' } }
+  assert.equal(pilot.prepareContext(fresh(), otherGrade), otherGrade)
+  const old = await launch(fresh(), false)
+  if (old.status !== 'started') throw new Error('Fixture failed')
+  const bytes = JSON.stringify(old.state)
+  assert.equal(pilot.prepareContext(old.state, base), base)
+  const restart = {
+    ...base,
+    identity: { ...base.identity, activityModule: 'mandarin-tier1-writing:restart-1234567890abcdef' },
+  }
+  assert.equal(pilot.prepareContext(old.state, restart).strategy, writingRefinementStrategy)
+  assert.equal(JSON.stringify(old.state), bytes)
+})
 function launchInput(state = fresh(), enabled = true): Parameters<typeof startPractice>[0] {
   return {
     state,
@@ -71,7 +94,7 @@ test('actual launch inserts teaching after optional Warmup, and disabled build c
   assert.equal(opened.status, 'started')
   if (opened.status !== 'started') return
   assert.equal(opened.session.stage, 'warmup-intro')
-  assert.equal(opened.state.writingAcquisitionProgress![0].lesson.policy, FIVE_STEP_WRITING_POLICY)
+  assert.equal(opened.state.writingAcquisitionProgress![0].lesson.policy, TRACE_INDEPENDENT_PREVIEW_POLICY)
   assert.equal(teachingPosition(opened.state.writingAcquisitionProgress![0])?.step, 0)
   const rejected = await launch(opened.state, false)
   assert.equal(rejected.status, 'blocked')
@@ -167,31 +190,32 @@ test('legacy in-progress target is not restarted; only subsequent new targets re
   assert.equal(opened.state.writingAcquisitionProgress![0].lesson.policy, FIVE_STEP_WRITING_POLICY)
 })
 
-test('an existing six-step pilot retains its pinned progress and sequence when reopened', async () => {
-  const opened = await launch()
-  if (opened.status !== 'started') throw new Error('Fixture failed')
-  const progress = opened.state.writingAcquisitionProgress![0]
-  const sixStep = createWritingProgress(
-    createWritingLesson(dataset),
-    progress.owner,
-    progress.attemptId,
-    progress.createdAt,
-    { initial: progress.acquisition },
-  )
-  let state = { ...opened.state, writingAcquisitionProgress: [sixStep] }
-  const session = primaryStartState(opened.session)
-  for (let i = 0; i < 5; i++) state = pilot.completeStep(state, session, i, date.toISOString())
-  const originalBytes = JSON.stringify(state.writingAcquisitionProgress)
-  const reopened = await launch(state)
-  assert.equal(reopened.status, 'started')
-  if (reopened.status !== 'started') return
-  assert.equal(JSON.stringify(reopened.state.writingAcquisitionProgress), originalBytes)
-  assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.characterIndex, 0)
-  assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.step, 5)
-  state = pilot.completeStep(state, session, 5, date.toISOString())
-  assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.characterIndex, 1)
-  assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.step, 0)
-})
+for (const policy of ['grade2-six-step-v4', FIVE_STEP_WRITING_POLICY] as const)
+  test(`an existing ${policy} pilot retains its pinned progress and sequence when reopened`, async () => {
+    const opened = await launch(fresh(), false)
+    if (opened.status !== 'started') throw new Error('Fixture failed')
+    const stepCount = policy === 'grade2-six-step-v4' ? 6 : 5
+    const sixStep = createWritingProgress(
+      createWritingLesson(dataset, policy),
+      opened.session.childId,
+      'six-step-fixture',
+      date.toISOString(),
+      { initial: opened.state.acquisitionProgressEnvelopes![0] },
+    )
+    let state = { ...opened.state, writingAcquisitionProgress: [sixStep] }
+    const session = primaryStartState(opened.session)
+    for (let i = 0; i < stepCount - 1; i++) state = pilot.completeStep(state, session, i, date.toISOString())
+    const originalBytes = JSON.stringify(state.writingAcquisitionProgress)
+    const reopened = await launch(state)
+    assert.equal(reopened.status, 'started')
+    if (reopened.status !== 'started') return
+    assert.equal(JSON.stringify(reopened.state.writingAcquisitionProgress), originalBytes)
+    assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.characterIndex, 0)
+    assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.step, stepCount - 1)
+    state = pilot.completeStep(state, session, stepCount - 1, date.toISOString())
+    assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.characterIndex, 1)
+    assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.step, 0)
+  })
 
 test('launch confirms Warmup eligibility changes with writing, without intermediate writes or journal acknowledgements', async () => {
   const mastered = {

@@ -17,6 +17,8 @@ slay-acquisition-test-results/
 slay-acquisition-hosted-test-results/
 writing-pilot-dist
 writing-pilot-test-results/
+writing-slay-integration-dist/
+writing-slay-test-results/
 reconciliation-dist
 reconciliation-test-results/
 public-preview-dist
