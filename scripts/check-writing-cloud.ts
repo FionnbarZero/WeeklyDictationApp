@@ -7,14 +7,15 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium, expect, type FrameLocator, type Page } from '@playwright/test'
+import type { WritingProgress } from '../src/application/writingAcquisition/contracts.ts'
 import { strokeOrderGuide } from '../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../src/strokeTeacherPrototype/original/strokeLayout.ts'
 import { cleanSyntheticWritingFamily, syntheticWritingScope } from './syntheticWritingScope.ts'
 
 assert.equal(process.env.WRITING_CLOUD_ACCEPTANCE, '1', 'Explicit synthetic cloud acceptance opt-in required')
 const base = 'http://127.0.0.1:5198'
-const revision = '3f81a13a2d4c246028e775302b157bad708a7dcf'
-const tree = '02692805e67dd918a692bbb455a1c657b276ba4350bdfe2403b57f9090c40fff'
+const revision = '5d19f9588aee419fc06b719eb240c9205f9a2394'
+const tree = '887827259ef05352397921a3023020b2edc8f6dbf2baffa967a37eb6e997dd83'
 const manifest = await fetch(`${base}/family-beta-manifest.json`).then((response) => response.json())
 assert.equal(manifest.sourceRevision, revision)
 assert.equal(manifest.fileTreeSha256, tree)
@@ -169,8 +170,8 @@ async function launch(page: Page) {
   return frame
 }
 type Checkpoint = {
-  progress: { revision: number; completedTeachingSteps: number[] }
-  acquisition: { revision: number }
+  progress: WritingProgress
+  acquisition: WritingProgress['acquisition']
 }
 async function localCheckpoint(page: Page): Promise<Checkpoint | null> {
   return page.evaluate((id) => {
@@ -214,6 +215,19 @@ async function synced(page: Page, expectedRevision: number) {
     .poll(async () => (await remoteCheckpoint())?.progress.revision, { timeout: 45_000 })
     .toBe(expectedRevision)
   assert.deepEqual(await remoteCheckpoint(), await localCheckpoint(page))
+}
+async function remoteResults() {
+  assert.ok(scope && childId)
+  const parent = `${scope.family}/children/${childId}/betaResults`
+  const response = await adminRequest(`${scope.url(parent)}?pageSize=100`)
+  assert.ok(response.ok, `Synthetic result read failed (${response.status})`)
+  const body = await response.json()
+  assert.ok(!body.nextPageToken)
+  return (body.documents || []).map((document: { name: string; fields: Record<string, unknown> }) => {
+    scope!.validate(document.name)
+    assert.ok(document.name.startsWith(`${parent}/`))
+    return document.fields
+  }) as Record<string, { stringValue?: string; integerValue?: string }>[]
 }
 async function finishTrial(page: Page, frame: FrameLocator, character: string, step: number) {
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
@@ -275,6 +289,7 @@ try {
   await finishTrial(first.page, firstFrame, '英', 1)
   await synced(first.page, 1)
   assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+  assert.equal((await remoteCheckpoint())!.progress.lesson.policy, 'grade2-trace-independent-preview-v7')
   await first.context.close()
   console.log('First teaching step confirmed in real cloud; no acquisition answer fabricated.')
 
@@ -306,19 +321,79 @@ try {
   await expect(teacher()).toHaveCount(0)
   await synced(second.page, 10)
   assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+  await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+  await expect(frame.locator('.skywriting-trace-character')).toHaveCount(2)
+  await expect(frame.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
+  assert.equal((await remoteCheckpoint())!.acquisition.flow.prompt?.kind, 'show-copy')
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   await synced(second.page, 11)
   assert.equal((await remoteCheckpoint())!.acquisition.revision, 1)
+  assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 0)
   const saved = await remoteCheckpoint()
   await second.context.close()
-  console.log('Both characters completed before scroll acquisition; first ordinary answer saved atomically.')
+  console.log('Both characters completed before Slay acquisition; unscored trace saved atomically.')
   const third = await newPage()
   await login(third.page)
   const resumed = await launch(third.page)
   await expect(resumed.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
   await expect(resumed.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+  await expect(resumed.locator('.skywriting-trace-character')).toHaveCount(0)
+  await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
+  assert.equal(saved!.acquisition.flow.prompt?.kind, 'target')
   assert.deepEqual(await localCheckpoint(third.page), saved)
+  await resumed.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+  await resumed.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(resumed.locator('.set-chip')).toContainText('Familiar DT')
+  await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|10)$/)
+  await synced(third.page, 12)
+  assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 1)
+  await resumed.getByRole('button', { name: 'Done for today', exact: true }).click()
+  await expect(resumed.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect.poll(async () => (await remoteResults()).length, { timeout: 45_000 }).toBe(1)
+  const results = await remoteResults()
+  assert.equal(results[0].channel.stringValue, 'writing')
+  assert.equal(Number(results[0].correct.integerValue), 1)
+  assert.equal(Number(results[0].attempted.integerValue), 1)
+  await third.context.close()
+  console.log('One independent response then Familiar DT confirmed; Done saved one real-cloud result.')
+
+  const fourth = await newPage()
+  await login(fourth.page)
+  const continued = await launch(fourth.page)
+  await expect(continued.locator('.set-chip')).toContainText('Familiar DT')
+  await synced(fourth.page, 12)
+  assert.deepEqual(await remoteResults(), results)
+  await expect
+    .poll(() =>
+      fourth.page.evaluate(
+        () => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-preview-results-v1:')).length,
+      ),
+    )
+    .toBe(1)
+  const nextTeacher = continued.getByRole('region', { name: 'Stroke order teacher' })
+  let nextRevision = 12
+  for (let trial = 0; trial < 30 && !(await nextTeacher.isVisible()); trial++) {
+    await continued.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    await continued.getByRole('button', { name: 'I got it right', exact: true }).click()
+    await synced(fourth.page, ++nextRevision)
+  }
+  await expect(nextTeacher).toHaveAttribute('data-character-index', '0')
+  await expect(nextTeacher).toHaveAttribute('data-step', '1')
+  const nextCheckpoint = (await remoteCheckpoint())!
+  assert.equal(nextCheckpoint.progress.lesson.targets[nextCheckpoint.acquisition.flow.targetIndex].text, '每个')
+  await fourth.context.close()
+  const fifth = await newPage()
+  await login(fifth.page)
+  const nextWord = await launch(fifth.page)
+  await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+  await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute(
+    'data-character-index',
+    '0',
+  )
+  await synced(fifth.page, nextRevision)
+  assert.deepEqual(await remoteResults(), results)
+  console.log('Fresh-browser result/DT recovery and next-word guided teaching resume confirmed.')
   assert.deepEqual(errors, [])
   acceptancePassed = true
   console.log(
@@ -329,6 +404,9 @@ try {
       offlineReconnect: true,
       wholeWordBeforeAcquisition: true,
       acquisitionFreshBrowserResume: true,
+      traceIndependentThenDistractors: true,
+      completedResultFreshBrowserResume: true,
+      nextWordTeachingFreshBrowserResume: true,
       realFamilyRecordsTouched: false,
       physicalAudioOrTouchTested: false,
     }),
