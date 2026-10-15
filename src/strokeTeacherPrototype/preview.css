@@ -37,8 +37,18 @@
   stroke: #12131a;
 }
 
+/* The family host must not put the approved teacher inside the home-page gutter. */
+.main-content:has(> .grade2-writing-pilot .st-original-stage) {
+  width: 100%;
+  padding: 0;
+}
+.app-shell:has(.grade2-writing-pilot .st-original-stage) > .topbar,
+.main-content:has(> .grade2-writing-pilot .st-original-stage) > .curriculum-source-status {
+  display: none;
+}
+
 /* Owner-requested control treatment, isolated from the frozen v4 and live app. */
-#writing-integration-preview-root .tier1-writing-audio-actions > .replay-button {
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button {
   justify-content: center;
   align-self: center;
   min-width: 140px;
@@ -54,25 +64,25 @@
   line-height: 1.2;
   white-space: nowrap;
 }
-#writing-integration-preview-root .tier1-writing-audio-actions > .replay-button:hover:not(:disabled) {
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:hover:not(:disabled) {
   background: #254b72;
 }
-#writing-integration-preview-root .tier1-writing-audio-actions > .replay-button:focus-visible {
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:focus-visible {
   outline: 4px solid #2b253c;
   outline-offset: 4px;
 }
-#writing-integration-preview-root .tier1-writing-audio-actions > .replay-button:active:not(:disabled) {
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:active:not(:disabled) {
   transform: translateY(2px);
   box-shadow: 0 2px 0 #234565;
 }
-#writing-integration-preview-root .tier1-writing-audio-actions > .replay-button:disabled {
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:disabled {
   background: #6c7883;
   border-color: #4c5863;
   box-shadow: none;
   cursor: not-allowed;
 }
 @media (max-width: 520px) {
-  #writing-integration-preview-root .tier1-writing-audio-actions > .replay-button {
+  :is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button {
     min-width: 124px;
     padding: 10px 12px;
     font-size: 16px;

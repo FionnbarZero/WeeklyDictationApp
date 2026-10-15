@@ -11,6 +11,7 @@ export type ActivityCheckpointPartition = {
   envelopes: readonly Envelope[]
   transitionReceipts: readonly Receipt[]
   pendingCheckpoints: readonly PendingCheckpoint[]
+  writingProgress: NonNullable<AppState['writingAcquisitionProgress']>
 }
 
 export type ActivityCheckpointPartitionResult =
@@ -40,6 +41,12 @@ export function partitionActivityCheckpoints(state: AppState): ActivityCheckpoin
   try {
     const progressions = uniqueById(state.acquisitionProgressions, 'Acquisition progressions')
     const envelopes = uniqueById(state.acquisitionProgressEnvelopes || [], 'Acquisition envelopes')
+    const writing = state.writingAcquisitionProgress || []
+    if (
+      new Set(writing.map((p) => p.acquisition.id)).size !== writing.length ||
+      writing.some((p) => !envelopes.has(p.acquisition.id))
+    )
+      return { status: 'blocked', reason: 'Writing references duplicate or unknown acquisition progress.' }
     const activityIds = new Set([...progressions.keys(), ...envelopes.keys()])
     for (const [id, progression] of progressions) {
       const envelope = envelopes.get(id)
@@ -58,6 +65,7 @@ export function partitionActivityCheckpoints(state: AppState): ActivityCheckpoin
       envelopes: envelopes.has(activityId) ? [envelopes.get(activityId)!] : [],
       transitionReceipts: transitionReceipts.filter((receipt) => receipt.progressionId === activityId),
       pendingCheckpoints: pendingCheckpoints.filter((checkpoint) => checkpoint.progressionId === activityId),
+      writingProgress: writing.filter((p) => p.acquisition.id === activityId),
     }))
     return { status: 'ready', activities }
   } catch (error) {

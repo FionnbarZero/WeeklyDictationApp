@@ -3,6 +3,7 @@
 import { type AppState, isAppState } from '../domain.ts'
 import { partitionActivityCheckpoints } from './workspaceActivityPartition.ts'
 import { partitionWorkspaceState, WORKSPACE_CHECKPOINT_FIELDS, WORKSPACE_STATE_FIELDS } from './workspacePartition.ts'
+import { validateWritingActivity } from './writingCheckpoint.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
@@ -29,11 +30,12 @@ const bounded = (value: unknown): boolean => {
   return Object.values(value).every(bounded)
 }
 
-type PartitionRecord = { schema: 1; childId: string; values: Record<string, unknown> }
+type PartitionRecord = { schema: 1 | 2; childId: string; values: Record<string, unknown> }
 const partitionKeys = new Set([historyKey, checkpointKey])
 const activityFields = new Set([
   'acquisitionProgressions',
   'acquisitionProgressEnvelopes',
+  'writingAcquisitionProgress',
   'acquisitionTransitionReceipts',
   'acquisitionPendingCheckpoints',
 ])
@@ -78,12 +80,12 @@ function exposedRecordKeys(records: Record<string, string>) {
   return keys
 }
 
-function partitionRecord(raw: string, childId: string): Record<string, unknown> {
+function partitionRecord(raw: string, childId: string, schema = 1): Record<string, unknown> {
   try {
     const value = JSON.parse(raw) as PartitionRecord
     if (
       !value ||
-      value.schema !== 1 ||
+      value.schema !== schema ||
       value.childId !== childId ||
       !value.values ||
       typeof value.values !== 'object' ||
@@ -101,7 +103,10 @@ function activityRecord(raw: string, childId: string, key: string) {
   try {
     const value = JSON.parse(raw) as PartitionRecord & { activityId?: unknown }
     if (value.activityId !== activityId(key)) throw new Error(failure)
-    return partitionRecord(JSON.stringify(value), childId)
+    const values = partitionRecord(raw, childId, value.schema === 2 ? 2 : 1)
+    if (value.schema === 2) validateWritingActivity(values, childId, activityId(key))
+    else if (values.writingAcquisitionProgress !== undefined) throw new Error(failure)
+    return values
   } catch {
     throw new Error(failure)
   }
@@ -135,6 +140,12 @@ function stateFromRecords(records: Record<string, string>, childId: string) {
     const activities = activityKeys.map((key) => activityRecord(records[key], childId, key))
     for (const field of activityFields) {
       const legacy = values[field]
+      if (
+        field === 'writingAcquisitionProgress' &&
+        legacy === undefined &&
+        !activities.some((activity) => activity[field] !== undefined)
+      )
+        continue
       if (activities.length) {
         if (legacy !== undefined) throw new Error(failure)
         values[field] = activities.flatMap((activity) => (Array.isArray(activity[field]) ? activity[field] : []))
@@ -194,14 +205,18 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
             ? 'progressions'
             : field === 'acquisitionProgressEnvelopes'
               ? 'envelopes'
-              : field === 'acquisitionTransitionReceipts'
-                ? 'transitionReceipts'
-                : 'pendingCheckpoints'
+              : field === 'writingAcquisitionProgress'
+                ? 'writingProgress'
+                : field === 'acquisitionTransitionReceipts'
+                  ? 'transitionReceipts'
+                  : 'pendingCheckpoints'
         ],
       ]),
     )
+    if (!activity.writingProgress.length) delete values.writingAcquisitionProgress
+    else validateWritingActivity(values, childId, activity.activityId)
     next[activityKey(activity.activityId)] = JSON.stringify({
-      schema: 1,
+      schema: activity.writingProgress.length ? 2 : 1,
       childId,
       activityId: activity.activityId,
       values,
@@ -390,6 +405,14 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
         // stale AppState snapshot. Never interpret that omission as deletion;
         // reviewed progress is retired explicitly through its own marker.
         if (next !== undefined) {
+          // Teacher and acquisition must stay one confirmed record. A stale
+          // equal-revision writer must not silently erase a teaching milestone.
+          const current = records[recordKey]
+          const writingRecord =
+            isActivityKey(recordKey) && [current, next].some((raw) => raw && JSON.parse(raw).schema === 2)
+          if (writingRecord && current !== before && current !== next) throw new Error(failure)
+          if (writingRecord && current && JSON.parse(current).schema === 2 && JSON.parse(next).schema !== 2)
+            throw new Error(failure)
           const currentRevision = isActivityKey(recordKey) ? activityRevision(records[recordKey]) : null
           const incomingRevision = isActivityKey(recordKey) ? activityRevision(next) : null
           if (currentRevision !== null && incomingRevision !== null && currentRevision > incomingRevision) continue

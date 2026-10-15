@@ -72,6 +72,7 @@ const PracticeView = lazy(() =>
   import('./practice/PracticeView.tsx').then((module) => ({ default: module.PracticeView })),
 )
 const Grade2StrokeOrderExperience = lazy(() => import('./learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx'))
+const Grade2WritingPractice = lazy(() => import('./writingAcquisition/Grade2WritingPractice.tsx'))
 const HistoryView = lazy(() => import('./progress/HistoryView.tsx'))
 const LocalBackupTools = lazy(() =>
   import('./backup/LocalBackupTools.tsx').then((module) => ({ default: module.LocalBackupTools })),
@@ -259,6 +260,10 @@ export function App({ now = () => new Date(), manualTestDateLabel }: { now?: App
 }
 
 function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
+  const [writingPilot, setWritingPilot] = useState<typeof import('./application/writingAcquisition/pilot.ts') | null>(null)
+  const writingCommit = useRef<ReturnType<typeof import('./application/writingAcquisition/confirmedTransition.ts').createConfirmedWritingTransition<AppState>> | null>(null)
+  const writingAnswer = useRef<Extract<ReturnType<typeof recordPracticeAnswerOperation>, { status: 'writing-ready' }> | null>(null)
+  const writingBusy = useRef(false)
   const workspaceCapabilities = useMemo(() => createFirestoreWorkspaceCapabilities(appStorage), [])
   const browserPersistence = useMemo(() => createBrowserPracticePersistence(appStorage), [])
   const [baseView, setView] = useState<BaseView>('home')
@@ -284,13 +289,13 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       ...browserPersistence,
       local: {
         saveState: (next: AppState) => {
-          const saved = sharedWorkspace.save(expected, next)
+          const saved = sharedWorkspace.save(expected, next, !writingPilot)
           if (sharedWorkspace.getSnapshot().state === next) expected = next
           return saved
         },
       },
     }
-  }, [browserPersistence, sharedWorkspace, state])
+  }, [browserPersistence, sharedWorkspace, state, writingPilot])
   const [curriculumSourceMessage, setCurriculumSourceMessage] = useState<string | null>(null)
   const [grade2SourceDatasets, setGrade2SourceDatasets] = useState<Dataset[] | null>(null)
   const [grade2CurriculumTools, setGrade2CurriculumTools] = useState<typeof import('./automaticGrade2Curriculum.ts') | null>(null)
@@ -642,8 +647,24 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       setShowChildMenu(false)
       const id = createSessionId()
       const cloud = Boolean(auth.user && cloudScope)
+      let pilot: typeof import('./application/writingAcquisition/pilot.ts') | undefined
+      if (familyPreview && import.meta.env.VITE_GRADE2_WRITING_PILOT === 'true' &&
+        selectedChild.grade === 'Grade 2' && target?.phase === 'acquisition' && !externalPrimary) {
+        try { pilot = await import('./application/writingAcquisition/pilot.ts') }
+        catch (error) {
+          setCloudError(`The writing teacher could not load. No lesson was started: ${authErrorMessage(error)}`)
+          setPracticeStartInFlight(false)
+          return
+        }
+      }
+      if (pilot) {
+        setWritingPilot(pilot)
+        writingCommit.current ||= pilot.createConfirmedWritingTransition<AppState>()
+      }
+      let expected = state
       const result = await import('./application/practice/startPractice.ts').then(({ startPractice: startPracticeOperation }) => startPracticeOperation({
         state,
+        writingPilot: pilot,
         resolveAcquisitionContext: familyPreview ? context => lessonRetirement!.currentAcquisitionContext(localStorage, context, requestedWritingLesson?.progressionId) : undefined,
         child: selectedChild,
         target,
@@ -652,10 +673,15 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         lifecycleResolution,
         sessionId: id,
         startedAt: now(),
+        writingTimestamp: pilot ? new Date().toISOString() : undefined,
         formatError: authErrorMessage,
         persistence: {
           cloud,
-          saveLocalState: practicePersistence.local.saveState,
+          saveLocalState: pilot && sharedWorkspace ? next => {
+            const saved = sharedWorkspace.save(expected, next, false)
+            if (saved) expected = next
+            return saved
+          } : practicePersistence.local.saveState,
           journalWarmup: practicePersistence.warmup.journal,
           acknowledgeWarmup: practicePersistence.warmup.acknowledge,
           ensureWarmupSeed: cloud
@@ -707,6 +733,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       lifecycleResolution,
       lessonRetirement,
       requestedWritingLesson,
+      sharedWorkspace,
       now,
       practicePersistence,
       practiceStartInFlight,
@@ -716,6 +743,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     ],
   )
   const leavePractice = (nextView: BaseView) => {
+    if (writingBusy.current || writingCommit.current?.pending) {
+      setCloudError('Please retry the unsaved writing step before leaving. Keep this page open.')
+      return
+    }
     strokeWarmupReady.current = null
     setStrokeWarmupOpen(false)
     const current = session
@@ -1041,6 +1072,10 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const answer = (correct: PracticeAnswer) => {
     if (!acquisitionIsActive(session)) return
+    if ((writingBusy.current || writingCommit.current?.pending) && typeof correct !== 'boolean') {
+      setCloudError('Please retry the unsaved writing answer before finishing. Keep this page open.')
+      return
+    }
     if (typeof correct === 'object') {
       if (correct.kind === 'deferred-writing-test-review') completeDeferredWritingTestReview(correct.completion)
       return
@@ -1064,11 +1099,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     const current = session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const cloudEnabled = Boolean(auth.user && cloudScope)
-    const result = recordPracticeAnswerOperation({
+    const recordAnswer = () => recordPracticeAnswerOperation({
       state,
+      writingPilot: writingPilot || undefined,
       session: current,
       correct,
-      occurredAt: now(),
+      occurredAt: current?.segment === 'primary' && state.writingAcquisitionProgress?.some(p => p.acquisition.id === current.acquisitionProgressionId) ? new Date() : now(),
       cloudSession: cloud,
       formatError: authErrorMessage,
       persistence: {
@@ -1092,7 +1128,26 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
           : undefined,
       },
     })
-    if (result.status === 'ignored') return
+    if (current?.segment === 'primary' && state.writingAcquisitionProgress?.some(p => p.acquisition.id === current.acquisitionProgressionId)) {
+      if (!writingPilot || !sharedWorkspace || !writingCommit.current || writingBusy.current) return
+      writingBusy.current = true
+      void writingPilot.withScrollsWrite(`writing:${current.childId}`, () => {
+        const next = writingCommit.current!.commit(`answer:${current.acquisition?.prompt?.id}:${correct}`, state, () => {
+          const result = recordAnswer()
+          if (result.status !== 'writing-ready') throw new Error(result.status === 'error' ? result.message : 'This writing answer is no longer current.')
+          writingAnswer.current = result
+          return result.state
+        }, (before, after) => sharedWorkspace.save(before, after, false))
+        if (!writingAnswer.current) throw new Error('The confirmed writing response is unavailable. Please reopen the lesson.')
+        setState(next)
+        setSession(writingAnswer.current.session)
+        writingAnswer.current = null
+        setCloudError(null)
+      }).catch(error => setCloudError(authErrorMessage(error))).finally(() => { writingBusy.current = false })
+      return
+    }
+    const result = recordAnswer()
+    if (result.status === 'ignored' || result.status === 'writing-ready') return
     if (result.status === 'error') {
       setCloudError(result.message)
       return
@@ -1107,6 +1162,21 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       return
     }
     if (result.session) setSession(result.session)
+  }
+  const completeTeachingStep = async (step: number) => {
+    if (!writingPilot || !sharedWorkspace || !session || !writingCommit.current || writingBusy.current)
+      throw new Error('This writing lesson is not ready to save. Please try again.')
+    writingBusy.current = true
+    try {
+      await writingPilot.withScrollsWrite(`writing:${session.childId}`, () => {
+        const progress = writingPilot.progressFor(state, session.acquisitionProgressionId)
+        const next = writingCommit.current!.commit(`teach:${progress?.revision}:${step}`, state,
+          () => writingPilot.completeStep(state, session, step, new Date().toISOString()),
+          (before, after) => sharedWorkspace.save(before, after, false))
+        setState(next)
+        setCloudError(null)
+      })
+    } finally { writingBusy.current = false }
   }
   const navigate = (nextView: BaseView) => {
     stopActiveAudio()
@@ -1387,7 +1457,11 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               </div>
             }
           >
-            <PracticeView
+            {(() => {
+              const WritingView = writingPilot && session.grade === 'Grade 2' && session.primaryPhase === 'acquisition' ? Grade2WritingPractice : PracticeView
+              return <WritingView
+                progress={state.writingAcquisitionProgress?.find(p => p.acquisition.id === session.acquisitionProgressionId)}
+                onTeachingStep={completeTeachingStep}
               session={session}
               datasets={state.datasets}
               onExit={exitPractice}
@@ -1404,7 +1478,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               onSpeakWord={speakWord}
               onSpeakReviewInstruction={speakReviewInstruction}
               reviewInstruction={REVIEW_INSTRUCTION}
-            />
+            />})()}
           </Suspense>
         )}
         {view === 'reading' && readingPathway && readingProfile && (

@@ -6,13 +6,8 @@ import { withDictationContent } from '../../ninjaSkills/dictationContent.ts'
 import { withSupplementalContent } from '../../ninjaSkills/supplemental.ts'
 
 export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
-export type WritingLesson = {
-  schema: 1
-  policy: typeof WRITING_TEACHER_POLICY
-  dataset: Dataset
-  targets: { id: string; text: string; pinyin: string; meaning: string; guideFingerprint: string }[]
-  fingerprint: string
-}
+import type { WritingLesson } from './contracts.ts'
+export type { WritingLesson } from './contracts.ts'
 
 export function writingCharacterGuides(text: string) {
   const characters = [...text]

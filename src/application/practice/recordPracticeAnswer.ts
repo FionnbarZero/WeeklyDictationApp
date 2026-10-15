@@ -1,6 +1,7 @@
 import { type AppState, type PracticeSession, type SessionAnswer } from '../../domain.ts'
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../acquisition/persistence/contracts.ts'
 import type { CloudAttempt, CloudSession } from '../../persistence/cloudRecords.ts'
+import type { WritingPilotCoordinator } from '../writingAcquisition/pilot.ts'
 import type { VersionedChildMasteryState, WarmupTransition, WarmupVisit } from '../../warmup/visits/contracts.ts'
 import {
   acquisitionPersistenceContext,
@@ -44,6 +45,8 @@ export type RecordPracticeAnswerPersistence = {
 export type RecordPracticeAnswerResult =
   | { status: 'ignored' }
   | { status: 'error'; message: string }
+  /** The caller must confirm one atomic workspace write before advancing the view. */
+  | { status: 'writing-ready'; state: AppState; session: PracticeSession; background: [] }
   | {
       status: 'advanced'
       state?: AppState
@@ -60,6 +63,7 @@ export function recordPracticeAnswer(input: {
   persistence: RecordPracticeAnswerPersistence
   cloudSession?: CloudSession
   formatError?: (error: unknown) => string
+  writingPilot?: WritingPilotCoordinator
 }): RecordPracticeAnswerResult {
   const current = input.session
   if (!current || current.stage !== 'review') return { status: 'ignored' }
@@ -82,6 +86,12 @@ export function recordPracticeAnswer(input: {
           'Acquisition progress was not loaded. This answer was not recorded; reopen the activity and try again.',
       }
     }
+    const writing = input.state.writingAcquisitionProgress?.some((p) => p.acquisition.id === envelope.id)
+    if (writing && (!input.writingPilot || input.persistence.cloud))
+      return {
+        status: 'error',
+        message: 'This saved lesson requires the approved writing pilot. No answer was recorded.',
+      }
     let checkpoint: ReturnType<typeof createAcquisitionAnswerCheckpoint>
     let context: ReturnType<typeof acquisitionPersistenceContext>
     try {
@@ -94,7 +104,7 @@ export function recordPracticeAnswer(input: {
         sessionId: current.id,
         occurredAt,
       })
-      input.persistence.journalAcquisition(checkpoint, envelope)
+      if (!writing) input.persistence.journalAcquisition(checkpoint, envelope)
     } catch (error) {
       return {
         status: 'error',
@@ -103,7 +113,7 @@ export function recordPracticeAnswer(input: {
     }
     const applied = applyAcquisitionCheckpointToAppState(input.state, checkpoint, context, input.persistence.cloud)
     if (applied.status === 'conflict') {
-      input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
+      if (!writing) input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
       return {
         status: 'error',
         message: `This Acquisition answer was not advanced because saved progress changed: ${applied.reason}`,
@@ -121,6 +131,14 @@ export function recordPracticeAnswer(input: {
       index: 0,
     }
     const background: PracticeAnswerBackgroundTask[] = []
+    if (writing) {
+      try {
+        const state = input.writingPilot!.withCheckpoint(input.state, applied.state, checkpoint)
+        return { status: 'writing-ready', state, session, background: [] }
+      } catch (error) {
+        return { status: 'error', message: formatError(error) }
+      }
+    }
     if (input.persistence.cloud && input.persistence.commitAcquisition) {
       background.push({
         promise: input.persistence

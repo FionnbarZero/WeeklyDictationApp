@@ -14,6 +14,7 @@ import {
   type Word,
 } from '../../domain.ts'
 import type { CloudSession } from '../../persistence/cloudRecords.ts'
+import type { WritingPilotCoordinator } from '../writingAcquisition/pilot.ts'
 import type { CloudWarmupRotation } from '../../persistence/warmup/cloudContracts.ts'
 import type { VersionedChildMasteryState, WarmupTransition, WarmupVisit } from '../../warmup/visits/contracts.ts'
 import {
@@ -73,6 +74,9 @@ export async function startPractice(input: {
   persistence: StartPracticePersistence
   formatError?: (error: unknown) => string
   resolveAcquisitionContext?: (context: AcquisitionPersistenceContext<Word>) => AcquisitionPersistenceContext<Word>
+  writingPilot?: WritingPilotCoordinator
+  /** Confirmed writing milestones use wall time, not the selected curriculum week. */
+  writingTimestamp?: string
 }): Promise<StartPracticeResult> {
   const formatError = input.formatError || errorMessage
   const startedAt = input.startedAt.toISOString()
@@ -186,6 +190,34 @@ export async function startPractice(input: {
     }
   }
   if (preparedAcquisition) state = preparedAcquisition.state
+  const preparedId = preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.id : undefined
+  const writing = preparedId && state.writingAcquisitionProgress?.some((p) => p.acquisition.id === preparedId)
+  if (preparedAcquisition?.status === 'ready' && (writing || input.writingPilot)) {
+    if (!input.writingPilot || input.persistence.cloud)
+      return {
+        status: 'blocked',
+        message: 'Open this saved lesson in the approved Grade 2 writing pilot. Your work is preserved.',
+      }
+    try {
+      state = input.writingPilot.prepare({
+        state,
+        dataset: input.target!.dataset,
+        envelope: preparedAcquisition.envelope,
+        timestamp: input.writingTimestamp || startedAt,
+        legacy:
+          !!input.state.acquisitionProgressEnvelopes?.some((e) => e.id === preparedId) ||
+          !!input.state.acquisitionProgressions?.some(
+            (e) =>
+              e.childId === input.child.id &&
+              e.datasetId === input.target!.dataset.id &&
+              preparedAcquisition?.status === 'ready' &&
+              preparedAcquisition.envelope.activityModule === 'mandarin-tier1-writing',
+          ),
+      })
+    } catch (error) {
+      return { status: 'blocked', message: formatError(error) }
+    }
+  }
   if (!input.persistence.cloud && preparedAcquisition && !input.persistence.saveLocalState(state)) {
     return {
       status: 'blocked',
@@ -229,10 +261,10 @@ export async function startPractice(input: {
       envelope: preparedAcquisition.envelope,
       context: preparedAcquisition.context,
       sessionId: input.sessionId,
-      occurredAt: startedAt,
+      occurredAt: input.writingPilot ? input.writingTimestamp || startedAt : startedAt,
     })
     try {
-      input.persistence.journalAcquisition(checkpoint, preparedAcquisition.envelope)
+      if (!input.writingPilot) input.persistence.journalAcquisition(checkpoint, preparedAcquisition.envelope)
     } catch (error) {
       return {
         status: 'blocked',
@@ -246,11 +278,15 @@ export async function startPractice(input: {
       input.persistence.cloud,
     )
     if (applied.status === 'conflict') {
-      input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
+      if (!input.writingPilot) input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
       return { status: 'blocked', message: `Acquisition could not resume safely: ${applied.reason}` }
     }
-    state = applied.state
-    preparedAcquisition = { ...preparedAcquisition, state: applied.state, envelope: applied.envelope }
+    try {
+      state = input.writingPilot ? input.writingPilot.withCheckpoint(state, applied.state, checkpoint) : applied.state
+    } catch (error) {
+      return { status: 'blocked', message: formatError(error) }
+    }
+    preparedAcquisition = { ...preparedAcquisition, state, envelope: applied.envelope }
     if (input.persistence.cloud) {
       try {
         await input.persistence.commitAcquisitionCheckpoint?.(applied.envelope, checkpoint)
@@ -260,8 +296,10 @@ export async function startPractice(input: {
         warning = `Acquisition resume is saved on this device and will retry: ${formatError(error)}`
       }
     } else if (input.persistence.saveLocalState(state)) {
-      input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
+      if (!input.writingPilot) input.persistence.acknowledgeAcquisition(checkpoint.transitionId)
     } else {
+      if (input.writingPilot)
+        return { status: 'blocked', message: 'Writing could not resume until its progress is saved. Please try again.' }
       warning = 'Acquisition resume is preserved in the recovery journal and will retry when the app reopens.'
     }
   }

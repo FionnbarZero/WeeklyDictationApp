@@ -1,4 +1,3 @@
-import type { AcquisitionAssessment } from '../../acquisition/contracts.ts'
 import { startAcquisition } from '../../acquisition/engine.ts'
 import type {
   AcquisitionPersistenceContext,
@@ -10,27 +9,14 @@ import { createAcquisitionProgressEnvelope } from '../../acquisition/persistence
 import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint } from '../../acquisition/persistence/reducer.ts'
 import { validateAcquisitionProgressEnvelope } from '../../acquisition/persistence/validation.ts'
 import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
+import { schoolYearToken } from '../../curriculum/identity.ts'
 import type { Word } from '../../domain/contracts.ts'
 import { validateWritingLesson, type WritingLesson } from './lesson.ts'
 
 export const WRITING_PROGRESS_CONTRACT = 'grade2-writing-progress-v1' as const
 const fail = 'Saved writing could not be safely continued. Your progress was preserved; please report the problem.'
-export type WritingProgress = {
-  contract: typeof WRITING_PROGRESS_CONTRACT
-  owner: string
-  attemptId: string
-  revision: number
-  createdAt: string
-  updatedAt: string
-  lesson: WritingLesson
-  /** Legacy target already in progress finishes under its old rules. */
-  firstTeacherTargetIndex: number
-  initialAcquisitionRevision: number
-  completedTeachingSteps: number[]
-  acquisition: AcquisitionProgressEnvelope<Word>
-  assessments: AcquisitionAssessment<Word, string>[]
-  lastCommand?: { id: string; fingerprint: string }
-}
+import type { WritingProgress } from './contracts.ts'
+export type { WritingProgress } from './contracts.ts'
 export type TeachingPosition = { targetIndex: number; targetId: string; characterIndex: number; step: number }
 export type WritingCommand =
   | { id: string; expectedRevision: number; kind: 'complete-teaching-step'; position: TeachingPosition }
@@ -53,14 +39,20 @@ const canonicalTime = (value: string) =>
   typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value
 const validId = (value: string) => typeof value === 'string' && /^[\w-]{1,160}$/.test(value)
 
-export function writingContext(lesson: WritingLesson, owner: string): AcquisitionPersistenceContext<Word> {
+export function writingContext(
+  lesson: WritingLesson,
+  owner: string,
+  envelope?: AcquisitionProgressEnvelope<Word>,
+): AcquisitionPersistenceContext<Word> {
+  const module = envelope?.activityModule || 'mandarin-tier1-writing'
+  if (!/^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/.test(module)) throw new Error(fail)
   return {
     identity: {
       childId: owner,
       grade: 'Grade 2',
       datasetId: lesson.dataset.id,
-      schoolYear: '2026-27',
-      activityModule: 'mandarin-tier1-writing',
+      schoolYear: schoolYearToken(lesson.dataset.schoolYear),
+      activityModule: module,
       tier: 'tier-1',
     },
     lifecycleStage: { kind: 'acquisition' },
@@ -139,7 +131,7 @@ export function validateWritingProgress(value: unknown, owner: string): asserts 
           p.acquisition.revision -
           p.initialAcquisitionRevision ||
       p.completedTeachingSteps.length !== count ||
-      !validateAcquisitionProgressEnvelope(p.acquisition, writingContext(p.lesson, owner)).valid
+      !validateAcquisitionProgressEnvelope(p.acquisition, writingContext(p.lesson, owner, p.acquisition)).valid
     )
       throw new Error(fail)
     const currentIndex = p.acquisition.flow.targetIndex
@@ -194,11 +186,16 @@ export function createWritingProgress(
   owner: string,
   attemptId: string,
   timestamp: string,
-  options: { random?: () => number; legacy?: AcquisitionProgressEnvelope<Word> } = {},
+  options: {
+    random?: () => number
+    legacy?: AcquisitionProgressEnvelope<Word>
+    initial?: AcquisitionProgressEnvelope<Word>
+  } = {},
 ): WritingProgress {
   const context = writingContext(lesson, owner)
   const acquisition =
     options.legacy ||
+    options.initial ||
     pinAcquisitionLesson(
       createAcquisitionProgressEnvelope(
         context,
@@ -265,7 +262,7 @@ export function advanceWritingProgress(
       throw new Error('Complete every character before starting acquisition for this word.')
     if (progress.acquisition.flow.complete || !progress.acquisition.flow.prompt)
       throw new Error('This lesson is complete.')
-    const context = writingContext(progress.lesson, progress.owner)
+    const context = writingContext(progress.lesson, progress.owner, progress.acquisition)
     const checkpoint = buildAcquisitionCheckpoint({
       envelope: progress.acquisition,
       context,

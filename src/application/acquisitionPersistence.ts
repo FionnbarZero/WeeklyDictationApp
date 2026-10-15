@@ -288,6 +288,8 @@ export function recoverAcquisitionCheckpoints(
   const ordered = [...entries].sort((left, right) => left.checkpoint.expectedRevision - right.checkpoint.expectedRevision || left.checkpoint.transitionId.localeCompare(right.checkpoint.transitionId))
   for (const entry of ordered) {
     const { checkpoint, baseEnvelope } = entry
+    if (state.writingAcquisitionProgress?.some(p => p.acquisition.id === checkpoint.progressionId))
+      return { status: 'blocked', state, recoveredTransitionIds, reason: 'An older pending answer cannot bypass the writing teacher. Both copies were preserved.' }
     const dataset = state.datasets.find((item) => item.id === checkpoint.nextFlow.datasetId)
     if (!dataset) return { status: 'blocked', state, recoveredTransitionIds, reason: `Pending Acquisition transition ${checkpoint.transitionId} has no canonical dataset.` }
     let context: AcquisitionPersistenceContext<Word>

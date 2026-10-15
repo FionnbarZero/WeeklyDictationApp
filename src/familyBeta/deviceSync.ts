@@ -4,6 +4,7 @@ import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
 import { chooseCheckpointWinner } from './checkpointConflict.ts'
+import { chooseWritingPayload } from './writingCheckpoint.ts'
 import {
   isPracticeWorkspaceSyncKey,
   legacyPracticeKey,
@@ -294,6 +295,9 @@ export function createDeviceSyncRepository(options: {
           continue
         }
         if (online !== baseline) {
+          const writingConflict = workspaceSyncKey && [local, online].some(raw => raw && JSON.parse(raw).schema === 2)
+          const writingWinner = writingConflict && online && server
+            ? chooseWritingPayload(local, online, childId, server.updateTime) : null
           const candidate = key.startsWith('family-beta-acquisition-v1:')
             ? acquisitionConflictCandidate
             : workspaceSyncKey
@@ -302,11 +306,13 @@ export function createDeviceSyncRepository(options: {
           const localCandidate = candidate(local)
           const onlineCandidate = candidate(online || '')
           const winner =
-            localCandidate && onlineCandidate && server
+            writingConflict
+              ? writingWinner ? { winner: { id: writingWinner === 'online' ? 'writing-online' : 'writing-local' } } : null
+              : localCandidate && onlineCandidate && server
               ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
               : null
           if (!winner?.winner) throw new PracticeSyncConflictError()
-          if (winner.winner.id === onlineCandidate?.id) {
+          if (winner.winner.id === 'writing-online' || winner.winner.id === onlineCandidate?.id) {
             if (!(typeof allowDownload === 'function' ? allowDownload() : allowDownload))
               throw new Error(
                 'Newer practice is available from another device. This open activity was not changed. Keep this page open to preserve unfinished work.',
@@ -320,7 +326,8 @@ export function createDeviceSyncRepository(options: {
             }
             continue
           }
-          // The local checkpoint has the newest trusted reviewed response. The
+          // The local checkpoint has the newest trusted response or confirmed
+          // writing milestone. Teaching remains separate from reviewed scores. The
           // normal conditional upload below replaces the remote unfinished copy
           // without combining either checkpoint's phase or queue fields.
         }

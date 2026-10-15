@@ -89,6 +89,7 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
+    define: mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {},
     publicDir: isolatedWritingPreview ? false : 'public',
     base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [
@@ -138,7 +139,7 @@ export default defineConfig(({ command, mode }) => {
                   grade5LearningHub: page('./grade5-learning-hub.html'),
                   kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
                   testing: page('./testing.html'),
-                  ...(['reconciliation', 'family-sync'].includes(mode)
+                  ...(['reconciliation', 'family-sync', 'writing-pilot'].includes(mode)
                     ? { familyPreview: page('./family-beta-preview.html'), familyGame: page('./family-game.html') }
                     : {}),
                   ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),
