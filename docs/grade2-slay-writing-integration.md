@@ -24,9 +24,21 @@ The existing old-save fixture initially paired a new v7 envelope with a six-step
 
 Visual inspection caught family-host navigation consuming vertical room; the writing-only viewport host fixes it. Desktop and both WebKit orientation screenshots were inspected. Speech is mocked, and automated pointer drawing is not physical iPad/Pencil acceptance.
 
+## Independent review — October 15, 2026
+
+The owner authorized a separate GPT-6 Astra · Extra High reviewer. Review of `9f0eaca` → application `232be87` found one introduced P2 and no other actionable issues in the bounded integration review. Documentation HEAD `b9ae51f` did not change application source.
+
+**P2 — missing visit-completion control.** `SlayWritingAcquisition.tsx:20` supplies ordinary `onExit` to the replacement shell. Imported comparison CSS (`slayAcquisitionMockup.css:58–60`) hides `.practice-top`, including the existing “Done for today” button. Exit preserves the reviewed response but does not finalize the visit's score or family-history result; the outer report-email action is not a learning-completion substitute. This also affects ongoing earned-DT practice, which has no terminal teaching screen offering another completion action.
+
+Independent synthetic reproduction completes the first word's teaching, trace and independent response, then stops. Candidate Exit retains one reviewed answer but creates zero session scores, completed sessions or family result records. Earlier actual-app pilot `2fcd7e2` exposes “Done for today” and creates one of each; its relevant application files are byte-identical through baseline `9f0eaca`. Evidence is retained at `/tmp/ninja-slay-independent-finish-session.mjs`, `/tmp/ninja-slay-independent-candidate-done-control.png`, and `/tmp/ninja-slay-independent-prechange-done-control.png`.
+
+Reviewer independently passed 116 focused units, six Chromium and four WebKit portrait/landscape cases, and checked curriculum pinning, restart history and earned-DT correction/resume. All 119 checked HTML/manifest files matched the retained package at served revision `232be87`. Original teacher, drawing component and approved comparison CSS remain unchanged. Existing passing browser cases did not assert visit finalization; the repair needs a dedicated regression covering completed scores/history as well as preserved answers.
+
+No application edits, publication, real-family access or owner-tab reload occurred. Physical iPad audio/Pencil/software-keyboard behavior and this candidate's real-cloud acceptance remain unverified. Owner smoke testing remains premature. Next is owner authorization for a narrow completion-control repair using GPT-6 Astra · Extra High, then focused verification and review closure; the approved presentation and lesson rules must remain intact.
+
 ## Remaining gates
 
-Independent GPT-6 Astra · Extra High integration/saving review (new approval required to delegate), current-main reconciliation/normal protected integration, retained-package compatibility and isolated real-backend acceptance for this candidate, followed by release authorization/exact publication verification and a bounded physical iPad/iMac check. Prior candidate's cloud/review receipts do not establish acceptance of this new candidate. No new email or publication was requested for this stage. The revised correction protocol remains outside scope.
+Resolve the independent review's completion-control finding with owner-authorized repair and focused re-review, then current-main reconciliation/normal protected integration, retained-package compatibility and isolated real-backend acceptance for this candidate, followed by release authorization/exact publication verification and a bounded physical iPad/iMac check. Prior candidate's cloud/review receipts do not establish acceptance of this new candidate. No new email or publication was requested for this stage. The revised correction protocol remains outside scope.
 
 ## Retained candidate identity
 
