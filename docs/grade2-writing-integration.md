@@ -1,5 +1,27 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Packaging-only repair — October 15
+
+The owner explicitly approved the packaging-only fix with the confirmed **GPT-6 Astra · Extra High** assignment. Candidate **`3f81a13a2d4c246028e775302b157bad708a7dcf`** changes `vite.config.ts` only for `family-sync`: shared Lucide icon modules are consolidated using the supported bundler grouping option (`minShareCount: 2`, normal recursive dependency inclusion). Application/lazy-activity grouping remains automatic. Other build modes and the frozen approved preview outputs are untouched. The configuration regression checks scope and modes. No source under `src/`, security/header generator, access rules, timers, scoring, teaching or drawing behavior changed. The option's dependency/execution-order considerations were checked against the installed typings and [official Rolldown documentation](https://rolldown.rs/in-depth/manual-code-splitting).
+
+The pilot-enabled package now contains **93 JS/CSS bundles plus the global rule = 94 header rules**, previously 102 plus one = 103. The existing 100-rule refusal and every exact-path immutable/no-store policy remain intact; no wildcard or exception bypass was added. All 153 retained manifest file hashes match. The packaging tradeoff is a small redistribution of shared dependency bytes: the Grade 2 family entry's static JS graph changes from 556,207 to 558,926 bytes (+2,719); this is not the separately measured single-entry production budget. The normal production gate remains passing at **549,606/550,000 initial JS bytes and 46,288/60,000 CSS bytes**. Required application activities remain lazy in that gate.
+
+Accepted verification, without retries or skips:
+
+- **88/88 focused** build configuration, exact security/header rules, recovery and release tests; **1,117/1,117 full units** on Node 24.22.0. Typecheck, full lint and configured format checks pass.
+- **4/4 packaged writing cases** on desktop/tablet layouts: confirmed teaching resumes on a second independent browser; offline progress remains local and syncs after reconnect; old and guarded-recovery builds preserve a five-step checkpoint; returning to the candidate resumes it. All remote traffic is intercepted; these are not real cloud/account checks. The record-compatibility case blocks service workers explicitly.
+- **12/12 actual local provider cases** using retained Wrangler 4.147.0: all three grades preserve reviewed writing through predecessor → candidate → guarded recovery → candidate under service-worker updates; synthetic sign-in/token renewal, temporary blob media and enforced headers remain compatible on desktop/tablet layouts. Startup independently verifies candidate/predecessor/recovery public files **151/153/154** and header responses **178/180/181**, with exact manifests, hashes and rules. This closes the local provider packaging/compatibility check, not deployed backend acceptance or physical-device input testing.
+
+Exact retained packages:
+
+- Candidate: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-6daO8J`; tree `02692805e67dd918a692bbb455a1c657b276ba4350bdfe2403b57f9090c40fff`.
+- Predecessor: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-4WIn2G`; source `39715499b964d012cfb4a79925990fc0d20a271e`; tree `885482abc4f93b4ac3c0f982c9b72d0059890dce8ec2fae5103a1cc790853fdf`.
+- Guarded recovery: `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-offline-rollback-uRmgO9/artifact`; tree `27dc874a3e4f7f2b0627311c2f06e046b47a28ddaf88191d3aeb7adffe2d679c`; compatibility revision is the exact candidate.
+
+Logs: `/tmp/ninja-writing-package-focused.log`, `/tmp/ninja-writing-icons-units.log`, `/tmp/ninja-writing-icons-production-build.log`, `/tmp/ninja-writing-packaged-icons-check.log`, `/tmp/ninja-writing-icons-provider.log`, `/tmp/ninja-writing-icons-lint.log`, and `/tmp/ninja-writing-icons-format.log`. The earlier failed package is retained as failure evidence. Local test servers have exited; their URLs are not owner handoff links. No deployment, production policy/authentication change, real-family records, approved preview artifacts or owner-tab reload occurred.
+
+**Next:** narrowly review the new package configuration and preceding Node 24 recovery-copy repair (the prior independent application review did not cover these), then complete remaining isolated authenticated real-backend acceptance. Independent-agent permission must be obtained before delegation. Smoke testing is still premature; physical audio/handwriting/iPad acceptance and normal release gates remain. The historical blocked/unexecuted statements below are superseded only by the concrete local evidence above.
+
 ## Saving and packaging checks — October 15
 
 Owner-authorized continuation uses the confirmed **GPT-6 Astra · Extra High** stage. Verification/tooling commit `9a3a6f0` contains no application behavior or appearance edits. Node 24 rejected copying a retained recovery artifact into an already-created empty destination. `familyOfflineRollback.ts` now reserves a private temporary parent and copies into its new `artifact` child, preserving `errorOnExist`/`force:false` and the original source. This closes the reproduced local runtime failure: 82/82 focused recovery/release tests and 1,116/1,116 full Node 24 tests pass; typecheck and scoped lint/format checks pass. This new tooling change is not covered by the earlier independent application review.
