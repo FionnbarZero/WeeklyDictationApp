@@ -27,3 +27,9 @@ Visual inspection caught family-host navigation consuming vertical room; the wri
 ## Remaining gates
 
 Independent GPT-6 Astra · Extra High integration/saving review (new approval required to delegate), current-main reconciliation/normal protected integration, retained-package compatibility and isolated real-backend acceptance for this candidate, followed by release authorization/exact publication verification and a bounded physical iPad/iMac check. Prior candidate's cloud/review receipts do not establish acceptance of this new candidate. No new email or publication was requested for this stage. The revised correction protocol remains outside scope.
+
+## Retained candidate identity
+
+Application commit `232be873f1a6a8fe79e3804f977f704a13942f4c`. Dedicated rebuilt package: `writing-slay-integration-dist`. Exact HTML revision plus 115 served entry/manifest files verified at http://127.0.0.1:5218/family-beta-preview.html?grade=grade2. This URL works only on this computer, uses synthetic profiles and browser-only saving, and is **not an owner smoke-test recommendation before independent review**. Existing 5210/5213/5214 and hosted comparison/v8/v7/v4 outputs remain unchanged. No claim of audible real-device sound, physical Pencil acceptance, or new-candidate real-cloud verification follows from the automated checks.
+
+Five additional post-commit retained-package Chromium cases pass on Node 24: launch/readback retries, alternate-activity guard, failed teaching-save retry, pinned six-step recovery and report pause. An earlier post-commit command with a mistyped runtime path was stopped and is not acceptance evidence. Final output is `/tmp/ninja-slay-final-identity-tests-node24`; the full desktop run is `writing-slay-test-results`, and WebKit evidence is `/tmp/ninja-slay-integrated-landscape` and `/tmp/ninja-slay-integrated-portrait`.
