@@ -51,6 +51,113 @@ async function launch(page: Page, beforeSkip?: () => Promise<void>) {
   return frame
 }
 
+const workspaceKey = 'family-beta-activity:preview-1:lesson-workspace-v1'
+
+async function openAcquisitionCheckpoint(page: Page) {
+  await launch(page)
+  const workspace = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), workspaceKey))!)
+  const entry = Object.entries(workspace.records as Record<string, string>).find(
+    ([name, raw]) => name.startsWith('weekly-dictation-checkpoint-v1:activity:') && JSON.parse(raw).schema === 2,
+  )!
+  const record = JSON.parse(entry[1])
+  let progress = record.values.writingAcquisitionProgress[0] as WritingProgress
+  // Disposable fixture: resume immediately after both characters' teaching.
+  // The separate full-interaction test exercises every actual teaching step.
+  while (teachingPosition(progress)) {
+    progress = advanceWritingProgress(
+      progress,
+      {
+        id: `completion-fixture-${progress.revision}`,
+        kind: 'complete-teaching-step',
+        expectedRevision: progress.revision,
+        position: teachingPosition(progress)!,
+      },
+      progress.updatedAt,
+    )
+  }
+  record.values.writingAcquisitionProgress = [progress]
+  workspace.records[entry[0]] = JSON.stringify(record)
+  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), {
+    key: workspaceKey,
+    raw: JSON.stringify(workspace),
+  })
+  return launch(page)
+}
+
+async function visitFacts(page: Page) {
+  return page.evaluate((key) => {
+    const workspace = JSON.parse(localStorage.getItem(key)!)
+    const totals = { results: 0, scores: 0, completedSessions: 0 }
+    for (const raw of Object.values(workspace.records) as string[]) {
+      if (!raw.startsWith('{')) continue // Profile-selection records are plain strings.
+      const record = JSON.parse(raw)
+      for (const name of ['results', 'scores', 'completedSessions'] as const)
+        totals[name] += record.values?.[name]?.length || 0
+    }
+    const ledger = Object.keys(localStorage)
+      .filter((name) => name.startsWith('family-beta-preview-results-v1:'))
+      .map((name) => JSON.parse(localStorage.getItem(name)!))
+    return { ...totals, ledger }
+  }, workspaceKey)
+}
+
+for (const action of ['Done for today', 'Exit game']) {
+  test(`Slay acquisition ${action} preserves reviewed answers with the correct visit completion`, async ({
+    page,
+  }, info) => {
+    await page.route('**/*', (route) =>
+      new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort(),
+    )
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    const frame = await openAcquisitionCheckpoint(page)
+    const done = frame.getByRole('button', { name: 'Done for today', exact: true })
+    const skip = frame.getByRole('button', { name: 'Skip Timer', exact: true })
+    if (action === 'Done for today') {
+      await expect(done).toBeVisible()
+      const box = (await done.boundingBox())!
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+      expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height)
+      const header = (await frame.locator('.lg-topbar').boundingBox())!
+      expect(box.y).toBeGreaterThanOrEqual(header.y)
+      expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height)
+      for (const other of ['.lg-exit', '.lg-heading', '.lg-progress']) {
+        const bounds = (await frame.locator(other).boundingBox())!
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x)
+      }
+    }
+    // Trace is unscored, then one independent whole-word answer is scored.
+    for (let trial = 0; trial < 2; trial++) {
+      await skip.click()
+      if (action === 'Done for today') await expect(done).toBeVisible()
+      await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+    }
+    await expect(frame.locator('.set-chip')).toContainText('Familiar DT')
+    await expect.poll(async () => (await visitFacts(page)).results).toBe(1)
+    await page.screenshot({ path: info.outputPath('slay-completion-control.png'), fullPage: true })
+    await frame.getByRole('button', { name: action, exact: true }).click()
+    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(page.getByLabel('Practice week')).toBeVisible()
+    await expect(page.locator('iframe:visible')).not.toHaveAttribute('data-writing-stage', 'true')
+    const facts = await visitFacts(page)
+    const completed = action === 'Done for today' ? 1 : 0
+    expect(facts).toMatchObject({ results: 1, scores: completed, completedSessions: completed })
+    expect(facts.ledger).toHaveLength(completed)
+    if (completed) expect(facts.ledger[0]).toMatchObject({ channel: 'writing', correct: 1, attempted: 1 })
+    await page.reload()
+    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    expect(await visitFacts(page)).toEqual(facts)
+    const resumed = await launch(page)
+    await expect(resumed.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
+    await expect(resumed.locator('.set-chip')).toContainText('Familiar DT')
+    expect(await visitFacts(page)).toEqual(facts)
+    expect(errors).toEqual([])
+  })
+}
+
 for (const tryOtherActivity of [false, true]) {
   test(`Start retries the exact initial checkpoint after a lost save confirmation${tryOtherActivity ? ' and rejects Stroke Order without hiding retry' : ''}`, async ({
     page,

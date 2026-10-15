@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 const port = Number(process.env.WRITING_SLAY_PORT || 5218)
+const outDir = process.env.WRITING_SLAY_OUT_DIR || 'writing-slay-integration-dist'
 
 export default defineConfig({
   testDir: './tests/writing-pilot',
@@ -21,7 +22,7 @@ export default defineConfig({
           : { width: 1366, height: 900 },
   },
   webServer: {
-    command: `npm run preview -- --outDir writing-slay-integration-dist --host 127.0.0.1 --port ${port} --strictPort`,
+    command: `npm run preview -- --outDir ${JSON.stringify(outDir)} --host 127.0.0.1 --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}/family-beta-preview.html`,
     reuseExistingServer: false,
   },

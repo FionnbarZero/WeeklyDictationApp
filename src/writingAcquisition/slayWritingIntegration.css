@@ -19,5 +19,36 @@
   display: none;
 }
 #slay-acquisition-root.slay-writing-integration .lg-shell {
+  position: relative;
   height: 100dvh;
+}
+/* Keep PracticeView's existing completion action and handler. Place it in the
+   shell's header so restoring it takes no space from the writing boxes. */
+#slay-acquisition-root.slay-writing-integration .lg-topbar {
+  padding-right: 174px;
+}
+#slay-acquisition-root.slay-writing-integration .practice-top {
+  display: flex;
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+}
+#slay-acquisition-root.slay-writing-integration .practice-top > .back-button,
+#slay-acquisition-root.slay-writing-integration .practice-top > .practice-count {
+  display: none;
+}
+#slay-acquisition-root.slay-writing-integration .practice-top > .replay-button {
+  justify-content: center;
+  width: 160px;
+  min-height: 44px;
+  border: 2px solid #ed6970;
+  border-radius: 12px;
+  background: #bc3541;
+  color: white;
+  font-size: 16px;
+  font-weight: 850;
 }
