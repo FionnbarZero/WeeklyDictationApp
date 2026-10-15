@@ -1,17 +1,151 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { fetchGrade2CurriculumSnapshot, readGrade2CurriculumSnapshot } from '../scripts/grade2SlidesSnapshot.ts'
+import { prepareAcquisitionProgress } from '../src/application/acquisitionPersistence.ts'
 import { fetchAutomaticGrade2Curriculum, hydrateAutomaticGrade2Curriculum } from '../src/automaticGrade2Curriculum.ts'
 import { GRADE2_DECK_ID } from '../src/config.ts'
-import { createInitialState } from '../src/domain.ts'
 import {
   GRADE2_CURRICULUM_SNAPSHOT_SCHEMA,
   parseGrade2CurriculumSnapshot,
   projectGrade2CurriculumText,
 } from '../src/curriculum/grade2CurriculumSnapshot.ts'
-import { fetchGrade2CurriculumSnapshot, readGrade2CurriculumSnapshot } from '../scripts/grade2SlidesSnapshot.ts'
+import { createInitialState } from '../src/domain.ts'
+import { grade2WritingDatasets } from '../src/familyBeta/grade2LessonSelection.ts'
 
 const snapshotPath = new URL('../public/curriculum/grade2-presentation.json', import.meta.url)
+
+async function withIncompleteWeek() {
+  const snapshot = parseGrade2CurriculumSnapshot(JSON.parse(await readFile(snapshotPath, 'utf8')))
+  snapshot.presentation.slides!.unshift({
+    objectId: 'future-incomplete',
+    text: 'Week 10/19-10/23\nMandarin\nTier 1:\nTier 2:',
+  })
+  return snapshot
+}
+
+test('family hydration accepts valid weeks alongside an incomplete future week and remains idempotent', async () => {
+  const snapshot = await withIncompleteWeek()
+  const state = createInitialState()
+  const before = structuredClone(state)
+  const next = hydrateAutomaticGrade2Curriculum(state, snapshot, false, { allowIncompleteWeeks: true })
+  assert.equal(next.datasets.length, 6)
+  assert.equal(
+    next.datasets.some((dataset) => dataset.startDate === '2026-10-19'),
+    false,
+  )
+  assert.deepEqual(state, before)
+  assert.deepEqual(hydrateAutomaticGrade2Curriculum(next, snapshot, false, { allowIncompleteWeeks: true }), next)
+  // The ordinary reviewed-snapshot contract is still strict by default.
+  assert.throws(() => hydrateAutomaticGrade2Curriculum(state, snapshot), /conflicts with existing browser lessons/i)
+})
+
+test('family hydration rejects all-invalid or empty source without changing retained lessons', async () => {
+  const snapshot = await withIncompleteWeek()
+  const valid = structuredClone(snapshot)
+  valid.presentation.slides!.shift()
+  const state = hydrateAutomaticGrade2Curriculum(createInitialState(), valid)
+  const before = structuredClone(state)
+  for (const slides of [[snapshot.presentation.slides![0]], []]) {
+    const invalid = { ...snapshot, presentation: { ...snapshot.presentation, slides } }
+    for (const retainCorrections of [false, true])
+      assert.throws(
+        () => hydrateAutomaticGrade2Curriculum(state, invalid, retainCorrections, { allowIncompleteWeeks: true }),
+        /no valid weekly lessons/i,
+      )
+    assert.deepEqual(state, before)
+  }
+})
+
+test('incomplete-week handling never bypasses source or existing-lesson conflicts', async () => {
+  const snapshot = await withIncompleteWeek()
+  const valid = structuredClone(snapshot)
+  valid.presentation.slides!.shift()
+  const state = hydrateAutomaticGrade2Curriculum(createInitialState(), valid)
+  const before = structuredClone(state)
+  const changed = structuredClone(snapshot)
+  changed.presentation.slides![1].text = changed.presentation.slides![1].text!.replace('英雄， 每个', '英杰， 每个')
+  assert.throws(
+    () => hydrateAutomaticGrade2Curriculum(state, changed, false, { allowIncompleteWeeks: true }),
+    /conflicts with existing browser lessons/i,
+  )
+  changed.presentation.slides!.push({ ...snapshot.presentation.slides![1], objectId: 'conflicting-week' })
+  for (const retainCorrections of [false, true])
+    assert.throws(
+      () => hydrateAutomaticGrade2Curriculum(state, changed, retainCorrections, { allowIncompleteWeeks: true }),
+      /conflicts with existing browser lessons/i,
+    )
+  const wrongDeck = { ...snapshot, presentation: { ...snapshot.presentation, presentationId: 'wrong-deck' } }
+  assert.throws(
+    () => hydrateAutomaticGrade2Curriculum(state, wrongDeck, true, { allowIncompleteWeeks: true }),
+    /no valid weekly lessons/i,
+  )
+  assert.deepEqual(state, before)
+})
+
+test('a partial source correction preserves a pinned Grade 2 target and its reviewed history', async () => {
+  const snapshot = await withIncompleteWeek()
+  const original = hydrateAutomaticGrade2Curriculum(createInitialState(), snapshot, false, {
+    allowIncompleteWeeks: true,
+  })
+  const dataset = original.datasets.find((item) => item.words.some((word) => word.text === '英雄'))!
+  const prepared = prepareAcquisitionProgress(
+    original,
+    'synthetic-child',
+    dataset,
+    '2026-10-14T10:00:00.000Z',
+    () => 0,
+    true,
+  )
+  assert.equal(prepared.status, 'ready')
+  prepared.state.legacyRecords.push({
+    id: 'retained-history',
+    childId: 'synthetic-child',
+    legacySet: 'historical',
+    correct: true,
+    importedAt: '2026-09-01T00:00:00.000Z',
+    note: 'legacy-date-range-unknown',
+  })
+  prepared.state.scores.push({
+    id: 'completed-score',
+    childId: 'synthetic-child',
+    datasetId: dataset.id,
+    datasetDateRange: dataset.dateRange,
+    phase: 'test-review',
+    sessionId: 'completed-attempt',
+    sessionDate: '2026-10-13',
+    percent: 100,
+    correct: dataset.words.length,
+    wordCount: dataset.words.length,
+  })
+  const before = structuredClone(prepared.state)
+  const changed = structuredClone(snapshot)
+  const slide = changed.presentation.slides!.find((item) => item.objectId === dataset.sourceSlideId)!
+  slide.text = slide.text!.replace('英雄， 每个', '英杰， 每个')
+  const next = hydrateAutomaticGrade2Curriculum(prepared.state, changed, true, { allowIncompleteWeeks: true })
+  assert.equal(next.datasets.length, original.datasets.length + 1)
+  assert.deepEqual(
+    next.datasets.find((item) => item.id === dataset.id),
+    dataset,
+  )
+  const incoming = hydrateAutomaticGrade2Curriculum(createInitialState(), changed, false, {
+    allowIncompleteWeeks: true,
+  }).datasets
+  assert.equal(
+    grade2WritingDatasets(next, incoming, 'synthetic-child').find((item) => item.id === dataset.id)?.id,
+    dataset.id,
+  )
+  for (const key of [
+    'acquisitionProgressEnvelopes',
+    'acquisitionProgressions',
+    'scores',
+    'results',
+    'completedSessions',
+    'legacyRecords',
+  ] as const)
+    assert.deepEqual(next[key], before[key])
+  assert.deepEqual(prepared.state, before)
+})
 
 test('the reviewed Grade 2 snapshot validates all current Slides datasets', async () => {
   const { snapshot, batch } = await readGrade2CurriculumSnapshot(snapshotPath.pathname)

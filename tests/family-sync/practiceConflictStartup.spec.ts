@@ -92,6 +92,70 @@ async function seedConflict(page: Page, documents: SyntheticFamilyDocuments) {
   return { local, remote, baseline }
 }
 
+test('first Grade 2 sync earns entry only after fresh score checks despite an existing practice conflict', async ({
+  page,
+}) => {
+  const documents: SyntheticFamilyDocuments = new Map()
+  await installFamilyFixtures(page, documents)
+  const local = payload('local')
+  const remote = payload('remote')
+  const baseline = payload('baseline')
+  documents.set(name, {
+    name,
+    updateTime: new Date().toISOString(),
+    fields: Object.fromEntries(
+      Object.entries({ schema: 1, childId, key, payload: remote, generation: 2 }).map(([field, value]) => [
+        field,
+        documentValue(value),
+      ]),
+    ),
+  })
+  await page.addInitScript(
+    ({ key, baseKey, accessKey, local, baseline }) => {
+      if (window !== window.top || sessionStorage.getItem('first-sync-conflict-seeded')) return
+      sessionStorage.setItem('first-sync-conflict-seeded', 'yes')
+      localStorage.setItem(key, local)
+      localStorage.setItem(baseKey, baseline)
+      localStorage.setItem(
+        accessKey,
+        JSON.stringify({
+          schema: 1,
+          uid: 'synthetic-parent',
+          familyId: 'family-synthetic-parent',
+          profiles: [
+            { id: 'synthetic-g2', grade: 'Grade 2', nickname: 'Grade 2 learner', active: true },
+            { id: 'synthetic-k', grade: 'Kindergarten', nickname: 'Kindergarten learner', active: true },
+            { id: 'synthetic-g5', grade: 'Grade 5', nickname: 'Grade 5 learner', active: true },
+          ],
+          ready: ['synthetic-k', 'synthetic-g5'],
+        }),
+      )
+    },
+    { key, baseKey, accessKey, local, baseline },
+  )
+  let denyHistory = true
+  await page.route(`**/children/${childId}:runQuery`, (route) =>
+    denyHistory ? route.fulfill({ status: 403, contentType: 'application/json', body: '{}' }) : route.fallback(),
+  )
+  await page.goto('/?grade=grade2')
+  await expect(page.getByText(/Saved results could not be loaded \(403\)/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry family sync', exact: true })).toBeVisible()
+  await expect(page.locator('iframe')).toHaveCount(0)
+  expect(await page.evaluate((key) => localStorage.getItem(key), accessKey)).toBeNull()
+
+  denyHistory = false
+  await page.getByRole('button', { name: 'Retry family sync', exact: true }).click()
+  await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await expect(page.getByText(/Using this device’s saved practice/)).toBeVisible()
+  await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toHaveCount(0)
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).ready, accessKey)).toContain(childId)
+  await page.reload()
+  await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(local)
+  expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(baseline)
+  expect(plainValue(documents.get(name)!.fields.payload)).toBe(remote)
+})
+
 test('restarting after an unrelated conflict never uploads a staged but uncommitted older workspace copy', async ({
   page,
 }) => {
@@ -240,7 +304,7 @@ test('a saved lesson resumes and retains new reviewed work while another practic
 })
 
 for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other-grade', 'inactive'] as const) {
-  test(`practice conflict does not grant startup entry with ${invalid}`, async ({ page }) => {
+  test(`fresh online verification earns entry despite ${invalid} cached readiness`, async ({ page }) => {
     const documents: SyntheticFamilyDocuments = new Map()
     await installFamilyFixtures(page, documents)
     await page.goto('/?grade=grade2')
@@ -264,9 +328,45 @@ for (const invalid of ['no-confirmation', 'other-parent', 'other-family', 'other
     )
     await page.reload()
     await expect(page.getByText(/Practice changed on both devices/)).toBeVisible()
+    await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+    await expect(page.getByText(/Your family account and scores are confirmed/)).toBeVisible()
+    expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(copies.local)
+    expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
+  })
+}
+
+for (const failure of ['game-access-denied', 'score-unavailable', 'invalid-score'] as const) {
+  test(`first-time conflict entry stays blocked when fresh verification has ${failure}`, async ({ page }) => {
+    const documents: SyntheticFamilyDocuments = new Map()
+    await installFamilyFixtures(page, documents)
+    await page.goto('/?grade=grade2')
+    await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
+    const copies = await seedConflict(page, documents)
+    await page.addInitScript((accessKey) => {
+      if (window !== window.top) return
+      const raw = localStorage.getItem(accessKey)
+      if (raw) localStorage.setItem(accessKey, JSON.stringify({ ...JSON.parse(raw), ready: [] }))
+    }, accessKey)
+    await page.route(
+      failure === 'game-access-denied'
+        ? `**/children/${childId}/betaGameCompletions?*`
+        : `**/children/${childId}:runQuery`,
+      (route) =>
+        route.fulfill({
+          status: failure === 'game-access-denied' ? 403 : failure === 'score-unavailable' ? 503 : 200,
+          contentType: 'application/json',
+          body: failure === 'invalid-score' ? '[{"document":{"fields":{}}}]' : '{}',
+        }),
+    )
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Retry saving', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Retry family sync', exact: true })).toBeVisible()
     await expect(page.locator('iframe')).toHaveCount(0)
+    expect(
+      await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || 'null')?.ready || [], accessKey),
+    ).not.toContain(childId)
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(copies.local)
+    expect(await page.evaluate((key) => localStorage.getItem(key), baseKey)).toBe(copies.baseline)
     expect(plainValue(documents.get(name)!.fields.payload)).toBe(copies.remote)
   })
 }
