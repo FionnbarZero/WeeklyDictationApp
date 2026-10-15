@@ -1,5 +1,15 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Pending-launch navigation guard — October 15
+
+Independent **GPT-6 Astra · Extra High** re-review of `8136625` confirmed both original saving findings closed and independently passed 69 focused tests under Node 24.22.0. It reproduced one new P2: after an initial writing save/readback failure, clicking Stroke Order Slay set `strokeWarmupOpen` before the pending-writing guard returned. The menu and Learn to Write retry disappeared behind “Opening Warmup…” although no Warmup/session had started. The saved writing checkpoint remained intact.
+
+The owner authorized this narrow repair. Application candidate **`10c563e89029521763535d1767daef30b8a2f2e3`** adds one guard before the Stroke Order Warmup callback changes its ready callback or opening state. No teacher/scroll appearance, teaching sequence, timers, scoring or persistence formats changed. No further review agent, publication, real-family data access or owner-tab reload occurred during this repair.
+
+The browser test now exercises both ordinary Start retry and the reported alternate-activity sequence. The new sequence fails on retained `8136625` at the hidden Learn to Write assertion, then passes with the repair. It checks two rejected Stroke Order clicks, visible writing retry, no “Opening Warmup…” or phantom Warmup, no extra workspace writes, exact-candidate successful retry, and normal Stroke Order Warmup entry after writing is confirmed and exited. **All five final exact-candidate browser cases pass** (1.7 minutes, no retries/skips), retaining whole-word teaching → scrolls → next-target, saved-step reload, failed-step retry and report-pause coverage. **115 served entry/manifest files match** retained `10c563e` byte-for-byte; the served Grade 2 entry identifies `10c563e89029521763535d1767daef30b8a2f2e3`. This is engineering verification, not an owner smoke-test handoff.
+
+Other verification: **69/69 focused Node 24.22.0 tests**, **1,113/1,113 full Node 26.8.1 units**, typecheck, lint, and production build/performance pass (**549,606/550,000 JS bytes**, **46,288/60,000 CSS bytes**). The previously documented Node 24 release/rollback failure remains open; passing Node 26 does not waive that gate. The final one-line guard has not received independent review closure yet. Exact packaged legacy/recovery compatibility, authenticated backend/offline/two-device and physical-device acceptance also remain open. Owner smoke testing and publication are premature.
+
 ## Saving review repairs — October 15, local and unpublished
 
 The owner approved the independent **GPT-6 Astra · Extra High** review of `29a470e`, then authorized repair of its two findings. Application candidate **`8136625934208e1961515a80c79f765feaefe1d0`** is local only. No teacher/scroll UI, timing, scoring policy, authentication, cloud records or live deployment was changed. The owner's open `5209` reference tab was not reloaded. The earlier review-permission request below is historical.
