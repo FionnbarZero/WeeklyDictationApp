@@ -1,10 +1,10 @@
 import {
   advanceWritingProgress,
   validateWritingProgress,
+  writingCommandFingerprint,
   type WritingCommand,
   type WritingProgress,
-} from './progress.ts'
-import { acquisitionDigest } from '../acquisition/persistence/identity.ts'
+} from '../application/writingAcquisition/progress.ts'
 
 export type WritingStorage = Pick<Storage, 'getItem' | 'setItem'>
 const MAX_BYTES = 600_000
@@ -46,7 +46,7 @@ export function openWritingStore(storage: WritingStorage, key: string, owner: st
       return current
     },
     apply(command: WritingCommand, timestamp: string, random = Math.random) {
-      const commandFingerprint = acquisitionDigest(command)
+      const commandFingerprint = writingCommandFingerprint(command)
       if (pending && pending.commandFingerprint !== commandFingerprint)
         throw new Error('Retry the original save or reopen the saved lesson before choosing another answer.')
       const next = pending?.next || advanceWritingProgress(current, command, timestamp, random)

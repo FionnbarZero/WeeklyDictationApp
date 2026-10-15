@@ -7,9 +7,9 @@ import {
   validateWritingProgress,
   writingContext,
   type WritingProgress,
-} from '../src/writingAcquisition/progress.ts'
-import { createWritingLesson } from '../src/writingAcquisition/lesson.ts'
-import { openWritingStore } from '../src/writingAcquisition/store.ts'
+} from '../src/application/writingAcquisition/progress.ts'
+import { createWritingLesson } from '../src/application/writingAcquisition/lesson.ts'
+import { openWritingStore } from '../src/infrastructure/writingProgressStore.ts'
 import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
 import { buildAcquisitionCheckpoint, applyAcquisitionCheckpoint } from '../src/acquisition/persistence/reducer.ts'
 

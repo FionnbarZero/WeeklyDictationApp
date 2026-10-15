@@ -119,6 +119,11 @@ test('report pause preserves the seven-second clue and the teaching step', async
   await page.clock.pauseAt(new Date('2026-10-15T00:00:01Z'))
   await page.goto('/grade2-writing-preview.html')
   await page.getByRole('button', { name: 'Start or resume writing', exact: true }).click()
+  // Opening the saved lesson is asynchronous. Wait for its trial effect before advancing the clock.
+  await expect(page.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute(
+    'data-report-audio',
+    'playing',
+  )
   await page.clock.runFor(3_000)
   await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -126,6 +131,7 @@ test('report pause preserves the seven-second clue and the teaching step', async
   await page.clock.runFor(20_000)
   await expect(page.locator('.lg-vocabulary-main')).toBeVisible()
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-activity-paused', 'false')
   await page.clock.runFor(3_999)
   await expect(page.locator('.lg-vocabulary-main')).toBeVisible()
   await page.clock.runFor(1)

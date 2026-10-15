@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { revealAcquisition } from './acquisition/engine.ts'
-import { acquisitionDigest } from './acquisition/persistence/identity.ts'
 import { activityClock } from './activity/activityLifecycle.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import { playCachedWordAudio, stopActiveAudio } from './audio/promptAudio.ts'
@@ -10,14 +9,15 @@ import { ProblemReporter } from './familyBeta/ProblemReporter.tsx'
 import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
 import { PracticeView, type PracticeAnswer } from './practice/PracticeView.tsx'
 import { StrokeTeacher } from './strokeTeacherPrototype/StrokeTeacher.tsx'
-import { writingCharacterGuides } from './writingAcquisition/lesson.ts'
+import { writingCharacterGuides } from './application/writingAcquisition/lesson.ts'
 import {
   createWritingProgress,
+  createWritingCommand,
   teachingPosition,
   type WritingCommand,
   type WritingProgress,
-} from './writingAcquisition/progress.ts'
-import { openWritingStore } from './writingAcquisition/store.ts'
+} from './application/writingAcquisition/progress.ts'
+import { openWritingStore } from './infrastructure/writingProgressStore.ts'
 import {
   writingPreviewLesson,
   WRITING_PREVIEW_KEY,
@@ -133,14 +133,15 @@ function Preview() {
     if (!progress || !revealed || !progress.acquisition.flow.prompt || busy.current) return
     const promptId = progress.acquisition.flow.prompt.id
     try {
-      await commit({
-        id: `answer-${acquisitionDigest({ revision: progress.revision, promptId, value, revealMethod })}`,
-        kind: 'answer',
-        expectedRevision: progress.revision,
-        promptId,
-        correct: value,
-        revealMethod,
-      })
+      await commit(
+        createWritingCommand({
+          kind: 'answer',
+          expectedRevision: progress.revision,
+          promptId,
+          correct: value,
+          revealMethod,
+        }),
+      )
       setRevealed(false)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'This answer could not be saved.')
@@ -198,12 +199,13 @@ function Preview() {
             initialStep={position.step}
             onStepComplete={async (step) => {
               if (step !== position.step) throw new Error('Reopen the lesson to resume its confirmed step.')
-              await commit({
-                id: `teacher-${acquisitionDigest({ revision: progress.revision, position })}`,
-                kind: 'complete-teaching-step',
-                expectedRevision: progress.revision,
-                position,
-              })
+              await commit(
+                createWritingCommand({
+                  kind: 'complete-teaching-step',
+                  expectedRevision: progress.revision,
+                  position,
+                }),
+              )
             }}
             onComplete={() => undefined}
             onExit={exit}

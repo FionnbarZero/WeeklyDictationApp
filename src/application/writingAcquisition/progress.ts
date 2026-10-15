@@ -1,16 +1,16 @@
-import type { AcquisitionAssessment } from '../acquisition/contracts.ts'
-import { startAcquisition } from '../acquisition/engine.ts'
+import type { AcquisitionAssessment } from '../../acquisition/contracts.ts'
+import { startAcquisition } from '../../acquisition/engine.ts'
 import type {
   AcquisitionPersistenceContext,
   AcquisitionProgressEnvelope,
-} from '../acquisition/persistence/contracts.ts'
-import { acquisitionDigest } from '../acquisition/persistence/identity.ts'
-import { pinAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
-import { createAcquisitionProgressEnvelope } from '../acquisition/persistence/migration.ts'
-import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint } from '../acquisition/persistence/reducer.ts'
-import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/validation.ts'
-import { grade2AcquisitionStrategy } from '../acquisition/strategies/grade2.ts'
-import type { Word } from '../domain/contracts.ts'
+} from '../../acquisition/persistence/contracts.ts'
+import { acquisitionDigest } from '../../acquisition/persistence/identity.ts'
+import { pinAcquisitionLesson } from '../../acquisition/persistence/lessonSnapshot.ts'
+import { createAcquisitionProgressEnvelope } from '../../acquisition/persistence/migration.ts'
+import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint } from '../../acquisition/persistence/reducer.ts'
+import { validateAcquisitionProgressEnvelope } from '../../acquisition/persistence/validation.ts'
+import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
+import type { Word } from '../../domain/contracts.ts'
 import { validateWritingLesson, type WritingLesson } from './lesson.ts'
 
 export const WRITING_PROGRESS_CONTRACT = 'grade2-writing-progress-v1' as const
@@ -35,6 +35,19 @@ export type TeachingPosition = { targetIndex: number; targetId: string; characte
 export type WritingCommand =
   | { id: string; expectedRevision: number; kind: 'complete-teaching-step'; position: TeachingPosition }
   | { id: string; expectedRevision: number; kind: 'answer'; promptId: string; correct: boolean; revealMethod: string }
+
+/** Command identity belongs to the coordinator, not the view or storage adapter. */
+export function writingCommandFingerprint(command: WritingCommand) {
+  return acquisitionDigest(command)
+}
+
+type WritingCommandInput =
+  | Omit<Extract<WritingCommand, { kind: 'complete-teaching-step' }>, 'id'>
+  | Omit<Extract<WritingCommand, { kind: 'answer' }>, 'id'>
+
+export function createWritingCommand(input: WritingCommandInput): WritingCommand {
+  return { ...input, id: `writing-${acquisitionDigest(input)}` }
+}
 
 const canonicalTime = (value: string) =>
   typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value

@@ -1,6 +1,6 @@
 import snapshot from '../../public/curriculum/grade2-presentation.json' with { type: 'json' }
 import { parseSlide } from '../slidesImporter.ts'
-import { createWritingLesson } from './lesson.ts'
+import { createWritingLesson } from '../application/writingAcquisition/lesson.ts'
 
 /** The preserved teacher-source week used by approved v4, in its original order. */
 export function writingPreviewLesson() {

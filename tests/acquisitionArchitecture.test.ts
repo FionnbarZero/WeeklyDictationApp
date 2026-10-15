@@ -26,12 +26,14 @@ function isTypeScriptFamilyFile(fileName: string) {
 }
 
 function acquisitionTypeScriptFiles(directory = acquisitionDirectory): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = join(directory, entry.name)
-    if (entry.isDirectory()) return acquisitionTypeScriptFiles(entryPath)
-    if (!entry.isFile() || !isTypeScriptFamilyFile(entry.name)) return []
-    return [relative(acquisitionDirectory, entryPath).split(sep).join('/')]
-  }).sort()
+  return readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const entryPath = join(directory, entry.name)
+      if (entry.isDirectory()) return acquisitionTypeScriptFiles(entryPath)
+      if (!entry.isFile() || !isTypeScriptFamilyFile(entry.name)) return []
+      return [relative(acquisitionDirectory, entryPath).split(sep).join('/')]
+    })
+    .sort()
 }
 
 test('the Acquisition engine boundary has only its approved dependencies', () => {
@@ -41,8 +43,21 @@ test('the Acquisition engine boundary has only its approved dependencies', () =>
     'persistence/contracts.ts': ['../contracts.ts'],
     'persistence/identity.ts': ['../contracts.ts', './contracts.ts'],
     'persistence/lessonSnapshot.ts': ['../contracts.ts', './contracts.ts', './identity.ts', './validation.ts'],
-    'persistence/migration.ts': ['../contracts.ts', '../engine.ts', './contracts.ts', './identity.ts', './validation.ts'],
-    'persistence/reducer.ts': ['../contracts.ts', '../engine.ts', '../transition.ts', './contracts.ts', './identity.ts', './validation.ts'],
+    'persistence/migration.ts': [
+      '../contracts.ts',
+      '../engine.ts',
+      './contracts.ts',
+      './identity.ts',
+      './validation.ts',
+    ],
+    'persistence/reducer.ts': [
+      '../contracts.ts',
+      '../engine.ts',
+      '../transition.ts',
+      './contracts.ts',
+      './identity.ts',
+      './validation.ts',
+    ],
     'persistence/repository.ts': ['./contracts.ts'],
     'persistence/validation.ts': ['../contracts.ts', '../engine.ts', './contracts.ts', './identity.ts'],
     'strategies/grade2.ts': ['../contracts.ts'],
@@ -62,8 +77,10 @@ test('the Acquisition engine boundary has only its approved dependencies', () =>
 })
 
 test('the Acquisition inventory and dependency scanner cover bypass extensions and side-effect imports', () => {
-  for (const fileName of ['example.ts', 'example.tsx', 'example.mts', 'example.cts']) assert.equal(isTypeScriptFamilyFile(fileName), true)
-  for (const fileName of ['example.js', 'example.jsx', 'example.mjs', 'example.cjs']) assert.equal(isTypeScriptFamilyFile(fileName), false)
+  for (const fileName of ['example.ts', 'example.tsx', 'example.mts', 'example.cts'])
+    assert.equal(isTypeScriptFamilyFile(fileName), true)
+  for (const fileName of ['example.js', 'example.jsx', 'example.mjs', 'example.cjs'])
+    assert.equal(isTypeScriptFamilyFile(fileName), false)
   assert.deepEqual(sideEffectImportsFrom("import '../unapproved-module.ts'\n"), ['../unapproved-module.ts'])
 })
 
@@ -80,16 +97,19 @@ test('scoring policy remains outside the pure Acquisition engine', () => {
 
 test('Acquisition persistence activation is limited to the approved application and storage boundaries', () => {
   const repositoryRoot = fileURLToPath(new URL('../', import.meta.url))
-  const activationFiles = ['src', 'backend', 'scripts'].flatMap((root) => {
-    const visit = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-      const entryPath = join(directory, entry.name)
-      if (entry.isDirectory()) return visit(entryPath)
-      if (!entry.isFile() || !isTypeScriptFamilyFile(entry.name)) return []
-      const repositoryPath = relative(repositoryRoot, entryPath).split(sep).join('/')
-      return repositoryPath.startsWith('src/acquisition/persistence/') ? [] : [entryPath]
+  const activationFiles = ['src', 'backend', 'scripts']
+    .flatMap((root) => {
+      const visit = (directory: string): string[] =>
+        readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+          const entryPath = join(directory, entry.name)
+          if (entry.isDirectory()) return visit(entryPath)
+          if (!entry.isFile() || !isTypeScriptFamilyFile(entry.name)) return []
+          const repositoryPath = relative(repositoryRoot, entryPath).split(sep).join('/')
+          return repositoryPath.startsWith('src/acquisition/persistence/') ? [] : [entryPath]
+        })
+      return visit(join(repositoryRoot, root))
     })
-    return visit(join(repositoryRoot, root))
-  }).filter((file) => /acquisition\/persistence/.test(readFileSync(file, 'utf8')))
+    .filter((file) => /acquisition\/persistence/.test(readFileSync(file, 'utf8')))
   assert.deepEqual(activationFiles.map((file) => relative(repositoryRoot, file).split(sep).join('/')).sort(), [
     'src/application/acquisitionPersistence.ts',
     'src/application/acquisitionStrategyUpgrades.ts',
@@ -97,6 +117,8 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/application/practice/recordPracticeAnswer.ts',
     'src/application/practice/startPractice.ts',
     'src/application/workspace/contracts.ts',
+    'src/application/writingAcquisition/lesson.ts',
+    'src/application/writingAcquisition/progress.ts',
     'src/domain.ts',
     'src/familyBeta/acquisitionRetirement.ts',
     'src/familyBeta/acquisitionStore.ts',
@@ -108,7 +130,19 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/persistence/acquisitionPendingJournal.ts',
   ])
   assert.match(source('../src/App.tsx'), /recordPracticeAnswer as recordPracticeAnswerOperation/)
-  assert.doesNotMatch(source('../src/App.tsx'), /from '.\/(?:application\/acquisitionPersistence|acquisition\/persistence)/)
+  assert.doesNotMatch(
+    source('../src/App.tsx'),
+    /from '.\/(?:application\/acquisitionPersistence|acquisition\/persistence)/,
+  )
+  for (const file of ['writingIntegrationPreview.tsx', 'infrastructure/writingProgressStore.ts']) {
+    assert.doesNotMatch(source(`../src/${file}`), /acquisition\/persistence/)
+  }
+  for (const file of ['lesson.ts', 'progress.ts']) {
+    assert.doesNotMatch(
+      source(`../src/application/writingAcquisition/${file}`),
+      /localStorage|sessionStorage|from ['"]react['"]|firebaseClient/,
+    )
+  }
   for (const file of acquisitionTypeScriptFiles().filter((entry) => entry.startsWith('persistence/'))) {
     const contents = source(`../src/acquisition/${file}`)
     assert.doesNotMatch(contents, /from\s+['"][^'"]*(?:App|domain|firestoreClient|firebaseClient|react)[^'"]*['"]/i)

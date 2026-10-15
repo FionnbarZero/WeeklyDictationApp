@@ -1,9 +1,9 @@
-import { acquisitionDigest } from '../acquisition/persistence/identity.ts'
-import type { Dataset } from '../domain/contracts.ts'
-import { strokeOrderGuide } from '../familyBeta/strokeOrderSlay.ts'
-import { learningModuleCohortFromDatasets } from '../ninjaSkills/content.ts'
-import { withDictationContent } from '../ninjaSkills/dictationContent.ts'
-import { withSupplementalContent } from '../ninjaSkills/supplemental.ts'
+import { acquisitionDigest } from '../../acquisition/persistence/identity.ts'
+import type { Dataset } from '../../domain/contracts.ts'
+import { strokeOrderGuide } from '../../familyBeta/strokeOrderSlay.ts'
+import { learningModuleCohortFromDatasets } from '../../ninjaSkills/content.ts'
+import { withDictationContent } from '../../ninjaSkills/dictationContent.ts'
+import { withSupplementalContent } from '../../ninjaSkills/supplemental.ts'
 
 export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
 export type WritingLesson = {
