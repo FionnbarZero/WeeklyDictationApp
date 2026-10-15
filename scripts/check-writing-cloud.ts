@@ -233,7 +233,6 @@ async function finishTrial(page: Page, frame: FrameLocator, character: string, s
 try {
   const first = await newPage()
   await first.page.goto(`${base}/family-beta-preview.html?grade=grade2`)
-  await expect(first.page.getByText(`Beta build ${revision.slice(0, 7)}`)).toBeVisible()
   await first.page.getByRole('button', { name: 'Create account', exact: true }).click()
   await first.page.getByLabel('Email', { exact: true }).fill(email)
   await first.page.getByLabel('Password', { exact: true }).fill(password)
@@ -251,6 +250,7 @@ try {
   await submitted
   console.log('New disposable parent created; browser cloud access restricted to its family.')
   await expect(first.page.getByText('Family account connected.', { exact: true })).toBeVisible()
+  await expect(first.page.getByText(`Beta build ${revision.slice(0, 7)}`)).toBeVisible()
   await first.page.getByRole('button', { name: 'Parent controls', exact: true }).click()
   await first.page.getByLabel('Confirm parent password').fill(password)
   await first.page.getByRole('button', { name: 'Unlock profile changes' }).click()
