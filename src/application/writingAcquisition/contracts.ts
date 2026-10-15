@@ -4,7 +4,7 @@ import type { Dataset, Word } from '../../domain/contracts.ts'
 
 export type WritingLesson = {
   schema: 1
-  policy: 'grade2-six-step-v4' | 'grade2-five-step-preview-v6'
+  policy: 'grade2-six-step-v4' | 'grade2-five-step-preview-v6' | 'grade2-trace-independent-preview-v7'
   dataset: Dataset
   targets: { id: string; text: string; pinyin: string; meaning: string; guideFingerprint: string }[]
   fingerprint: string

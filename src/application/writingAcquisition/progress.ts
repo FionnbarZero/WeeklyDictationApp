@@ -11,7 +11,13 @@ import { validateAcquisitionProgressEnvelope } from '../../acquisition/persisten
 import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
 import { schoolYearToken } from '../../curriculum/identity.ts'
 import type { Word } from '../../domain/contracts.ts'
-import { validateWritingLesson, writingTeacherStepCount, type WritingLesson } from './lesson.ts'
+import {
+  validateWritingLesson,
+  writingTeacherStepCount,
+  TRACE_INDEPENDENT_PREVIEW_POLICY,
+  type WritingLesson,
+} from './lesson.ts'
+import { writingRefinementStrategy } from '../../writingAcquisition/refinementStrategy.ts'
 
 export const WRITING_PROGRESS_CONTRACT = 'grade2-writing-progress-v1' as const
 const fail = 'Saved writing could not be safely continued. Your progress was preserved; please report the problem.'
@@ -58,7 +64,8 @@ export function writingContext(
     lifecycleStage: { kind: 'acquisition' },
     applicationVersion: WRITING_PROGRESS_CONTRACT,
     targetSet: { id: lesson.dataset.id, targets: lesson.dataset.words },
-    strategy: grade2AcquisitionStrategy,
+    strategy:
+      lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY ? writingRefinementStrategy : grade2AcquisitionStrategy,
   }
 }
 

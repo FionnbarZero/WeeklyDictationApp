@@ -25,15 +25,24 @@ import {
   WRITING_PREVIEW_OWNER,
   WRITING_PREVIEW_VERSION,
   WRITING_PREVIEW_POLICY,
+  REFINEMENT_PREVIEW_KEY,
+  REFINEMENT_PREVIEW_POLICY,
+  REFINEMENT_PREVIEW_VERSION,
 } from './writingAcquisition/previewLesson.ts'
 import './styles.css'
 import './strokeTeacherPrototype/preview.css'
+import './writingAcquisition/refinementPreview.css'
+
+const refinement = import.meta.env.MODE === 'writing-refinement-preview'
+const previewKey = refinement ? REFINEMENT_PREVIEW_KEY : WRITING_PREVIEW_KEY
+const previewPolicy = refinement ? REFINEMENT_PREVIEW_POLICY : WRITING_PREVIEW_POLICY
+const previewVersion = refinement ? REFINEMENT_PREVIEW_VERSION : WRITING_PREVIEW_VERSION
 
 type PreviewStore = ReturnType<typeof openWritingStore>
 function openPreview() {
-  return openWritingStore(localStorage, WRITING_PREVIEW_KEY, WRITING_PREVIEW_OWNER, () =>
+  return openWritingStore(localStorage, previewKey, WRITING_PREVIEW_OWNER, () =>
     createWritingProgress(
-      writingPreviewLesson(WRITING_PREVIEW_POLICY),
+      writingPreviewLesson(previewPolicy),
       WRITING_PREVIEW_OWNER,
       crypto.randomUUID(),
       new Date().toISOString(),
@@ -83,6 +92,8 @@ function Preview() {
   const [saving, setSaving] = useState(false)
   const busy = useRef(false)
   const [resumeVisit, setResumeVisit] = useState(0)
+  const [warmupSample, setWarmupSample] = useState(false)
+  const [warmupIndex, setWarmupIndex] = useState(0)
   useEffect(() => {
     const closed = () => stopActiveAudio()
     window.addEventListener('pagehide', closed)
@@ -91,17 +102,19 @@ function Preview() {
       stopActiveAudio()
     }
   }, [])
-  if (!import.meta.env.DEV && import.meta.env.MODE !== 'writing-integration-preview')
+  if (!import.meta.env.DEV && import.meta.env.MODE !== 'writing-integration-preview' && !refinement)
     return <main>This integration preview is unavailable in the regular app.</main>
 
-  async function begin() {
+  async function begin(sample = false) {
     if (busy.current) return
     busy.current = true
     try {
-      const opened = await withScrollsWrite(WRITING_PREVIEW_KEY, openPreview)
+      const opened = await withScrollsWrite(previewKey, openPreview)
       setStore(opened)
       setProgress(opened.current)
       setActive(true)
+      setWarmupSample(sample)
+      setWarmupIndex(0)
       setRevealed(false)
       setError('')
       setResumeVisit((value) => value + 1)
@@ -137,6 +150,11 @@ function Preview() {
       if (!busy.current) exit()
       return
     }
+    if (warmupSample) {
+      setWarmupIndex((index) => index + 1)
+      setRevealed(false)
+      return
+    }
     if (!progress || !revealed || !progress.acquisition.flow.prompt || busy.current) return
     const promptId = progress.acquisition.flow.prompt.id
     try {
@@ -156,18 +174,35 @@ function Preview() {
   }
   const position = progress ? teachingPosition(progress) : null
   const target = position && progress ? progress.lesson.targets[position.targetIndex] : null
-  const teaching = active && target && position && progress
+  const teaching = active && !warmupSample && target && position && progress
+  const sampleWord = progress?.lesson.dataset.words[warmupIndex % progress.lesson.dataset.words.length]
+  const previewSession = progress ? sessionFor(progress, revealed) : null
+  // A labelled, non-scoring layout sample; it never advances the saved teaching/acquisition lesson.
+  const displayedSession: PracticeSession | null =
+    warmupSample && previewSession && sampleWord
+      ? {
+          ...previewSession,
+          id: `${previewSession.id}:layout-sample:${warmupIndex}`,
+          segment: 'warmup',
+          stage: revealed ? 'review' : 'dictation',
+          index: 0,
+          queue: [sampleWord],
+          warmupQueue: [sampleWord],
+          acquisition: undefined,
+        }
+      : previewSession
   return (
     <div
-      className={teaching ? 'st-original-stage' : 'app-shell'}
+      className={`${teaching ? 'st-original-stage' : 'app-shell'}${refinement ? ' writing-refinement-preview' : ''}`}
       data-report-grade="Grade 2"
       data-report-screen="Writing integration preview"
-      data-report-revision="writing-preview-v6-five-step"
+      data-report-revision={refinement ? 'writing-preview-v7-trace-independent' : 'writing-preview-v6-five-step'}
       data-report-week={progress?.lesson.dataset.dateRange}
     >
       <header className="st-preview-banner">
         <span>
-          <strong>{WRITING_PREVIEW_VERSION}</strong> · Saved on this browser · Cloud sync not connected
+          <strong>{previewVersion}</strong> · Saved on this browser · Cloud sync not connected
+          {warmupSample && ' · Warmup layout sample only — no scores saved'}
         </span>
         {active && (
           <button disabled={saving} onClick={exit}>
@@ -182,12 +217,20 @@ function Preview() {
             <h1>Stroke teacher → Writing Dojo</h1>
             <p>Practice the September 29–October 2 teacher-source lesson, starting with 英雄 and 每个.</p>
             <p>
-              Each word receives five steps for every character before its usual scroll acquisition. Completed steps
-              save on this browser; unfinished handwriting stays temporary.
+              Each word receives five steps for every character before{' '}
+              {refinement
+                ? 'one whole-word tracing trial, one independent trial, then distractors'
+                : 'its usual scroll acquisition'}
+              . Completed steps save on this browser; unfinished handwriting stays temporary.
             </p>
             <button className="primary-button" onClick={() => void begin()}>
               Start or resume writing
             </button>
+            {refinement && (
+              <button className="replay-button" onClick={() => void begin(true)}>
+                Check Warmup scroll size
+              </button>
+            )}
             <p>
               This separate preview uses a test profile. Warmup, parent accounts and cloud resume will be connected
               during app integration.
@@ -219,12 +262,14 @@ function Preview() {
             onExit={exit}
           />
         ) : (
-          progress && (
+          progress &&
+          displayedSession && (
             <PracticeView
-              session={sessionFor(progress, revealed)}
+              key={`${warmupSample}:${resumeVisit}`}
+              session={displayedSession}
               datasets={[progress.lesson.dataset]}
               onExit={exit}
-              onReplay={() => speakWord(progress.acquisition.flow.prompt!.word)}
+              onReplay={() => speakWord(warmupSample ? sampleWord! : progress.acquisition.flow.prompt!.word)}
               onBeginWarmup={() => undefined}
               onInterstitialComplete={() => undefined}
               onDictationComplete={(method = 'timer') => {

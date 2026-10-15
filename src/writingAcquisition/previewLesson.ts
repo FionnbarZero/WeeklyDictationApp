@@ -16,3 +16,8 @@ export const WRITING_PREVIEW_VERSION = 'Grade 2 writing preview 6 · Five teachi
 export const WRITING_PREVIEW_POLICY = 'grade2-five-step-preview-v6' as const
 export const WRITING_PREVIEW_KEY = 'ninja-writing-integration-preview-v6:synthetic-owner'
 export const WRITING_PREVIEW_OWNER = 'synthetic-writing-preview'
+
+export const REFINEMENT_PREVIEW_VERSION =
+  'Grade 2 writing preview 7 · Large scrolls · Trace → independent → distractors'
+export const REFINEMENT_PREVIEW_KEY = 'ninja-writing-integration-preview-v7:synthetic-owner'
+export const REFINEMENT_PREVIEW_POLICY = 'grade2-trace-independent-preview-v7' as const
