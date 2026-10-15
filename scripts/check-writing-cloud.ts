@@ -169,7 +169,8 @@ async function localCheckpoint(page: Page): Promise<Checkpoint | null> {
   return page.evaluate((id) => {
     const raw = localStorage.getItem(`family-beta-activity:${id}:lesson-workspace-v1`)
     if (!raw) return null
-    for (const text of Object.values(JSON.parse(raw).records) as string[]) {
+    for (const [key, text] of Object.entries(JSON.parse(raw).records) as [string, string][]) {
+      if (!key.startsWith('weekly-dictation-checkpoint-v1:activity:')) continue
       const values = JSON.parse(text).values
       if (values?.writingAcquisitionProgress?.length)
         return {
@@ -188,6 +189,8 @@ async function remoteCheckpoint(): Promise<Checkpoint | null> {
   assert.ok(!body.nextPageToken)
   for (const document of body.documents || []) {
     scope.validate(document.name)
+    const key = document.fields?.key?.stringValue || ''
+    if (!decodeURIComponent(key).includes(':record:weekly-dictation-checkpoint-v1:activity:')) continue
     const raw = document.fields?.payload?.stringValue
     if (!raw) continue
     const values = JSON.parse(raw).values
