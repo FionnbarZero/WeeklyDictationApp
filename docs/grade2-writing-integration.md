@@ -1,5 +1,33 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Actual-app pilot — October 14, local and unpublished
+
+The owner approved preview 5 and its Skip Timer refinement (`c3bf199`), then authorized a Grade 2-only pilot through the actual app. Application candidate **`29a470e9e1d1b71b293a3d2b047f76005c11faaf`** implements that local slice. **GPT-6 Astra · Extra High** remains the confirmed implementation assignment and recommended independent reviewer. Review-agent permission was requested; no review agent has been started. Owner smoke testing remains premature until independent review. No canonical deployment, PR, merge, security change or real-family record write occurred.
+
+The older preview/reference sections below are retained evidence, not the current implementation queue. The owner’s original `5209/grade2-writing-preview.html` build remains unchanged.
+
+### Scope and safety boundaries
+
+- A dedicated `writing-pilot` build enables the feature only for family-hosted Grade 2 ordinary Learn to Write acquisition. Normal builds do not enable it. Reading, other grades, Warmup rules, correction rules, standalone Stroke Order Slay and the approved teacher component are unchanged.
+- Actual Dojo launch and pinned selected curriculum now lead through optional Warmup → six steps for every character of the new word → existing Grand Scroll PracticeView → the next new word’s teacher. Missing guide data blocks explicitly. The local test uses the real 9/29–10/2 selected source lesson and synthetic profile, not a replacement teacher document.
+- `pilot.ts` wraps the exact normal acquisition checkpoint used for scoring; it never calls the engine a second time to create a competing random choice. Teaching changes only the outer writing revision, not reviewed answers or points. Older started targets finish under their original rules; the next genuinely new target receives teaching.
+- A schema-2 **activity partition** stores teacher and acquisition together inside the existing atomic family workspace. Old schema-1 records remain supported. Older schema-1 readers fail closed on the new partition; current code blocks downgrading it, mismatched mirrors, unknown fields, orphaned writing, equal-revision stale writes and unsafe legacy-journal replay. Both copies are preserved on conflict. Exact older packaged/recovery-client acceptance is still a release gate, not established by these source tests.
+- The strict save mode leaves the in-memory teaching/answer position unchanged on failure. A pending operation retains its exact candidate bytes and retries them after a lost readback. The view advances only after the combined write confirms. Unfinished learner ink and typed responses remain memory-only.
+- `deviceSync.ts` can order validated whole writing checkpoints using confirmed teaching/answer wall time, bounded against server time, without inventing reviewed answers or merging their fields. Curriculum-week selection is kept separate from milestone time. Both synchronization directions have synthetic repository tests; **real authenticated backend and two-device acceptance are not yet performed**.
+- The only appearance changes beyond the approved reference are host fitting (remove the home-page gutter/header while the teacher is active), the already-approved Skip Timer button in the pilot, and a clearly unpublished build label. Existing exit/report controls remain available. The teacher’s actual styles and drawing/feedback component were not redesigned.
+
+### Local verification and remaining gates
+
+Final source checks: **1,106/1,106 unit tests**, typecheck, lint, format check and production performance budget pass (**548,807/550,000 initial JS bytes**). Seven new application/storage/synchronization tests cover an entire nine-word lesson, unchanged scoring, legacy boundaries, disabled-build rejection, exact retry, partition transfer, stale/downgrade protection and both synthetic sync directions. Three built-browser pilot cases cover real launch, both characters, reload mid-teaching, ordinary acquisition and next-word repetition, failed save with retained ink/retry, and parent Report a problem pausing the seven-second clue. Exact retained-candidate browser verification is recorded below when complete.
+
+**Retained-candidate confirmation:** Rebuilt from application `29a470e`; all three browser cases pass again against that exact package (1.3 minutes, no retries/skips). The engineering server’s Grade 2 entry identity matches `29a470e`, and **115 entry/manifest-listed files** match the retained local package byte-for-byte. Screenshots are retained under `writing-pilot-test-results/`. This verifies the local artifact, not independent review, physical audio/touch, authenticated cloud behavior or a published release. The owner’s open `5209` comparison was preserved without reload; the temporary inspection tab was closed.
+
+Earlier failed runs are not acceptance evidence: one fixture selected a nonexistent September 28 option, a paused synthetic clock prevented initial frame setup, and a real integration defect mixed historical curriculum time with writing milestone time during Warmup. The option is now selected from its real source label, the fake clock starts after Warmup opens, and the separate writing timestamp leaves existing Warmup dates/rules intact.
+
+Build: `npm run build:writing-pilot`; browser checks: `npm run test:writing-pilot`. The automated server uses port 5210. A separate engineering server is available at `http://127.0.0.1:5211/family-beta-preview.html?grade=grade2`; this is not yet an owner smoke-test recommendation. The build deliberately blanks Firebase configuration and uses disposable local profiles. No online account is connected.
+
+Next gates, in order: independent **GPT-6 Astra · Extra High** source review and repairs; exact packaged legacy/current/recovery compatibility and isolated authenticated backend/offline/two-device checks; then a verified, bounded Grade 2 owner laptop handoff (about 8–12 minutes: Warmup → both characters → scrolls → next word; sound/trackpad, exit/reload and report pause). Physical iPad optimization remains later. Any hosted pilot or canonical release still requires its normal explicit publication gates. Do not send the owner to the older live website to test this candidate.
+
 ## Owner direction and scope
 
 On October 14 the owner approved v4 (`a4009e7`) and made Grade 2 writing the immediate priority. Shuriken follow-up and CI efficiency are secondary. Work continues in the existing writing checkout, reconciled with current main `af67928` through `54d369d`; the approved reference remains recoverable in Git and on its unchanged isolated v4 website.
