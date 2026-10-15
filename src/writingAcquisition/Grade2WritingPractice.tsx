@@ -1,8 +1,9 @@
 import { PracticeView, type PracticeViewProps } from '../practice/PracticeView.tsx'
 import type { WritingProgress } from '../application/writingAcquisition/contracts.ts'
 import { teachingPosition } from '../application/writingAcquisition/progress.ts'
-import { writingCharacterGuides } from '../application/writingAcquisition/lesson.ts'
+import { writingCharacterGuides, writingTeacherStepCount } from '../application/writingAcquisition/lesson.ts'
 import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
+import { FIVE_STEP_SEQUENCE, SIX_STEP_SEQUENCE } from '../strokeTeacherPrototype/model.ts'
 import '../strokeTeacherPrototype/preview.css'
 
 export default function Grade2WritingPractice({
@@ -33,6 +34,9 @@ export default function Grade2WritingPractice({
               meaning={target.meaning}
               strokes={writingCharacterGuides(target.text)[position.characterIndex]}
               initialStep={position.step}
+              sequence={
+                progress && writingTeacherStepCount(progress.lesson) === 5 ? FIVE_STEP_SEQUENCE : SIX_STEP_SEQUENCE
+              }
               onStepComplete={onTeachingStep}
               onComplete={() => undefined}
               onExit={props.onExit}

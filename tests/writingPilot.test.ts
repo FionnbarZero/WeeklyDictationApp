@@ -7,7 +7,8 @@ import { startPractice } from '../src/application/practice/startPractice.ts'
 import { recordPracticeAnswer } from '../src/application/practice/recordPracticeAnswer.ts'
 import { primaryStartState } from '../src/application/practice/warmupTransitions.ts'
 import * as pilot from '../src/application/writingAcquisition/pilot.ts'
-import { teachingPosition } from '../src/application/writingAcquisition/progress.ts'
+import { teachingPosition, createWritingProgress } from '../src/application/writingAcquisition/progress.ts'
+import { createWritingLesson, FIVE_STEP_WRITING_POLICY } from '../src/application/writingAcquisition/lesson.ts'
 import { createInitialState, resolveDatasetLifecycles, revealAcquisitionPrompt, type AppState } from '../src/domain.ts'
 import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
 import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
@@ -70,6 +71,7 @@ test('actual launch inserts teaching after optional Warmup, and disabled build c
   assert.equal(opened.status, 'started')
   if (opened.status !== 'started') return
   assert.equal(opened.session.stage, 'warmup-intro')
+  assert.equal(opened.state.writingAcquisitionProgress![0].lesson.policy, FIVE_STEP_WRITING_POLICY)
   assert.equal(teachingPosition(opened.state.writingAcquisitionProgress![0])?.step, 0)
   const rejected = await launch(opened.state, false)
   assert.equal(rejected.status, 'blocked')
@@ -123,7 +125,7 @@ test('real application completes all characters and all targets with the normal 
   assert.equal(session.acquisition?.teachingComplete, true)
   assert.equal(
     steps,
-    dataset.words.reduce((sum, word) => sum + [...word.text].length * 6, 0),
+    dataset.words.reduce((sum, word) => sum + [...word.text].length * 5, 0),
   )
   assert.equal(state.writingAcquisitionProgress![0].revision, steps + answers)
   assert.equal(state.acquisitionProgressEnvelopes![0].revision, answers)
@@ -162,6 +164,33 @@ test('legacy in-progress target is not restarted; only subsequent new targets re
   if (opened.status !== 'started') return
   assert.equal(opened.state.writingAcquisitionProgress![0].firstTeacherTargetIndex, 1)
   assert.equal(teachingPosition(opened.state.writingAcquisitionProgress![0]), null)
+  assert.equal(opened.state.writingAcquisitionProgress![0].lesson.policy, FIVE_STEP_WRITING_POLICY)
+})
+
+test('an existing six-step pilot retains its pinned progress and sequence when reopened', async () => {
+  const opened = await launch()
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  const progress = opened.state.writingAcquisitionProgress![0]
+  const sixStep = createWritingProgress(
+    createWritingLesson(dataset),
+    progress.owner,
+    progress.attemptId,
+    progress.createdAt,
+    { initial: progress.acquisition },
+  )
+  let state = { ...opened.state, writingAcquisitionProgress: [sixStep] }
+  const session = primaryStartState(opened.session)
+  for (let i = 0; i < 5; i++) state = pilot.completeStep(state, session, i, date.toISOString())
+  const originalBytes = JSON.stringify(state.writingAcquisitionProgress)
+  const reopened = await launch(state)
+  assert.equal(reopened.status, 'started')
+  if (reopened.status !== 'started') return
+  assert.equal(JSON.stringify(reopened.state.writingAcquisitionProgress), originalBytes)
+  assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.characterIndex, 0)
+  assert.equal(teachingPosition(reopened.state.writingAcquisitionProgress![0])?.step, 5)
+  state = pilot.completeStep(state, session, 5, date.toISOString())
+  assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.characterIndex, 1)
+  assert.equal(teachingPosition(state.writingAcquisitionProgress![0])?.step, 0)
 })
 
 test('launch confirms Warmup eligibility changes with writing, without intermediate writes or journal acknowledgements', async () => {

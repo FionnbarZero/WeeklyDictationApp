@@ -1,6 +1,13 @@
 import { expect, test, type Page, type FrameLocator } from '@playwright/test'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import { createWritingLesson } from '../../src/application/writingAcquisition/lesson.ts'
+import {
+  advanceWritingProgress,
+  createWritingProgress,
+  teachingPosition,
+  type WritingProgress,
+} from '../../src/application/writingAcquisition/progress.ts'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -152,17 +159,30 @@ test('actual Grade 2 launcher teaches a whole word, resumes a saved step, then h
   let frame = await launch(page)
   const teacher = () => frame.getByRole('region', { name: 'Stroke order teacher' })
   for (const [index, character] of [...'英雄'].entries()) {
-    for (let step = 1; step <= 6; step++) {
+    for (let step = 1; step <= 5; step++) {
       await expect(teacher()).toHaveAttribute('data-character-index', String(index))
       await expect(teacher()).toHaveAttribute('data-step', String(step))
-      if (index === 0 && step === 4) {
+      await expect(teacher().locator('.lg-round-label')).toContainText(`Step ${step} of 5`)
+      const labels = [
+        'Watch and trace',
+        'Trace again',
+        'Finish the last third',
+        'Finish the last two-thirds',
+        'Write and compare',
+      ]
+      await expect(teacher().locator('.lg-phase-steps')).toHaveAttribute(
+        'aria-label',
+        `Current step: ${labels[step - 1]}`,
+      )
+      if (index === 0 && step === 3) {
         frame = await launch(page)
-        await expect(teacher()).toHaveAttribute('data-step', '4')
+        await expect(teacher()).toHaveAttribute('data-step', '3')
+        await expect(teacher().locator('.teacher-supplied-stroke')).toHaveCount(5)
         await page.screenshot({ path: info.outputPath('teacher-resumed.png'), fullPage: true })
       }
       await drawRemaining(page, frame, character)
-      await frame.getByRole('button', { name: step === 6 ? 'Compare' : 'Next step', exact: true }).click()
-      if (step === 6) await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
+      await frame.getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true }).click()
+      if (step === 5) await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
     }
   }
   await expect(teacher()).toHaveCount(0)
@@ -211,6 +231,51 @@ test('a failed teaching save keeps the finished ink and retries the same step', 
   await expect(teacher.locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '8')
   await frame.getByRole('button', { name: 'Next step', exact: true }).click()
   await expect(teacher).toHaveAttribute('data-step', '2')
+})
+
+test('the integrated view resumes a pinned six-step save without relabeling its final trial', async ({ page }) => {
+  await launch(page)
+  const key = 'family-beta-activity:preview-1:lesson-workspace-v1'
+  const workspace = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), key))!)
+  const entry = Object.entries(workspace.records as Record<string, string>).find(
+    ([name, raw]) => name.startsWith('weekly-dictation-checkpoint-v1:activity:') && JSON.parse(raw).schema === 2,
+  )!
+  const record = JSON.parse(entry[1])
+  const current = record.values.writingAcquisitionProgress[0] as WritingProgress
+  // Disposable fixture representing a predecessor's confirmed checkpoint. No
+  // real records are migrated; the production reader must preserve this policy.
+  let previous = createWritingProgress(
+    createWritingLesson(current.lesson.dataset),
+    current.owner,
+    current.attemptId,
+    current.createdAt,
+    { initial: current.acquisition },
+  )
+  for (let i = 0; i < 5; i++)
+    previous = advanceWritingProgress(
+      previous,
+      {
+        id: `legacy-teaching-${i}`,
+        kind: 'complete-teaching-step',
+        expectedRevision: i,
+        position: teachingPosition(previous)!,
+      },
+      current.updatedAt,
+    )
+  record.values.writingAcquisitionProgress = [previous]
+  workspace.records[entry[0]] = JSON.stringify(record)
+  await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key, raw: JSON.stringify(workspace) })
+  const frame = await launch(page)
+  const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+  await expect(teacher).toHaveAttribute('data-character-index', '0')
+  await expect(teacher).toHaveAttribute('data-step', '6')
+  await expect(teacher.locator('.lg-round-label')).toContainText('Step 6 of 6')
+  await expect(teacher.locator('.lg-phase-steps')).toHaveAttribute('aria-label', 'Current step: Write and compare')
+  await drawRemaining(page, frame, '英')
+  await frame.getByRole('button', { name: 'Compare', exact: true }).click()
+  await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
+  await expect(teacher).toHaveAttribute('data-character-index', '1')
+  await expect(teacher.locator('.lg-round-label')).toContainText('Step 1 of 6')
 })
 
 test('the family report pauses the seven-second clue without advancing teaching', async ({ page }) => {

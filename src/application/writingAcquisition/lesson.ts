@@ -6,12 +6,14 @@ import { withDictationContent } from '../../ninjaSkills/dictationContent.ts'
 import { withSupplementalContent } from '../../ninjaSkills/supplemental.ts'
 
 export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
+// Keep the approved preview's exact pinned identity when integrating its sequence.
+export const FIVE_STEP_WRITING_POLICY = 'grade2-five-step-preview-v6' as const
 import type { WritingLesson } from './contracts.ts'
 export type { WritingLesson } from './contracts.ts'
 
-/** The five-step policy is opt-in for the isolated preview; existing lessons remain six-step. */
+/** Existing saved lessons retain their pinned sequence; new pilot lessons opt into five steps. */
 export function writingTeacherStepCount(lesson: Pick<WritingLesson, 'policy'>) {
-  if (lesson.policy === 'grade2-five-step-preview-v6') return 5
+  if (lesson.policy === FIVE_STEP_WRITING_POLICY) return 5
   if (lesson.policy === WRITING_TEACHER_POLICY) return 6
   throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
 }

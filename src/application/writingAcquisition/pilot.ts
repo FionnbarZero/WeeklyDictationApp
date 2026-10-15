@@ -1,7 +1,7 @@
 import type { AppState, Dataset, PracticeSession, Word } from '../../domain.ts'
 import type { AcquisitionCheckpoint, AcquisitionProgressEnvelope } from '../../acquisition/persistence/contracts.ts'
 import { acquisitionDigest } from '../../acquisition/persistence/identity.ts'
-import { createWritingLesson } from './lesson.ts'
+import { createWritingLesson, FIVE_STEP_WRITING_POLICY } from './lesson.ts'
 export { createConfirmedWritingTransition } from './confirmedTransition.ts'
 export { createConfirmedWritingLaunch } from './confirmedLaunch.ts'
 export { withScrollsWrite } from '../../familyBeta/scrollsCompletion.ts'
@@ -56,7 +56,10 @@ export function prepare(input: {
     return state
   }
   if (!envelope.lessonSnapshot) throw new Error('The original writing lesson is unavailable. Nothing was changed.')
-  const lesson = createWritingLesson({ ...input.dataset, words: [...envelope.lessonSnapshot.targetSet.targets] })
+  const lesson = createWritingLesson(
+    { ...input.dataset, words: [...envelope.lessonSnapshot.targetSet.targets] },
+    FIVE_STEP_WRITING_POLICY,
+  )
   const progress = createWritingProgress(
     lesson,
     envelope.childId,
