@@ -71,6 +71,8 @@ function releaseIdentityHtml(fileName: string, gitRevision: string, familySync =
 
 export default defineConfig(({ command, mode }) => {
   const strokeTeacherPreview = mode === 'stroke-teacher-preview'
+  const writingIntegrationPreview = mode === 'writing-integration-preview'
+  const isolatedWritingPreview = strokeTeacherPreview || writingIntegrationPreview
   const familyBetaGrade = process.env.VITE_FAMILY_BETA_GRADE
   if (
     mode === 'family-beta' &&
@@ -87,14 +89,14 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
-    publicDir: strokeTeacherPreview ? false : 'public',
+    publicDir: isolatedWritingPreview ? false : 'public',
     base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [
       react(),
       {
         name: 'release-identity',
         transformIndexHtml(html, context) {
-          if (strokeTeacherPreview) {
+          if (isolatedWritingPreview) {
             return html.replace('</head>', `<meta name="build-revision" content="${escapeHtml(gitRevision)}">\n</head>`)
           }
           const identity = releaseIdentityHtml(
@@ -106,7 +108,7 @@ export default defineConfig(({ command, mode }) => {
           return identity ? html.replace(/<body\b[^>]*>/, (body) => `${body}\n    ${identity}`) : html
         },
         generateBundle() {
-          if (!strokeTeacherPreview) return
+          if (!isolatedWritingPreview) return
           for (const name of ['NOTICE.txt', 'ARPHICPL.TXT']) {
             this.emitFile({
               type: 'asset',
@@ -118,11 +120,15 @@ export default defineConfig(({ command, mode }) => {
       },
     ],
     build: {
-      outDir: strokeTeacherPreview ? 'stroke-teacher-preview-dist' : 'dist',
+      outDir: writingIntegrationPreview
+        ? 'writing-integration-preview-dist'
+        : strokeTeacherPreview
+          ? 'stroke-teacher-preview-dist'
+          : 'dist',
       manifest: true,
       rollupOptions: {
-        input: strokeTeacherPreview
-          ? { app: page('./stroke-teacher-preview.html') }
+        input: isolatedWritingPreview
+          ? { app: page(writingIntegrationPreview ? './grade2-writing-preview.html' : './stroke-teacher-preview.html') }
           : mode === 'family-beta'
             ? { app: familyBetaInputByGrade[familyBetaGrade as keyof typeof familyBetaInputByGrade] }
             : mode === 'production' || mode === 'staging'

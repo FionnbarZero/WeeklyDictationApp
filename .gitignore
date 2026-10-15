@@ -1,6 +1,7 @@
 node_modules
 dist
 stroke-teacher-preview-dist
+writing-integration-preview-dist
 reconciliation-dist
 reconciliation-test-results/
 public-preview-dist
