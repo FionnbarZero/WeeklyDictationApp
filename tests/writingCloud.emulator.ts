@@ -168,7 +168,7 @@ test('five-step writing syncs confirmed teaching across independent stores and s
   await assert.rejects(repository(fetch, 'writing-intruder').sync(device(), child))
 })
 
-test('final character confirmation syncs atomically before a real scored acquisition checkpoint', async () => {
+test('final character confirmation syncs atomically before a normal acquisition answer checkpoint', async () => {
   const child = 'writing-handoff-child'
   const first = await fixture(child)
   const second = device()
