@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath } from 'node:url'
-import { basename } from 'node:path'
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 import { readRepositoryGitRevision, resolveBuildGitRevision } from './scripts/buildMetadata.ts'
 import { APP_VERSION } from './src/releaseMetadata.ts'
 
@@ -128,6 +128,17 @@ export default defineConfig(({ command, mode }) => {
           : 'dist',
       manifest: true,
       rollupOptions: {
+        // Consolidate shared icon modules instead of weakening the canonical
+        // host's exact-path cache rules or its 100-rule limit. Keep dependencies
+        // together and leave application/lazy activity boundaries automatic.
+        output:
+          mode === 'family-sync'
+            ? {
+                codeSplitting: {
+                  groups: [{ name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 }],
+                },
+              }
+            : undefined,
         input: isolatedWritingPreview
           ? { app: page(writingIntegrationPreview ? './grade2-writing-preview.html' : './stroke-teacher-preview.html') }
           : mode === 'family-beta'
