@@ -1,0 +1,13 @@
+# Grade 2 Slay-style acquisition comparison B
+
+Owner requested October 15: compare the same Stroke Order Slay boxes/background in ordinary writing acquisition against the larger Grand Scroll layout. This isolated entry uses the original Slay shell/background and a scoped cream/red-box presentation around the unchanged WritingPad and PracticeView. It does not change shared application code, the stroke teacher, real-family data, or older hosted previews.
+
+The existing v7 acquisition engine/policy supplies one whole-word trace, one independent trial, then distractors. Existing target/earned-DT 25-second and familiar 10-second timing, Skip Timer, whole-word assessment, and correction rules are reused. This is not a new correction protocol. Acquisition automatically speaks; optional replay remains subject to existing rules (Hear disabled after successful automatic audio). The explicit Start/resume gesture enables preview speech. Actual audible iPad playback is unverified until owner testing.
+
+Stroke-order teaching is intentionally omitted in this layout comparison, clearly stated on the start screen; no completion is written or falsely persisted. Exit/resume retains acquisition phase in memory, not unfinished handwriting/timer. Reload restarts this synthetic session. No scores, teaching completion, or family records are saved or synchronized. Only owner-submitted problem reports may persist through the existing report mechanism. No login is required. The original apps and reference previews remain unchanged.
+
+## Verification and owner check
+
+Dedicated Vite entry uses no public directory; only entry HTML, CSS, and JS are hosted. Scoped CSS cannot affect normal app entries. Automated iPad-sized tests cover trace → independent → familiar distractor → target, drawing/typing, control visibility/hit-testing, report pause, exit/resume and reload reset. Speech is mocked in browser tests. Initial testing exposed legacy single-character positioning overriding this presentation; higher-specificity isolated selectors repair it without editing shared styles. Initial test attempted Hear despite its intentional acquisition replay lock; corrected to assert that lock, not loosen teaching rules.
+
+Owner check: 3–5 minutes on an iPad, both landscape and portrait. Tap Start, listen, draw, use Skip Timer and whole-word right/wrong assessment. Check the independent and distractor screens, Type, Report a problem and Exit/resume. Compare box size and background with comparison A. Pencil feel, real audio, software-keyboard behavior and preferred appearance require physical-device feedback. Approve a working prototype before any whole-app integration.
