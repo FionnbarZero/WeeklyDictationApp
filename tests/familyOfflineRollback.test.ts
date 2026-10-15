@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { artifactFileRecords, fileTreeSha256 } from '../scripts/familyBetaRelease.ts'
@@ -35,7 +35,9 @@ test('rollback package validates its input, guards every older entry, and preser
   }
   writeFileSync(join(original, 'family-beta-manifest.json'), JSON.stringify(source))
   const { directory, manifest } = prepareOfflineRollback(original, 'b'.repeat(40))
-  t.after(() => rmSync(directory, { recursive: true, force: true }))
+  assert.equal(basename(directory), 'artifact')
+  assert.match(basename(dirname(directory)), /^ninja-dojo-offline-rollback-/)
+  t.after(() => rmSync(dirname(directory), { recursive: true, force: true }))
   assert.deepEqual(artifactFileRecords(original), files)
   assert.equal(fileTreeSha256(artifactFileRecords(directory)), manifest.fileTreeSha256)
   assert.equal(manifest.previousFileTreeSha256, source.fileTreeSha256)

@@ -48,7 +48,10 @@ export function prepareOfflineRollback(sourceDirectory: string, compatibilityRev
   )
     throw new Error('The previous family artifact failed integrity verification. Nothing was packaged.')
   requireFullGitRevision(previous.sourceRevision)
-  const directory = mkdtempSync(join(tmpdir(), 'ninja-dojo-offline-rollback-'))
+  // Node 24 rejects errorOnExist copies into even an empty existing directory.
+  // Reserve a private parent, then copy to a new child without weakening the
+  // no-overwrite guard or modifying the retained source artifact.
+  const directory = join(mkdtempSync(join(tmpdir(), 'ninja-dojo-offline-rollback-')), 'artifact')
   cpSync(source, directory, { recursive: true, errorOnExist: true, force: false })
   for (const file of originalFiles.filter((file) => file.path.endsWith('.html'))) {
     const path = join(directory, file.path)
