@@ -2,7 +2,16 @@ import { expect, test } from './fixtures.ts'
 import type { Page } from '@playwright/test'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
-import { WRITING_PREVIEW_KEY } from '../../src/writingAcquisition/previewLesson.ts'
+import {
+  WRITING_PREVIEW_KEY,
+  WRITING_PREVIEW_OWNER,
+  writingPreviewLesson,
+} from '../../src/writingAcquisition/previewLesson.ts'
+import {
+  advanceWritingProgress,
+  createWritingProgress,
+  teachingPosition,
+} from '../../src/application/writingAcquisition/progress.ts'
 
 async function syntheticAudio(page: Page) {
   await page.addInitScript(() => {
@@ -42,6 +51,57 @@ async function drawRemaining(page: Page, character: string) {
     await page.mouse.up()
     await expect(pad).toHaveAttribute('data-next-stroke', String(index + 1))
   }
+}
+
+for (const width of [1366, 768, 390]) {
+  test(`Skip Timer is a visible button with unchanged review behavior at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await syntheticAudio(page)
+    const now = '2026-10-15T00:00:00.000Z'
+    let saved = createWritingProgress(writingPreviewLesson(), WRITING_PREVIEW_OWNER, 'button-style-test', now, {
+      random: () => 0.25,
+    })
+    // Synthetic saved checkpoint at the real teacher-to-scroll boundary, not a bypass in app code.
+    while (teachingPosition(saved)) {
+      saved = advanceWritingProgress(
+        saved,
+        {
+          id: `style-step-${saved.revision}`,
+          kind: 'complete-teaching-step',
+          expectedRevision: saved.revision,
+          position: teachingPosition(saved)!,
+        },
+        now,
+      )
+    }
+    await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), {
+      key: WRITING_PREVIEW_KEY,
+      value: JSON.stringify(saved),
+    })
+    await page.goto('/grade2-writing-preview.html')
+    await page.getByRole('button', { name: 'Start or resume writing', exact: true }).click()
+    const skip = page.getByRole('button', { name: 'Skip Timer', exact: true })
+    await expect(skip).toBeVisible()
+    await expect(skip).toBeEnabled()
+    await expect(skip).toHaveCSS('background-color', 'rgb(49, 91, 134)')
+    await expect(skip).toHaveCSS('color', 'rgb(255, 255, 255)')
+    await expect(skip).toHaveCSS('border-top-width', '3px')
+    const bounds = (await skip.boundingBox())!
+    expect(bounds.width).toBeGreaterThanOrEqual(124)
+    expect(bounds.height).toBeGreaterThanOrEqual(52)
+    expect(bounds.x).toBeGreaterThanOrEqual(0)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
+    await skip.focus()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(skip).toBeFocused()
+    await expect(skip).toHaveCSS('outline-width', '4px')
+    await page.screenshot({ path: info.outputPath('skip-timer-button.png') })
+    await skip.press('Enter')
+    await expect(page.getByRole('button', { name: 'I got it right', exact: true })).toBeVisible()
+    await expect(skip).toHaveCount(0)
+    expect(await page.evaluate((key) => localStorage.getItem(key), WRITING_PREVIEW_KEY)).toBe(JSON.stringify(saved))
+  })
 }
 
 test('real ordered words complete teaching, retain saved steps and hand off through normal acquisition', async ({
