@@ -372,11 +372,18 @@ try {
     )
     .toBe(1)
   const nextTeacher = continued.getByRole('region', { name: 'Stroke order teacher' })
+  const skipTimer = continued.getByRole('button', { name: 'Skip Timer', exact: true })
+  const correct = continued.getByRole('button', { name: 'I got it right', exact: true })
   let nextRevision = 12
   for (let trial = 0; trial < 30 && !(await nextTeacher.isVisible()); trial++) {
-    await continued.getByRole('button', { name: 'Skip Timer', exact: true }).click()
-    await continued.getByRole('button', { name: 'I got it right', exact: true }).click()
+    // Real cloud readback can outlast a Familiar DT's ten-second window.
+    // Review the actual prompt whether the timer was skipped or expired.
+    await expect(skipTimer.or(correct)).toBeVisible()
+    if (await skipTimer.isVisible()) await skipTimer.click()
+    else console.log(`Trial ${trial + 1}: response window already ended; normal review is visible.`)
+    await correct.click()
     await synced(fourth.page, ++nextRevision)
+    console.log(`Repeated practice checkpoint ${nextRevision} confirmed in real cloud.`)
   }
   await expect(nextTeacher).toHaveAttribute('data-character-index', '0')
   await expect(nextTeacher).toHaveAttribute('data-step', '1')
@@ -411,6 +418,29 @@ try {
       physicalAudioOrTouchTested: false,
     }),
   )
+} catch (error) {
+  for (const context of browser.contexts()) {
+    for (const page of context.pages()) {
+      const frame = page.frameLocator('iframe:visible')
+      console.log({
+        failureState: {
+          skipTimerVisible: await frame
+            .getByRole('button', { name: 'Skip Timer', exact: true })
+            .isVisible()
+            .catch(() => false),
+          reviewVisible: await frame
+            .getByRole('button', { name: 'I got it right', exact: true })
+            .isVisible()
+            .catch(() => false),
+          teacherVisible: await frame
+            .getByRole('region', { name: 'Stroke order teacher' })
+            .isVisible()
+            .catch(() => false),
+        },
+      })
+    }
+  }
+  throw error
 } finally {
   await browser.close()
   if (scope) {
