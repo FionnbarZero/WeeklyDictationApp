@@ -1,5 +1,23 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Five-step actual-app integration — October 15
+
+The owner approved isolated five-step preview **`8b665da697cc81248300da0490c29ee7380a546e`**, requested Grade 2 Enter the Dojo integration followed by smoke testing, and confirmed proceeding with GPT-6 Astra · Extra High. That exact preview artifact/reference remains frozen and served separately at port 5213; no owner tab was reloaded. Local integration candidate **`2fcd7e2f550fde40c193d3242c10d74587be08cd`** is not published or enabled in the canonical app.
+
+Only the Grade 2 pilot's ordinary writing launcher selects the approved five-step policy when creating a new writing lesson. Optional Warmup is unchanged. Each character receives watch/trace, trace again, final third, final two-thirds and write/compare before whole-word scroll acquisition. The integrated teacher uses the pinned policy, so an existing six-step writing save continues its original sequence without relabeling trial 6, resetting progress or fabricating completion. Existing ordinary acquisition saves retain the previously approved target-level boundary: their current target finishes under its original rules; subsequent new targets receive teaching. No teacher/UI/CSS, stroke feedback, seven-second clue/audio, acquisition engine, correction, score or unrelated-grade behavior is edited by this candidate.
+
+Evidence:
+
+- 31 focused Node 24.22 tests pass, including all targets/characters with five confirmed milestones each, save retries, stale writers, paired acquisition checkpoints, synthetic sync repository behavior, legacy target continuity and unchanged six-step saves.
+- All 1,116 unit tests pass on Node 26.8.1. The earlier supported-Node-24 release-packaging blocker remains open; the Node 26 result is not a waiver.
+- Type/lint/scoped format pass. Production build and performance pass: 549,606/550,000 initial JS bytes and 46,288/60,000 initial CSS bytes.
+- Six integrated browser cases pass (1.5 minutes): interrupted initial confirmation/retry, rejected alternate activity without hidden retry, both characters through five steps/scrolls/next word, failed teaching-save retry, pinned six-step resume and report pause. Rebuilt final-revision confirmation follows below.
+- Self-review confirms the existing Grade 2-only launch switch, saved-policy rendering and no prototype UI or acquisition-engine changes. No independent review is claimed; review-agent permission was requested.
+
+**Final retained-build confirmation:** Rebuilt from `2fcd7e2`; all six browser cases pass again in 1.5 minutes, without retries/skips. All **118 served entry/manifest-listed files** match `writing-pilot-dist` byte-for-byte while the packaged test server is running. Final logs are `/tmp/ninja-five-step-integration-final-build.log` and `/tmp/ninja-five-step-integration-final-browser.log`; screenshots remain in `writing-pilot-test-results/`. The automated server is stopped when tests finish; it is not an available owner test link. The approved isolated preview at port 5213 remains the owner's current tab, not this new integrated package.
+
+The actual-app test package uses synthetic local profiles with Firebase configuration blanked. It is not proof of real authenticated synchronization, cross-device continuation, full old-client/recovery safety or physical audio/handwriting acceptance. The existing final review, compatibility/backend/offline/two-device and release gates remain before a smoke-test handoff. No deploy, PR, merge, security change, target override, real-data reset or other-grade rollout occurred. Primary-checkout October 15 correction/override/hosted-delivery requirements were inspected and are not silently folded into or waived by this focused five-step integration.
+
 ## Five-step preview v6 — October 15
 
 **Verified owner handoff:** Application **`8b665da697cc81248300da0490c29ee7380a546e`**, [five-step Grade 2 preview](http://127.0.0.1:5213/grade2-writing-preview.html), local/unpublished. Chrome loads preview v6 and its build-revision matches. All five served entry/assets/license files match the retained `writing-five-step-preview-dist` artifact. The final rebuild retains the same tested JS/CSS (`app-1dVcwIVL.js`, `app-CCpGpHfA.css`); only the entry's revision metadata changes from the pre-commit test build. The new tab is open for the owner; the original `5209` preview is untouched. Owner interaction approval is pending.
