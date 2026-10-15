@@ -1,5 +1,15 @@
 # Grade 2 writing integration — approved v4 to durable preview 5
 
+## Independent five-step review — October 15
+
+The owner explicitly approved a separate **GPT-6 Astra · Extra High** review agent. The read-only independent review covered `8aba477..2fcd7e2`, the five-step controller changes `06b6948..8b665da`, and pending-launch navigation guard `10c563e`. **No actionable findings.** No source/dist changes, publication or real-family data writes occurred.
+
+The reviewer confirmed five trials per character before whole-word scrolls, preserved pinned six-step saves (including trial 6 as Write and compare), older ordinary acquisition target continuity, unchanged approved teacher/scroll implementation and styling, exact retry candidates and stale-write safeguards. The earlier navigation finding is closed: the guard precedes Stroke Order opening-state changes, and repeated rejected clicks preserve checkpoint bytes and the visible retry control; successful retry and later ordinary Stroke Order entry both pass.
+
+Independent evidence: **71/71 focused tests on Node 24.22.0**, **6/6 retained-package browser cases without retries/skips**, **119 manifest-assets/root-HTML files matched to the served package**, and Grade 2 identity **`2fcd7e2f550fde40c193d3242c10d74587be08cd`** verified. Screenshots were inspected. Browser evidence is retained at `/private/tmp/five-step-independent-review.cIZrPp/browser-results/`. The tracked worktree was clean when the reviewer finished.
+
+No introduced-code finding blocks an isolated synthetic pilot check. This does **not** waive the existing owner smoke-handoff/release gates: packaged legacy/current/recovery compatibility, real authenticated backend/offline/two-device acceptance, the known supported-Node-24 release-packaging blocker, and physical sound/touch acceptance remain unestablished. Earlier requests for independent-review permission and pending guard-review wording below are historical and satisfied. No canonical publication or owner smoke-test invitation was made in this review turn.
+
 ## Five-step actual-app integration — October 15
 
 The owner approved isolated five-step preview **`8b665da697cc81248300da0490c29ee7380a546e`**, requested Grade 2 Enter the Dojo integration followed by smoke testing, and confirmed proceeding with GPT-6 Astra · Extra High. That exact preview artifact/reference remains frozen and served separately at port 5213; no owner tab was reloaded. Local integration candidate **`2fcd7e2f550fde40c193d3242c10d74587be08cd`** is not published or enabled in the canonical app.
