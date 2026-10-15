@@ -44,52 +44,84 @@ async function launch(page: Page, beforeSkip?: () => Promise<void>) {
   return frame
 }
 
-test('Start retries the exact initial checkpoint after a lost save confirmation', async ({ page }) => {
-  await page.addInitScript(() => {
-    const get = Storage.prototype.getItem,
-      set = Storage.prototype.setItem
-    let failRead = false,
-      failed = false
-    const writes: string[] = []
-    Object.assign(window, { writingLaunchWrites: writes })
-    Storage.prototype.getItem = function (key) {
-      if (key === 'family-beta-activity:preview-1:lesson-workspace-v1' && failRead) {
-        failRead = false
-        throw new Error('Synthetic initial save readback failure')
+for (const tryOtherActivity of [false, true]) {
+  test(`Start retries the exact initial checkpoint after a lost save confirmation${tryOtherActivity ? ' and rejects Stroke Order without hiding retry' : ''}`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const get = Storage.prototype.getItem,
+        set = Storage.prototype.setItem
+      let failRead = false,
+        failed = false
+      const writes: string[] = []
+      Object.assign(window, { writingLaunchWrites: writes })
+      Storage.prototype.getItem = function (key) {
+        if (key === 'family-beta-activity:preview-1:lesson-workspace-v1' && failRead) {
+          failRead = false
+          throw new Error('Synthetic initial save readback failure')
+        }
+        return get.call(this, key)
       }
-      return get.call(this, key)
-    }
-    Storage.prototype.setItem = function (key, raw) {
-      set.call(this, key, raw)
-      if (key !== 'family-beta-activity:preview-1:lesson-workspace-v1') return
-      const records = JSON.parse(raw).records as Record<string, string>
-      if (
-        !Object.entries(records).some(
-          ([name, value]) =>
-            name.startsWith('weekly-dictation-checkpoint-v1:activity:') && JSON.parse(value).schema === 2,
+      Storage.prototype.setItem = function (key, raw) {
+        set.call(this, key, raw)
+        if (key !== 'family-beta-activity:preview-1:lesson-workspace-v1') return
+        const records = JSON.parse(raw).records as Record<string, string>
+        if (
+          !Object.entries(records).some(
+            ([name, value]) =>
+              name.startsWith('weekly-dictation-checkpoint-v1:activity:') && JSON.parse(value).schema === 2,
+          )
         )
-      )
-        return
-      writes.push(raw)
-      if (!failed) {
-        failed = true
-        failRead = true
+          return
+        writes.push(raw)
+        if (!failed) {
+          failed = true
+          failRead = true
+        }
       }
+    })
+    const frame = await openDojo(page)
+    const start = frame.getByRole('button', { name: 'Learn to Write', exact: true })
+    await start.click()
+    await expect(frame.getByText(/could not (?:be saved|save its initial progress record)/).first()).toBeVisible()
+    await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toHaveCount(0)
+    if (tryOtherActivity) {
+      const writesBefore = await page.evaluate(
+        () => (window as unknown as { writingLaunchWrites: string[] }).writingLaunchWrites.length,
+      )
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await frame.getByRole('button', { name: 'Stroke Order Slay', exact: true }).click()
+        await expect(
+          frame.getByText('Retry Learn to Write before starting another activity. Your pending lesson is preserved.', {
+            exact: true,
+          }),
+        ).toBeVisible()
+        await expect(start).toBeVisible()
+        await expect(frame.getByText('Opening Warmup…', { exact: true })).toHaveCount(0)
+        await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toHaveCount(0)
+      }
+      expect(
+        await page.evaluate(() => (window as unknown as { writingLaunchWrites: string[] }).writingLaunchWrites.length),
+      ).toBe(writesBefore)
+    }
+    await start.click()
+    await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
+    const writes = await page.evaluate(
+      () => (window as unknown as { writingLaunchWrites: string[] }).writingLaunchWrites,
+    )
+    expect(writes.length).toBeGreaterThanOrEqual(2)
+    expect(writes[1]).toBe(writes[0])
+    await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+    await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+    if (tryOtherActivity) {
+      // Once confirmation succeeds, the ordinary Stroke Order entry still works.
+      await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+      await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+      await frame.getByRole('button', { name: 'Stroke Order Slay', exact: true }).click()
+      await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
     }
   })
-  const frame = await openDojo(page)
-  const start = frame.getByRole('button', { name: 'Learn to Write', exact: true })
-  await start.click()
-  await expect(frame.getByText(/could not (?:be saved|save its initial progress record)/).first()).toBeVisible()
-  await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toHaveCount(0)
-  await start.click()
-  await expect(frame.getByRole('button', { name: 'Skip Warmup', exact: true })).toBeVisible()
-  const writes = await page.evaluate(() => (window as unknown as { writingLaunchWrites: string[] }).writingLaunchWrites)
-  expect(writes.length).toBeGreaterThanOrEqual(2)
-  expect(writes[1]).toBe(writes[0])
-  await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
-  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
-})
+}
 
 async function drawRemaining(page: Page, frame: FrameLocator, character: string) {
   const strokes = strokeOrderGuide({ id: 'pilot-guide', text: character }).strokes

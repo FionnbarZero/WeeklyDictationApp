@@ -1443,6 +1443,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               onStart={(target) => void startPractice(target)}
               onStartStrokeOrder={(target) => { if (!writingLaunchNeedsRetry()) setActiveExperience({ kind: 'stroke-order', target }) }}
               onStrokeOrderWarmup={(dataset, ready) => {
+                if (writingLaunchNeedsRetry()) return
                 if (practiceStartInFlight || !lessonRetirement || !selectedChild || !lifecycleResolution) return
                 strokeWarmupReady.current = ready
                 setStrokeWarmupOpen(true)
