@@ -2,6 +2,8 @@
 
 ## Five-step preview v6 — October 15
 
+**Verified owner handoff:** Application **`8b665da697cc81248300da0490c29ee7380a546e`**, [five-step Grade 2 preview](http://127.0.0.1:5213/grade2-writing-preview.html), local/unpublished. Chrome loads preview v6 and its build-revision matches. All five served entry/assets/license files match the retained `writing-five-step-preview-dist` artifact. The final rebuild retains the same tested JS/CSS (`app-1dVcwIVL.js`, `app-CCpGpHfA.css`); only the entry's revision metadata changes from the pre-commit test build. The new tab is open for the owner; the original `5209` preview is untouched. Owner interaction approval is pending.
+
 The owner requested removal of original trial 3 and confirmed GPT-6 Astra · Extra High before application edits. This is a revised isolated working prototype, not five-step activation in the family app. The original `c3bf199` artifact remains in `writing-integration-preview-dist` on port 5209; its browser and saved record were not reset or reloaded.
 
 The five trials are **Watch and trace → Trace again → Finish the last third → Finish the last two-thirds → Write and compare**, repeated for every character before whole-word scroll acquisition. Stable stage identities omit only the extra full-tracing stage; the guide rendering, stroke checking, error retries, comparison retry, word audio, seven-active-second card, report pause and scroll appearance/timers are unchanged. The display and report position count five actual trials. The independent-writing comparison must still be confirmed before a character completes.
