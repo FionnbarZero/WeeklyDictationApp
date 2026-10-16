@@ -98,7 +98,7 @@ for (const [slug, grade] of grades) {
   })
 }
 
-test('manual pause survives reporting and Writing Exit returns to its grade menu', async ({ page }) => {
+test('manual pause survives reporting and Writing Exit returns to its Dojo menu', async ({ page }) => {
   const frame = await writing(page, 'grade5')
   await frame.getByRole('button', { name: 'Pause', exact: true }).click()
   await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
@@ -111,8 +111,8 @@ test('manual pause survives reporting and Writing Exit returns to its grade menu
   const reviewed = await checkpoint()
   expect(reviewed.length).toBeGreaterThan(0)
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
-  await expect(frame.getByRole('heading', { name: 'Grade 5', exact: true })).toBeVisible()
-  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: 'Enter the Dojo', exact: true })).toBeVisible()
+  await expect(frame.getByRole('button', { name: 'Learn to Write', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Your paused work' })).toHaveCount(0)
   expect(await checkpoint()).toEqual(reviewed)
 })
