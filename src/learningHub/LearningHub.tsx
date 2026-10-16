@@ -135,7 +135,7 @@ function SectionDetail<Launch>({
   </section>
 }
 
-export function LearningHub<Launch>({ model: originalModel, onLaunch, showTopbar = true, hideUnavailable = false }: LearningHubProps<Launch>) {
+export function LearningHub<Launch>({ model: originalModel, onLaunch, hideUnavailable = false }: LearningHubProps<Launch>) {
   const model = hideUnavailable ? { ...originalModel, sections: originalModel.sections.map(section => ({ ...section, activities: section.activities.filter(activity => activity.action.kind !== 'disabled') })).filter(section => section.activities.length > 0) } : originalModel
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const selected = model.sections.find((section) => section.id === selectedSectionId)
@@ -151,31 +151,10 @@ export function LearningHub<Launch>({ model: originalModel, onLaunch, showTopbar
   }
 
   return <>
-    {showTopbar && <header className="learning-hub-topbar">
-      <div className="learning-hub-brand"><span>{model.brandMark}</span>{model.brandLabel}</div>
+    <header className="learning-hub-topbar">
       <span className="learning-hub-profile">{model.profileLabel}</span>
-    </header>}
-    <section className="learning-hub-welcome" data-report-activity="Learning hub">
-      <div>
-        <p className="learning-hub-eyebrow">{model.eyebrow}</p>
-        <h1>{model.title}<br /><em>{model.titleAccent}</em></h1>
-        <p>{model.introduction}</p>
-      </div>
-      <div className="learning-hub-seal" aria-hidden="true">{model.heroMark}</div>
-    </section>
-    <section className="learning-hub-hero">
-      <div>
-        <p className="learning-hub-eyebrow">Your learning path</p>
-        <h2>{model.heroTitle}<br /><span>{model.heroAccent}</span></h2>
-        <p>{model.heroDescription}</p>
-      </div>
-      <div className="learning-hub-hero-mark" aria-hidden="true">{model.heroMark}</div>
-    </section>
-    <header className="learning-hub-section-heading">
-      <div><p className="learning-hub-eyebrow">{model.sectionEyebrow}</p><h2>{model.sectionTitle}</h2></div>
-      <span>{model.sectionHint}</span>
     </header>
-    <section className="learning-hub-section-grid">
+    <section className="learning-hub-section-grid" aria-label={`${model.profileLabel} activities`} data-report-activity="Learning hub">
       {model.sections.map((section) => <button
         className={`learning-hub-section-card learning-hub-theme-${section.theme}`}
         type="button"
