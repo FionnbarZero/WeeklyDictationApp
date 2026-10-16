@@ -37,7 +37,7 @@ for (const [slug, grade, childId] of grades) {
     await expect(page).toHaveURL(new RegExp(`/family-beta-preview\\?grade=${slug}$`))
     await expect(page.getByLabel('Child profile')).toHaveValue(childId)
     await expect(
-      page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ }),
+      page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ }),
     ).toBeVisible()
     const attempted = await completeLanterns(page)
     await page.frameLocator('iframe:visible').getByRole('button', { name: 'Back to Ninja Skills', exact: true }).click()
@@ -234,7 +234,7 @@ for (const [entry, slug, childId] of [
     await expect(page).toHaveURL(new RegExp(`/family-beta-preview\\?grade=${slug}$`))
     await expect(page.getByLabel('Child profile')).toHaveValue(childId)
     await expect(
-      page.frameLocator('iframe:visible').getByRole('heading', { name: /Ready for your next/ }),
+      page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ }),
     ).toBeVisible()
   })
 }

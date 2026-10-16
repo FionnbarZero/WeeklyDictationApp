@@ -133,7 +133,7 @@ test('Kindergarten Final Boss confirms before discarding an unfinished response'
 
   await exitButton.click()
   await confirmation.getByRole('button', { name: 'Exit without saving' }).click()
-  await expect(page.getByRole('heading', { name: /Ready for your next adventure/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kindergarten' })).toBeVisible()
   await expect(page.getByText('No scores yet')).toBeVisible()
 })
 

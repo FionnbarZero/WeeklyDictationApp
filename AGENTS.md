@@ -4,6 +4,7 @@ Read `STATUS.md` for verified implementation/publication status and `ROADMAP.md`
 
 ## Owner handoffs (requested October 7, 2026)
 
+- Standing owner rule (October 16, 2026): whenever an iPad-accessible test website is created, verify its reachable hosted URL and automatically email the link to the owner's previously confirmed email address. The owner authorizes this routine email without a separate send-approval request. Include the grade(s), exact build, preview status, expiry if applicable, and a brief testing checklist; confirm successful sending before claiming delivery. Do not include child records or credentials. This email rule does not itself authorize a deployment that requires separate approval.
 - Before each focused task or stage, tell the owner the recommended model **and reasoning level**, the next action, and whether smoke testing is ready or premature. Use the task-specific model assignments in `ROADMAP.md`.
 - Before changing application code, prompt the owner to select the recommended model if the appropriate selection has not already been confirmed for that stage. Do not repeatedly ask during the same confirmed stage, or pause ordinary implementation decisions. Never claim to have switched this chat's model without a supported, confirmed action.
 - Proactively prompt the owner to smoke-test when a coherent, reviewed, verified build is available and real-device feedback is useful, and after an affected live release. Do not wait for the owner to ask and do not ask after every commit.

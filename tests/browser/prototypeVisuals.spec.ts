@@ -12,12 +12,12 @@ test.use({
 const visualReferences = [
   {
     route: '/grade5-learning-hub.html',
-    heading: /Ready for your next challenge/,
+    heading: 'Grade 5',
     snapshot: 'grade5-learning-hub.png',
   },
   {
     route: '/kindergarten-learning-lab.html',
-    heading: /Ready for your next adventure/,
+    heading: 'Kindergarten',
     snapshot: 'kindergarten-learning-hub.png',
   },
   {
