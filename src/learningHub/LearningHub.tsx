@@ -152,7 +152,7 @@ export function LearningHub<Launch>({ model: originalModel, onLaunch, hideUnavai
 
   return <>
     <header className="learning-hub-topbar">
-      <span className="learning-hub-profile">{model.profileLabel}</span>
+      <span className="learning-hub-profile" role="heading" aria-level={1}>{model.profileLabel}</span>
     </header>
     <section className="learning-hub-section-grid" aria-label={`${model.profileLabel} activities`} data-report-activity="Learning hub">
       {model.sections.map((section) => <button

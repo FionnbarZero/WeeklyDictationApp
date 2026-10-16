@@ -41,3 +41,4 @@ firebase-debug.log
 firestore-debug.log
 playwright-report/
 test-results/
+home-text-preview-dist/

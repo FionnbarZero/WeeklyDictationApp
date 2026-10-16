@@ -108,7 +108,7 @@ for (const exitCase of exitCases) {
     await page.getByRole('button', { name: exitCase.activity, exact: true }).click()
     await page.getByRole('button', { name: exitCase.exit }).click()
 
-    await expect(page.getByRole('heading', { name: /Ready for your next adventure/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Kindergarten' })).toBeVisible()
     await expect(page.getByText(exitCase.status)).toBeVisible()
     await expect(page.getByText('No scores yet')).toBeVisible()
     expectNoBrowserErrors()
@@ -515,7 +515,7 @@ test('Kindergarten Reading Final Boss confirms and exits without retaining a sco
   await expect(confirmation).toBeVisible()
   await confirmation.getByRole('button', { name: 'Exit without saving' }).click()
 
-  await expect(page.getByRole('heading', { name: /Ready for your next adventure/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kindergarten' })).toBeVisible()
   await expect(page.getByText('Final Boss reading exited. Temporary recordings and provisional answers were discarded.')).toBeVisible()
   await expect(page.getByText('No scores yet')).toBeVisible()
   expectNoBrowserErrors()

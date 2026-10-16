@@ -35,7 +35,7 @@ test('the Grade 5 landing experience uses the shared child-facing visual languag
   assert.match(harnessSource, /import \{ PreviewLearningHub as LearningHub \} from '\.\/familyBeta\/PreviewLearningHub\.tsx'/)
   assert.match(source('src/familyBeta/PreviewLearningHub.tsx'), /familyPreview \? <EnhancedHub .* : <LearningHub/)
   assert.match(harnessSource, /<LearningHub model=\{grade5LearningHubView\(learningHubModel\)\}/)
-  assert.match(sharedHub, /Ready for your next|model\.title/)
+  assert.match(sharedHub, /model\.profileLabel/)
   assert.match(sharedHub, /learning-hub-source-details/)
   assert.match(grade5View, /Choose your path/)
   assert.match(sharedStyles, /\.learning-hub-section-grid/)

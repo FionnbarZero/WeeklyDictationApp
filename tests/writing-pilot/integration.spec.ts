@@ -32,7 +32,7 @@ test.beforeEach(async ({ page }) => {
 async function openDojo(page: Page) {
   await page.goto('/family-beta-preview.html?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   if ((await page.getByLabel('Practice week').inputValue()) !== '2026-09-29') {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByLabel('Practice week').selectOption({ label: '9/29–10/2' })
@@ -139,7 +139,7 @@ for (const action of ['Done for today', 'Exit game']) {
     await expect.poll(async () => (await visitFacts(page)).results).toBe(1)
     await page.screenshot({ path: info.outputPath('slay-completion-control.png'), fullPage: true })
     await frame.getByRole('button', { name: action, exact: true }).click()
-    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
     await expect(page.getByLabel('Practice week')).toBeVisible()
     await expect(page.locator('iframe:visible')).not.toHaveAttribute('data-writing-stage', 'true')
     const facts = await visitFacts(page)
@@ -148,7 +148,7 @@ for (const action of ['Done for today', 'Exit game']) {
     expect(facts.ledger).toHaveLength(completed)
     if (completed) expect(facts.ledger[0]).toMatchObject({ channel: 'writing', correct: 1, attempted: 1 })
     await page.reload()
-    await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
     expect(await visitFacts(page)).toEqual(facts)
     const resumed = await launch(page)
     await expect(resumed.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
@@ -334,7 +334,7 @@ test('actual Grade 2 launcher teaches a whole word, resumes a saved step, then h
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
   await expect(page.locator('iframe:visible')).not.toHaveAttribute('data-writing-stage', 'true')
   await expect(page.getByLabel('Practice week')).toBeVisible()
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   expect(errors).toEqual([])
 })
 

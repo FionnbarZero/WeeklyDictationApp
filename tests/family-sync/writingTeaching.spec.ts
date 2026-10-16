@@ -7,7 +7,7 @@ const workspaceKey = 'family-beta-activity:synthetic-g2:lesson-workspace-v1'
 async function launch(page: Page) {
   await page.goto('/?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   if ((await page.getByLabel('Practice week').inputValue()) !== '2026-09-29') {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByLabel('Practice week').selectOption('2026-09-29')
