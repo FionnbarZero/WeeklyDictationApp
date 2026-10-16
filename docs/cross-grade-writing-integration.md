@@ -1,5 +1,11 @@
 # Kindergarten and Grade 5 writing extension
 
+## Release-gate continuation — October 15
+
+Exact enabled `beea373e8c84655d67cc93497623ebc051625f79`, tree `be084a19d92ab358cf19fc932d0ced109269b54928b30027626903e7b01607cf`, passes **14/14 actual-predecessor cases with zero skips** (`/tmp/native-writing-actual-predecessor-v2`) and **12/12 provider-applied desktop/tablet cases** (`/tmp/native-writing-provider-beea373`). The latter verifies 154 candidate public files/181 header responses, 153/180 predecessor and 154/181 guarded recovery. Recovery tree: `8b6964b8f27f88d58bb8c7eab57e00bdb71be926b8c9db67a35a8537ca1e106d`. Separate v7/v8/cross-grade gates pass 6/10/6; frozen visuals pass five without changed snapshots. Private receipts are under `/private/tmp/ninja-cross-grade-writing-release.ksDLUY`.
+
+CI run `38862928399` passes 78 general browser tests and public preview, plus type/unit, build and emulator jobs. Its prototype gate passed 31/32: the automatic Kindergarten audio mock resolved `play()` without dispatching `ended`; the unchanged app correctly remained at Loading prompt audio with Skip Timer disabled. Local reproduction is `/tmp/native-prototype-audio-label`. The narrow test correction dispatches asynchronous `ended`, retains all prior automatic-play assertions and additionally requires Skip Timer to be enabled. Independent Astra · Extra High review reports no findings. All **32/32** prototype cases now pass locally (`/tmp/native-prototype-gates-v2`), as does the focused development case (`/tmp/native-development-audio-v2`). This is not a label/UI change or an assertion waiver. Final-head CI and final merged-source/backend/provider/release gates remain required; no merge or publication is claimed.
+
 The owner has approved both hosted prototypes and authorized native Kindergarten/Grade 5 integration. Earlier checkpoints below are historical evidence, not competing approval requests. Hosting and real-family boundaries remain unchanged.
 
 ## Exit race review and release continuation

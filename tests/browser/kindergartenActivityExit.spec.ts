@@ -239,6 +239,8 @@ test('Kindergarten writing automatically plays without requiring a replay contro
     Object.defineProperty(window, '__promptAudioPlays', { value: promptAudioPlays })
     HTMLMediaElement.prototype.play = function () {
       promptAudioPlays.push(this.src)
+      // A resolved play() starts playback; the response timer waits for ended.
+      window.setTimeout(() => this.dispatchEvent(new Event('ended')), 0)
       return Promise.resolve()
     }
   })
@@ -254,6 +256,7 @@ test('Kindergarten writing automatically plays without requiring a replay contro
   await expect(page.getByText('Prompt audio plays automatically')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Replay sequence' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Skip Timer' })).toBeEnabled()
   expectNoBrowserErrors()
 })
 
