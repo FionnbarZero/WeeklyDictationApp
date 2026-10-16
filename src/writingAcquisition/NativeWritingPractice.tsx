@@ -27,13 +27,14 @@ export default function NativeWritingPractice({ store, ...props }: PracticeViewP
   const [error, setError] = useState('')
   const busy = useRef(false)
   const activity = useRef<{ active: boolean; sessionId: string } | null>(null)
+  const nativeSessionId = store.current.sessionId
   useLayoutEffect(() => {
-    const visit = { active: true, sessionId: props.session.id }
+    const visit = { active: true, sessionId: nativeSessionId }
     activity.current = visit
     return () => {
       visit.active = false
     }
-  }, [store, props.session.id])
+  }, [store, nativeSessionId, props.session.id])
   const progress = store.current.writing
   if (!progress) throw new Error('The combined writing checkpoint is unavailable.')
 
