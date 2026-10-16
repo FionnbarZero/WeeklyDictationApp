@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import test, { type TestContext } from 'node:test'
 import {
   effectiveFamilyHeaders,
@@ -112,7 +112,7 @@ function fixture(t: TestContext, security = false) {
   const candidate = artifact('candidate', 'b'.repeat(40)),
     previous = artifact('previous', 'a'.repeat(40))
   const guarded = prepareOfflineRollback(previous.directory, candidate.sourceRevision)
-  t.after(() => rmSync(guarded.directory, { recursive: true, force: true }))
+  t.after(() => rmSync(dirname(guarded.directory), { recursive: true, force: true }))
   const evidence = join(root, 'synthetic-evidence.json')
   writeFileSync(
     evidence,

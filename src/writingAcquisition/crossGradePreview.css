@@ -1,0 +1,100 @@
+body:has(#cross-grade-writing-preview-root) {
+  margin: 0;
+  background: #090d20;
+}
+.cross-grade-writing-preview {
+  color: #f6f7ff;
+  font-family: system-ui, sans-serif;
+}
+.cross-grade-banner {
+  position: relative;
+  z-index: 10;
+  min-height: 48px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.cross-grade-banner .beta-report-launcher-group {
+  position: static;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+.cross-grade-banner #problem-reporter-controls {
+  padding: 0;
+  background: transparent;
+}
+.cross-grade-banner .problem-report-trigger,
+.cross-grade-banner .beta-report-session-finish,
+.cross-grade-banner .beta-report-launcher,
+.cross-grade-banner .beta-report-finish {
+  position: static;
+  width: auto;
+  min-height: 44px;
+  font-size: 11px;
+}
+.cross-grade-menu {
+  max-width: 800px;
+  margin: 32px auto;
+  padding: 24px;
+  border: 1px solid #58313d;
+  border-radius: 22px;
+  background: #171322;
+}
+.cross-grade-menu label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  font-weight: 700;
+}
+.cross-grade-menu select {
+  min-height: 48px;
+  padding: 8px;
+  font-size: 17px;
+  max-width: 100%;
+}
+.cross-grade-menu p {
+  line-height: 1.5;
+}
+.cross-grade-writing-preview #slay-acquisition-root.slay-writing-integration .lg-shell {
+  height: calc(100dvh - 48px);
+}
+.cross-grade-writing-preview .st-original-stage,
+.cross-grade-writing-preview #slay-acquisition-root.slay-writing-integration {
+  min-height: calc(100dvh - 48px);
+}
+.cross-grade-error {
+  padding: 14px;
+  background: #601e2b;
+  color: white;
+  position: relative;
+  z-index: 5;
+}
+.cross-grade-save {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  background: #142b39;
+  padding: 8px;
+}
+@media (orientation: portrait) and (min-width: 600px) {
+  .cross-grade-writing-preview
+    #slay-acquisition-root
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  .cross-grade-writing-preview
+    #slay-acquisition-root
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+}

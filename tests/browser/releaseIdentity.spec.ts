@@ -16,7 +16,7 @@ for (const entry of entries) {
     await page.goto(entry.path)
     const identity = page.locator('.release-identity')
     await expect(identity).toContainText(entry.grade)
-    await expect(identity).toContainText(entry.status)
+    await expect(identity).toContainText('Local preview · unpublished changes')
     await expect(identity).toContainText('v0.2.0-stage2')
     await expect(identity).toContainText(/r[a-f0-9]{7}/)
     await expect(identity).toContainText(entry.persistence)

@@ -41,7 +41,7 @@
 .skywriting-workspace.is-review .skywriting-stroke { stroke-width: 5; }
 .skywriting-model-example { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; place-items: center; }
 .skywriting-model-example .skywriting-comparison-label { justify-self: start; }
-.skywriting-pad-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; width: 100%; height: 100%; min-height: 0; margin: 0; }
+.skywriting-pad-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 6px; width: 100%; height: 100%; min-height: 0; margin: 0; }
 .skywriting-pad-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
 .skywriting-input-hint { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; margin: 0; padding: 7px 11px; border: 1px solid #d8cce9; border-radius: 999px; color: #625672; background: rgb(255 255 255 / 62%); font-size: .68rem; font-weight: 850; }
 .skywriting-pad-frame { position: relative; width: 100%; height: 100%; min-height: 0; margin: 0 auto; }
@@ -60,13 +60,77 @@
 .skywriting-pad-actions button { min-height: 36px; padding: 7px 11px; border: 1px solid #d7cbe7; color: #5f4c7e; background: #fff; font-size: .7rem; }
 .skywriting-pad-footer small { color: #887e90; font-size: .6rem; line-height: 1.2; white-space: nowrap; }
 .skywriting-pad-shell.is-disabled .skywriting-pad { cursor: default; }
+.skywriting-pad-shell.is-grand-scroll { container-type: size; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 7px; }
+.skywriting-pad-shell.is-grand-scroll .skywriting-pad-toolbar { grid-row: 2; justify-content: center; }
+.skywriting-pad-shell.is-grand-scroll .skywriting-input-hint { display: none; }
+.skywriting-pad-shell.is-grand-scroll .skywriting-pad-actions button { min-height: 40px; padding: 8px 16px; border-color: #cbd4c3; color: #263d35; background: #f7f8ee; box-shadow: 0 3px 0 #cbd4c3; }
+.skywriting-grand-scroll-grid { container-type: size; display: grid; grid-row: 1; align-items: center; justify-items: center; gap: 12px; width: 100%; max-width: 1320px; min-height: 0; margin: 0 auto; padding: 8px 5px 25px; }
+.skywriting-grand-scroll-grid[data-character-count="1"] { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+.skywriting-grand-scroll-grid[data-character-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1160px; }
+.skywriting-grand-scroll-grid[data-character-count="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1240px; }
+.skywriting-grand-scroll-grid[data-character-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.skywriting-scroll-cell { position: relative; width: min(100%, 100cqh); aspect-ratio: 1; padding: 10px 7px; filter: drop-shadow(0 9px 11px rgb(52 70 46 / 16%)); }
+.skywriting-scroll-cell::before, .skywriting-scroll-cell::after { content: ""; position: absolute; z-index: 2; left: 0; right: 0; height: 15px; border-radius: 7px; background: linear-gradient(90deg, #405044 0 9px, transparent 9px calc(100% - 9px), #405044 calc(100% - 9px)), linear-gradient(#aa7851, #d0a16e 45%, #95633f); box-shadow: 0 2px 3px rgb(55 43 40 / 14%); }
+.skywriting-scroll-cell::before { top: 0; }
+.skywriting-scroll-cell::after { bottom: 0; }
+.skywriting-scroll-paper { position: relative; width: 100%; height: 100%; padding: 11px; border-right: 1px solid #c8b893; border-left: 1px solid #c8b893; background-color: #fff9e9; background-image: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgb(185 159 112 / 7%) 4px); }
+.skywriting-scroll-cell .skywriting-pad { border: 1.5px solid #a99f83; border-radius: 0; filter: none; overscroll-behavior: none; }
+.skywriting-scroll-cell .skywriting-paper { fill: transparent; stroke: none; }
+.skywriting-scroll-cell .skywriting-guide { stroke: #c8c0aa; stroke-width: 1; stroke-dasharray: 8 8; opacity: .62; }
+.skywriting-scroll-cell .skywriting-trace-character { fill: #9b3f32; opacity: .2; }
+.skywriting-scroll-cell .skywriting-stroke { stroke: #243a32; stroke-width: 3; }
+.skywriting-scroll-cell .skywriting-pad-placeholder { color: #776f5c; font-family: Inter, ui-rounded, "Avenir Next", system-ui, sans-serif; font-size: .72rem; font-weight: 750; }
+.skywriting-paper-seal { position: absolute; right: 15px; bottom: 15px; display: grid; width: 14px; height: 14px; place-items: center; border: 1px solid #ad5141; color: #ad5141; font: 9px/1 serif; transform: rotate(-7deg); pointer-events: none; }
+.skywriting-character-position { position: absolute; top: calc(100% + 5px); right: 0; left: 0; color: #52675e; font-size: .67rem; font-weight: 750; text-align: center; }
+.skywriting-workspace.is-grand-scroll { border-radius: 18px; background: radial-gradient(ellipse at 50% 32%, #f4f5df, transparent 68%), repeating-linear-gradient(90deg, transparent 0, transparent 155px, rgb(206 217 199 / 40%) 156px, transparent 158px), #e9eee5; }
+.skywriting-workspace.is-review.is-grand-scroll { background: transparent; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-pad-shell { display: grid; height: 100%; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-grand-scroll-grid { grid-template-columns: repeat(var(--review-writing-lanes, 1), minmax(0, 1fr)); gap: 6px; padding: 5px 2px 18px; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-grand-scroll-grid[data-character-count="2"] { --review-writing-lanes: 2; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-grand-scroll-grid[data-character-count="3"] { --review-writing-lanes: 3; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-grand-scroll-grid[data-character-count="4"] { --review-writing-lanes: 4; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-scroll-cell { min-width: 0; }
+.skywriting-workspace.is-review.is-grand-scroll .skywriting-scroll-paper { padding: 6px; }
 .skywriting-keyboard-alternative { display: flex; align-items: center; gap: 10px; padding: 4px 6px; color: #675d72; font-size: .68rem; font-weight: 700; }
 .skywriting-keyboard-alternative input { min-width: 0; flex: 1; min-height: 36px; padding: 6px 10px; border: 1px solid #d7cbe7; border-radius: 9px; background: #fff; color: #2f2737; font-size: 1rem; }
 .skywriting-keyboard-alternative input:disabled { background: #f6f2fa; opacity: 1; }
+.skywriting-pinyin-candidates { position: absolute; right: 0; top: 198px; display: grid; gap: 5px; width: 204px; text-align: center; }
+.skywriting-pinyin-candidates > span { color: #354946; font-size: .78rem; font-weight: 850; }
+.skywriting-pinyin-candidates > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.skywriting-pinyin-candidates button { min-height: 56px; padding: 4px; border: 2px solid #315b86; border-radius: 10px; color: #243c37; background: #fff9e9; font-size: 1.65rem; font-weight: 800; cursor: pointer; }
+.skywriting-pinyin-candidates button:hover { background: #e9f0f4; }
+.skywriting-pinyin-candidates button:focus-visible { outline: 3px solid #ae633f; outline-offset: 2px; }
+@media (max-width: 699px) {
+  .skywriting-pad-shell.is-grand-scroll:has(.skywriting-pinyin-candidates) { grid-template-rows: minmax(0, 1fr) auto auto auto auto; }
+  .skywriting-pinyin-candidates { position: static; width: min(100%, 240px); justify-self: center; }
+}
 .skywriting-reveal-word { display: grid; max-width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 4px 12px; place-items: center; color: #3f3458; font-family: "Songti SC", STSong, SimSun, serif; font-size: clamp(6rem, 9vw, 9rem); font-weight: 300; line-height: .82; }
 .skywriting-reveal-word[data-character-count="1"] { font-size: clamp(18rem, 25vw, 22rem); line-height: .72; }
 .skywriting-reveal-word[data-character-count="2"] { font-size: clamp(10rem, 15vw, 14rem); }
 .skywriting-reveal-word[data-character-count="3"] { font-size: clamp(7.5rem, 11vw, 11rem); }
+@media (min-width: 700px) and (max-width: 1099px) {
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) { position: relative; grid-template-rows: minmax(0, 1fr); }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-grand-scroll-grid[data-character-count="1"] { width: calc(100% - 220px); max-width: 680px; height: 100%; margin: 0 auto 0 0; padding-bottom: 12px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-toolbar { position: absolute; grid-row: auto; right: 12px; top: 190px; width: 180px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-pinyin-candidates) .skywriting-pad-toolbar { top: 260px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pinyin-candidates { top: 174px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative { position: absolute; right: 0; top: 10px; width: 204px; padding: 0; flex-direction: column; align-items: stretch; gap: 8px; font-size: 1.25rem; font-weight: 800; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative > span { display: grid; place-items: center; min-height: 42px; border: 1px solid #705034; border-radius: 12px; background: #967047; color: #fff; font-size: 1.5rem; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative input { min-height: 105px; padding: 10px 14px; font-size: 2rem; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-footer { position: absolute; right: 12px; bottom: 8px; width: 180px; padding: 0; flex-direction: column; gap: 3px; text-align: center; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-help { white-space: normal; }
+}
+@media (min-width: 1100px) {
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) { position: relative; grid-template-rows: minmax(0, 1fr); }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-grand-scroll-grid[data-character-count="1"] { max-width: min(680px, calc(100% - 400px)); height: 100%; padding-bottom: 12px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-toolbar { position: absolute; grid-row: auto; right: 12px; top: 216px; width: 180px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-pinyin-candidates) .skywriting-pad-toolbar { top: 282px; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative { position: absolute; right: 0; top: 12px; width: 204px; padding: 0; flex-direction: column; align-items: stretch; gap: 8px; font-size: 1.25rem; font-weight: 800; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative > span { display: grid; place-items: center; min-height: 48px; border: 1px solid #705034; border-radius: 12px; background: #967047; color: #fff; font-size: 1.5rem; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-keyboard-alternative input { min-height: 120px; padding: 10px 14px; font-size: 2rem; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-footer { position: absolute; right: 12px; bottom: 8px; width: 180px; padding: 0; flex-direction: column; gap: 3px; text-align: center; }
+  .skywriting-workspace.is-grand-scroll:not(.is-review) .skywriting-pad-shell:has(.skywriting-grand-scroll-grid[data-character-count="1"]) .skywriting-pad-help { white-space: normal; }
+}
 .skywriting-self-check { display: flex; flex-wrap: nowrap; justify-content: center; gap: 8px; margin: 0; }
 .skywriting-wrong, .skywriting-right { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; padding: 11px 18px; border: 2px solid; border-radius: 999px; cursor: pointer; font-weight: 850; }
 .skywriting-wrong { border-color: #d8756a; color: #8a4038; background: #fff5f3; }
@@ -115,6 +179,9 @@
   .skywriting-workspace.is-review .skywriting-child-example, .skywriting-model-example { padding: 9px; border-radius: 17px; }
   .skywriting-comparison-label { font-size: .58rem; }
   .skywriting-wrong, .skywriting-right { min-height: 38px; padding: 7px 10px; font-size: .68rem; }
+  .skywriting-grand-scroll-grid { gap: 8px; padding-inline: 2px; }
+  .skywriting-scroll-cell { width: 100%; padding-inline: 5px; }
+  .skywriting-scroll-paper { padding: 7px; }
 }
 @media (max-width: 540px) {
   .skywriting-promptbar { grid-template-columns: 1fr; gap: 4px; }
@@ -135,4 +202,5 @@
   .skywriting-reveal-word[data-character-count="1"] { font-size: clamp(9rem, 50vw, 12rem); }
   .skywriting-reveal-word[data-character-count="2"] { font-size: clamp(5rem, 24vw, 7rem); }
   .skywriting-reveal-word[data-character-count="3"] { font-size: clamp(3.8rem, 16vw, 5.2rem); }
+  .skywriting-grand-scroll-grid[data-character-count="3"], .skywriting-grand-scroll-grid[data-character-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 7px; overflow-y: auto; }
 }

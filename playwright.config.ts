@@ -2,7 +2,15 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/browser',
-  testIgnore: 'familyBetaArtifacts.spec.ts',
+  // Mode-specific and frozen-reference suites run in their dedicated required
+  // CI steps; the ordinary development server is not those preview versions.
+  testIgnore: [
+    'familyBetaArtifacts.spec.ts',
+    'prototypeVisuals.spec.ts',
+    'writingRefinement.spec.ts',
+    'writingIpad.spec.ts',
+    'crossGradeWriting.spec.ts',
+  ],
   fullyParallel: false,
   workers: 1,
   reporter: 'line',

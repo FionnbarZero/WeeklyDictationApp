@@ -1,0 +1,90 @@
+/* The original EduGames styling is preserved in original/styles.css.
+   These rules only host the two distinct screens and identify the local tryout. */
+.st-original-stage {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  background: #090b17;
+}
+.st-original-content {
+  position: relative;
+  padding: 0;
+}
+.st-preview-banner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  background: #142b39;
+  color: #fff6dd;
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.st-preview-banner button {
+  border: 1px solid #a99e83;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.st-original-stage .lg-student-ink path.teacher-supplied-stroke {
+  stroke: #12131a;
+}
+
+/* The family host must not put the approved teacher inside the home-page gutter. */
+.main-content:has(> .grade2-writing-pilot .st-original-stage) {
+  width: 100%;
+  padding: 0;
+}
+.app-shell:has(.grade2-writing-pilot .st-original-stage) > .topbar,
+.main-content:has(> .grade2-writing-pilot .st-original-stage) > .curriculum-source-status {
+  display: none;
+}
+
+/* Owner-requested control treatment, isolated from the frozen v4 and live app. */
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button {
+  justify-content: center;
+  align-self: center;
+  min-width: 140px;
+  min-height: 52px;
+  padding: 12px 18px;
+  border: 3px solid #234565;
+  border-radius: 14px;
+  background: #315b86;
+  color: #fff;
+  box-shadow: 0 4px 0 #234565;
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:hover:not(:disabled) {
+  background: #254b72;
+}
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:focus-visible {
+  outline: 4px solid #2b253c;
+  outline-offset: 4px;
+}
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #234565;
+}
+:is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button:disabled {
+  background: #6c7883;
+  border-color: #4c5863;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+@media (max-width: 520px) {
+  :is(#writing-integration-preview-root, .grade2-writing-pilot) .tier1-writing-audio-actions > .replay-button {
+    min-width: 124px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+}

@@ -23,6 +23,7 @@ import {
   stopActiveAudio,
   type PromptAudioAttempt,
 } from '../audio/promptAudio.ts'
+import { TARGET_WRITING_RESPONSE_SECONDS } from '../practice/writingTimer.ts'
 
 export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
@@ -41,7 +42,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   mode,
   targets,
   activityLabel,
-  writingTimerSeconds = 10,
+  writingTimerSeconds = TARGET_WRITING_RESPONSE_SECONDS,
   onPlayReference,
   onPlayWritingPrompt,
   onDiscard,
@@ -143,19 +144,19 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
       writingPlaybackRef.current = playback
       setWritingAudio({ status: 'loading', error: null })
       const attempt = onPlayWritingPrompt?.(activeTarget)
-      const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
-      void started
+      const started = attempt ? promptAudioStarted(attempt) : Promise.resolve()
+      const completed = attempt ? promptAudioCompleted(attempt) : onPlayReference(activeTarget)
+      void started.catch((audioError) => {
+        if (writingPlaybackRef.current !== playback) return
+        setWritingAudio({
+          status: 'error',
+          error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+        })
+      })
+      void completed
         .then(() => {
           if (writingPlaybackRef.current !== playback) return
           setWritingAudio({ status: 'ready', error: null })
-          if (attempt)
-            void promptAudioCompleted(attempt).catch((audioError) => {
-              if (writingPlaybackRef.current !== playback) return
-              setWritingAudio({
-                status: 'error',
-                error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
-              })
-            })
         })
         .catch((audioError) => {
           if (writingPlaybackRef.current !== playback) return
@@ -177,19 +178,19 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     writingPlaybackRef.current = playback
     setWritingAudio({ status: 'loading', error: null })
     const attempt = onPlayWritingPrompt?.(activeTarget)
-    const started = attempt ? promptAudioStarted(attempt) : onPlayReference(activeTarget)
-    void started
+    const started = attempt ? promptAudioStarted(attempt) : Promise.resolve()
+    const completed = attempt ? promptAudioCompleted(attempt) : onPlayReference(activeTarget)
+    void started.catch((audioError) => {
+      if (writingPlaybackRef.current !== playback) return
+      setWritingAudio({
+        status: 'error',
+        error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
+      })
+    })
+    void completed
       .then(() => {
         if (writingPlaybackRef.current !== playback) return
         setWritingAudio({ status: 'ready', error: null })
-        if (attempt)
-          void promptAudioCompleted(attempt).catch((audioError) => {
-            if (writingPlaybackRef.current !== playback) return
-            setWritingAudio({
-              status: 'error',
-              error: audioError instanceof Error ? audioError.message : 'Audio could not play.',
-            })
-          })
       })
       .catch((audioError) => {
         if (writingPlaybackRef.current !== playback) return

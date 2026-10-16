@@ -1,0 +1,51 @@
+/* Native family launchers host the frozen Slay presentation edge-to-edge. */
+body:has(.native-writing-integration) {
+  margin: 0;
+  background: #090d20;
+}
+.k-lab-shell.practice:has(> .native-writing-integration),
+body.practice-active #practice-panel.grade5-practice-stage:has(.native-writing-integration),
+body.practice-active .lab-shell:has(.native-writing-integration) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+body.practice-active .grade5-practice-stage:has(.native-writing-integration) > #grade5-practice-root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+body.practice-active .grade5-practice-stage:has(.native-writing-integration) > .lab-mode-note,
+body.practice-active .grade5-practice-stage:has(.native-writing-integration) > .practice-summary-panel {
+  display: none;
+}
+.k-lab-shell:has(> .native-writing-integration) > .k-practice-note {
+  display: none;
+}
+.native-writing-error {
+  position: relative;
+  z-index: 10;
+  background: #601e2b;
+  color: white;
+  padding: 12px;
+  margin: 0;
+}
+@media (orientation: portrait) and (min-width: 600px) {
+  .native-writing-integration
+    #slay-acquisition-root
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  .native-writing-integration
+    #slay-acquisition-root
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+}

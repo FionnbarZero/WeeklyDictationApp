@@ -52,6 +52,24 @@
   border-radius: 12px;
   background: #f7f7f3;
 }
+/* Only the integrated Grade 2 writing component marks its owned frame.
+   The fixed report controls retain their existing higher stacking order. */
+.beta-grade-frame[data-writing-stage="true"]:not([hidden]) {
+  position: fixed;
+  inset: 56px 0 0;
+  z-index: 20;
+  width: 100%;
+  height: calc(100dvh - 56px);
+  min-height: 0;
+  border-radius: 0;
+}
+body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) {
+  overflow: hidden;
+}
+.beta-workspace:has(> .beta-grade-frame[data-writing-stage="true"]:not([hidden]))
+  > :is(.beta-toolbar, .beta-status, .beta-tabs, .beta-week, details.beta-panel) {
+  display: none;
+}
 .beta-panel {
   background: white;
   padding: 24px;

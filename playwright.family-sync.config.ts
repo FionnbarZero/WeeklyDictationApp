@@ -2,6 +2,9 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/family-sync',
+  // Retain the supported legacy-flow matrix; enabled writing has its own
+  // required packaged matrix, rather than weakening legacy assertions.
+  testIgnore: ['**/writingTeaching.spec.ts', '**/nativeWritingRelease.spec.ts'],
   outputDir: 'test-results/family-sync',
   workers: 1,
   timeout: 60_000,
@@ -18,6 +21,7 @@ export default defineConfig({
     command: 'node --experimental-strip-types scripts/serve-family-sync-test.ts',
     url: 'http://127.0.0.1:5193/family-beta-preview',
     reuseExistingServer: false,
+    env: { VITE_GRADE2_WRITING_PILOT: 'false', VITE_CROSS_GRADE_WRITING_PILOT: 'false' },
     timeout: 120_000,
   },
 })

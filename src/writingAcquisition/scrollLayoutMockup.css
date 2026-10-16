@@ -1,0 +1,208 @@
+html:has(.scroll-layout-mockup),
+body:has(.scroll-layout-mockup) {
+  margin: 0;
+  overscroll-behavior: none;
+  background: #edf0e6;
+}
+.scroll-layout-mockup,
+.scroll-layout-mockup * {
+  box-sizing: border-box;
+}
+.scroll-layout-mockup {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) 88px;
+  height: 100dvh;
+  min-height: 480px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-family: system-ui, sans-serif;
+  color: #263e38;
+  background: #edf0e6;
+}
+.scroll-layout-mockup button {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  min-height: 44px;
+  border: 1px solid #a9b5a5;
+  border-radius: 10px;
+  padding: 7px 12px;
+  color: #243d36;
+  background: #faf9ed;
+}
+.scroll-layout-mockup button:focus-visible {
+  outline: 3px solid #315b86;
+  outline-offset: 3px;
+}
+.mockup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-height: 48px;
+  gap: 4px 8px;
+  padding: 2px 8px;
+}
+.mockup-header strong {
+  font-size: 13px;
+}
+.mockup-header small {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+}
+.mockup-demo-state {
+  font-size: 12px;
+}
+.mockup-header #problem-reporter-controls {
+  margin-left: auto;
+}
+.mockup-header .beta-report-launcher-group {
+  position: static;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+.mockup-header .beta-report-launcher-group button {
+  font-size: 11px;
+  min-height: 44px;
+  padding: 6px 8px;
+}
+.mockup-paper-area {
+  overflow: hidden;
+  padding: 0 8px;
+}
+.scroll-layout-mockup .skywriting-pad-shell.is-grand-scroll {
+  position: static;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+.scroll-layout-mockup .skywriting-grand-scroll-grid {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  padding: 8px 4px 22px;
+  gap: 14px;
+}
+.scroll-layout-mockup .skywriting-scroll-cell {
+  width: min(100%, 100cqh);
+  padding: 10px 5px;
+}
+.scroll-layout-mockup .skywriting-scroll-paper {
+  padding: 6px;
+}
+.scroll-layout-mockup .skywriting-pad-footer,
+.scroll-layout-mockup .skywriting-input-hint {
+  display: none;
+}
+.scroll-layout-mockup .skywriting-pad-shell.is-grand-scroll .skywriting-pad-toolbar {
+  position: absolute;
+  width: auto;
+  right: calc(8px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 1;
+}
+.scroll-layout-mockup .skywriting-pad-actions button {
+  min-height: 48px;
+}
+.scroll-layout-mockup .skywriting-keyboard-alternative {
+  position: absolute;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  left: 246px;
+  right: 112px;
+  width: auto;
+  height: 52px;
+  padding: 0;
+  gap: 8px;
+  z-index: 1;
+}
+.scroll-layout-mockup .skywriting-keyboard-alternative > span {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 5px 14px;
+  color: white;
+  background: #967047;
+  border-radius: 9px;
+  font-size: 20px;
+  font-weight: 800;
+}
+.scroll-layout-mockup .skywriting-keyboard-alternative input {
+  height: 52px;
+  min-height: 48px;
+  font-size: 24px;
+}
+.mockup-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+}
+.mockup-controls .mockup-hear {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #315b86;
+  border: 3px solid white;
+  box-shadow: 0 0 0 2px #234565;
+  color: white;
+  padding: 3px;
+  font-size: 15px;
+}
+.mockup-controls .mockup-skip {
+  min-width: 140px;
+  min-height: 52px;
+  color: white;
+  border: 2px solid #234565;
+  background: #315b86;
+  font-size: 18px;
+}
+.mockup-audio-state {
+  position: absolute;
+  left: 8px;
+  bottom: 0;
+  font-size: 11px;
+  background: #edf0e6;
+}
+.mockup-exit {
+  max-width: min(90vw, 420px);
+  border-radius: 16px;
+  padding: 20px;
+  color: #263e38;
+  background: #faf9ed;
+}
+@media (orientation: portrait) {
+  .scroll-layout-mockup .skywriting-grand-scroll-grid[data-character-count="2"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    padding-bottom: 22px;
+  }
+  .scroll-layout-mockup .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 22px) / 2));
+  }
+}
+@media (max-width: 599px) {
+  .scroll-layout-mockup {
+    grid-template-rows: auto minmax(0, 1fr) 136px;
+  }
+  .mockup-controls {
+    align-items: end;
+    padding-bottom: 8px;
+  }
+  .scroll-layout-mockup .skywriting-keyboard-alternative {
+    left: 8px;
+    right: 8px;
+    bottom: 84px;
+  }
+  .scroll-layout-mockup .skywriting-pad-shell.is-grand-scroll .skywriting-pad-toolbar {
+    bottom: 20px;
+  }
+  .mockup-demo-state {
+    display: none;
+  }
+}

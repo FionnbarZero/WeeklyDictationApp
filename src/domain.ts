@@ -162,6 +162,8 @@ export type AppState = {
   acquisitionProgressions: AcquisitionProgressRecord[]
   /** Versioned Acquisition state. Legacy progressions remain readable during the migration window. */
   acquisitionProgressEnvelopes?: AcquisitionProgressEnvelope<Word>[]
+  /** Grade 2 pilot: teaching milestones are not scored acquisition responses. */
+  writingAcquisitionProgress?: import('./application/writingAcquisition/contracts.ts').WritingProgress[]
   acquisitionTransitionReceipts?: AcquisitionTransitionReceipt[]
   acquisitionPendingCheckpoints?: AcquisitionCheckpoint<Word>[]
   acquisitionProgressQuarantine?: AcquisitionProgressQuarantineRecord[]

@@ -92,11 +92,12 @@ test('Kindergarten uses the shared four-path hub with games, separate reading pa
   assert.doesNotMatch(`${harnessSource}\n${hubModel}\n${games}\n${readingPractice}\n${skyWriting}\n${unitReview}`, /from ['"].*(firebase|firestore)|localStorage\.|googleapis/i)
 })
 
-test('the shared PracticeView timer override is optional and leaves production callers unchanged', () => {
+test('the shared PracticeView uses the approved response-window policy without caller overrides', () => {
   const practiceView = source('src/practice/PracticeView.tsx')
   const appSource = source('src/App.tsx')
 
-  assert.match(practiceView, /timerSecondsOverride\?: number/)
-  assert.match(practiceView, /acquisitionPrompt\?\.timerSeconds \|\| timerSecondsOverride \|\| timerSecondsFor/)
+  assert.doesNotMatch(practiceView, /timerSecondsOverride/)
+  assert.match(practiceView, /writingResponseSecondsFor\(acquisitionPrompt\?\.kind, session\.primaryPhase\)/)
+  assert.match(practiceView, /writingTimerSeconds=\{TARGET_WRITING_RESPONSE_SECONDS\}/)
   assert.doesNotMatch(appSource, /timerSecondsOverride/)
 })

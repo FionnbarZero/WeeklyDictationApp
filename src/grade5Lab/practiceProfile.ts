@@ -13,7 +13,7 @@ export const grade5WritingLabProfile = {
   },
   timers: {
     warmup: 10,
-    testReview: 10,
+    testReview: 25,
   },
   acquisition: grade5AcquisitionStrategy,
 } as const

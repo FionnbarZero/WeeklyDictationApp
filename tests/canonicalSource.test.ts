@@ -329,7 +329,7 @@ test('Grade 2 Acquisition strategy v4 is explicitly versioned', () => {
   assert.equal(grade2PracticeProfile.version, 2)
   assert.equal(grade2PracticeProfile.acquisition.id, 'grade2-acquisition-v4')
   assert.equal(grade2PracticeProfile.acquisition.version, 4)
-  assert.deepEqual(grade2PracticeProfile.timers, { warmup: 10, testReview: 10 })
+  assert.deepEqual(grade2PracticeProfile.timers, { warmup: 10, testReview: 25 })
   assert.equal(grade2PracticeProfile.lifecycle.primaryWarmupTrials, 6)
   assert.deepEqual(grade2PracticeProfile.acquisition.introductionSequence, ['familiar-dt', 'familiar-dt', 'show-copy', 'target'])
   assert.deepEqual(grade2PracticeProfile.acquisition.expandedSequence, ['target', 'target', 'dt', 'target', 'dt', 'dt', 'target', 'dt', 'dt', 'dt', 'target'])

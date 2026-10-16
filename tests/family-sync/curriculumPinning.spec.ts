@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test'
 import { retireAcquisition } from '../../src/familyBeta/acquisitionRetirement.ts'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
+import { finishEnabledTeacher } from './writingTeacherDriver.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
   if (slug === 'grade2') await page.getByLabel('Practice week').selectOption('2026-09-21')
@@ -24,6 +25,7 @@ async function launch(page: Page, slug: string, channel: 'writing' | 'reading', 
     .click()
   const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
   if (channel === 'writing' && (slug === 'grade2' || (slug === 'grade5' && !resuming))) await skip.click()
+  if (channel === 'writing') await finishEnabledTeacher(page)
   return frame
 }
 
@@ -51,6 +53,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -99,6 +102,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -147,6 +151,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
         await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -163,12 +168,21 @@ test('resuming a live Grade 5 cohort reuses its frame even when the calendar wee
   await frame.locator('body').evaluate((body) => {
     body.dataset.resumeProbe = 'original-activity'
   })
+  // The approved full-screen writing host hides family navigation until Exit.
+  if (process.env.FAMILY_CURRENT_WRITING === '1')
+    await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
   await page.getByText('Saved lessons', { exact: true }).click()
   await page.getByRole('button', { name: /Resume saved writing/ }).click()
   await expect(page.locator('iframe')).toHaveCount(1)
   await expect(frame.locator('body')).toHaveAttribute('data-resume-probe', 'original-activity')
+  if (process.env.FAMILY_CURRENT_WRITING === '1') {
+    // Exit returns to this cohort's Dojo choices, not the outer challenges.
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    await finishEnabledTeacher(page)
+  }
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
   expect((await saved(page, false)).revision).toBe(1)
 })
 
@@ -182,6 +196,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         if (channel === 'writing') {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         } else {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -249,6 +264,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         if (channel === 'writing') {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         } else {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -256,6 +272,8 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         }
         expect((await saved(page, slug === 'grade2' && channel === 'writing')).revision).toBe(before.revision + 1)
         if (sourceState === 'removed-week') {
+          if (channel === 'writing' && process.env.FAMILY_CURRENT_WRITING === '1')
+            await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
           await page.getByRole('button', { name: 'Return to current teacher lessons' }).click()
           await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-curriculum', snapshot.contentSha256)
           await expect(
@@ -279,6 +297,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -314,6 +333,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
         await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -341,6 +361,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         expect(corrected.lessonSnapshot.targetSet.targets[0].id).not.toBe(words[0].id)
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         await page.reload()
         await launch(page, slug, channel, true)
         const resumed = await readEditions()

@@ -65,12 +65,28 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:public-preview
       - run: npm run test:prototype-baseline
+      - name: Version 7 writing refinement in its own build mode
+        run: |
+          npx vite build --mode writing-refinement-preview
+          npx playwright test --config playwright.writing-refinement.config.ts
+      - name: Version 8 iPad writing and gesture-gated audio
+        run: |
+          npx vite build --mode writing-ipad-preview
+          npx playwright test --config playwright.writing-ipad.config.ts
+      - name: Approved cross-grade writing prototype
+        run: |
+          npx vite build --config vite.cross-grade-writing.config.ts
+          npx playwright test --config playwright.cross-grade-writing.config.ts
       - name: Preserve failed browser evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: browser-failure-evidence
-          path: test-results/
+          path: |
+            test-results/
+            writing-refinement-test-results/
+            writing-ipad-test-results/
+            cross-grade-writing-test-results/
           retention-days: 7
 
   firestore-emulator:
@@ -104,7 +120,15 @@ jobs:
           java-version: '21'
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --config playwright.family-sync.config.ts
+      # No predecessor selector is enabled here; each test owns its browser and
+      # synthetic backend. Keep rendering-sensitive cases serial: simultaneous
+      # software-rendered games can exhaust their unchanged timing assertions.
+      - name: Serial animation and report-pause cases
+        run: npx playwright test --config playwright.family-sync.config.ts --workers=1 --grep 'Context (confirmation|stage|restores|keeps|Gap Dash)|Shadow Strike report pause holds' --output test-results/family-sync-timing
+      - name: Independent family saving and continuity cases
+        run: npx playwright test --config playwright.family-sync.config.ts --workers=3 --grep-invert 'Context (confirmation|stage|restores|keeps|Gap Dash)|Shadow Strike report pause holds'
+      - name: Current enabled writing package and saving safeguards
+        run: npx playwright test --config playwright.current-writing.config.ts
       - name: Test the deployed family policy with synthetic emulator records
         env:
           FAMILY_SYNC_RULES_FILE: deployment/firestore-family-sync.rules
@@ -118,5 +142,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: family-browser-failure-evidence
-          path: test-results/family-sync/
+          path: |
+            test-results/family-sync/
+            test-results/family-sync-timing/
+            test-results/current-writing/
           retention-days: 7

@@ -1,0 +1,160 @@
+/* v8 only: keep v7, the original teacher, and canonical app unchanged. */
+@media (min-width: 900px) and (max-width: 1366px) {
+  .writing-ipad-preview .practice-page.has-skywriting-response {
+    position: relative;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation > .prompt-meta {
+    position: absolute;
+    top: 0;
+    left: 250px;
+    right: 145px;
+    min-height: 44px;
+    margin: 0;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation > .dictation-status {
+    display: none;
+  }
+  .writing-ipad-preview .practice-footnote:not(.audio-playback-error) {
+    display: none;
+  }
+}
+@media (min-width: 600px) and (max-width: 1366px) {
+  .writing-ipad-preview.app-shell {
+    min-height: 560px;
+    padding-top: 52px;
+  }
+  .writing-ipad-preview > .st-preview-banner {
+    padding: 4px 10px;
+  }
+  .writing-ipad-preview > .st-preview-banner button {
+    min-height: 44px;
+  }
+  .writing-ipad-preview > .main-content:has(.has-skywriting-response) {
+    width: calc(100% - 12px);
+    padding: 4px 0;
+  }
+  .writing-ipad-preview .practice-page.has-skywriting-response .practice-top {
+    min-height: 44px;
+    margin: 0;
+  }
+  .writing-ipad-preview .practice-page.has-skywriting-response .practice-progress {
+    margin-bottom: 4px;
+  }
+  .writing-ipad-preview .prompt-card.tier1-writing-card.is-dictation {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation .tier1-writing-instructions {
+    min-height: 68px;
+    gap: 8px;
+    align-items: end;
+  }
+  .writing-ipad-preview .tier1-writing-instructions h1 {
+    font-size: 1.2rem;
+    line-height: 1.2;
+  }
+  .writing-ipad-preview .tier1-writing-instructions h1 br {
+    display: none;
+  }
+  .writing-ipad-preview .tier1-writing-instructions h1 span::before {
+    content: " ";
+  }
+  .writing-ipad-preview .tier1-writing-instructions .practice-helper {
+    font-size: 0.8rem;
+    margin: 2px 0 4px;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation .tier1-writing-audio-actions {
+    position: static;
+    width: auto;
+    margin: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 4px 8px;
+  }
+  .writing-ipad-preview .tier1-writing-card.is-dictation .tier1-writing-audio-actions > .replay-button {
+    position: static;
+    min-width: 120px;
+    min-height: 48px;
+    padding: 8px 12px;
+    font-size: 17px;
+  }
+  .writing-ipad-preview .writing-hear-button {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    min-height: 64px;
+  }
+  .writing-ipad-preview .writing-hear-button svg {
+    width: 25px;
+    height: 25px;
+  }
+  .writing-ipad-preview .writing-hear-button span {
+    font-size: 16px;
+  }
+  /* Full-width scrolls, with Type and Clear sharing one bottom row. No sidebar
+     or stacked toolbar steals the shorter landscape writing height. */
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-pad-shell.is-grand-scroll {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) 52px;
+    gap: 4px 8px;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0 4px 22px;
+    align-items: start;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid[data-character-count="1"] {
+    width: 100%;
+    max-width: none;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-pad-toolbar {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    padding-right: 8px;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    flex-direction: row;
+    align-items: stretch;
+    padding: 2px 8px;
+    gap: 8px;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative > span {
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    padding: 6px 16px;
+    background: #967047;
+    color: white;
+    border-radius: 9px;
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative input {
+    min-height: 44px;
+    height: 48px;
+    font-size: 1.6rem;
+    padding: 6px 10px;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-pad-actions button {
+    min-height: 44px;
+  }
+  .writing-ipad-preview .skywriting-workspace:not(.is-review) .skywriting-pad-footer {
+    display: none;
+  }
+}

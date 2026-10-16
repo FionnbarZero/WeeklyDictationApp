@@ -1,0 +1,123 @@
+/* v7 is an isolated approval surface, not a change to canonical/pilot layouts. */
+body:has(.writing-refinement-preview.app-shell) > .beta-report-launcher-group {
+  top: 6px;
+  bottom: auto;
+  flex-direction: row;
+}
+@media (max-width: 520px) {
+  body:has(.writing-refinement-preview.app-shell) > .beta-report-launcher-group {
+    left: 6px;
+    right: 6px;
+    gap: 4px;
+  }
+  body:has(.writing-refinement-preview.app-shell) > .beta-report-launcher-group button {
+    padding: 8px;
+    font-size: 11px;
+  }
+}
+.writing-refinement-preview.app-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 660px;
+  padding-top: 60px; /* Keep the existing problem-report controls reachable. */
+}
+.writing-refinement-preview > .st-preview-banner {
+  gap: 8px;
+}
+.writing-refinement-preview > .main-content:has(.has-skywriting-response) {
+  width: calc(100% - 24px);
+  min-height: 0;
+  padding: 8px 0;
+}
+.writing-refinement-preview .practice-page.has-skywriting-response {
+  max-width: none;
+  height: 100%;
+}
+.writing-refinement-preview .prompt-card.tier1-writing-card {
+  max-width: none;
+  margin: 0;
+}
+/* Preserve the approved paper/brush/controls. Give every writing trial the
+   same centered drawing space instead of spending height on a stacked toolbar. */
+@media (min-width: 1100px) {
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-pad-shell.is-grand-scroll {
+    position: relative;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid {
+    width: calc(100% - 420px);
+    max-width: 1320px;
+    height: 100%;
+    margin: 0 auto;
+    padding-bottom: 28px;
+  }
+  .writing-refinement-preview
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="1"] {
+    max-width: min(720px, calc(100% - 420px));
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-pad-toolbar {
+    position: absolute;
+    grid-row: auto;
+    right: 12px;
+    top: 216px;
+    width: 180px;
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+    position: absolute;
+    right: 0;
+    top: 12px;
+    width: 204px;
+    padding: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative > span {
+    display: grid;
+    place-items: center;
+    min-height: 48px;
+    border: 1px solid #705034;
+    border-radius: 12px;
+    background: #967047;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative input {
+    min-height: 120px;
+    padding: 10px 14px;
+    font-size: 2rem;
+  }
+  .writing-refinement-preview .skywriting-workspace:not(.is-review) .skywriting-pad-footer {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    width: 180px;
+    padding: 0;
+    flex-direction: column;
+    gap: 3px;
+    text-align: center;
+  }
+  .writing-refinement-preview .skywriting-pad-help {
+    white-space: normal;
+  }
+  .writing-refinement-preview .tier1-writing-card.is-dictation .tier1-writing-audio-actions {
+    position: relative;
+    width: 180px;
+    margin-right: 12px;
+    justify-content: center;
+  }
+  .writing-refinement-preview .tier1-writing-card.is-dictation .tier1-writing-audio-actions > .replay-button {
+    position: absolute;
+    right: calc(100% + 12px);
+    align-self: center;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 800px) {
+  .writing-refinement-preview > .main-content:has(.has-skywriting-response) {
+    width: calc(100% - 8px);
+  }
+}

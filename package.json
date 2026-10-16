@@ -9,7 +9,14 @@
     "npm": "11.x"
   },
   "scripts": {
+    "build:writing-pilot": "tsc -b && vite build --mode writing-pilot --outDir writing-pilot-dist",
+    "preview:writing-pilot": "vite preview --outDir writing-pilot-dist --host 127.0.0.1 --port 5210",
+    "test:writing-pilot": "playwright test --config playwright.writing-pilot.config.ts",
     "dev": "vite",
+    "build:stroke-teacher-preview": "tsc -b && vite build --mode stroke-teacher-preview",
+    "build:writing-integration-preview": "tsc -b && vite build --mode writing-integration-preview",
+    "test:writing-integration-preview": "playwright test --config playwright.writing-integration-preview.config.ts",
+    "test:stroke-teacher-preview": "playwright test --config playwright.stroke-teacher-preview.config.ts",
     "build:reconciliation": "tsc -b && vite build --mode reconciliation --outDir reconciliation-dist",
     "preview:reconciliation": "vite preview --outDir reconciliation-dist --host 127.0.0.1 --port 5192",
     "test:reconciliation": "playwright test --config playwright.reconciliation.config.ts",

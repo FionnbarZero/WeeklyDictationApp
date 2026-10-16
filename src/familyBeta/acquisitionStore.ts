@@ -15,11 +15,14 @@ import { validateAcquisitionProgressEnvelope } from '../acquisition/persistence/
 import { pinAcquisitionLesson, resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
 import { currentAcquisitionContext, isAcquisitionRetired } from './acquisitionRetirement.ts'
 import { validWriter } from './deviceWriter.ts'
+import type { NativeWritingAdapter } from './nativeWritingCheckpoint.ts'
+import type { WritingCommand, WritingProgress } from '../application/writingAcquisition/progress.ts'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
 const MAX_REVIEWED_TRIALS = 500
 export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
-  schema: 1
+  schema: 1 | 2
+  writing?: WritingProgress
   sessionId: string
   writerId?: string
   envelope: AcquisitionProgressEnvelope<T>
@@ -32,7 +35,7 @@ export type SavedAcquisition<T extends AcquisitionTarget, R extends string> = {
 export function openAcquisitionStore<T extends AcquisitionTarget, R extends string>(
   storage: Store,
   latestContext: AcquisitionPersistenceContext<T>,
-  options: { random?: () => number; now?: () => string; uuid?: () => string; writerId?: string } = {},
+  options: { random?: () => number; now?: () => string; uuid?: () => string; writerId?: string; writing?: NativeWritingAdapter<T> } = {},
 ) {
   if (options.writerId !== undefined && !validWriter(options.writerId)) throw new Error('Invalid practice writer identity.')
   latestContext = currentAcquisitionContext(storage, latestContext)
@@ -43,12 +46,15 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
   let context = latestContext
   let raw = storage.getItem(key)
   let current: SavedAcquisition<T, R>
+  let pending: { operation: string; next: SavedAcquisition<T, R>; context: AcquisitionPersistenceContext<T>; encoded: string } | null = null
 
   function validate(value: unknown, validationContext = context): SavedAcquisition<T, R> {
     const saved = value as SavedAcquisition<T, R> | null
     if (
       !saved ||
-      saved.schema !== 1 ||
+      (saved.schema !== 1 && saved.schema !== 2) ||
+      (saved.schema === 2 && (!options.writing || !saved.writing)) ||
+      (saved.schema === 1 && saved.writing !== undefined) ||
       typeof saved.sessionId !== 'string' ||
       !/^[\w-]{1,160}$/.test(saved.sessionId) ||
       ('writerId' in saved && !validWriter(saved.writerId)) ||
@@ -72,6 +78,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
         'Saved acquisition does not match this curriculum or teaching sequence. Nothing was erased. Please report this problem.',
       )
     }
+    if (saved.schema === 2) options.writing!.validateRecord(saved, saved.envelope.childId)
     return saved
   }
 
@@ -80,30 +87,47 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       throw new Error('This attempt was discarded. Its reviewed history is preserved; reopen the lesson to start again.')
   }
 
-  function commit(next: SavedAcquisition<T, R>, nextContext = context) {
+  function commit(next: SavedAcquisition<T, R>, nextContext = context, operation = 'initialize') {
     assertActive()
-    if (storage.getItem(key) !== raw)
+    const resolvedContext = resolveAcquisitionLesson(next.envelope, nextContext)
+    const encoded = JSON.stringify(validate(next, resolvedContext))
+    // Retain the exact candidate until readback succeeds. A lost acknowledgement
+    // must retry this checkpoint, never reroll distractors or duplicate a step.
+    if (next.schema === 2) {
+      if (pending && (pending.operation !== operation || pending.encoded !== encoded))
+        throw new Error('Confirm the pending writing save before another action.')
+    }
+    const stored = storage.getItem(key)
+    if (stored !== raw && !(pending && stored === pending.encoded))
       throw new Error(
         'This activity changed in another tab. Reload to resume the saved response; nothing was overwritten.',
       )
-    const resolvedContext = resolveAcquisitionLesson(next.envelope, nextContext)
-    const encoded = JSON.stringify(validate(next, resolvedContext))
-    storage.setItem(key, encoded)
+    if (next.schema === 2) pending = { operation, next, context: resolvedContext, encoded }
+    if (stored !== encoded) storage.setItem(key, encoded)
     if (storage.getItem(key) !== encoded)
       throw new Error('Saving could not be confirmed. Keep this activity open and retry.')
     raw = encoded
     current = next
     context = resolvedContext
+    pending = null
     return current
   }
 
+  function retry(operation: string) {
+    if (!pending) return null
+    if (pending.operation !== operation) throw new Error('Confirm the pending writing save before another action.')
+    return commit(pending.next, pending.context, operation)
+  }
+
   function fresh(nextContext: AcquisitionPersistenceContext<T>): SavedAcquisition<T, R> {
+    const envelope = pinAcquisitionLesson(createAcquisitionProgressEnvelope(nextContext,
+      startAcquisition(nextContext.targetSet, nextContext.strategy, random), now()), nextContext)
     return {
       schema: 1, sessionId: uuid(),
       ...(options.writerId ? { writerId: options.writerId } : {}),
-      envelope: pinAcquisitionLesson(createAcquisitionProgressEnvelope(nextContext,
-        startAcquisition(nextContext.targetSet, nextContext.strategy, random), now()), nextContext),
+      envelope,
       assessments: [], reviewedTrials: [],
+      ...(options.writing ? { schema: 2, writing: options.writing.prepare(envelope, false, now()) } : {}),
     }
   }
 
@@ -113,6 +137,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       if (parsed?.envelope && typeof parsed.envelope === 'object') context = resolveAcquisitionLesson(parsed.envelope, latestContext)
       current = validate(parsed)
       if (!current.envelope.lessonSnapshot) commit({ ...current, envelope: pinAcquisitionLesson(current.envelope, context) })
+      if (options.writing && current.schema === 1) commit({ ...current, schema: 2,
+        writing: options.writing.prepare(current.envelope, true, now()) })
     } catch (error) {
       if (error instanceof SyntaxError)
         throw new Error('Saved acquisition could not be read. Nothing was erased. Please report this problem.')
@@ -130,6 +156,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       return current
     },
     prepareResult() {
+      const retried = retry('prepare-result')
+      if (retried) return retried
       assertActive()
       if (storage.getItem(key) !== raw)
         throw new Error('This activity changed in another tab. Reopen the saved lesson before submitting its score; nothing was overwritten.')
@@ -137,11 +165,15 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
         // Done for today can submit inherited reviewed work without another
         // answer. Claim once before scoring, so two completions stay distinct
         // and a failed score write retries the same claimed identity.
-        return commit({ ...current, sessionId: uuid(), writerId: options.writerId })
+        return commit({ ...current, sessionId: uuid(), writerId: options.writerId }, context, 'prepare-result')
       }
       return current
     },
     answer(correct: boolean, revealMethod: R) {
+      const operation = `answer:${correct}:${revealMethod}`
+      const retried = retry(operation)
+      if (retried) return retried
+      if (current.writing) options.writing!.assertAnswer(current.writing)
       // Reading/resuming never forks. The first successfully reviewed answer
       // from a different installation claims its own score identity atomically
       // with that checkpoint. Inherited teaching progress remains unchanged.
@@ -168,6 +200,7 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
         sessionId,
         ...(options.writerId && claimsReviewedAnswer ? { writerId: options.writerId } : {}),
         envelope: applied.envelope,
+        ...(current.writing ? { writing: options.writing!.checkpoint(current.writing, applied.envelope, checkpoint) } : {}),
         reviewedTrials: checkpoint.assessment
           ? [
               ...current.reviewedTrials,
@@ -181,12 +214,21 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
         assessments: checkpoint.assessment
           ? [...current.assessments, checkpoint.assessment as AcquisitionAssessment<T, R>]
           : current.assessments,
-      })
+      }, context, operation)
+    },
+    completeTeachingStep(command: WritingCommand) {
+      const operation = `teacher:${acquisitionDigest(command)}`
+      const retried = retry(operation)
+      if (retried) return retried
+      if (!current.writing || !options.writing) throw new Error('This attempt does not use guided writing.')
+      return commit({ ...current, writing: options.writing.teach(current.writing, command, now()) }, context, operation)
     },
     // Call only after the immutable completed result is confirmed. The teaching
     // checkpoint remains across partial score sessions. Changed lessons replace
     // it only after teaching completion, with the previous record archived first.
     finishSession() {
+      const retried = retry('finish-session')
+      if (retried) return retried
       const lessonChanged = acquisitionDigest({ targetSet: context.targetSet, strategy: context.strategy })
         !== acquisitionDigest({ targetSet: latestContext.targetSet, strategy: latestContext.strategy })
       if (current.envelope.flow.teachingComplete && lessonChanged) {
@@ -199,17 +241,19 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
         if (existing !== null && existing !== raw) throw new Error('The earlier lesson archive conflicts. Nothing was erased.')
         if (existing === null) storage.setItem(archiveKey, raw!)
         if (storage.getItem(archiveKey) !== raw) throw new Error('The earlier lesson could not be safely archived. Please retry.')
-        return commit(next, latestContext)
+        return commit(next, latestContext, 'finish-session')
       }
       const sessionId = uuid()
       let envelope = current.envelope
+      let writing = current.writing
       if (envelope.flow.complete && envelope.flow.teachingComplete) {
         const checkpoint = buildAcquisitionResumeCheckpoint({ envelope, context, sessionId, occurredAt: now(), random })
         const applied = applyAcquisitionCheckpoint(envelope, checkpoint, context)
         if (applied.status === 'conflict') throw new Error(applied.reason)
         envelope = applied.envelope
+        if (writing) writing = options.writing!.checkpoint(writing, envelope, checkpoint)
       }
-      return commit({ ...current, envelope, sessionId, assessments: [] })
+      return commit({ ...current, envelope, ...(writing ? { writing } : {}), sessionId, assessments: [] }, context, 'finish-session')
     },
   }
 }

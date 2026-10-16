@@ -188,7 +188,7 @@ test('each connected Grade 5 writing activity receives up to six unique mastery 
 
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityMaximum, 6)
   assert.equal(grade5WritingLabProfile.warmupPreview.preActivityWarmupRequirement, 'undecided')
-  assert.equal(grade5WritingLabProfile.timers.testReview, 10)
+  assert.equal(grade5WritingLabProfile.timers.testReview, 25)
   assert.equal(recentWarmup.words.length, 5)
   assert.equal(rotationWarmup.words.length, 5)
   for (const warmup of [recentWarmup, rotationWarmup]) {

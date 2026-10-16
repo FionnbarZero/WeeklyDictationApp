@@ -46,7 +46,7 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
         listeners.delete(listener)
       }
     },
-    save(expected: T, next: T) {
+    save(expected: T, next: T, retainOnFailure = true) {
       const encoded = JSON.stringify(next)
       if (closed) return false
       if (expected !== snapshot.state && encoded !== JSON.stringify(snapshot.state)) {
@@ -82,7 +82,7 @@ export function createSharedWorkspace<T>(initial: T, storage: Pick<Storage, 'get
         // The existing recovery journals retain reviewed transitions; preserve
         // the corresponding in-session state too when storage is unavailable.
         snapshot = {
-          state: next,
+          state: retainOnFailure ? next : snapshot.state,
           error: 'Progress could not be saved in this browser. Keep this page open and retry before reloading.',
         }
         notify()

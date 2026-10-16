@@ -378,8 +378,9 @@ service cloud.firestore {
         && (request.resource.data.state.evidence == 'support-needed') == (request.resource.data.state.bucket == 'needs-attention')
         && (request.resource.data.state.evidence != 'unassessed' || request.resource.data.state.consecutiveCorrect == 0)
         && (request.resource.data.state.bucket != 'needs-attention' || request.resource.data.state.consecutiveCorrect < 3)
+        // Legacy migration preserves rotation placement without inventing correctness evidence.
         && (request.resource.data.state.bucket != 'mastery-rotation'
-          || (request.resource.data.state.evidence == 'demonstrated' && request.resource.data.state.consecutiveCorrect == 0))
+          || request.resource.data.state.consecutiveCorrect == 0)
         && (request.resource.data.revision == 0
           ? !('lastAppliedTransition' in request.resource.data)
           : (request.resource.data.lastAppliedTransition is map

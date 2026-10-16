@@ -7,6 +7,6 @@ export const kindergartenWritingLabProfile = {
   version: 1,
   grade: 'Kindergarten',
   warmup: 'not-connected',
-  testReviewTimerSeconds: 10,
+  testReviewTimerSeconds: 25,
   acquisition: kindergartenAcquisitionStrategy,
 } as const

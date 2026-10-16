@@ -1,7 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 import { readRepositoryGitRevision, resolveBuildGitRevision } from './scripts/buildMetadata.ts'
 import { APP_VERSION } from './src/releaseMetadata.ts'
 
@@ -48,12 +49,14 @@ function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
-function releaseIdentityHtml(fileName: string, gitRevision: string, familySync = false) {
+function releaseIdentityHtml(fileName: string, gitRevision: string, familySync = false, localPreview = false) {
   const baseIdentity = releaseIdentityByPage[fileName as keyof typeof releaseIdentityByPage]
   const identity =
     baseIdentity && familySync
       ? { ...baseIdentity, status: 'Family beta', persistence: 'Parent account sync · recordings session only' }
-      : baseIdentity
+      : baseIdentity && localPreview
+        ? { ...baseIdentity, status: 'Local preview · unpublished changes' }
+        : baseIdentity
   if (!identity) return ''
   const summary = `${identity.grade} · ${identity.status} · v${APP_VERSION} · r${gitRevision.slice(0, 7)} · ${identity.persistence}`
   const report = [
@@ -67,6 +70,11 @@ function releaseIdentityHtml(fileName: string, gitRevision: string, familySync =
 }
 
 export default defineConfig(({ command, mode }) => {
+  const strokeTeacherPreview = mode === 'stroke-teacher-preview'
+  const writingIpadPreview = mode === 'writing-ipad-preview'
+  const writingRefinementPreview = mode === 'writing-refinement-preview' || writingIpadPreview
+  const writingIntegrationPreview = mode === 'writing-integration-preview' || writingRefinementPreview
+  const isolatedWritingPreview = strokeTeacherPreview || writingIntegrationPreview
   const familyBetaGrade = process.env.VITE_FAMILY_BETA_GRADE
   if (
     mode === 'family-beta' &&
@@ -83,22 +91,63 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
+    define: mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {},
+    publicDir: isolatedWritingPreview ? false : 'public',
     base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [
       react(),
       {
         name: 'release-identity',
         transformIndexHtml(html, context) {
-          const identity = releaseIdentityHtml(basename(context.filename), gitRevision, mode === 'family-sync')
+          if (isolatedWritingPreview) {
+            return html.replace('</head>', `<meta name="build-revision" content="${escapeHtml(gitRevision)}">\n</head>`)
+          }
+          const identity = releaseIdentityHtml(
+            basename(context.filename),
+            gitRevision,
+            mode === 'family-sync',
+            command === 'serve' && mode === 'development',
+          )
           return identity ? html.replace(/<body\b[^>]*>/, (body) => `${body}\n    ${identity}`) : html
+        },
+        generateBundle() {
+          if (!isolatedWritingPreview) return
+          for (const name of ['NOTICE.txt', 'ARPHICPL.TXT']) {
+            this.emitFile({
+              type: 'asset',
+              fileName: `licenses/stroke-guides/${name}`,
+              source: readFileSync(page(`./public/licenses/stroke-guides/${name}`)),
+            })
+          }
         },
       },
     ],
     build: {
+      outDir: writingIpadPreview
+        ? 'writing-ipad-preview-dist'
+        : writingRefinementPreview
+          ? 'writing-refinement-preview-dist'
+          : writingIntegrationPreview
+            ? 'writing-five-step-preview-dist'
+            : strokeTeacherPreview
+              ? 'stroke-teacher-preview-dist'
+              : 'dist',
       manifest: true,
       rollupOptions: {
-        input:
-          mode === 'family-beta'
+        // Consolidate shared icon modules instead of weakening the canonical
+        // host's exact-path cache rules or its 100-rule limit. Keep dependencies
+        // together and leave application/lazy activity boundaries automatic.
+        output:
+          mode === 'family-sync'
+            ? {
+                codeSplitting: {
+                  groups: [{ name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 }],
+                },
+              }
+            : undefined,
+        input: isolatedWritingPreview
+          ? { app: page(writingIntegrationPreview ? './grade2-writing-preview.html' : './stroke-teacher-preview.html') }
+          : mode === 'family-beta'
             ? { app: familyBetaInputByGrade[familyBetaGrade as keyof typeof familyBetaInputByGrade] }
             : mode === 'production' || mode === 'staging'
               ? { app: page('./index.html') }
@@ -107,7 +156,7 @@ export default defineConfig(({ command, mode }) => {
                   grade5LearningHub: page('./grade5-learning-hub.html'),
                   kindergartenLearningLab: page('./kindergarten-learning-lab.html'),
                   testing: page('./testing.html'),
-                  ...(['reconciliation', 'family-sync'].includes(mode)
+                  ...(['reconciliation', 'family-sync', 'writing-pilot'].includes(mode)
                     ? { familyPreview: page('./family-beta-preview.html'), familyGame: page('./family-game.html') }
                     : {}),
                   ...(mode === 'prototype-baseline' ? archivedPrototypeInputs : {}),

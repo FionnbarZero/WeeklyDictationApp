@@ -1,0 +1,301 @@
+body:has(#slay-acquisition-root) {
+  margin: 0;
+  background: #090d20;
+}
+#slay-acquisition-root {
+  isolation: isolate;
+  min-height: 100dvh;
+  color: #f6f7ff;
+  font-family: system-ui, sans-serif;
+}
+.slay-comparison-banner {
+  min-height: 48px;
+  padding: 2px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  color: #dce1f4;
+  font-size: 12px;
+}
+.slay-comparison-banner .beta-report-launcher-group {
+  position: static;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+#slay-acquisition-root .slay-comparison-banner .problem-report-trigger {
+  position: static;
+  font-size: 11px;
+  width: auto;
+  min-height: 44px;
+  padding: 6px 10px;
+}
+.slay-comparison-banner .beta-report-session-finish {
+  min-height: 44px;
+  font-size: 11px;
+}
+#slay-acquisition-root .lg-shell {
+  width: calc(100% - 16px);
+  max-width: none;
+  height: calc(100dvh - 56px);
+  min-height: 550px;
+  padding: 0 0 8px;
+  display: grid;
+  grid-template-rows: 48px minmax(0, 1fr);
+  gap: 8px;
+}
+#slay-acquisition-root .lg-topbar {
+  padding-right: 0;
+}
+#slay-acquisition-root .practice-page.has-skywriting-response {
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+#slay-acquisition-root .practice-top,
+#slay-acquisition-root .practice-progress {
+  display: none;
+}
+#slay-acquisition-root .prompt-card.tier1-writing-card {
+  position: relative;
+  max-width: none;
+  margin: 0;
+  border: 1px solid #58313d;
+  border-radius: 22px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 50% 22%, rgb(255 97 97 / 7%), transparent 380px),
+    linear-gradient(155deg, #21141d, #0c1020 78%);
+}
+#slay-acquisition-root .tier1-writing-card.is-dictation {
+  grid-template-rows: auto minmax(0, 1fr) 78px;
+}
+#slay-acquisition-root .tier1-writing-card.is-dictation .prompt-meta {
+  grid-row: 1;
+  color: #dce1f4;
+}
+#slay-acquisition-root .tier1-writing-card.is-dictation .tier1-writing-response {
+  grid-row: 2;
+}
+#slay-acquisition-root .tier1-writing-instructions {
+  grid-row: 3;
+  display: flex;
+  margin: 0;
+  align-items: center;
+}
+#slay-acquisition-root .tier1-writing-instructions > div:first-child,
+#slay-acquisition-root .dictation-status {
+  display: none;
+}
+#slay-acquisition-root .tier1-writing-card .tier1-writing-audio-actions {
+  position: static;
+  width: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+}
+#slay-acquisition-root .tier1-writing-card .tier1-writing-audio-actions .replay-button {
+  position: static;
+  min-width: 128px;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: #bc3541;
+  color: white;
+  border: 2px solid #ed6970;
+  border-radius: 12px;
+  font-weight: 850;
+  font-size: 17px;
+}
+#slay-acquisition-root .writing-hear-button {
+  min-width: 64px;
+  min-height: 64px;
+  width: 64px;
+  height: 64px;
+  background: #bc3541;
+  box-shadow: 0 0 0 2px #ed6970;
+}
+#slay-acquisition-root .writing-hear-button svg {
+  width: 24px;
+  height: 24px;
+}
+#slay-acquisition-root .writing-hear-button span {
+  font-size: 16px;
+}
+#slay-acquisition-root .skywriting-workspace.is-grand-scroll {
+  background: transparent;
+}
+#slay-acquisition-root .skywriting-workspace.is-review .skywriting-pad-shell {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+#slay-acquisition-root .skywriting-workspace.is-review .skywriting-keyboard-alternative {
+  min-width: 0;
+}
+#slay-acquisition-root .skywriting-workspace.is-review input {
+  width: 0;
+}
+#slay-acquisition-root .skywriting-workspace.is-review .skywriting-child-example,
+#slay-acquisition-root .skywriting-workspace.is-review .skywriting-model-example {
+  background: #fffaf0;
+  border-color: #e94b50;
+}
+#slay-acquisition-root .skywriting-model-example {
+  container-type: size;
+}
+#slay-acquisition-root .skywriting-reveal-word {
+  font-size: min(70cqh, 24cqw);
+  color: #12131a;
+}
+#slay-acquisition-root .skywriting-reveal-word[data-character-count="1"] {
+  font-size: min(70cqh, 80cqw);
+}
+#slay-acquisition-root .skywriting-reveal-word[data-character-count="2"] {
+  font-size: min(70cqh, 42cqw);
+}
+#slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-pad-shell.is-grand-scroll {
+  position: static;
+  grid-template-rows: minmax(0, 1fr);
+}
+#slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 4px 2px 22px;
+}
+#slay-acquisition-root .skywriting-scroll-cell {
+  padding: 0;
+  border: 2px solid #e94b50;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fffaf0;
+  box-shadow: 0 12px 35px rgb(0 0 0 / 23%);
+  filter: none;
+}
+#slay-acquisition-root .skywriting-scroll-cell::before,
+#slay-acquisition-root .skywriting-scroll-cell::after {
+  display: none;
+}
+#slay-acquisition-root .skywriting-scroll-paper {
+  padding: 0;
+  border: 0;
+  background: #fffaf0;
+}
+#slay-acquisition-root .skywriting-scroll-cell .skywriting-pad {
+  border: 0;
+  border-radius: 14px;
+}
+#slay-acquisition-root .skywriting-scroll-cell .skywriting-guide {
+  stroke: #ef6b6c;
+  opacity: 0.52;
+}
+#slay-acquisition-root .skywriting-scroll-cell .skywriting-trace-character {
+  fill: #f13f43;
+  opacity: 0.3;
+}
+#slay-acquisition-root .skywriting-scroll-cell .skywriting-stroke {
+  stroke: #12131a;
+}
+#slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-pad-footer {
+  display: none;
+}
+#slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-pad-toolbar {
+  position: absolute;
+  grid-row: auto;
+  right: 14px;
+  bottom: 23px;
+  top: auto;
+  width: auto;
+}
+#slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+  position: absolute;
+  left: 238px;
+  right: 110px;
+  bottom: 22px;
+  top: auto;
+  width: auto;
+  padding: 0;
+  flex-direction: row;
+  align-items: stretch;
+  height: 52px;
+  gap: 8px;
+}
+#slay-acquisition-root .skywriting-keyboard-alternative > span {
+  display: grid;
+  place-items: center;
+  padding: 8px 12px;
+  min-height: 0;
+  color: white;
+  background: #bc3541;
+  border-radius: 9px;
+  font-size: 20px;
+}
+#slay-acquisition-root .skywriting-keyboard-alternative input {
+  height: 52px;
+  min-height: 48px;
+  font-size: 24px;
+}
+#slay-acquisition-root .skywriting-pad-actions button {
+  min-height: 48px;
+}
+#slay-acquisition-root .practice-footnote:not(.audio-playback-error) {
+  display: none;
+}
+#slay-acquisition-root .audio-playback-error {
+  color: #ffd1d1;
+}
+#slay-acquisition-root .review-label,
+#slay-acquisition-root .answer-note,
+#slay-acquisition-root .context-unavailable {
+  color: #dce1f4;
+}
+#slay-acquisition-root .slay-comparison-start {
+  align-self: start;
+  padding: 20px;
+}
+#slay-acquisition-root .skywriting-pinyin-candidates {
+  top: auto;
+  bottom: 80px;
+  left: 238px;
+  right: 110px;
+}
+#slay-acquisition-root .beta-report-launcher-group {
+  background: transparent;
+}
+@media (orientation: portrait) and (min-width: 600px) {
+  #slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid[data-character-count="2"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  #slay-acquisition-root
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="2"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+}
+@media (max-width: 599px) {
+  #slay-acquisition-root .lg-shell {
+    height: calc(100dvh - 100px);
+    min-height: 600px;
+  }
+  #slay-acquisition-root .tier1-writing-card.is-dictation {
+    grid-template-rows: auto minmax(0, 1fr) 138px;
+  }
+  #slay-acquisition-root .tier1-writing-instructions {
+    align-items: end;
+    padding-bottom: 6px;
+  }
+  #slay-acquisition-root .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+    left: 12px;
+    right: 12px;
+    bottom: 90px;
+  }
+}

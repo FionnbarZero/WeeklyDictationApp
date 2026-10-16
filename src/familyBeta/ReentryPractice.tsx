@@ -116,7 +116,6 @@ export function ReentryPractice({
         <PracticeView
           session={session}
           datasets={datasets}
-          timerSecondsOverride={10}
           onExit={onExit}
           onReplay={() => (prompt ? playCachedWordAudio(audioWord(prompt.word)) : undefined)}
           onBeginWarmup={() => undefined}

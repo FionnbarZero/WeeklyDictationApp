@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 import { installFamilyFixtures, type SyntheticFamilyDocuments } from './fixtures.ts'
+import { finishEnabledTeacher } from './writingTeacherDriver.ts'
 
 async function start(page: Page, slug: string, channel: 'writing' | 'reading') {
   await page.goto(`/?grade=${slug}`)
@@ -21,6 +22,7 @@ async function start(page: Page, slug: string, channel: 'writing' | 'reading') {
     .click()
   const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
   if (await skip.isVisible()) await skip.click()
+  if (channel === 'writing') await finishEnabledTeacher(page)
   return frame
 }
 
@@ -29,6 +31,7 @@ async function answer(page: Page, channel: 'writing' | 'reading') {
   if (channel === 'writing') {
     await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
     await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
   } else {
     await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
     await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
