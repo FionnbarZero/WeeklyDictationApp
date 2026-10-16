@@ -5,6 +5,7 @@ import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
 import { chooseCheckpointWinner } from './checkpointConflict.ts'
 import { chooseWritingPayload } from './writingCheckpoint.ts'
+import { chooseNativeWritingPayload, nativeWritingPayload } from './nativeWritingCheckpoint.ts'
 import {
   isPracticeWorkspaceSyncKey,
   legacyPracticeKey,
@@ -199,6 +200,7 @@ export function createDeviceSyncRepository(options: {
         // even when another record would otherwise stop at a valid conflict.
         if (isPracticeWorkspaceSyncKey(record.key, childId))
           validatePracticeWorkspaceSyncPayload(record.key, record.payload, childId)
+        if (record.key.startsWith('family-beta-acquisition-v1:')) nativeWritingPayload(record.payload, childId)
         records.set(record.key, { record, updateTime: doc.updateTime })
         if (records.size > 500)
           throw new Error('This child’s online practice exceeds the safe loading limit. Device records are unchanged.')
@@ -265,6 +267,12 @@ export function createDeviceSyncRepository(options: {
         const local = workspaceSyncKey ? workspace?.read(key) || null : storage.getItem(key)
         const server = remote.get(key)
         const online = server?.record.payload ?? null
+        const nativeWritingKey = key.startsWith('family-beta-acquisition-v1:')
+        if (nativeWritingKey && local) nativeWritingPayload(local, childId)
+        // A newer schema may never be replaced by a legacy checkpoint, even
+        // when a sync baseline would otherwise allow an unconditional download.
+        if (nativeWritingKey && local && online && JSON.parse(local).schema === 2 && JSON.parse(online).schema !== 2)
+          throw new PracticeSyncConflictError()
         const pendingKey = `${baseKey}:pending`
         // A successful upload can lose its response while another local trial
         // completes. Recognize that exact pending payload on the next readback.
@@ -295,9 +303,9 @@ export function createDeviceSyncRepository(options: {
           continue
         }
         if (online !== baseline) {
-          const writingConflict = workspaceSyncKey && [local, online].some(raw => raw && JSON.parse(raw).schema === 2)
+          const writingConflict = (workspaceSyncKey || nativeWritingKey) && [local, online].some(raw => raw && JSON.parse(raw).schema === 2)
           const writingWinner = writingConflict && online && server
-            ? chooseWritingPayload(local, online, childId, server.updateTime) : null
+            ? (nativeWritingKey ? chooseNativeWritingPayload : chooseWritingPayload)(local, online, childId, server.updateTime) : null
           const candidate = key.startsWith('family-beta-acquisition-v1:')
             ? acquisitionConflictCandidate
             : workspaceSyncKey

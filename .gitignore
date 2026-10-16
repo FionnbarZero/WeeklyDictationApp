@@ -1,4 +1,6 @@
 node_modules
+native-writing-integration-dist/
+native-writing-test-results/
 dist
 stroke-teacher-preview-dist
 writing-integration-preview-dist

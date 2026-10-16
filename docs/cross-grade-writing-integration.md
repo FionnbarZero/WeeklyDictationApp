@@ -1,6 +1,26 @@
 # Kindergarten and Grade 5 writing extension
 
-The original local checkpoint below is now followed by the separately authorized [hosted preview](#hosted-ipad-preview--october-15-2026). The family-app integration and real-family/cloud boundaries are unchanged.
+The owner has approved both hosted prototypes and authorized native Kindergarten/Grade 5 integration. Earlier checkpoints below are historical evidence, not competing approval requests. Hosting and real-family boundaries remain unchanged.
+
+## Native family integration candidate — October 15, 2026
+
+Owner feedback: **“they both look great. lets proceed with integrating them in to the regular app.”** This resolves the working-prototype gate for both grades. Continue the already confirmed **GPT-6 Astra · Extra High** stage; do not ask again for prototype/model approval.
+
+The local candidate connects the approved shared teacher/presentation to the actual Kindergarten and Grade 5 `writing-dojo` launchers. Activation uses `VITE_CROSS_GRADE_WRITING_PILOT=true`, enabled in the isolated `writing-pilot` build. Grade 2 retains its existing flag/adapter. The frozen `3329820` reference and its hosted bytes remain untouched.
+
+- One atomic schema-2 native record retains acquisition, five-step character position, reviewed answers and history. Teaching milestones create no scores; the existing native completion ledger remains the result source.
+- Every character finishes before acquisition, and each next new word starts teaching. Native acquisition/correction strategies remain unchanged. Existing schema-1 targets finish their pinned flow before the next target teaches; reviewed history is retained. Teacher-document changes cannot replace an unfinished lesson.
+- Lost readback retains the exact pending candidate, including distractor choice, timestamp and score identity. Stale tabs, mismatched owners/envelopes and older readers fail closed. Teacher/acquisition writes use the existing completion lock and immutable-result guard. Native Done and Exit keep their distinct meanings.
+- Device sync validates combined records and orders confirmed teaching milestones separately from scores; schema-2-to-legacy downgrades are refused. Synthetic repository checks are not authenticated cloud acceptance.
+- Grade 5's initial Warmup path is retained; confirmed teacher resume does not restart Warmup. Final tests, reading, standalone Stroke Order and other games are unchanged. The approved four-character portrait two-by-two rule is scoped to the native writing host. Ink/recordings/provisional typing are never persisted.
+
+### Verification and remaining gates
+
+**1,148 unit tests, typecheck, lint and production build/performance pass.** Initial entry remains **549,823 / 550,000 JS bytes** and **46,288 / 60,000 CSS bytes**. Fourteen new native-store/repository cases cover both grades: whole-word/next-word gates, non-scoring teaching, legacy continuation, exact retry, stale tabs, Done/history/writer ownership, pinned curriculum, teacher-only sync/fresh-device recovery, offline preservation and malformed/legacy conflict rejection.
+
+Browser acceptance is in progress against separate `native-writing-integration-dist`, test port 5239, with external requests blocked and speech mocked. The first Chromium run passed all three Grade 5 cases; three Kindergarten cases stopped on a driver assumption that week selection appeared in the iframe URL. The app carries it in `data-family-week`; the driver was corrected. Those failures are not counted as passes.
+
+Remaining: exact-candidate Chrome/WebKit native checks and Grade 2 regression; authorized independent Astra · Extra High integration/saving review; family packaging and old/current/guarded-recovery compatibility; separately authorized authenticated backend/offline/two-device acceptance; protected release and served-build verification. Regular/live-app smoke testing is premature. No PR, merge, publication, email, security change or real-family access occurred.
 
 ## Scope and checkpoint — October 15, 2026
 

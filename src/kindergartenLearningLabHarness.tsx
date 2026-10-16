@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
-import { familyAcquisitionStore } from './familyBeta/acquisitionRuntime.ts'
+import { familyAcquisitionStore, familyWritingStore } from './familyBeta/acquisitionRuntime.ts'
+import { nativeWritingAdapter } from './familyBeta/nativeWritingCheckpoint.ts'
+import NativeWritingPractice from './writingAcquisition/NativeWritingPractice.tsx'
+import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import type { SheetsWorkbookPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
@@ -209,6 +212,7 @@ function masteryDatasetFor(review: KindergartenCumulativePoolLab | null): Datase
 }
 
 function KindergartenLearningLab() {
+  const writingLaunch = useRef(0)
   const attemptId = useRef<string>(crypto.randomUUID())
   const acquisitionStore = useRef<ReturnType<typeof familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>>>(null)
   const [candidates, setCandidates] = useState<WeeklyDatasetCandidate[]>([])
@@ -295,6 +299,7 @@ function KindergartenLearningLab() {
   }
 
   function returnToHub(message = 'Returned to the Kindergarten paths.') {
+    writingLaunch.current++
     stopActiveAudio()
     setActiveActivity(null)
     setReadingPathway(null)
@@ -309,6 +314,7 @@ function KindergartenLearningLab() {
   }
 
   function leavePractice(message: string) {
+    writingLaunch.current++
     stopActiveAudio()
     setWritingPractice(null)
     setReadingPathway(null)
@@ -318,13 +324,18 @@ function KindergartenLearningLab() {
     setError(false)
   }
 
-  function startWriting() {
+  async function startWriting() {
+    const launch = ++writingLaunch.current
+    enablePreviewSpeechFromTap()
     if (!selectedCandidate || !kindergartenCandidateIsUsableInLab(selectedCandidate)) return
     try {
       const initial = startKindergartenAcquisitionLab(selectedCandidate)
-      const store = familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>(
-        initial.targetSet, kindergartenWritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
-      )
+      const store = import.meta.env.VITE_CROSS_GRADE_WRITING_PILOT === 'true'
+        ? await familyWritingStore<AcquisitionTarget, KindergartenLabRevealMethod>(initial.targetSet,
+            kindergartenWritingLabProfile.acquisition, nativeWritingAdapter(kindergartenWritingDatasetForLab(selectedCandidate)),
+            () => writingLaunch.current === launch)
+        : familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>(initial.targetSet, kindergartenWritingLabProfile.acquisition, 'writing-dojo', 'tier-1')
+      if (writingLaunch.current !== launch) return
       acquisitionStore.current = store
       if (store) attemptId.current = store.current.sessionId
       setWritingPractice({
@@ -335,6 +346,7 @@ function KindergartenLearningLab() {
       })
       setStatus('Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.')
     } catch (startError) {
+      if (writingLaunch.current !== launch) return
       setStatus(startError instanceof Error ? startError.message : 'Writing practice could not start.')
       setError(true)
     }
@@ -458,6 +470,7 @@ function KindergartenLearningLab() {
   }
 
   function launchFromHub(launch: KindergartenHubLaunch, context: LearningHubLaunchContext) {
+    writingLaunch.current++
     attemptId.current = crypto.randomUUID()
     if (launch.kind === 'dojo-writing') { startWriting(); return }
     if (launch.kind === 'dojo-stroke-order') {
@@ -519,13 +532,16 @@ function KindergartenLearningLab() {
   }
 
   if (writingPractice) {
+    const nativeStore = acquisitionStore.current?.current.writing ? acquisitionStore.current : null
+    const WritingView = nativeStore ? NativeWritingPractice : PracticeView
     const promptWord = writingPractice.state.flow.prompt?.word
     const scored = writingPractice.state.assessments.filter((item) => item.countsTowardWeeklyScore)
     const correct = scored.filter((item) => item.correct).length
     return <main className="k-lab-shell practice">
       {error && <p role="alert">{status}</p>}
       <p className="k-practice-note"><strong>Current score: {correct}/{scored.length}</strong> · Current-week Dojo writing · {familyPreview ? 'Choose Done for today to save this session score.' : 'Session-only development record'}</p>
-      <PracticeView
+      <WritingView
+        store={nativeStore!}
         session={writingSessionFor(writingPractice)}
         datasets={[writingPractice.dataset]}
         onExit={() => leavePractice('Writing practice exited. No score was added.')}

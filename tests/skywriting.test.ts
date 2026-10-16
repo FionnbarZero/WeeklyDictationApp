@@ -159,7 +159,8 @@ test('every shared Tier 1 writing activity uses the Songti Sky Writing response'
   const pilot = readFileSync(new URL('../src/writingAcquisition/Grade2WritingPractice.tsx', import.meta.url), 'utf8')
   assert.match(pilot, /<PracticeView \{\.\.\.props\}/)
   assert.match(kindergarten, /<PracticeView/)
-  assert.match(grade5, /<PracticeView/)
+  assert.match(grade5, /const WritingView = nativeStore \? NativeWritingPractice : PracticeView/)
+  assert.match(grade5, /<WritingView/)
 })
 
 test('the cross-grade harness uses exactly ten distinct source-derived Tier 1 targets', () => {

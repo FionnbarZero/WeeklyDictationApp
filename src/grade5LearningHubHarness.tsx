@@ -1,6 +1,9 @@
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
-import { familyAcquisitionStore } from './familyBeta/acquisitionRuntime.ts'
+import { familyAcquisitionStore, familyWritingStore } from './familyBeta/acquisitionRuntime.ts'
+import { nativeWritingAdapter } from './familyBeta/nativeWritingCheckpoint.ts'
+import NativeWritingPractice from './writingAcquisition/NativeWritingPractice.tsx'
+import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
 import { writingSessionAnswers } from './application/testReview.ts'
@@ -45,6 +48,7 @@ const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
 const prototypeBaselineEnabled = import.meta.env.VITE_PROTOTYPE_BASELINE === 'true'
 const REVIEW_INSTRUCTION = 'Do your own best work. Compare your answer carefully. Every try helps you learn.'
 const grade5AudioProfile = gradeAudioProfileFor('Grade 5')
+let writingLaunch = 0
 
 function requiredElement<T extends HTMLElement>(id: string) {
   const element = document.getElementById(id)
@@ -236,6 +240,7 @@ function startPrimaryReview() {
 }
 
 function leavePractice(message = 'Returned to the Grade 5 hub. This development-only run was discarded.') {
+  writingLaunch++
   strokeWarmupReady = null
   stopActiveAudio()
   activePractice = null
@@ -280,6 +285,7 @@ function answerCurrentPrompt(correct: boolean) {
     } catch (error) {
       practiceSummary.textContent = error instanceof Error ? error.message : 'Response could not be saved. Please retry.'
       window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+      if (acquisitionStore?.current.writing) throw error
       return
     }
     const assessment = activePractice.assessments.length > assessmentCount
@@ -353,7 +359,10 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
   else if (answer === 'skip-test-review') leavePractice('Test Review was abandoned. Its temporary answers were discarded and no score was created.')
   else if (answer === 'done') {
     const assessed = activePractice?.assessments.filter(item => item.countsTowardWeeklyScore) || []
-    if (!recordWritingResult(assessed.filter(item => item.correct).length, assessed.length)) return
+    if (!recordWritingResult(assessed.filter(item => item.correct).length, assessed.length)) {
+      if (acquisitionStore?.current.writing) throw new Error('The writing score could not be confirmed. Please retry Done for today.')
+      return
+    }
     leavePractice(familyPreview ? 'Writing session complete. See family progress for saving status.' : 'Acquisition stopped for today. This development lab does not save progress yet.')
   }
 }
@@ -367,8 +376,11 @@ function renderPracticeView() {
     return
   }
   renderAssessmentSummary()
+  const nativeStore = acquisitionStore?.current.writing ? acquisitionStore : null
+  const WritingView = nativeStore ? NativeWritingPractice : PracticeView
   practiceRoot.render(
-    <PracticeView
+    <WritingView
+      store={nativeStore!}
       session={activeSession}
       datasets={activeDatasets}
       onExit={leavePractice}
@@ -385,7 +397,9 @@ function renderPracticeView() {
   )
 }
 
-function startWritingPractice(request: Grade5ActivityLaunchRequest, label: string, ready?: () => void) {
+async function startWritingPractice(request: Grade5ActivityLaunchRequest, label: string, ready?: () => void) {
+  const launch = ++writingLaunch
+  enablePreviewSpeechFromTap()
   try {
     if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
     const candidate = candidateFor(request)
@@ -395,9 +409,14 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     activePractice = !ready && (request.activityKind === 'acquisition' || request.activityKind === 'reacquisition')
       ? startGrade5AcquisitionLab(candidate)
       : null
-    acquisitionStore = activePractice ? familyAcquisitionStore<AcquisitionTarget, Grade5LabRevealMethod>(
-      activePractice.targetSet, grade5WritingLabProfile.acquisition, 'writing-dojo', 'tier-1',
-    ) : null
+    const opened = activePractice
+      ? import.meta.env.VITE_CROSS_GRADE_WRITING_PILOT === 'true'
+        ? await familyWritingStore<AcquisitionTarget, Grade5LabRevealMethod>(activePractice.targetSet,
+            grade5WritingLabProfile.acquisition, nativeWritingAdapter(activeDataset), () => writingLaunch === launch)
+        : familyAcquisitionStore<AcquisitionTarget, Grade5LabRevealMethod>(activePractice.targetSet, grade5WritingLabProfile.acquisition, 'writing-dojo', 'tier-1')
+      : null
+    if (writingLaunch !== launch) return
+    acquisitionStore = opened
     if (acquisitionStore && activePractice) activePractice = { ...activePractice,
       targetSet: acquisitionStore.context.targetSet,
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
@@ -407,7 +426,8 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     if (ready) activeSession = { ...activeSession, primaryQueue: [] }
     if (acquisitionStore) {
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }
-      if (acquisitionStore.current.envelope.revision > 0) activeSession = primaryStartState(activeSession)
+      if (acquisitionStore.current.envelope.revision > 0 || (acquisitionStore.current.writing?.revision || 0) > 0)
+        activeSession = primaryStartState(activeSession)
     }
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
@@ -420,11 +440,13 @@ function startWritingPractice(request: Grade5ActivityLaunchRequest, label: strin
     renderPracticeView()
     practicePanel.scrollTop = 0
   } catch (error) {
+    if (writingLaunch !== launch) return
     setStatus(error instanceof Error ? error.message : 'Grade 5 writing practice could not start.', true)
   }
 }
 
 function startReadingPractice(request: Grade5ActivityLaunchRequest, label: string) {
+  writingLaunch++
   try {
     if (!sourceExtraction) throw new Error('The validated Grade 5 source has not loaded yet.')
     const pathway = grade5LabReadingPathway(sourceExtraction, request)
@@ -488,6 +510,7 @@ function startConnectedRequest(request: Grade5ActivityLaunchRequest, label: stri
 }
 
 function launchFromLearningHub(launch: Grade5HubLaunch) {
+  writingLaunch++
   const connected = launch.requests.filter(connectedRequest)
   if (connected.length === 1) {
     startConnectedRequest(connected[0], launch.label)

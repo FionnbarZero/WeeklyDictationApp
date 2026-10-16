@@ -59,7 +59,10 @@ export function writingContext(
   const grade = writingPolicyGrade(lesson.policy)
   if (lesson.dataset.grade !== grade) throw new Error(fail)
   const module = envelope?.activityModule || 'mandarin-tier1-writing'
-  if (!/^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/.test(module)) throw new Error(fail)
+  const allowedModule = grade === 'Grade 2'
+    ? /^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/
+    : /^(?:mandarin-tier1-writing|writing-dojo)(?::restart-[a-f0-9]{16})?$/
+  if (!allowedModule.test(module)) throw new Error(fail)
   return {
     identity: {
       childId: owner,
