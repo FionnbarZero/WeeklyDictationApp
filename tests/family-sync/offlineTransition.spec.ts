@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
+import { finishEnabledTeacher } from './writingTeacherDriver.ts'
 
 test('an already-controlled browser upgrades, safely rolls back, and recovers its original Grade 2 records', async ({
   page,
@@ -31,6 +32,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
     await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
     await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
     await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
+    await finishEnabledTeacher(page)
     return frame
   }
   await select('previous')

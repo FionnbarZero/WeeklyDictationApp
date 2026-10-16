@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test'
 import { retireAcquisition } from '../../src/familyBeta/acquisitionRetirement.ts'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
+import { finishEnabledTeacher } from './writingTeacherDriver.ts'
 
 async function launch(page: Page, slug: string, channel: 'writing' | 'reading', resuming = false) {
   if (slug === 'grade2') await page.getByLabel('Practice week').selectOption('2026-09-21')
@@ -24,6 +25,7 @@ async function launch(page: Page, slug: string, channel: 'writing' | 'reading', 
     .click()
   const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
   if (channel === 'writing' && (slug === 'grade2' || (slug === 'grade5' && !resuming))) await skip.click()
+  if (channel === 'writing') await finishEnabledTeacher(page)
   return frame
 }
 

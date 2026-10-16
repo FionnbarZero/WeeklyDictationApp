@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { grades, installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
+import { finishEnabledTeacher } from './writingTeacherDriver.ts'
 
 for (const [slug, , id] of grades)
   for (const channel of ['writing', 'reading'] as const) {
@@ -22,6 +23,7 @@ for (const [slug, , id] of grades)
         await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
       const answer = async () => {
         if (channel === 'writing') {
+          await finishEnabledTeacher(page)
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
         } else {

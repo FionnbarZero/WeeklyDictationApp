@@ -105,6 +105,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config playwright.family-sync.config.ts
+      - name: Current enabled writing package and saving safeguards
+        run: npx playwright test --config playwright.current-writing.config.ts
       - name: Test the deployed family policy with synthetic emulator records
         env:
           FAMILY_SYNC_RULES_FILE: deployment/firestore-family-sync.rules
