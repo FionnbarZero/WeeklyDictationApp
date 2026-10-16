@@ -105,6 +105,71 @@ async function afterTeaching(page: Page, slug: string) {
 }
 
 for (const slug of ['kindergarten', 'grade5']) {
+  for (const action of ['teacher', 'answer', 'done'])
+    test(`${slug}: queued ${action} cannot save or reopen after Exit`, async ({ page }) => {
+      const frame = action === 'teacher' ? await launch(page, slug) : await afterTeaching(page, slug)
+      if (action === 'teacher') {
+        const word = (await saved(page)).value.writing.lesson.targets[0].text
+        await draw(page, frame, [...word][0])
+      } else {
+        // Done has an actual scored answer to submit; it cannot pass vacuously.
+        for (let i = 0; i < (action === 'done' ? 4 : 0); i++) {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+          await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+        }
+        if (action === 'answer') await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+      }
+      const before = await saved(page)
+      const records = () =>
+        page.evaluate(() =>
+          Object.fromEntries(
+            Object.entries(localStorage).filter(
+              ([key]) =>
+                key.startsWith('family-beta-preview-results-v1') || key.startsWith('family-beta-preview-pending-v1'),
+            ),
+          ),
+        )
+      const resultsBefore = await records()
+      await page.evaluate(async (key) => {
+        void navigator.locks.request(`ninja-scrolls-write:${key}`, async () => {
+          const scope = window as unknown as { held: boolean; releaseWrite: () => void }
+          scope.held = true
+          await new Promise<void>((resolve) => {
+            scope.releaseWrite = resolve
+          })
+        })
+      }, before.key)
+      await page.waitForFunction(() => (window as unknown as { held: boolean }).held)
+      await frame
+        .getByRole('button', {
+          name: action === 'teacher' ? 'Next step' : action === 'done' ? 'Done for today' : 'I got it right',
+          exact: true,
+        })
+        .click()
+      await expect
+        .poll(() =>
+          page.evaluate(
+            async (key) =>
+              (await navigator.locks.query()).pending?.some((lock) => lock.name === `ninja-scrolls-write:${key}`),
+            before.key,
+          ),
+        )
+        .toBe(true)
+      await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+      await expect(frame.locator('.native-writing-integration')).toBeHidden()
+      await page.evaluate(async (key) => {
+        ;(window as unknown as { releaseWrite: () => void }).releaseWrite()
+        // This fence runs after the queued native transaction, not a guessed delay.
+        await navigator.locks.request(`ninja-scrolls-write:${key}`, () => undefined)
+      }, before.key)
+      await expect(frame.locator('.native-writing-integration')).toBeHidden()
+      expect(await saved(page)).toEqual(before)
+      expect(await records()).toEqual(resultsBefore)
+      await launch(page, slug)
+      expect(await saved(page)).toEqual(before)
+    })
+
   test(`${slug}: another tab cannot add answers to a completed visit`, async ({ page, context }) => {
     const frame = await afterTeaching(page, slug)
     for (let i = 0; i < 4; i++) {
