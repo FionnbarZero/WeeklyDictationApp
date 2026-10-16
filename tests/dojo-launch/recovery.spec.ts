@@ -1,7 +1,24 @@
 import { expect, type Page, test } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { installFamilyFixtures } from '../family-sync/fixtures.ts'
 import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
 
 test.beforeEach(async ({ page }) => {
+  if (process.env.DOJO_FAMILY_PACKAGE === '1') {
+    await installFamilyFixtures(page)
+    await page.route('**/curriculum/beta/*.json', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: readFileSync(
+          new URL(
+            `../fixtures/dojo-launch-2026-10-16/${new URL(route.request().url()).pathname.split('/').pop()!}`,
+            import.meta.url,
+          ),
+          'utf8',
+        ),
+      }),
+    )
+  }
   await page.clock.setFixedTime(new Date('2026-10-16T19:00:00Z'))
   await page.addInitScript(() => {
     type Diagnostics = { mode: string; spoken: { text: string; rate: number }[] }
