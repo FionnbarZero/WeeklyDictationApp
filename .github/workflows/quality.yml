@@ -120,7 +120,9 @@ jobs:
           java-version: '21'
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --config playwright.family-sync.config.ts
+      # No predecessor selector is enabled here; each test owns its browser and
+      # synthetic backend. Retained-package/provider rehearsals remain serial.
+      - run: npx playwright test --config playwright.family-sync.config.ts --workers=3
       - name: Current enabled writing package and saving safeguards
         run: npx playwright test --config playwright.current-writing.config.ts
       - name: Test the deployed family policy with synthetic emulator records

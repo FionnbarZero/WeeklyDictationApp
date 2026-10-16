@@ -41,7 +41,9 @@ for (const [slug, grade] of grades) {
     await page.mouse.down()
     await page.mouse.move(box.x + 90, box.y + 90, { steps: 5 })
     await page.mouse.up()
-    const ink = await frame.locator('.skywriting-stroke').getAttribute('points')
+    const stroke = frame.locator('path.skywriting-stroke')
+    await expect(stroke).toHaveCount(1)
+    const ink = await stroke.getAttribute('d')
     expect(ink).toBeTruthy()
     await frame.locator('body').evaluate((body) => {
       body.dataset.continuityProbe = 'same-document'
@@ -51,7 +53,8 @@ for (const [slug, grade] of grades) {
     await page.getByRole('button', { name: 'Activities', exact: true }).click()
     await expect(frame.locator('body')).toHaveAttribute('data-continuity-probe', 'same-document')
     await expect(frame.getByRole('timer')).toBeVisible()
-    await expect(frame.locator('.skywriting-stroke')).toHaveAttribute('points', ink!)
+    await expect(stroke).toHaveCount(1)
+    await expect(stroke).toHaveAttribute('d', ink!)
     await expect(frame.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
   })
 
