@@ -10,6 +10,11 @@ export async function finishEnabledTeacher(page: Page) {
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
   const skip = frame.getByRole('button', { name: 'Skip Timer', exact: true })
   const right = frame.getByRole('button', { name: 'I got it right', exact: true })
+  const warmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+  // Launch may mount its optional Warmup after the caller's visibility check.
+  // Wait for a real entry state rather than racing the asynchronous render.
+  await expect(teacher.or(skip).or(right).or(warmup)).toBeVisible()
+  if (await warmup.isVisible()) await warmup.click()
   await expect(teacher.or(skip).or(right)).toBeVisible()
   for (let attempt = 0; attempt < 25 && (await teacher.isVisible()); attempt++) {
     const targetId = await teacher.getAttribute('data-report-target')
