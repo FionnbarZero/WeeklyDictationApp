@@ -407,6 +407,7 @@ async function acceptCurrentLesson(first: Awaited<ReturnType<typeof newPage>>) {
   await expect(second.page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
   await second.context.setOffline(true)
   await finishTrial(second.page, frame, characters[0], 3)
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '4')
   const offlineCheckpoint = await localCheckpoint(second.page)
   assert.equal(offlineCheckpoint!.progress.revision, 3)
   assert.equal((await remoteCheckpoint())!.progress.revision, 2)
@@ -459,6 +460,21 @@ async function acceptCurrentLesson(first: Awaited<ReturnType<typeof newPage>>) {
   frame = await launch(fourth.page)
   await synced(fourth.page, revision)
   assert.deepEqual(await remoteResults(), results)
+  const downloadedResult = async (page: Page) => {
+    const id = results[0].id.stringValue!
+    assert.ok(id)
+    await expect
+      .poll(() =>
+        page.evaluate((id) => {
+          const raw = localStorage.getItem(`family-beta-preview-results-v1:${id}`)
+          if (!raw) return null
+          const result = JSON.parse(raw)
+          return { id: result.id, childId: result.childId, correct: result.correct, attempted: result.attempted }
+        }, id),
+      )
+      .toEqual({ id, childId, correct: 1, attempted: 1 })
+  }
+  await downloadedResult(fourth.page)
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
   for (let trial = 0; trial < 35 && !(await teacher.isVisible()); trial++) await review(fourth.page, frame)
   await expect(teacher).toHaveAttribute('data-step', '1')
@@ -471,6 +487,7 @@ async function acceptCurrentLesson(first: Awaited<ReturnType<typeof newPage>>) {
   await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
   assert.deepEqual(await localCheckpoint(fifth.page), next)
   assert.deepEqual(await remoteResults(), results)
+  await downloadedResult(fifth.page)
   console.log(
     `${grade}: ordinary current entry, real-cloud resume, full offline reload, acquisition and next-word recovery passed.`,
   )

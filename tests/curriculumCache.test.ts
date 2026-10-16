@@ -51,6 +51,43 @@ test('missing, wrong-grade, corrupted and aborted caches cannot silently select 
   await assert.rejects(readRetainedCurriculum(storage, snapshot.grade), /checksum/)
   assert.deepEqual([...storage.values], before)
 })
+
+test('body connection loss reuses retained curriculum but body abort and invalid bytes remain rejected', async (t) => {
+  const storage = memory(),
+    snapshot = source('kindergarten')
+  retainValidatedCurriculum(storage, snapshot)
+  const before = [...storage.values]
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'localStorage', previous)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  })
+  const brokenBody = (error: Error) =>
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.error(error)
+        },
+      }),
+      { status: 200 },
+    )
+  const network = t.mock.method(globalThis, 'fetch', async () => brokenBody(new TypeError('Body connection lost')))
+  const restored = await fetchCurriculum(snapshot.grade)
+  assert.equal('offline' in restored && restored.offline, true)
+  assert.deepEqual(restored.snapshot, snapshot)
+  network.mock.mockImplementation(async () => brokenBody(new Error('Body failed for another reason')))
+  await assert.rejects(fetchCurriculum(snapshot.grade), /another reason/)
+  const cancelled = new AbortController()
+  network.mock.mockImplementation(async () => {
+    cancelled.abort()
+    return brokenBody(new TypeError('Body connection lost'))
+  })
+  await assert.rejects(fetchCurriculum(snapshot.grade, cancelled.signal), /abort/i)
+  network.mock.mockImplementation(async () => new Response('not JSON', { status: 200 }))
+  await assert.rejects(fetchCurriculum(snapshot.grade))
+  assert.deepEqual([...storage.values], before)
+})
 test('cache writes require readback and preserve a prior snapshot on a failed write', () => {
   const storage = memory(),
     snapshot = source('kindergarten')

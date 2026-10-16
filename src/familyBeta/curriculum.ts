@@ -96,7 +96,17 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
     return retained()
   }
   if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
-  const loaded = await validateCurriculum(await response.text(), grade)
+  let body: string
+  try {
+    body = await response.text()
+  } catch (error) {
+    // A network cut can occur after headers have arrived. Only transport
+    // failures may use retained material; parsing/validation remain outside.
+    signal?.throwIfAborted()
+    if (!(error instanceof TypeError)) throw error
+    return retained()
+  }
+  const loaded = await validateCurriculum(body, grade)
   signal?.throwIfAborted()
   if (typeof localStorage !== 'undefined')
     (await import('./curriculumCache.ts')).retainValidatedCurriculum(localStorage, loaded.snapshot)
