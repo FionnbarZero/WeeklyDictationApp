@@ -21,7 +21,7 @@ for (const slug of ['kindergarten', 'grade5']) {
         const raw = localStorage.getItem(key)!
         return { key, raw, value: JSON.parse(raw) }
       })
-    async function launch(tab: Page) {
+    async function launch(tab: Page, olderReader = false) {
       await tab.goto(`/?grade=${slug}`)
       const week = slug === 'kindergarten' ? '2026-10-05' : '2026-09-14'
       if ((await tab.getByLabel('Practice week').inputValue()) !== week) {
@@ -33,7 +33,7 @@ for (const slug of ['kindergarten', 'grade5']) {
       await frame
         .getByRole('button', { name: slug === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true })
         .click()
-      if (slug === 'grade5') {
+      if (slug === 'grade5' && !olderReader) {
         const warmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
         await expect(
           warmup
@@ -79,10 +79,25 @@ for (const slug of ['kindergarten', 'grade5']) {
       }
       await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
       const retained = await read()
+      const results = () =>
+        page.evaluate(() =>
+          Object.fromEntries(
+            Object.keys(localStorage)
+              .filter(
+                (key) =>
+                  key.startsWith('family-beta-preview-results-v1:') ||
+                  key.startsWith('family-beta-preview-pending-v1:'),
+              )
+              .map((key) => [key, localStorage.getItem(key)]),
+          ),
+        )
+      const retainedResults = await results()
       await select('previous')
-      await page.goto(`/?grade=${slug}`)
-      // An older reader must never normalize a schema it cannot resume.
+      frame = await launch(page, true)
+      // Exercise the old store/launcher, not merely its outer family page.
+      await expect(frame.getByText(/Saved acquisition does not match.*Nothing was erased/)).toBeVisible()
       expect((await read()).raw).toBe(retained.raw)
+      expect(await results()).toEqual(retainedResults)
       await select('rollback')
       await page.goto(`/?grade=${slug}`)
       await expect(page.getByRole('heading', { name: 'Your saved work is preserved' })).toBeVisible()
