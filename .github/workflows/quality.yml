@@ -65,12 +65,28 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:public-preview
       - run: npm run test:prototype-baseline
+      - name: Version 7 writing refinement in its own build mode
+        run: |
+          npx vite build --mode writing-refinement-preview
+          npx playwright test --config playwright.writing-refinement.config.ts
+      - name: Version 8 iPad writing and gesture-gated audio
+        run: |
+          npx vite build --mode writing-ipad-preview
+          npx playwright test --config playwright.writing-ipad.config.ts
+      - name: Approved cross-grade writing prototype
+        run: |
+          npx vite build --config vite.cross-grade-writing.config.ts
+          npx playwright test --config playwright.cross-grade-writing.config.ts
       - name: Preserve failed browser evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: browser-failure-evidence
-          path: test-results/
+          path: |
+            test-results/
+            writing-refinement-test-results/
+            writing-ipad-test-results/
+            cross-grade-writing-test-results/
           retention-days: 7
 
   firestore-emulator:

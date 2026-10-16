@@ -95,7 +95,19 @@ for (const slug of ['kindergarten', 'grade5']) {
       await select('previous')
       frame = await launch(page, true)
       // Exercise the old store/launcher, not merely its outer family page.
-      await expect(frame.getByText(/Saved acquisition does not match.*Nothing was erased/)).toBeVisible()
+      if (slug === 'grade5') {
+        // The immutable predecessor hides its lab status in the family frame.
+        // Verify its exact refusal and closed activity, not a visible warning
+        // that this older UI never supplied. Guarded recovery below must show it.
+        await expect(frame.locator('#hub-status')).toHaveText(
+          'Saved acquisition does not match this curriculum or teaching sequence. Nothing was erased. Please report this problem.',
+        )
+        await expect(frame.getByRole('button', { name: 'Learn to Write', exact: true })).toBeVisible()
+        await expect(frame.locator('#practice-panel')).toBeHidden()
+        await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
+        for (const name of ['Skip Warmup', 'Skip Timer', 'I got it right', 'I got it wrong'])
+          await expect(frame.getByRole('button', { name, exact: true })).toHaveCount(0)
+      } else await expect(frame.getByText(/Saved acquisition does not match.*Nothing was erased/)).toBeVisible()
       expect((await read()).raw).toBe(retained.raw)
       expect(await results()).toEqual(retainedResults)
       await select('rollback')
