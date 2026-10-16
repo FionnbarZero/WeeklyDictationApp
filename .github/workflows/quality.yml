@@ -121,8 +121,12 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # No predecessor selector is enabled here; each test owns its browser and
-      # synthetic backend. Retained-package/provider rehearsals remain serial.
-      - run: npx playwright test --config playwright.family-sync.config.ts --workers=3
+      # synthetic backend. Keep rendering-sensitive cases serial: simultaneous
+      # software-rendered games can exhaust their unchanged timing assertions.
+      - name: Serial animation and report-pause cases
+        run: npx playwright test --config playwright.family-sync.config.ts --workers=1 --grep 'Context (confirmation|stage|restores|keeps|Gap Dash)|Shadow Strike report pause holds' --output test-results/family-sync-timing
+      - name: Independent family saving and continuity cases
+        run: npx playwright test --config playwright.family-sync.config.ts --workers=3 --grep-invert 'Context (confirmation|stage|restores|keeps|Gap Dash)|Shadow Strike report pause holds'
       - name: Current enabled writing package and saving safeguards
         run: npx playwright test --config playwright.current-writing.config.ts
       - name: Test the deployed family policy with synthetic emulator records
@@ -140,5 +144,6 @@ jobs:
           name: family-browser-failure-evidence
           path: |
             test-results/family-sync/
+            test-results/family-sync-timing/
             test-results/current-writing/
           retention-days: 7

@@ -1,5 +1,15 @@
 # Kindergarten and Grade 5 writing extension
 
+## Remote timing diagnosis — October 16, 2026
+
+Source `2f9d2562bd8e576ea480f8d664a460080a2bf04a` passes the full local legacy matrix: **488 passed, 16 conditional skips, zero failures, 27.7 minutes**, three workers (`/tmp/native-legacy-2f9d256`). Eight standalone guarded Stroke Order/Scrolls recovery cases also pass serially in 36.9 seconds (`/tmp/native-standalone-recovery-2f9d256`); the separately recorded fourteen actual-predecessor writing cases remain distinct evidence.
+
+Remote run `38864649551` passes four other jobs: type/unit/tooling, production/reference builds, Firestore Emulator and general browser/prototype/visual verification. Its family matrix fails **six cases, with 482 passed and 16 skipped in 35.5 minutes**. The six failures are Grade 2 Context restore and normal-policy cases on both devices, tablet Context initial readiness and desktop Shadow Strike report-pause timing. Failure artifact `12032252353`, SHA-256 `0a59c4724e0c605c0a5c3e5fe933a981dad477249d2a9402cd5c8a390de551d9`, is retained in `/tmp/ninja-writing-ci-2f9-evidence`.
+
+Actual Context trace shows long animation/interaction waits and correct saved results before reload; reload is only the last approximately three-second action when the cumulative test budget is already exhausted, not evidence of a long reload stall. Shadow snapshots show `phase-impact` while unpaused, then `phase-resetting` while still unpaused, then Report pausing and retaining `phase-resetting`: the assertion expected the earlier transient phase, not movement observed during pause. The independently inspected traces support validating a bounded runner-scheduling correction, not changing gameplay or calling this a repaired app defect.
+
+CI keeps the existing required family job and partitions its identical test inventory: rendering-sensitive Context and Shadow report-pause cases run serially; all other cases retain three workers. Both passes are mandatory with unchanged assertions/timeouts; predecessor/provider configurations remain serial. Final remote acceptance is still required. No approved UI, teaching, saving, screenshot baseline, real-family data or hosting has changed.
+
 ## Release-gate continuation — October 15
 
 Legacy-matrix follow-up: the local `7dae4d0` run (`/tmp/native-legacy-7dae4d0`) stopped at three failures, 36 passes, two interrupted and 463 unrun. All three failures read the old polyline `points` attribute from the approved smooth brush's SVG `path`; the same failures also appear in the canceled serial `beea373` CI log. The corrected assertion requires exactly one real drawn path and identical nonempty `d` before/after navigation, keeping the same-frame, timer and Resume checks. This changes tests, not handwriting. Independent isolation review found ordinary synthetic browser/backend state is per test; the 504-case legacy CI invocation uses three workers, while predecessor/provider base configurations remain serial. No test is removed; final verification remains required.
