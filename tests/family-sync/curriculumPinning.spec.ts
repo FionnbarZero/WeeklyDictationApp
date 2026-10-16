@@ -53,6 +53,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -101,6 +102,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -149,6 +151,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
         await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -171,6 +174,7 @@ test('resuming a live Grade 5 cohort reuses its frame even when the calendar wee
   await expect(frame.locator('body')).toHaveAttribute('data-resume-probe', 'original-activity')
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
   expect((await saved(page, false)).revision).toBe(1)
 })
 
@@ -184,6 +188,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         if (channel === 'writing') {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         } else {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -251,6 +256,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         if (channel === 'writing') {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         } else {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -281,6 +287,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         for (let i = 0; i < 4; i++) {
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         }
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
@@ -316,6 +323,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
       if (channel === 'writing') {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
       } else {
         await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
         await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
@@ -343,6 +351,7 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         expect(corrected.lessonSnapshot.targetSet.targets[0].id).not.toBe(words[0].id)
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
         await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+        await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         await page.reload()
         await launch(page, slug, channel, true)
         const resumed = await readEditions()

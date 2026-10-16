@@ -52,6 +52,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   let frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
   const initialRecords = await records(page)
   const key = Object.keys(initialRecords).find(
     (storedKey) =>
@@ -156,6 +157,7 @@ test('an already-controlled browser upgrades, safely rolls back, and recovers it
   frame = await reopen()
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
   const restored = (await page.evaluate(readGrade2Workspace))!
   expect(restored.acquisitionProgressEnvelopes[0].revision).toBe(upgraded.acquisitionProgressEnvelopes[0].revision + 1)
   expect(restored.acquisitionProgressEnvelopes[0].lessonSnapshot).toEqual(

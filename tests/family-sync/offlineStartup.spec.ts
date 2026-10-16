@@ -26,6 +26,7 @@ for (const [slug, , id] of grades)
           await finishEnabledTeacher(page)
           await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
           await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+          await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
         } else {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
