@@ -14,8 +14,15 @@ import { cleanSyntheticWritingFamily, syntheticWritingScope } from './syntheticW
 
 assert.equal(process.env.WRITING_CLOUD_ACCEPTANCE, '1', 'Explicit synthetic cloud acceptance opt-in required')
 const base = 'http://127.0.0.1:5198'
-const revision = '5d19f9588aee419fc06b719eb240c9205f9a2394'
-const tree = '887827259ef05352397921a3023020b2edc8f6dbf2baffa967a37eb6e997dd83'
+const revision = process.env.WRITING_CLOUD_REVISION || '5d19f9588aee419fc06b719eb240c9205f9a2394'
+const tree = process.env.WRITING_CLOUD_TREE || '887827259ef05352397921a3023020b2edc8f6dbf2baffa967a37eb6e997dd83'
+assert.match(revision, /^[a-f0-9]{40}$/)
+assert.match(tree, /^[a-f0-9]{64}$/)
+const slug = process.env.WRITING_CLOUD_GRADE || 'grade2'
+assert.ok(['kindergarten', 'grade2', 'grade5'].includes(slug))
+const native = slug !== 'grade2'
+const grade = slug === 'kindergarten' ? 'Kindergarten' : slug === 'grade5' ? 'Grade 5' : 'Grade 2'
+const week = slug === 'kindergarten' ? '2026-10-05' : slug === 'grade5' ? '2026-09-14' : '2026-09-29'
 const manifest = await fetch(`${base}/family-beta-manifest.json`).then((response) => response.json())
 assert.equal(manifest.sourceRevision, revision)
 assert.equal(manifest.fileTreeSha256, tree)
@@ -68,6 +75,7 @@ const record = (cleanupComplete: boolean, deletedTestDocuments?: number) =>
       {
         sourceRevision: revision,
         fileTreeSha256: tree,
+        grade,
         email,
         syntheticUid: scope?.uid,
         acceptancePassed,
@@ -144,7 +152,7 @@ async function newPage() {
 }
 
 async function login(page: Page) {
-  await page.goto(`${base}/family-beta-preview.html?grade=grade2`)
+  await page.goto(`${base}/family-beta-preview.html?grade=${slug}`)
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
@@ -153,12 +161,14 @@ async function login(page: Page) {
 async function launch(page: Page) {
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
-  if ((await page.getByLabel('Practice week').inputValue()) !== '2026-09-29') {
-    await page.getByLabel('Practice week').selectOption('2026-09-29')
-    await expect(page.locator('iframe:visible')).toHaveAttribute('src', /week=2026-09-29/)
+  if ((await page.getByLabel('Practice week').inputValue()) !== week) {
+    await page.getByLabel('Practice week').selectOption(week)
+    await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', week)
   }
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+  await frame
+    .getByRole('button', { name: slug === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true })
+    .click()
   const skipWarmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
   // A saved acquisition can resume directly; do not invent another Warmup.
   await expect(
@@ -174,6 +184,16 @@ type Checkpoint = {
   acquisition: WritingProgress['acquisition']
 }
 async function localCheckpoint(page: Page): Promise<Checkpoint | null> {
+  if (native)
+    return page.evaluate((id) => {
+      for (const [key, raw] of Object.entries(localStorage)) {
+        if (!key.startsWith('family-beta-acquisition-v1:') || key.includes(':completed:')) continue
+        const record = JSON.parse(raw)
+        if (record.schema === 2 && record.envelope?.childId === id)
+          return { progress: record.writing, acquisition: record.envelope }
+      }
+      return null
+    }, childId)
   return page.evaluate((id) => {
     const raw = localStorage.getItem(`family-beta-activity:${id}:lesson-workspace-v1`)
     if (!raw) return null
@@ -198,6 +218,13 @@ async function remoteCheckpoint(): Promise<Checkpoint | null> {
   for (const document of body.documents || []) {
     scope.validate(document.name)
     const key = document.fields?.key?.stringValue || ''
+    if (native) {
+      if (!key.startsWith('family-beta-acquisition-v1:') || key.includes(':completed:')) continue
+      const saved = JSON.parse(document.fields?.payload?.stringValue || 'null')
+      if (saved?.schema === 2 && saved.envelope?.childId === childId)
+        return { progress: saved.writing, acquisition: saved.envelope }
+      continue
+    }
     if (!decodeURIComponent(key).includes(':record:weekly-dictation-checkpoint-v1:activity:')) continue
     const raw = document.fields?.payload?.stringValue
     if (!raw) continue
@@ -254,9 +281,88 @@ async function finishTrial(page: Page, frame: FrameLocator, character: string, s
   if (step === 5) await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
 }
 
+async function acceptNative(first: Awaited<ReturnType<typeof newPage>>) {
+  let frame = await launch(first.page)
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+  const word = (await localCheckpoint(first.page))!.progress.lesson.targets[0].text
+  const characters = [...word]
+  await finishTrial(first.page, frame, characters[0], 1)
+  await synced(first.page, 1)
+  assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+  assert.equal((await remoteResults()).length, 0)
+  await first.context.close()
+  const second = await newPage()
+  await login(second.page)
+  frame = await launch(second.page)
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '2')
+  await expect(frame.locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '0')
+  await finishTrial(second.page, frame, characters[0], 2)
+  await synced(second.page, 2)
+  await second.context.setOffline(true)
+  await finishTrial(second.page, frame, characters[0], 3)
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '4')
+  assert.equal((await localCheckpoint(second.page))!.progress.revision, 3)
+  assert.equal((await remoteCheckpoint())!.progress.revision, 2)
+  await second.context.setOffline(false)
+  await second.page.reload()
+  frame = await launch(second.page)
+  await synced(second.page, 3)
+  for (let index = 0; index < characters.length; index++)
+    for (let step = index === 0 ? 4 : 1; step <= 5; step++) {
+      await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute(
+        'data-character-index',
+        String(index),
+      )
+      await finishTrial(second.page, frame, characters[index], step)
+    }
+  await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+  let revision = characters.length * 5
+  await synced(second.page, revision)
+  assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+  assert.equal((await remoteResults()).length, 0)
+  const review = async (page: Page, current: FrameLocator) => {
+    const skip = current.getByRole('button', { name: 'Skip Timer', exact: true })
+    const right = current.getByRole('button', { name: 'I got it right', exact: true })
+    await expect(skip.or(right)).toBeVisible()
+    if (await skip.isVisible()) await skip.click()
+    await right.click()
+    await synced(page, ++revision)
+  }
+  for (const kind of ['familiar-dt', 'familiar-dt', 'show-copy', 'target']) {
+    assert.equal((await localCheckpoint(second.page))!.acquisition.flow.prompt?.kind, kind)
+    await review(second.page, frame)
+  }
+  await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+  await expect(frame.locator('.native-writing-integration')).toBeHidden()
+  await expect.poll(async () => (await remoteResults()).length, { timeout: 45_000 }).toBe(1)
+  const results = await remoteResults()
+  assert.equal(Number(results[0].correct.integerValue), 1)
+  assert.equal(Number(results[0].attempted.integerValue), 1)
+  await second.context.close()
+  const third = await newPage()
+  await login(third.page)
+  frame = await launch(third.page)
+  await synced(third.page, revision)
+  assert.deepEqual(await remoteResults(), results)
+  const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+  for (let i = 0; i < 35 && !(await teacher.isVisible()); i++) await review(third.page, frame)
+  await expect(teacher).toHaveAttribute('data-step', '1')
+  assert.equal((await localCheckpoint(third.page))!.acquisition.flow.targetIndex, 1)
+  await third.context.close()
+  const fourth = await newPage()
+  await login(fourth.page)
+  frame = await launch(fourth.page)
+  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+  await synced(fourth.page, revision)
+  assert.deepEqual(await remoteResults(), results)
+  console.log(
+    `${grade}: real-cloud teacher, offline/reconnect, all characters, native flow, Done, fresh-browser result and next-word teaching passed.`,
+  )
+}
+
 try {
   const first = await newPage()
-  await first.page.goto(`${base}/family-beta-preview.html?grade=grade2`)
+  await first.page.goto(`${base}/family-beta-preview.html?grade=${slug}`)
   await first.page.getByRole('button', { name: 'Create account', exact: true }).click()
   await first.page.getByLabel('Email', { exact: true }).fill(email)
   await first.page.getByLabel('Password', { exact: true }).fill(password)
@@ -279,139 +385,144 @@ try {
   await first.page.getByLabel('Confirm parent password').fill(password)
   await first.page.getByRole('button', { name: 'Unlock profile changes' }).click()
   await first.page.getByLabel('Child’s name', { exact: true }).fill('Synthetic Writing')
-  await first.page.getByRole('combobox', { name: 'Grade', exact: true }).selectOption('Grade 2')
+  await first.page.getByRole('combobox', { name: 'Grade', exact: true }).selectOption(grade)
   await first.page.getByRole('button', { name: 'Add child', exact: true }).click()
   await expect(first.page.getByLabel('Child profile')).toContainText('Synthetic Writing')
   childId = await first.page.getByLabel('Child profile').inputValue()
   assert.match(childId, /^[A-Za-z0-9_-]+$/)
   await first.page.getByRole('button', { name: 'Activities', exact: true }).click()
-  const firstFrame = await launch(first.page)
-  await finishTrial(first.page, firstFrame, '英', 1)
-  await synced(first.page, 1)
-  assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
-  assert.equal((await remoteCheckpoint())!.progress.lesson.policy, 'grade2-trace-independent-preview-v7')
-  await first.context.close()
-  console.log('First teaching step confirmed in real cloud; no acquisition answer fabricated.')
+  if (native) await acceptNative(first)
+  else {
+    const firstFrame = await launch(first.page)
+    await finishTrial(first.page, firstFrame, '英', 1)
+    await synced(first.page, 1)
+    assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+    assert.equal((await remoteCheckpoint())!.progress.lesson.policy, 'grade2-trace-independent-preview-v7')
+    await first.context.close()
+    console.log('First teaching step confirmed in real cloud; no acquisition answer fabricated.')
 
-  const second = await newPage()
-  await login(second.page)
-  let frame = await launch(second.page)
-  const teacher = () => frame.getByRole('region', { name: 'Stroke order teacher' })
-  await expect(teacher()).toHaveAttribute('data-step', '2')
-  await expect(teacher().locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '0')
-  await finishTrial(second.page, frame, '英', 2)
-  await synced(second.page, 2)
-  await second.context.setOffline(true)
-  await finishTrial(second.page, frame, '英', 3)
-  await expect(teacher()).toHaveAttribute('data-step', '4')
-  assert.equal((await localCheckpoint(second.page))!.progress.revision, 3)
-  assert.equal((await remoteCheckpoint())!.progress.revision, 2)
-  await second.context.setOffline(false)
-  await second.page.reload()
-  frame = await launch(second.page)
-  await expect(teacher()).toHaveAttribute('data-step', '4')
-  await expect(teacher().locator('.teacher-supplied-stroke')).toHaveCount(2)
-  await synced(second.page, 3)
-  console.log('Fresh-browser resume and offline teaching/reconnect confirmed against real cloud.')
-  for (const step of [4, 5]) await finishTrial(second.page, frame, '英', step)
-  await expect(teacher()).toHaveAttribute('data-character-index', '1')
-  await synced(second.page, 5)
-  assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
-  for (const step of [1, 2, 3, 4, 5]) await finishTrial(second.page, frame, '雄', step)
-  await expect(teacher()).toHaveCount(0)
-  await synced(second.page, 10)
-  assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
-  await expect(frame.locator('.slay-writing-integration')).toBeVisible()
-  await expect(frame.locator('.skywriting-trace-character')).toHaveCount(2)
-  await expect(frame.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
-  assert.equal((await remoteCheckpoint())!.acquisition.flow.prompt?.kind, 'show-copy')
-  await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
-  await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
-  await synced(second.page, 11)
-  assert.equal((await remoteCheckpoint())!.acquisition.revision, 1)
-  assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 0)
-  const saved = await remoteCheckpoint()
-  await second.context.close()
-  console.log('Both characters completed before Slay acquisition; unscored trace saved atomically.')
-  const third = await newPage()
-  await login(third.page)
-  const resumed = await launch(third.page)
-  await expect(resumed.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
-  await expect(resumed.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
-  await expect(resumed.locator('.skywriting-trace-character')).toHaveCount(0)
-  await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
-  assert.equal(saved!.acquisition.flow.prompt?.kind, 'target')
-  assert.deepEqual(await localCheckpoint(third.page), saved)
-  await resumed.getByRole('button', { name: 'Skip Timer', exact: true }).click()
-  await resumed.getByRole('button', { name: 'I got it right', exact: true }).click()
-  await expect(resumed.locator('.set-chip')).toContainText('Familiar DT')
-  await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|10)$/)
-  await synced(third.page, 12)
-  assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 1)
-  await resumed.getByRole('button', { name: 'Done for today', exact: true }).click()
-  await expect(resumed.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
-  await expect.poll(async () => (await remoteResults()).length, { timeout: 45_000 }).toBe(1)
-  const results = await remoteResults()
-  assert.equal(results[0].channel.stringValue, 'writing')
-  assert.equal(Number(results[0].correct.integerValue), 1)
-  assert.equal(Number(results[0].attempted.integerValue), 1)
-  await third.context.close()
-  console.log('One independent response then Familiar DT confirmed; Done saved one real-cloud result.')
+    const second = await newPage()
+    await login(second.page)
+    let frame = await launch(second.page)
+    const teacher = () => frame.getByRole('region', { name: 'Stroke order teacher' })
+    await expect(teacher()).toHaveAttribute('data-step', '2')
+    await expect(teacher().locator('svg[role="application"]')).toHaveAttribute('data-next-stroke', '0')
+    await finishTrial(second.page, frame, '英', 2)
+    await synced(second.page, 2)
+    await second.context.setOffline(true)
+    await finishTrial(second.page, frame, '英', 3)
+    await expect(teacher()).toHaveAttribute('data-step', '4')
+    assert.equal((await localCheckpoint(second.page))!.progress.revision, 3)
+    assert.equal((await remoteCheckpoint())!.progress.revision, 2)
+    await second.context.setOffline(false)
+    await second.page.reload()
+    frame = await launch(second.page)
+    await expect(teacher()).toHaveAttribute('data-step', '4')
+    await expect(teacher().locator('.teacher-supplied-stroke')).toHaveCount(2)
+    await synced(second.page, 3)
+    console.log('Fresh-browser resume and offline teaching/reconnect confirmed against real cloud.')
+    for (const step of [4, 5]) await finishTrial(second.page, frame, '英', step)
+    await expect(teacher()).toHaveAttribute('data-character-index', '1')
+    await synced(second.page, 5)
+    assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+    for (const step of [1, 2, 3, 4, 5]) await finishTrial(second.page, frame, '雄', step)
+    await expect(teacher()).toHaveCount(0)
+    await synced(second.page, 10)
+    assert.equal((await remoteCheckpoint())!.acquisition.revision, 0)
+    await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+    await expect(frame.locator('.skywriting-trace-character')).toHaveCount(2)
+    await expect(frame.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
+    assert.equal((await remoteCheckpoint())!.acquisition.flow.prompt?.kind, 'show-copy')
+    await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
+    await synced(second.page, 11)
+    assert.equal((await remoteCheckpoint())!.acquisition.revision, 1)
+    assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 0)
+    const saved = await remoteCheckpoint()
+    await second.context.close()
+    console.log('Both characters completed before Slay acquisition; unscored trace saved atomically.')
+    const third = await newPage()
+    await login(third.page)
+    const resumed = await launch(third.page)
+    await expect(resumed.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
+    await expect(resumed.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
+    await expect(resumed.locator('.skywriting-trace-character')).toHaveCount(0)
+    await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|1\d|2[0-5])$/)
+    assert.equal(saved!.acquisition.flow.prompt?.kind, 'target')
+    assert.deepEqual(await localCheckpoint(third.page), saved)
+    await resumed.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    await resumed.getByRole('button', { name: 'I got it right', exact: true }).click()
+    await expect(resumed.locator('.set-chip')).toContainText('Familiar DT')
+    await expect(resumed.getByRole('timer')).toHaveText(/^00:(?:0[1-9]|10)$/)
+    await synced(third.page, 12)
+    assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 1)
+    await resumed.getByRole('button', { name: 'Done for today', exact: true }).click()
+    await expect(resumed.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect.poll(async () => (await remoteResults()).length, { timeout: 45_000 }).toBe(1)
+    const results = await remoteResults()
+    assert.equal(results[0].channel.stringValue, 'writing')
+    assert.equal(Number(results[0].correct.integerValue), 1)
+    assert.equal(Number(results[0].attempted.integerValue), 1)
+    await third.context.close()
+    console.log('One independent response then Familiar DT confirmed; Done saved one real-cloud result.')
 
-  const fourth = await newPage()
-  await login(fourth.page)
-  const continued = await launch(fourth.page)
-  await expect(continued.locator('.set-chip')).toContainText('Familiar DT')
-  await synced(fourth.page, 12)
-  assert.deepEqual(await remoteResults(), results)
-  await expect
-    .poll(() =>
-      fourth.page.evaluate(
-        () => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-preview-results-v1:')).length,
-      ),
+    const fourth = await newPage()
+    await login(fourth.page)
+    const continued = await launch(fourth.page)
+    await expect(continued.locator('.set-chip')).toContainText('Familiar DT')
+    await synced(fourth.page, 12)
+    assert.deepEqual(await remoteResults(), results)
+    await expect
+      .poll(() =>
+        fourth.page.evaluate(
+          () => Object.keys(localStorage).filter((key) => key.startsWith('family-beta-preview-results-v1:')).length,
+        ),
+      )
+      .toBe(1)
+    const nextTeacher = continued.getByRole('region', { name: 'Stroke order teacher' })
+    const skipTimer = continued.getByRole('button', { name: 'Skip Timer', exact: true })
+    const correct = continued.getByRole('button', { name: 'I got it right', exact: true })
+    let nextRevision = 12
+    for (let trial = 0; trial < 30 && !(await nextTeacher.isVisible()); trial++) {
+      // Real cloud readback can outlast a Familiar DT's ten-second window.
+      // Review the actual prompt whether the timer was skipped or expired.
+      await expect(skipTimer.or(correct)).toBeVisible()
+      if (await skipTimer.isVisible()) await skipTimer.click()
+      else console.log(`Trial ${trial + 1}: response window already ended; normal review is visible.`)
+      await correct.click()
+      await synced(fourth.page, ++nextRevision)
+      console.log(`Repeated practice checkpoint ${nextRevision} confirmed in real cloud.`)
+    }
+    await expect(nextTeacher).toHaveAttribute('data-character-index', '0')
+    await expect(nextTeacher).toHaveAttribute('data-step', '1')
+    const nextCheckpoint = (await remoteCheckpoint())!
+    assert.equal(nextCheckpoint.progress.lesson.targets[nextCheckpoint.acquisition.flow.targetIndex].text, '每个')
+    await fourth.context.close()
+    const fifth = await newPage()
+    await login(fifth.page)
+    const nextWord = await launch(fifth.page)
+    await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+    await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute(
+      'data-character-index',
+      '0',
     )
-    .toBe(1)
-  const nextTeacher = continued.getByRole('region', { name: 'Stroke order teacher' })
-  const skipTimer = continued.getByRole('button', { name: 'Skip Timer', exact: true })
-  const correct = continued.getByRole('button', { name: 'I got it right', exact: true })
-  let nextRevision = 12
-  for (let trial = 0; trial < 30 && !(await nextTeacher.isVisible()); trial++) {
-    // Real cloud readback can outlast a Familiar DT's ten-second window.
-    // Review the actual prompt whether the timer was skipped or expired.
-    await expect(skipTimer.or(correct)).toBeVisible()
-    if (await skipTimer.isVisible()) await skipTimer.click()
-    else console.log(`Trial ${trial + 1}: response window already ended; normal review is visible.`)
-    await correct.click()
-    await synced(fourth.page, ++nextRevision)
-    console.log(`Repeated practice checkpoint ${nextRevision} confirmed in real cloud.`)
+    await synced(fifth.page, nextRevision)
+    assert.deepEqual(await remoteResults(), results)
+    console.log('Fresh-browser result/DT recovery and next-word guided teaching resume confirmed.')
   }
-  await expect(nextTeacher).toHaveAttribute('data-character-index', '0')
-  await expect(nextTeacher).toHaveAttribute('data-step', '1')
-  const nextCheckpoint = (await remoteCheckpoint())!
-  assert.equal(nextCheckpoint.progress.lesson.targets[nextCheckpoint.acquisition.flow.targetIndex].text, '每个')
-  await fourth.context.close()
-  const fifth = await newPage()
-  await login(fifth.page)
-  const nextWord = await launch(fifth.page)
-  await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
-  await expect(nextWord.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute(
-    'data-character-index',
-    '0',
-  )
-  await synced(fifth.page, nextRevision)
-  assert.deepEqual(await remoteResults(), results)
-  console.log('Fresh-browser result/DT recovery and next-word guided teaching resume confirmed.')
   assert.deepEqual(errors, [])
   acceptancePassed = true
   console.log(
     JSON.stringify({
       passed: true,
       sourceRevision: revision,
+      grade,
       cloudTeachingResume: true,
       offlineReconnect: true,
       wholeWordBeforeAcquisition: true,
       acquisitionFreshBrowserResume: true,
-      traceIndependentThenDistractors: true,
+      traceIndependentThenDistractors: !native,
+      nativeAcquisitionSequencePreserved: native,
       completedResultFreshBrowserResume: true,
       nextWordTeachingFreshBrowserResume: true,
       realFamilyRecordsTouched: false,

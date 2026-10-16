@@ -4,7 +4,6 @@ import { firebaseAppCheckHeaders } from '../firebaseSdkRuntime.ts'
 import { documentValue, plainValue } from '../firestoreClient.ts'
 import { isRetirementKey } from './acquisitionRetirement.ts'
 import { chooseCheckpointWinner } from './checkpointConflict.ts'
-import { chooseWritingPayload } from './writingCheckpoint.ts'
 import { chooseNativeWritingPayload, nativeWritingPayload } from './nativeWritingCheckpoint.ts'
 import {
   isPracticeWorkspaceSyncKey,
@@ -14,6 +13,7 @@ import {
   practiceWorkspaceSyncAdapter,
   validatePracticeWorkspaceSyncPayload,
 } from './practiceWorkspaceStorage.ts'
+import { chooseWritingPayload } from './writingCheckpoint.ts'
 
 type StoragePort = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 type SyncRecord = { schema: 1; childId: string; key: string; payload: string; generation: number }
@@ -303,9 +303,17 @@ export function createDeviceSyncRepository(options: {
           continue
         }
         if (online !== baseline) {
-          const writingConflict = (workspaceSyncKey || nativeWritingKey) && [local, online].some(raw => raw && JSON.parse(raw).schema === 2)
-          const writingWinner = writingConflict && online && server
-            ? (nativeWritingKey ? chooseNativeWritingPayload : chooseWritingPayload)(local, online, childId, server.updateTime) : null
+          const writingConflict =
+            (workspaceSyncKey || nativeWritingKey) && [local, online].some((raw) => raw && JSON.parse(raw).schema === 2)
+          const writingWinner =
+            writingConflict && online && server
+              ? (nativeWritingKey ? chooseNativeWritingPayload : chooseWritingPayload)(
+                  local,
+                  online,
+                  childId,
+                  server.updateTime,
+                )
+              : null
           const candidate = key.startsWith('family-beta-acquisition-v1:')
             ? acquisitionConflictCandidate
             : workspaceSyncKey
@@ -313,10 +321,11 @@ export function createDeviceSyncRepository(options: {
               : () => null
           const localCandidate = candidate(local)
           const onlineCandidate = candidate(online || '')
-          const winner =
-            writingConflict
-              ? writingWinner ? { winner: { id: writingWinner === 'online' ? 'writing-online' : 'writing-local' } } : null
-              : localCandidate && onlineCandidate && server
+          const winner = writingConflict
+            ? writingWinner
+              ? { winner: { id: writingWinner === 'online' ? 'writing-online' : 'writing-local' } }
+              : null
+            : localCandidate && onlineCandidate && server
               ? chooseCheckpointWinner([localCandidate, onlineCandidate], { referenceNow: server.updateTime })
               : null
           if (!winner?.winner) throw new PracticeSyncConflictError()

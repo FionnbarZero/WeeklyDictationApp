@@ -2,6 +2,16 @@
 
 The owner has approved both hosted prototypes and authorized native Kindergarten/Grade 5 integration. Earlier checkpoints below are historical evidence, not competing approval requests. Hosting and real-family boundaries remain unchanged.
 
+## Exit race review and release continuation
+
+The owner authorized the separate Astra · Extra High review. It independently passed 82 focused units and all 26 existing browser cases, but reproduced one P2 in Chromium and WebKit: hold the native write lock, queue a Kindergarten answer, Exit, then release the lock; the checkpoint advances from revision 1 to 2 and the exited activity reappears. Main independently reproduced it. No application edits occurred during review; synthetic save-failure retry remained usable. A synthetic older-strategy snapshot limitation was not established as a supported deployed-record regression and is not a confirmed blocker.
+
+The owner then requested: **“fix it, and then proceed with all of the next steps bypassing approval.”** Continue ordinary repair, review, package/backend/recovery, protected PR/merge and canonical release without repetitive permission prompts; do not waive tests, alter security, reset records or broaden product behavior. Existing prototype approval stands.
+
+Application `304257e` added mounted-visit/Exit cancellation and six new queued teacher/answer/Done cases across both grades (twelve browser-engine cases). Its new regression fails on retained `5b2feec` as expected. Type/lint and 1,149 units passed, but browser verification and independent review caught a new Kindergarten ID mismatch: its display session ID is not its native saved-visit ID. This rejected candidate is not acceptance evidence. Corrected app `0b46667` captures `store.current.sessionId`, invalidates the visit synchronously on Exit and layout cleanup, and checks the captured visit inside the write lock. The approved UI, timer and teaching policy are unchanged. Retained corrected synthetic package: `/tmp/native-writing-exit-repair-v2-dist`. Final browser/re-review and later release evidence must be recorded before publication.
+
+Fresh fetch: `origin/main=af679289f56789c57379e007241976e6d02165b1`, zero incoming commits. Primary checkout and frozen preview packages remain untouched. Cloud-checker extension uses the same uniquely created disposable-family scope and verified cleanup, with exact revision/tree and grade inputs; it does not authorize real-family access. Canonical activation flags are prepared separately from publication.
+
 ## Native family integration candidate — October 15, 2026
 
 Owner feedback: **“they both look great. lets proceed with integrating them in to the regular app.”** This resolves the working-prototype gate for both grades. Continue the already confirmed **GPT-6 Astra · Extra High** stage; do not ask again for prototype/model approval.
