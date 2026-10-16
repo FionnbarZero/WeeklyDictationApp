@@ -1,5 +1,39 @@
 # Kindergarten and Grade 5 writing extension
 
+## Canonical publication and live acceptance — October 16, 2026
+
+The owner approved the Grade 2 and Kindergarten/Grade 5 working prototypes, requested regular-app integration and independent review, then authorized the repair and all ordinary next release steps without repeated approval. Required verification, child-data, security and protected-merge gates were retained. The deployment skill guided exact-artifact release to the existing canonical Cloudflare service, not a new preview. No other host, authentication, database policy, DNS, real-family data or existing preview was changed; no new email was sent.
+
+### Exact release
+
+- [PR #73](https://github.com/FionnbarZero/WeeklyDictationApp/pull/73) merged at 08:49:18 UTC as **`db13db1f3305d5d893598b3edae0dce8cba9c1ce`**. Its Git tree `1546cd6ab43190b763fdcb9d636084a006a627dd` exactly matches reviewed head `9e9728f` and CI test-merge `677974e`.
+- Candidate `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-family-sync-rJLwFx`; artifact tree **`a1cbfdb50b4d07ac8e7873e84949fcc41569813ceb7cbdb4b532b5ca9d1a518c`**, 156 manifest files / 154 public files.
+- Active Cloudflare version **`332534c3-e587-4971-b122-013ee3f729bf`**, 100% at `https://ninjadojo.meghangames.com`. Exact canonical manifest, 154 public file hashes and 181 header responses pass. The regular beta is live, not an isolated prototype.
+- Inactive guarded recovery **`43c75748-3c6c-4c36-b4ca-de966b4775f5`** retains predecessor `3971549` and binds compatibility to the merged candidate. Package `/var/folders/mw/pmwtc2hn5yx2l1k9_kxn_jv00000gn/T/ninja-dojo-offline-rollback-SWHpHA/artifact`, tree `648da039deb21b7fff254253378fb2954f0e517bc13bc6dd3eadebd9711fc485`.
+- Private bound receipts/journal: `/private/tmp/ninja-cross-grade-writing-release.ksDLUY/release-db13db1.json` and `journal-db13db1.json`. Record SHA-256 `ecc4263acba53f55bc11ae39e8a0757c197d8df319fc88b8b59d42f033bb8b72`; journal phase `activated`.
+
+### Verification and preserved limits
+
+- All five final-head jobs pass in [run 38869392247](https://github.com/FionnbarZero/WeeklyDictationApp/actions/runs/38869392247): 1,149 units; type/lint/format/tooling/dependency checks; production/reference builds; emulator policies; 78 general browser cases and all dedicated public/prototype/v7/v8/cross-grade gates. Legacy inventory remains exactly 504 (30 serial passes + 458 parallel passes + 16 explicit conditional skips). Current enabled writing passes 114, with 14 conditional predecessor cases separately covered by the retained actual-predecessor run.
+- Fourteen actual-predecessor tests at `beea373` remain explicitly source-identified. Application files, flags and Vite configuration are unchanged through merged `db13db1`; these are retained source-equivalent evidence, not falsely relabelled final-package runs. Thirty-eight native/Grade 2 Chrome/WebKit regressions remain recorded separately.
+- Final exact merged provider run: **12/12 desktop/tablet passes**, zero skips/failures, including all-grade writing through predecessor → candidate → guarded recovery → candidate, sign-in/renewal and temporary blob media. Output `/tmp/native-writing-provider-db13db1`.
+- Independent owner-authorized Astra · Extra High final review rehashed all candidate/predecessor/recovery files and closed without findings. Approved teacher/writing source and compiled CSS are unchanged; compiled writing JS matches after revision/import-hash normalization. Header update only rebinds 74 added/73 removed hashed JS/CSS paths; all security, runtime, cache directives and bindings remain unchanged. Exact transition scope `6b55ee33ed1403a1937695c0c0d9e05098431e7ed446a4fb6a33ba614bd0e51b`.
+- Exact merged package against the real backend: all three grades pass teaching checkpoint/fresh-browser recovery, offline/reconnect, every character before acquisition, native acquisition policy, Done exactly once, result reload and next-word guided teaching. Three disposable accounts and **24** documents removed. Live canonical repeats all three grades successfully; three further disposable accounts and **23** documents removed. Receipts `backend-db13db1.json` and `live-backend-db13db1.json` bind the original scoped cleanup receipts. No real-family records touched; physical audio/Pencil is not simulated acceptance.
+- First activation check reported one unavailable `assets/gameHistory-CxtV9kAw.js`; a subsequent read-only request returned 200. Full read-only verification passed, then journal reconciliation and a further full verification passed. Exactly one activation was performed; no blind redeploy, cache purge or inferred root cause. Evidence `live-hosting-db13db1.json`.
+
+### Bounded owner smoke handoff
+
+Permanent links: [Kindergarten](https://ninjadojo.meghangames.com/?grade=kindergarten), [Grade 2](https://ninjadojo.meghangames.com/?grade=grade2), [Grade 5](https://ninjadojo.meghangames.com/?grade=grade5). All target **live regular-app build `db13db1`**. Allow about **8–12 minutes**, starting with one grade.
+
+The owner's in-app browser still showed older cached `2f20c6d` with update-ready after normal close/reopen. Regular Chrome showed `3971549`, then update-ready; its connection ended after the newly created verification tab closed. Neither older displayed build is claimed updated. Fresh live acceptance browsers use exact `db13db1`. Preserve user tabs/data: finish/exit active practice, close all Ninja Dojo tabs, reopen and confirm `db13db1` before testing. If still older, report its build and hold testing there; never clear site data or reset learners to force the new sequence.
+
+1. iPad: automatic word audio after Start, Hear button, finger/Pencil strokes and usable portrait/landscape boxes, particularly a four-character Grade 5 word.
+2. Every character receives its approved five-step teacher before acquisition; the next new word returns to the teacher. Grade 2 retains one whole-word trace → one independent → distractors; Kindergarten/Grade 5 retain native acquisition rules.
+3. Report pauses the activity; Exit/reopen/reload resumes confirmed progress; Done records one visit result. On iMac also check mouse strokes, Type/Hear/Skip Timer; use Check sound & microphone for a brief temporary recording if desired, not saved child audio.
+4. Send feedback through the existing problem reporter without child-identifying details. An already-started target keeps its pinned sequence; the next new target receives teaching. Correction redesign and target editing remain separately unfinished; handwriting/recordings stay temporary-only.
+
+Historical unpublished and permission checkpoints below are superseded by this verified release. No additional release approval is being requested.
+
 ## Remote timing diagnosis — October 16, 2026
 
 Source `2f9d2562bd8e576ea480f8d664a460080a2bf04a` passes the full local legacy matrix: **488 passed, 16 conditional skips, zero failures, 27.7 minutes**, three workers (`/tmp/native-legacy-2f9d256`). Eight standalone guarded Stroke Order/Scrolls recovery cases also pass serially in 36.9 seconds (`/tmp/native-standalone-recovery-2f9d256`); the separately recorded fourteen actual-predecessor writing cases remain distinct evidence.
