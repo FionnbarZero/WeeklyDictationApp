@@ -117,7 +117,7 @@ try {
   expect(after[0].reviewedTrials).toEqual(before[0].reviewedTrials)
   for (const grade of ['Grade 2', 'Kindergarten']) {
     await second.page.getByLabel('Child profile').selectOption({ label: `Synthetic ${grade} · ${grade}` })
-    await expect(second.page.frameLocator('iframe').getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(second.page.frameLocator('iframe').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   }
   const denied = await fetch(
     `https://firestore.googleapis.com/v1/projects/weeklydictationapp/databases/(default)/documents/families/family-${uid}/children`,

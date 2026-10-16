@@ -169,7 +169,7 @@ async function login(page: Page) {
 }
 async function launch(page: Page) {
   const frame = page.frameLocator('iframe:visible')
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   if ((await page.getByLabel('Practice week').inputValue()) !== week) {
     await page.getByLabel('Practice week').selectOption(week)
     await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', week)
@@ -466,7 +466,7 @@ try {
     await synced(third.page, 12)
     assert.equal((await remoteCheckpoint())!.progress.assessments.filter((a) => a.countsTowardWeeklyScore).length, 1)
     await resumed.getByRole('button', { name: 'Done for today', exact: true }).click()
-    await expect(resumed.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+    await expect(resumed.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
     await expect.poll(async () => (await remoteResults()).length, { timeout: 45_000 }).toBe(1)
     const results = await remoteResults()
     assert.equal(results[0].channel.stringValue, 'writing')
