@@ -12,9 +12,10 @@ import {
   crossGradePreviewKey,
 } from '../../src/writingAcquisition/crossGradeLessons.ts'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, baseURL }) => {
+  const allowedOrigin = new URL(baseURL!).origin
   await page.route('**/*', (route) =>
-    new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort(),
+    new URL(route.request().url()).origin === allowedOrigin ? route.continue() : route.abort(),
   )
   await page.addInitScript(() => {
     Object.defineProperty(window, 'speechSynthesis', {
@@ -61,6 +62,22 @@ async function draw(page: Page, character: string) {
     await expect(pad).toHaveAttribute('data-next-stroke', String(i + 1))
   }
 }
+test('direct grade links open the intended prototype without a login', async ({ page }) => {
+  for (const [query, grade] of [
+    ['kindergarten', 'Kindergarten'],
+    ['grade5', 'Grade 5'],
+  ]) {
+    const entry = process.env.CROSS_GRADE_URL ? '/' : '/cross-grade-writing-preview.html'
+    await page.goto(`${entry}?grade=${query}`)
+    await expect(page.getByLabel('Grade', { exact: true })).toHaveValue(grade)
+    await expect(page.getByRole('button', { name: 'Start or resume writing', exact: true })).toBeEnabled()
+    if (process.env.CROSS_GRADE_REVISION)
+      await expect(page.locator('meta[name="build-revision"]')).toHaveAttribute(
+        'content',
+        process.env.CROSS_GRADE_REVISION,
+      )
+  }
+})
 for (const grade of ['Kindergarten', 'Grade 5']) {
   test(`${grade}: whole-word teacher, native acquisition, next-word teacher and isolated resume`, async ({
     page,

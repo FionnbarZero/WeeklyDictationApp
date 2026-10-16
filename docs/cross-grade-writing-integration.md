@@ -1,10 +1,12 @@
 # Kindergarten and Grade 5 writing extension
 
+The original local checkpoint below is now followed by the separately authorized [hosted preview](#hosted-ipad-preview--october-15-2026). The family-app integration and real-family/cloud boundaries are unchanged.
+
 ## Scope and checkpoint — October 15, 2026
 
 The owner approved the Slay appearance and asked to extend the writing integration to the other grades, then confirmed **GPT-6 Astra · Extra High** for this stage. The approved five-step sequence is retained; the earlier redundant third tracing trial is not restored.
 
-This checkpoint is an **isolated working cross-grade prototype and shared controller foundation**, not completed family-app integration or publication. The actual Kindergarten and Grade 5 launchers, existing family records, cloud sync and canonical Ninja Dojo have not changed. The older hosted Grade 2 comparison is not this build. The primary checkout's unrelated owner changes are untouched; implementation is in `codex/grand-scroll-integration`.
+This original local checkpoint was an **isolated working cross-grade prototype and shared controller foundation**, not completed family-app integration or publication. The actual Kindergarten and Grade 5 launchers, existing family records, cloud sync and canonical Ninja Dojo have not changed. The older hosted Grade 2 comparison is not this build. The primary checkout's unrelated owner changes are untouched; implementation is in `codex/grand-scroll-integration`.
 
 ### Included
 
@@ -68,4 +70,26 @@ After the separate test website is authorized and exact-file verified, provide i
 3. Obtain the narrow cross-grade independent review with explicit authorization, then exact-candidate compatibility, cloud/offline/second-device and guarded-recovery checks. Retain valid unchanged evidence; do not repeat unrelated broad programs.
 4. Complete the existing protected release gates. Bounded reviewed publication is **GPT-6.1 Sol · High**. Verify exact served source/assets before a physical-device handoff; use canonical links for ordinary beta testing and identify any isolated pre-release link explicitly.
 
-No PR, merge, deployment, real-family access, account/security changes, data reset or email occurred in this stage.
+No PR, merge, deployment, real-family access, account/security changes, data reset or email occurred in the original local implementation stage.
+
+## Hosted iPad preview — October 15, 2026
+
+The owner requested websites accessible on the iPads and then asked to receive the website by email. The deployment skill guided a separate Firebase preview-channel release, not a canonical or existing-channel replacement. Publication routing is **GPT-6.1 Sol · High**; no application code or approved teaching rules changed. Native grade integration remains **GPT-6 Astra · Extra High** after owner working-prototype approval.
+
+- [Kindergarten iPad test](https://weekly-dictation-staging--cross-grade-writing-v1-5m9ohsyl.web.app/?grade=kindergarten)
+- [Grade 5 iPad test](https://weekly-dictation-staging--cross-grade-writing-v1-5m9ohsyl.web.app/?grade=grade5)
+- Exact frozen application: **Prototype 1 / `33298205acd1d9d0179d547e0c4ac92feacc8381`**, unchanged six-file retained package and JS/CSS hashes above. The hidden build manifest is retained locally, not uploaded; only the five intended public files are published.
+- Project/site: `weekly-dictation-staging`; new channel `cross-grade-writing-v1`.
+- Hosting version: `d4f8ec8574a7f0f4`; release: `1792121301591000`.
+- Expiry: **November 14, 2026 at 7:28 p.m. Pacific** (`2026-11-15T03:28:19.245468690Z`).
+- Deployed exactly once using repository-pinned Firebase CLI 15.32.1 / Node 24.22.0 with `--expires 30d --no-authorized-domains`. Configuration: `firebase.cross-grade-writing-preview.json`.
+- Both grade root links, entry HTML, JS, CSS and guide-license files match the retained bytes. All six expected security/cache headers match on all seven checked responses. No security/auth/domain/database policies were deployed or changed.
+- Before/after provider inventories confirm all eight existing channels retain their release/version identities, including the old Slay comparison, v8/v7/v4 and staging live. No Cloudflare/canonical operation occurred.
+- Publication checks pass: **1,134 units, typecheck, lint and production build/performance**. The browser runner now accepts an explicit hosted URL, blocks unrelated origins, and verifies both direct grade links without login; its local direct-link regression also passes.
+- **All 18 hosted browser cases pass:** six Chromium landscape (2.1 minutes), six WebKit landscape (2.4 minutes), six WebKit portrait (2.3 minutes). These verify both root grade links and exact source, complete character teaching, grade-specific guide visibility, native acquisition, next-word teacher, report/clue pause, isolated reload/resume and longer-word layout/Done controls. Final hosted Kindergarten and four-character Grade 5 portrait screenshots were visually inspected. Speech is mocked; physical iPad audio, touch/Pencil and software keyboard remain owner checks, not claimed acceptance.
+
+Retained provider receipts: `/tmp/ninja-cross-grade-hosting-before.json`, `/tmp/ninja-cross-grade-deploy.json`, `/tmp/ninja-cross-grade-hosting-after.json`. Hosted browser logs/output directories use `/tmp/ninja-cross-grade-hosted-chromium`, `/tmp/ninja-cross-grade-hosted-webkit-landscape` and `/tmp/ninja-cross-grade-hosted-webkit-portrait` (logs add `.log`).
+
+No real-family accounts/progress, PRs, merges, main-branch pushes, authentication, security rules or existing websites were changed. Public access is for the isolated teacher-source prototype; no login is required. Progress stays in each browser, does not sync between iPads, and never retains unfinished learner ink. Warmup, family score history, cloud saving and the revised correction routine remain outside this preview.
+
+**Email delivery:** At the owner's explicit request, both verified grade links, exact version, November 14 Pacific expiry, an 8–12 minute physical-iPad checklist and the limits above were sent to the previously confirmed recipient. Gmail returned message/thread `1a142c4728428131` with `SENT`. No further email or recurring follow-up is scheduled. The next action is the owner's working-prototype feedback; the publication authorization question and cross-device-link blocker are resolved.
