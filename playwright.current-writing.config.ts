@@ -5,6 +5,7 @@ process.env.FAMILY_CURRENT_WRITING = '1'
 export default defineConfig({
   ...family,
   timeout: 180_000,
+  use: { ...family.use, actionTimeout: 20_000 },
   testIgnore: [],
   testMatch: [
     'writingTeaching.spec.ts',

@@ -120,5 +120,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: family-browser-failure-evidence
-          path: test-results/family-sync/
+          path: |
+            test-results/family-sync/
+            test-results/current-writing/
           retention-days: 7

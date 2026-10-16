@@ -50,7 +50,8 @@ for (const slug of ['kindergarten', 'grade5']) {
       let frame = await launch(page)
       for (let i = 0; i < 4; i++) {
         await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
-        await frame.getByRole('button', { name: i === 3 ? 'I need practice' : 'I got it right', exact: true }).click()
+        // The retained predecessor uses the original review labels.
+        await frame.getByRole('button', { name: i === 3 ? 'I got it wrong' : 'I got it right', exact: true }).click()
         await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
       }
       const legacy = await read()
