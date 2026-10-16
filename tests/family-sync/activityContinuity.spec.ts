@@ -98,7 +98,7 @@ for (const [slug, grade] of grades) {
   })
 }
 
-test('manual pause survives reporting, inner Exit pauses, and discard needs confirmation', async ({ page }) => {
+test('manual pause survives reporting and Writing Exit returns to its grade menu', async ({ page }) => {
   const frame = await writing(page, 'grade5')
   await frame.getByRole('button', { name: 'Pause', exact: true }).click()
   await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
@@ -106,16 +106,15 @@ test('manual pause survives reporting, inner Exit pauses, and discard needs conf
   await page.keyboard.press('Escape')
   await page.waitForTimeout(1200)
   await expect(frame.getByRole('timer')).toHaveText(remaining)
+  const checkpoint = () =>
+    page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith('family-beta-acquisition-v1:')))
+  const reviewed = await checkpoint()
+  expect(reviewed.length).toBeGreaterThan(0)
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
-  page.once('dialog', (dialog) => dialog.dismiss())
-  await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
-  await page.getByRole('button', { name: 'Resume Grade 5 activity', exact: true }).click()
-  await expect(frame.getByRole('timer')).toHaveText(remaining)
-  await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
-  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: 'Grade 5', exact: true })).toBeVisible()
+  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your paused work' })).toHaveCount(0)
+  expect(await checkpoint()).toEqual(reviewed)
 })
 
 test('changing weeks and children keeps distinct owners and restores the original document', async ({ page }) => {
@@ -157,13 +156,18 @@ test('changing weeks and children keeps distinct owners and restores the origina
   expect(results[0]).toMatchObject({ childId: 'synthetic-g5', grade: 'Grade 5', correct: 1, attempted: 1 })
 })
 
-test('a game feedback delay stays paused behind reporting and navigation', async ({ page }) => {
+test('a game feedback delay stays paused behind reporting and navigation, and discard needs confirmation', async ({
+  page,
+}) => {
   await page.goto('/?grade=grade5')
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
   await page.getByRole('button', { name: 'Memory Lanterns', exact: true }).click()
   const frame = page.frameLocator('iframe:visible')
   const cards = frame.locator('.lg-memory-card')
   await expect(cards.first()).toBeVisible()
+  await frame.locator('body').evaluate((body) => {
+    body.dataset.discardProbe = 'original-game'
+  })
   const faces = await cards.locator('.lg-card-face b').allTextContents()
   const second = faces.findIndex((face) => face !== faces[0])
   await cards.nth(0).click()
@@ -184,6 +188,15 @@ test('a game feedback delay stays paused behind reporting and navigation', async
   await expect(pausedWork.getByRole('button', { name: 'Resume Memory Lanterns', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Activities', exact: true }).click()
   await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  // Games retain the paused-work flow. Dismissing Discard must preserve its
+  // original document; accepting it later removes only that unfinished frame.
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await pausedWork.getByRole('button', { name: 'Discard unfinished Memory Lanterns', exact: true }).click()
   await pausedWork.getByRole('button', { name: 'Resume Memory Lanterns', exact: true }).click()
+  await expect(frame.locator('body')).toHaveAttribute('data-discard-probe', 'original-game')
   await expect(cards.first()).toBeVisible()
+  await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+  page.once('dialog', (dialog) => dialog.accept())
+  await pausedWork.getByRole('button', { name: 'Discard unfinished Memory Lanterns', exact: true }).click()
+  await expect(page.locator('iframe[title="Memory Lanterns"]')).toHaveCount(0)
 })
