@@ -51,7 +51,7 @@ writeFileSync(
   entry,
   readFileSync(entry, 'utf8').replace(
     /(<body\b[^>]*>)/,
-    `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">Writing reliability · Prototype 1 · ${revision.slice(0, 7)} · October 16 lessons · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
+    `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">Writing reliability · Prototype 2 · ${revision.slice(0, 7)} · Audio and exit repairs · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
   ),
 )
 const files = artifactFileRecords(out).filter((file) => file.path !== 'dojo-launch-manifest.json')
@@ -60,7 +60,7 @@ writeFileSync(
   JSON.stringify(
     {
       schema: 1,
-      prototype: 'Writing reliability / Prototype 1',
+      prototype: 'Writing reliability / Prototype 2',
       sourceRevision: revision,
       curriculumSnapshotDate: '2026-10-16',
       targetActivation: 'scheduled-start-date',

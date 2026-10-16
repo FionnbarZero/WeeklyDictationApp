@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
-import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
 
 const grades = [
   {
@@ -49,7 +49,7 @@ test.beforeEach(async ({ page }) => {
 
 async function dojo(page: Page, grade: (typeof grades)[number]) {
   await page.goto(`/family-beta-preview.html?grade=${grade.slug}`)
-  await expect(page.getByRole('note')).toContainText('Prototype 1')
+  await expect(page.getByRole('note')).toContainText('Prototype 2')
   const frame = page.frameLocator('iframe:visible')
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await expect(frame.locator('.learning-hub-activity')).toHaveCount(4)
