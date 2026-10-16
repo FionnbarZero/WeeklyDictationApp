@@ -115,7 +115,7 @@ test('manual pause survives reporting, inner Exit pauses, and discard needs conf
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Discard unfinished activity', exact: true }).click()
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
 })
 
 test('changing weeks and children keeps distinct owners and restores the original document', async ({ page }) => {
@@ -126,9 +126,9 @@ test('changing weeks and children keeps distinct owners and restores the origina
   })
   const week = await page.locator('iframe:visible').getAttribute('data-family-week')
   await page.getByLabel('Practice week').selectOption('2026-09-21')
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   await page.getByLabel('Child profile').selectOption('synthetic-k')
-  await expect(frame.getByRole('heading', { name: /Ready for your next/ })).toBeVisible()
+  await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   await page.getByLabel('Child profile').selectOption('synthetic-g5')
   await expect(frame.locator('body')).toHaveAttribute('data-owner-probe', 'original-grade5')
   await expect(frame.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()

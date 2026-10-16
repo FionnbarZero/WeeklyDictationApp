@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Approved writing reliability — integration and release
+
+The owner accepted Prototype 2 (`2a435f9`) and requested continuation on October 16. Preserve that frozen interaction reference, integrate the already-reviewed homepage from current main `4825f78`, then complete the focused independent Astra · Extra High review, exact-package saving/offline/cross-device and guarded-recovery gates, protected integration and verified canonical publication. Ordinary release authority remains bounded by those safeguards. Regular-app smoke testing is premature until the served build passes. The accepted prototype's audio/exit/current-lesson repairs do not implement the separately queued correction, target editing, Warmup redesign or Google voice requests. Do not reopen prototype approval or silently reset reports/progress.
+
 ## Current priority — iPad writing reliability, October 16
 
 Seven owner reports rejected isolated `054645d` acceptance: Grade 5 audio/advance blockage, Grade 2 Warmup Exit trapping the grade frame, Kindergarten acquisition speed, plus deferred Warmup layout questions and positive stroke-teacher audio/resume observations. [All seven mappings (46 retained reports total)](/Users/meghanoreillygreen/Documents/meghangame/WeeklyDictationApp/docs/smoke-report-remediation-2026-10-14.md#october-16-ipad-writing-prototype-feedback). No reports were cleared.

@@ -202,6 +202,12 @@ No real-family accounts/progress, PRs, merges, main-branch pushes, authenticatio
 
 **Email delivery:** At the owner's explicit request, both verified grade links, exact version, November 14 Pacific expiry, an 8–12 minute physical-iPad checklist and the limits above were sent to the previously confirmed recipient. Gmail returned message/thread `1a142c4728428131` with `SENT`. No further email or recurring follow-up is scheduled. The next action is the owner's working-prototype feedback; the publication authorization question and cross-device-link blocker are resolved.
 
+## Approved reliability integration — October 16
+
+The owner said “These look good” and then “OK, let's proceed with this” after the writing-first next-fixes list. This approves the working Prototype 2 interaction (`2a435f9`, retained package tree `bb615185e9f48b0039e951c08029ad79cc803905cb68e5b97aef1ff0ac73dc15`) and continuation through integration/release safeguards. The preview is frozen; integration incorporates current main `4825f78` and its published homepage cleanup without changing the approved writing UI, native teaching/scoring or response windows. The only merge conflict was historical status prose, retained on both sides.
+
+Remaining gates: scoped independent review; exact family package current-lesson/audio/exit parity; authenticated synthetic-family save/reload, offline/reconnect and second-device acceptance; predecessor/guarded recovery; final protected CI/merge and canonical served-build verification. Use test families only, preserve all reports and family progress, and keep correction redesign, target editor, Warmup layout and Google voice replacement outside this release. No canonical release or regular-app smoke readiness is established by this integration checkpoint.
+
 ## iPad audio and exit repair — Prototype 2
 
 The owner submitted seven iPad reports from `054645d` and authorized repairs. [All seven IDs and dispositions](/Users/meghanoreillygreen/Documents/meghangame/WeeklyDictationApp/docs/smoke-report-remediation-2026-10-14.md#october-16-ipad-writing-prototype-feedback) are preserved alongside the prior 39 reports. Nothing was cleared. This is a revision of the isolated reliability prototype, not a canonical release or acceptance of the prior prototype.

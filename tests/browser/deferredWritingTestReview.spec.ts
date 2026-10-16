@@ -128,7 +128,7 @@ test('exiting during collection discards the provisional writing review', async 
   await expect(confirmation).toBeVisible()
   await confirmation.getByRole('button', { name: 'Exit without saving' }).click()
 
-  await expect(page.getByRole('heading', { name: /Ready for your next challenge/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^(Grade 2|Grade 5)$/ })).toBeVisible()
   const stored = await storedReviewSnapshot(page)
   expect(stored.results).toHaveLength(0)
   expect(stored.scores).toHaveLength(0)

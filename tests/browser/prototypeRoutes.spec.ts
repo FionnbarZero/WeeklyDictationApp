@@ -2,8 +2,8 @@ import { expect, test } from './fixtures.ts'
 import { watchForUnexpectedBrowserErrors } from './prototypeSupport.ts'
 
 const prototypeRoutes = [
-  { route: '/grade5-learning-hub.html', heading: /Ready for your next challenge/ },
-  { route: '/kindergarten-learning-lab.html', heading: /Ready for your next adventure/ },
+  { route: '/grade5-learning-hub.html', heading: 'Grade 5' },
+  { route: '/kindergarten-learning-lab.html', heading: 'Kindergarten' },
   { route: '/tier2-reading-lab.html', heading: 'Follow each grade’s real learning path.' },
   { route: '/grade2-test-review-prototype.html', heading: /Collect every response/ },
   { route: '/learning-games-harness.html', heading: /Test all ten learning games/ },
