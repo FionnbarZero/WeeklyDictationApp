@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test'
 import family from './playwright.family-sync.config.ts'
 
 process.env.DOJO_FAMILY_PACKAGE = '1'
+process.env.FAMILY_CURRENT_WRITING = '1'
 // Current-week ordinary entry uses the real canonical packager/offline shell.
 // Only external services and learner records are synthetic in this local gate.
 export default defineConfig({
