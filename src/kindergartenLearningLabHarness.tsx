@@ -332,7 +332,9 @@ function KindergartenLearningLab() {
       const initial = startKindergartenAcquisitionLab(selectedCandidate)
       const store = import.meta.env.VITE_CROSS_GRADE_WRITING_PILOT === 'true'
         ? await familyWritingStore<AcquisitionTarget, KindergartenLabRevealMethod>(initial.targetSet,
-            kindergartenWritingLabProfile.acquisition, nativeWritingAdapter(kindergartenWritingDatasetForLab(selectedCandidate)),
+            kindergartenWritingLabProfile.acquisition, nativeWritingAdapter({
+              ...kindergartenWritingDatasetForLab(selectedCandidate), source: { ...selectedCandidate.source },
+            }),
             () => writingLaunch.current === launch)
         : familyAcquisitionStore<AcquisitionTarget, KindergartenLabRevealMethod>(initial.targetSet, kindergartenWritingLabProfile.acquisition, 'writing-dojo', 'tier-1')
       if (writingLaunch.current !== launch) return

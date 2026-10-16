@@ -15,8 +15,55 @@ import { crossGradeLessons } from '../src/writingAcquisition/crossGradeLessons.t
 import { createDeviceSyncRepository, PracticeSyncConflictError } from '../src/familyBeta/deviceSync.ts'
 import { documentValue, plainValue } from '../src/firestoreClient.ts'
 import { createHash } from 'node:crypto'
+import kindergartenSnapshot from '../public/curriculum/beta/kindergarten.json' with { type: 'json' }
+import grade5Snapshot from '../public/curriculum/beta/grade5.json' with { type: 'json' }
+import { inspectKindergartenWorkbook } from '../src/kindergartenSheetsImporter.ts'
+import { kindergartenWritingDatasetForLab } from '../src/kindergartenLab/acquisitionLab.ts'
+import { extractGrade5Presentation } from '../src/curriculum/adapters/grade5GoogleSlides.ts'
+import { grade5LabDatasets } from '../src/grade5Lab/writingPractice.ts'
+import {
+  createWritingLesson,
+  KINDERGARTEN_WRITING_POLICY,
+  GRADE5_WRITING_POLICY,
+} from '../src/application/writingAcquisition/lesson.ts'
+import type { SheetsWorkbookPayload, SlidesPresentationPayload } from '../src/curriculum/model.ts'
 
 const timestamp = '2026-10-16T00:00:00.000Z'
+
+test('every native source lesson retains the approved teacher pronunciation, meaning and character guides', () => {
+  const kindergarten = inspectKindergartenWorkbook(kindergartenSnapshot.payload as SheetsWorkbookPayload)
+    .filter((candidate) => candidate.status === 'valid')
+    .map((candidate) => ({
+      ...kindergartenWritingDatasetForLab(candidate),
+      source: { ...candidate.source },
+    }))
+  const grade5 = grade5LabDatasets(extractGrade5Presentation(grade5Snapshot.payload as SlidesPresentationPayload))
+  for (const [grade, datasets, policy, count] of [
+    ['Kindergarten', kindergarten, KINDERGARTEN_WRITING_POLICY, 16],
+    ['Grade 5', grade5, GRADE5_WRITING_POLICY, 25],
+  ] as const) {
+    const approved = crossGradeLessons(grade).flatMap((lesson) => lesson.targets)
+    let total = 0
+    for (const dataset of datasets) {
+      const lesson = createWritingLesson(dataset, policy)
+      const base = writingContext(lesson, 'parity-child')
+      const context = { ...base, identity: { ...base.identity, activityModule: 'writing-dojo' } }
+      const store = openAcquisitionStore(memory(), context, {
+        writing: nativeWritingAdapter(dataset),
+        now: () => timestamp,
+      })
+      for (const target of store.current.writing!.lesson.targets) {
+        const original = approved.find((item) => item.text === target.text)!
+        assert.equal(target.pinyin, original.pinyin, `${grade}: ${target.text} pronunciation`)
+        assert.equal(target.meaning, original.meaning, `${grade}: ${target.text} meaning`)
+        assert.equal(target.guideFingerprint, original.guideFingerprint)
+        total++
+      }
+      assert.deepEqual(store.current.envelope.lessonSnapshot!.targetSet.targets, dataset.words)
+    }
+    assert.equal(total, count)
+  }
+})
 function memory() {
   const values = new Map<string, string>()
   return {

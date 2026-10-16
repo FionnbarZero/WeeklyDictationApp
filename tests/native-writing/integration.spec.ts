@@ -56,6 +56,7 @@ async function launch(page: Page, slug: string, week = slug === 'kindergarten' ?
     if (await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).isVisible())
       await frame.getByRole('button', { name: 'Skip Warmup', exact: true }).click()
   }
+  await expect(frame.locator('.native-writing-integration')).toBeVisible()
   return frame
 }
 async function saved(page: Page) {
@@ -147,6 +148,14 @@ for (const slug of ['kindergarten', 'grade5']) {
     let frame = await launch(page, slug)
     const record = await saved(page),
       word = record.value.writing.lesson.targets[0].text
+    const approved = crossGradeLessons(slug === 'kindergarten' ? 'Kindergarten' : 'Grade 5')
+      .flatMap((lesson) => lesson.targets)
+      .find((target) => target.text === word)!
+    expect(record.value.writing.lesson.targets[0]).toMatchObject({
+      pinyin: approved.pinyin,
+      meaning: approved.meaning,
+      guideFingerprint: approved.guideFingerprint,
+    })
     for (const [index, character] of [...word].entries())
       for (let step = 1; step <= 5; step++) {
         const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
