@@ -175,7 +175,11 @@ test('resuming a live Grade 5 cohort reuses its frame even when the calendar wee
   await page.getByRole('button', { name: /Resume saved writing/ }).click()
   await expect(page.locator('iframe')).toHaveCount(1)
   await expect(frame.locator('body')).toHaveAttribute('data-resume-probe', 'original-activity')
-  if (process.env.FAMILY_CURRENT_WRITING === '1') await launch(page, 'grade5', 'writing', true)
+  if (process.env.FAMILY_CURRENT_WRITING === '1') {
+    // Exit returns to this cohort's Dojo choices, not the outer challenges.
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    await finishEnabledTeacher(page)
+  }
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
@@ -268,6 +272,8 @@ for (const slug of ['kindergarten', 'grade2', 'grade5']) {
         }
         expect((await saved(page, slug === 'grade2' && channel === 'writing')).revision).toBe(before.revision + 1)
         if (sourceState === 'removed-week') {
+          if (channel === 'writing' && process.env.FAMILY_CURRENT_WRITING === '1')
+            await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
           await page.getByRole('button', { name: 'Return to current teacher lessons' }).click()
           await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-curriculum', snapshot.contentSha256)
           await expect(
