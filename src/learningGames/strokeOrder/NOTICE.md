@@ -5,6 +5,8 @@ The reduced median data in `strokeAssets.ts` and `grade5StrokeAssets.ts` was ext
 The Grade 5 extension uses upstream revision `68d10a4b21150cae5e1ebbd223eed289cf32d90c`.
 The D2 Grade 2 supplement in `grade2StrokeAssets.ts` uses that same revision,
 extracting only validated stroke medians for 37 missing curriculum characters.
+The October 16 current-week supplement in `octoberStrokeAssets.ts` uses the same
+revision for 土、花、走、最、哪、家、住、里. Existing guide coordinates are unchanged.
 The upstream data originated in Make Me A Hanzi and
 Arphic Technology fonts.
 

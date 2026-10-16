@@ -8,6 +8,8 @@ not unrelated application code or child-created responses.
 
 The Grade 2 supplement was extracted on October 12, 2026: 37 additional
 curriculum characters, medians only, with coordinate and stroke validation.
+The October 16 supplement adds eight current-week characters: 土、花、走、最、哪、家、住、里.
+It uses the same revision and leaves all previously supported guides unchanged.
 The supplement and existing Grade 5 extension use upstream revision:
 https://github.com/chanind/hanzi-writer-data/tree/68d10a4b21150cae5e1ebbd223eed289cf32d90c/data
 

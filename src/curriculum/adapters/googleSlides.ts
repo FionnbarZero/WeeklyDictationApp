@@ -72,6 +72,9 @@ function mandarinText(text: string) {
 
 function cleanVocabularyValues(values: string, profile: SlidesParserProfile) {
   return values.split(profile.termSeparators)
+    // A resource label in the live Tier 1 section is not a teacher vocabulary
+    // target. Remove only this exact label, never arbitrary unfamiliar text.
+    .filter((value) => !/^\s*stroke\s*order\s*[:：]?\s*$/i.test(value))
     .map((value) => value.replace(/[“”".。:：]/g, '').replace(/\s+/g, '').trim())
     .filter(Boolean)
 }

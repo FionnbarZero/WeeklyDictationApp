@@ -260,7 +260,7 @@ function FamilyPreview() {
         .then((loaded) => {
           if (!controller.signal.aborted) {
             setCurricula(current => ({ ...current, [currentGrade]: loaded }))
-            setCurriculumError('')
+            setCurriculumError('offline' in loaded ? loaded.warnings[loaded.warnings.length - 1] || '' : '')
           }
         })
         .catch((e) => {

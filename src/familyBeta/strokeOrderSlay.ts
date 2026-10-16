@@ -49,7 +49,7 @@ export function strokeOrderLesson(datasets: readonly Dataset[]) {
     throw new Error('This cohort has no validated Tier 1 writing targets for Stroke Order Slay.')
   const targets = words.filter((word) => supported(word.text))
   if (!targets.length || strategy.familiarDtTargets.some((word) => !supported(word.text)))
-    throw new Error('Stroke guides are not ready for this cohort. Ordinary writing is still available.')
+    throw new Error('Stroke guides are not ready for this cohort. Please report this problem; your progress is preserved.')
   return {
     strategy,
     targetSet: { id: dataset.id, targets },
