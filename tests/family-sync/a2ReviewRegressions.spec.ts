@@ -60,7 +60,11 @@ test('the newest reviewed Grade 2 checkpoint wins a delayed cross-device downloa
   )
   expect(newerActivity).toBeDefined()
   await frame.getByRole('button', { name: 'Exit practice', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeVisible()
+  // Approved Exit returns to the grade menu instead of stranding the child
+  // behind the family paused-work screen. Reviewed checkpoints stay intact.
+  await expect(frame.getByRole('heading', { name: 'Grade 2', exact: true })).toBeVisible()
+  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your paused work' })).toHaveCount(0)
   await expect(page.locator('iframe[data-family-slot]')).toHaveCount(1)
   // Keep this device's older atomic workspace, then expose the newer activity
   // partition from another device. No production requests are made.
@@ -190,7 +194,7 @@ test('returning to a previously loaded grade works while curriculum is offline',
   await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
   await page.route('**/curriculum/beta/grade5.json', (route) => route.abort('internetdisconnected'))
   await page.getByLabel('Child profile').selectOption('synthetic-g5')
-  await expect(page.getByText(/Failed to fetch/)).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('Offline curriculum: using the last validated teacher lesson')
   await expect(frame.locator('body')).toHaveAttribute('data-review-probe', 'original')
   await expect(frame.getByRole('timer')).toHaveText(remaining)
 })
