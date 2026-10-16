@@ -168,10 +168,14 @@ test('resuming a live Grade 5 cohort reuses its frame even when the calendar wee
   await frame.locator('body').evaluate((body) => {
     body.dataset.resumeProbe = 'original-activity'
   })
+  // The approved full-screen writing host hides family navigation until Exit.
+  if (process.env.FAMILY_CURRENT_WRITING === '1')
+    await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
   await page.getByText('Saved lessons', { exact: true }).click()
   await page.getByRole('button', { name: /Resume saved writing/ }).click()
   await expect(page.locator('iframe')).toHaveCount(1)
   await expect(frame.locator('body')).toHaveAttribute('data-resume-probe', 'original-activity')
+  if (process.env.FAMILY_CURRENT_WRITING === '1') await launch(page, 'grade5', 'writing', true)
   await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await frame.getByRole('button', { name: 'I got it right', exact: true }).click()
   await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
