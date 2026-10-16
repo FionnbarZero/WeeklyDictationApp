@@ -8,6 +8,8 @@ import {
   promptAudioStarted,
   stopPromptAudio,
   playManagedMediaElement,
+  playAudioPlan,
+  audioCompletionTimeoutMs,
 } from '../src/audio/promptAudio.ts'
 import type { Word } from '../src/domain/contracts.ts'
 import { activityClock } from '../src/activity/activityLifecycle.ts'
@@ -361,4 +363,63 @@ test('browser fallback waits for the preferred female Mandarin voice before spea
   await playback
   assert.deepEqual(spokenVoices, ['Tingting'])
   assert.equal(listeners.size, 0)
+})
+
+test('slow speech gets a bounded completion deadline only after starting', async (t) => {
+  const timers = new Map<number, { callback: () => void; delay: number }>()
+  let next = 0
+  t.mock.method(activityClock, 'setTimeout', (callback: () => void, delay: number) => {
+    timers.set(++next, { callback, delay }); return next
+  })
+  t.mock.method(activityClock, 'clearTimeout', (id: number) => timers.delete(id))
+  let spoken!: SpeechSynthesisUtterance
+  let cancelled = 0
+  const speech = {
+    cancel() { cancelled++ }, resume() {}, getVoices: () => [],
+    speak(utterance: SpeechSynthesisUtterance) { spoken = utterance },
+  } as unknown as SpeechSynthesis
+  const attempt = playAudioPlan([{ text: '盐可以让食物更有味道。', language: 'zh-CN', rate: 0.25 }], {
+    speech, voiceLoadTimeoutMs: 0, createUtterance: text => ({ text } as SpeechSynthesisUtterance),
+  })
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.deepEqual([...timers.values()].map(timer => timer.delay), [15_000])
+  spoken.onstart?.({} as SpeechSynthesisEvent)
+  await promptAudioStarted(attempt)
+  assert.ok([...timers.values()][0].delay > 15_000)
+  assert.ok([...timers.values()][0].delay <= 180_000)
+  const completed = promptAudioCompleted(attempt)
+  const rejection = assert.rejects(completed, /Audio could not play/)
+  const before = cancelled
+  ;[...timers.values()][0].callback()
+  await rejection
+  assert.ok(cancelled > before, 'a timed-out voice must be stopped before retry')
+  assert.equal(timers.size, 0)
+  spoken.onend?.({} as SpeechSynthesisEvent)
+  await assert.rejects(completed, /Audio could not play/)
+})
+
+test('completion allowance is finite and does not change the short startup deadline', () => {
+  assert.equal(audioCompletionTimeoutMs('英雄', 0.7), 15_000)
+  assert.equal(audioCompletionTimeoutMs('盐可以让食物更有味道。', 0.25), 49_000)
+  assert.equal(audioCompletionTimeoutMs('字'.repeat(500), 0.1), 180_000)
+  for (const rate of [NaN, Infinity, 0, -1]) assert.ok(Number.isFinite(audioCompletionTimeoutMs('字', rate)))
+})
+
+test('writing can slow browser fallback independently of natural-speed recordings', async () => {
+  const rates: number[] = []
+  const attempt = playCachedWordAudio({ ...word, sentence: '这是一句句子。' }, false, {
+    playbackRate: 1, speechRate: 0.7, pauseMs: 0, voiceLoadTimeoutMs: 0,
+    createUtterance: text => ({ text } as SpeechSynthesisUtterance),
+    speech: {
+      cancel() {}, resume() {}, getVoices: () => [],
+      speak(utterance: SpeechSynthesisUtterance) {
+        rates.push(utterance.rate)
+        utterance.onstart?.({} as SpeechSynthesisEvent)
+        utterance.onend?.({} as SpeechSynthesisEvent)
+      },
+    } as unknown as SpeechSynthesis,
+  })
+  await promptAudioCompleted(attempt)
+  assert.deepEqual(rates, [0.7, 0.7, 0.7, 0.7])
 })

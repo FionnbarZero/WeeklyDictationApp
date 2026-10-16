@@ -112,6 +112,17 @@ function speakWord(word: Word, warmup = false) {
 
 function playMasteryWord(word: Word) { return speakWord(word, true) }
 
+// Acquisition only: natural-speed recordings, with the approved teacher's
+// slower rate for spoken context/fallback. Other activities keep their rates.
+function playKindergartenWritingPrompt(word: Word) {
+  return playCachedWordAudio(withKindergartenAudio(word), false, {
+    playbackRate: 1,
+    sentenceRate: 1,
+    speechRate: 0.7,
+    pauseMs: kindergartenAudioProfile.segmentGapMs,
+  })
+}
+
 function speakReadingReference(target: Tier2ReadingTarget): Promise<void> {
   return playCachedWordAudioOnce(withKindergartenAudio(target), { playbackRate: kindergartenAudioProfile.readingRate })
 }
@@ -327,8 +338,8 @@ function KindergartenLearningLab() {
   async function startWriting() {
     const launch = ++writingLaunch.current
     enablePreviewSpeechFromTap()
-    if (!selectedCandidate || !kindergartenCandidateIsUsableInLab(selectedCandidate)) return
     try {
+      if (!selectedCandidate) throw new Error('This week’s writing lesson has not loaded. Please try again or report this problem.')
       const initial = startKindergartenAcquisitionLab(selectedCandidate)
       const store = import.meta.env.VITE_CROSS_GRADE_WRITING_PILOT === 'true'
         ? await familyWritingStore<AcquisitionTarget, KindergartenLabRevealMethod>(initial.targetSet,
@@ -346,6 +357,7 @@ function KindergartenLearningLab() {
           ...(store ? { words: [...store.context.targetSet.targets] } : {}) },
         revealMethod: 'timer',
       })
+      setError(false)
       setStatus('Running the current-week Kindergarten writing flow. Finish or choose Done for today to add a session score.')
     } catch (startError) {
       if (writingLaunch.current !== launch) return
@@ -486,11 +498,13 @@ function KindergartenLearningLab() {
       return
     }
     if (launch.kind === 'dojo-reading') {
-      if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
+      try {
+        if (!selectedCandidate) throw new Error('The current Kindergarten reading cohort is unavailable.')
         setReadingPathway(kindergartenReadingAcquisitionPathway(selectedCandidate))
         setStatus('Running the current-week high-frequency reading Acquisition flow.')
-      } else {
-        setStatus('The current Kindergarten reading cohort is unavailable.')
+        setError(false)
+      } catch (failure) {
+        setStatus(failure instanceof Error ? failure.message : 'Reading could not start. Please report this problem.')
         setError(true)
       }
       return
@@ -547,13 +561,13 @@ function KindergartenLearningLab() {
         session={writingSessionFor(writingPractice)}
         datasets={[writingPractice.dataset]}
         onExit={() => leavePractice('Writing practice exited. No score was added.')}
-        onReplay={() => promptWord ? speakWord(promptWord) : undefined}
+        onReplay={() => promptWord ? playKindergartenWritingPrompt(promptWord) : undefined}
         onBeginWarmup={() => undefined}
         onInterstitialComplete={() => undefined}
         onDictationComplete={(method = 'timer') => revealWriting(method)}
         onStartReview={() => undefined}
         onAnswer={answerWriting}
-        onSpeakWord={speakWord}
+        onSpeakWord={playKindergartenWritingPrompt}
         onSpeakReviewInstruction={() => undefined}
         reviewInstruction={KINDERGARTEN_REVIEW_INSTRUCTION}
       />
@@ -674,9 +688,10 @@ function KindergartenLearningLab() {
         <span className="k-manual-note">Defaults to the authoritative top spreadsheet tab. Select another week only to test that fixture.</span>
       </label>
     </details>}
+    {error && <p className="k-status error" role="alert">{status}</p>}
     <LearningHub model={hubModel} onLaunch={launchFromHub} hideUnavailable={familyPreview} />
     <NinjaRecord scores={scores} persistent={familyPreview} />
-    <p className={`k-status${error ? ' error' : ''}`} role="status" aria-live="polite">{status}</p>
+    {!error && <p className="k-status" role="status" aria-live="polite">{status}</p>}
   </main>
 }
 

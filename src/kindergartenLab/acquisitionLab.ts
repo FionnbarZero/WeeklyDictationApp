@@ -29,7 +29,7 @@ export type KindergartenAcquisitionLabState = {
   assessments: AcquisitionAssessment<AcquisitionTarget, KindergartenLabRevealMethod>[]
 }
 
-export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandidate) {
+export function kindergartenCandidateHasValidSource(candidate: WeeklyDatasetCandidate) {
   const blockers = candidate.validationOutcomes
     .filter((outcome) => outcome.severity === 'error')
     .map((outcome) => outcome.code)
@@ -37,11 +37,22 @@ export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandi
     && candidate.source.sourceType === 'google-sheets'
     && candidate.source.adapterId === 'kindergarten-google-sheets-v1'
     && Boolean(candidate.datasetId && candidate.assignedWeek)
-    && candidate.tier1.length > 0
-    && candidate.tier1.every((target) => Boolean(target.targetOccurrenceId))
-    && candidate.tier1.every((target) => Boolean(kindergartenAudioForText(target.text)?.storagePath))
     && candidate.status === 'valid'
     && blockers.length === 0
+}
+
+export function kindergartenWritingUnavailableReason(candidate: WeeklyDatasetCandidate) {
+  if (!kindergartenCandidateHasValidSource(candidate) || !candidate.tier1.length
+    || candidate.tier1.some((target) => !target.targetOccurrenceId))
+    return 'This week’s Kindergarten writing lesson is unavailable. Please report this problem; your progress is preserved.'
+  const missing = candidate.tier1.filter((target) => !kindergartenAudioForText(target.text)?.storagePath)
+  return missing.length
+    ? `Writing audio is not ready for ${missing.map((target) => target.text).join('、')}. Please report this problem; no words or progress were skipped.`
+    : null
+}
+
+export function kindergartenCandidateIsUsableInLab(candidate: WeeklyDatasetCandidate) {
+  return kindergartenWritingUnavailableReason(candidate) === null
 }
 
 function ephemeralDatasetId(candidate: WeeklyDatasetCandidate) {
@@ -52,9 +63,8 @@ export function kindergartenAcquisitionTargetSet(
   candidate: WeeklyDatasetCandidate,
   contextCatalog: DictationContextCatalog = kindergartenDictationContextCatalog,
 ): AcquisitionTargetSet<AcquisitionTarget> {
-  if (!kindergartenCandidateIsUsableInLab(candidate)) {
-    throw new Error('Kindergarten Acquisition lab requires one canonical inspected vocabulary tab from the registered Sheets profile.')
-  }
+  const unavailable = kindergartenWritingUnavailableReason(candidate)
+  if (unavailable) throw new Error(unavailable)
   const datasetId = ephemeralDatasetId(candidate)
   const projected = datasetFromCanonicalCandidate(candidate, contextCatalog)
   return {

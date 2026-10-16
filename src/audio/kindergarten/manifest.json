@@ -21,6 +21,31 @@
   },
   "contexts": {},
   "assets": {
+    "土": {
+      "generatedAt": "2026-10-16T11:33:42.585Z",
+      "storagePath": "audio/kindergarten/u571f.wav",
+      "sourceUnitIds": ["Week 9 10/13"]
+    },
+    "花": {
+      "generatedAt": "2026-10-16T11:33:44.677Z",
+      "storagePath": "audio/kindergarten/u82b1.wav",
+      "sourceUnitIds": ["Week 9 10/13"]
+    },
+    "树": {
+      "generatedAt": "2026-10-16T11:33:46.732Z",
+      "storagePath": "audio/kindergarten/u6811.wav",
+      "sourceUnitIds": ["Week 9 10/13"]
+    },
+    "草": {
+      "generatedAt": "2026-10-16T11:33:48.890Z",
+      "storagePath": "audio/kindergarten/u8349.wav",
+      "sourceUnitIds": ["Week 9 10/13"]
+    },
+    "要": {
+      "generatedAt": "2026-10-16T11:33:51.434Z",
+      "storagePath": "audio/kindergarten/u8981.wav",
+      "sourceUnitIds": ["Week 9 10/13"]
+    },
     "一": {
       "storagePath": "audio/kindergarten/u4e00.wav",
       "sourceUnitIds": ["Week 3 08/31"]

@@ -5,7 +5,7 @@ import type {
   Tier2ReadingPathway,
   Tier2ReadingTarget,
 } from '../tier2/contracts.ts'
-import { kindergartenCandidateIsUsableInLab } from './acquisitionLab.ts'
+import { kindergartenCandidateHasValidSource } from './acquisitionLab.ts'
 import type { KindergartenUnitReviewLab } from './unitReview.ts'
 import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'
 
@@ -34,7 +34,8 @@ function pathway(
 }
 
 export function kindergartenReadingAcquisitionPathway(candidate: WeeklyDatasetCandidate) {
-  if (!kindergartenCandidateIsUsableInLab(candidate)) {
+  if (!kindergartenCandidateHasValidSource(candidate)
+    || !candidate.tier2.length || candidate.tier2.some((target) => !target.targetOccurrenceId)) {
     throw new Error('Kindergarten reading requires one canonical inspected vocabulary tab.')
   }
   const dataset = datasetFromCanonicalCandidate(candidate, kindergartenDictationContextCatalog)

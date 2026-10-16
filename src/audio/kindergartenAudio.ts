@@ -6,6 +6,7 @@ import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenD
 type ManifestAsset = {
   storagePath: string
   sourceUnitIds: string[]
+  generatedAt?: string
 }
 
 type ContextManifestAsset = {
@@ -26,7 +27,7 @@ export function kindergartenAudioForText(text: string): Word['audio'] {
   return {
     storagePath: asset.storagePath,
     voice: manifest.voice.name,
-    generatedAt: manifest.generatedAt,
+    generatedAt: asset.generatedAt || manifest.generatedAt,
   }
 }
 

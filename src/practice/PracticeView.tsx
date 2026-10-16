@@ -1,4 +1,4 @@
-import { activityClock, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
+import { activityClock } from '../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Clock3, Headphones, RotateCcw, Sparkles, Volume2, X } from 'lucide-react'
 import {
@@ -149,7 +149,11 @@ function SequentialPracticeView({
   }, [stageKey])
   const replayAudio = useCallback(() => observeAudio(onReplay()), [observeAudio, onReplay])
   useEffect(() => { setWritingByResponse({}) }, [session.id])
-  useEffect(() => () => stopPromptAudio(activeAudioRef.current), [])
+  useEffect(() => () => {
+    const attempt = activeAudioRef.current
+    activeAudioRef.current = undefined
+    stopPromptAudio(attempt)
+  }, [])
   useEffect(() => {
     if (session.stage === 'warmup-intro') return
     if (session.stage === 'interstitial') {
@@ -175,7 +179,7 @@ function SequentialPracticeView({
   const promptLabel = acquisitionPrompt?.kind === 'familiar-dt' ? 'Familiar DT' : acquisitionPrompt?.kind === 'earned-dt' || acquisitionPrompt?.dtPoolType === 'earned' ? 'Earned DT' : phaseLabel(session.primaryPhase)
   return <div className={`practice-page${showingWritingResponse ? ' has-skywriting-response' : ''}`} data-report-activity="Writing practice" data-report-phase={`${session.segment}:${session.primaryPhase}:${session.stage}`} data-report-target={term?.id} data-report-position={session.index + 1} data-report-audio={audioStatus}>
     <div className="practice-top">
-      <button className="back-button" onClick={() => { if (!pauseToFamilyHub()) onExit() }}><X size={18} /> Exit practice</button>
+      <button className="back-button" onClick={onExit}><X size={18} /> Exit practice</button>
       <span className="practice-count">{position.label}<span>{(session.stage === 'dictation' || session.stage === 'review') && position.total !== null ? ` of ${position.total}` : ''}</span></span>
       {session.segment === 'warmup' && !session.warmupOnly && session.warmupAnswers.length > 0 && <button className="replay-button" onClick={() => onAnswer('continue-primary')}>Continue to activity</button>}
       {session.primaryPhase === 'acquisition' && session.segment === 'primary' && <button className="replay-button" onClick={() => onAnswer('done')}>Done for today</button>}
@@ -203,7 +207,7 @@ function SequentialPracticeView({
       </>}
     </section>
     {audioStatus === 'error'
-      ? <p className="practice-footnote audio-playback-error" role="alert"><Headphones size={14} /> <span>{audioMessage}</span> {session.stage !== 'dictation' && <button type="button" onClick={replayAudio}>Try audio again</button>}</p>
+      ? <p className="practice-footnote audio-playback-error" role="alert"><Headphones size={14} /> <span>{session.stage === 'dictation' ? 'Audio stopped. Tap Hear to try again. Your place has not changed; the timer starts after the audio finishes.' : audioMessage}</span> {session.stage !== 'dictation' && <button type="button" onClick={replayAudio}>Try audio again</button>}</p>
       : <p className="practice-footnote" aria-live="polite"><Headphones size={14} /> {audioStatus === 'loading' ? 'Loading prompt audio…' : allowOptionalReplay ? 'Prompt audio plays automatically · Replay is available in Warmup' : 'Prompt audio plays automatically'}</p>}
   </div>
 }

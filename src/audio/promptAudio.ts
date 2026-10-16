@@ -15,6 +15,7 @@ export type AudioPlanSegment = {
   readonly text: string
   readonly language: 'zh-CN' | 'en-GB' | 'en-IE' | 'en-US'
   readonly rate: number
+  readonly speechRate?: number
   readonly storagePath?: string
   readonly pauseAfterMs?: number
 }
@@ -47,6 +48,7 @@ export type CachedAudioOptions = AudioPlanOptions & {
   playbackRate?: number
   sentenceRate?: number
   instructionRate?: number
+  speechRate?: number
   newTargetAnnouncement?: string
   newTargetAnnouncementStoragePath?: string
 }
@@ -63,6 +65,14 @@ const ENGLISH_FALLBACK_VOICE_NAMES = [
   'Google UK English Female',
   'Microsoft Sonia Online (Natural) - English (United Kingdom)',
 ] as const
+
+// A slow contextual sentence can legitimately take far longer than 15 seconds.
+// Keep a separate, short start deadline; only started playback gets this bounded
+// completion allowance. Paused activity time is excluded by activityClock.
+export function audioCompletionTimeoutMs(text: string, rate: number) {
+  const safeRate = Number.isFinite(rate) && rate > 0 ? rate : 1
+  return Math.min(180_000, Math.max(15_000, 5_000 + [...text].length * 1_000 / safeRate))
+}
 
 let activePromptAudio: PromptAudioHandle | null = null
 let activeMediaStop: (() => void) | null = null
@@ -249,7 +259,8 @@ export function playAudioPlan(
       const audio = options.createAudio ? options.createAudio() : new Audio()
       activeAudio = audio
       let settled = false
-      const watchdog = activityClock.setTimeout(() => fail(), 15_000)
+      let watchdog = activityClock.setTimeout(() => fail(), 15_000)
+      let playing = false
       const cleanup = () => {
         activityClock.clearTimeout(watchdog)
         audio.removeEventListener('playing', handlePlaying)
@@ -258,7 +269,13 @@ export function playAudioPlan(
         if (activeAudio === audio) activeAudio = null
         if (cancelActiveSegment === fail) cancelActiveSegment = undefined
       }
-      const handlePlaying = () => markStarted()
+      const handlePlaying = () => {
+        if (settled || playing) return
+        playing = true
+        activityClock.clearTimeout(watchdog)
+        watchdog = activityClock.setTimeout(() => fail(), audioCompletionTimeoutMs(segment.text, segment.rate))
+        markStarted()
+      }
       const finish = () => {
         if (settled) return
         settled = true
@@ -283,7 +300,7 @@ export function playAudioPlan(
       audio.preload = 'auto'
       audio.load()
       try {
-        void audio.play().then(markStarted).catch(fail)
+        void audio.play().then(handlePlaying).catch(fail)
       } catch {
         fail()
       }
@@ -301,13 +318,13 @@ export function playAudioPlan(
       const spokenUtterance = utterance
       activeUtterance = spokenUtterance
       spokenUtterance.lang = segment.language
-      spokenUtterance.rate = segment.rate
+      spokenUtterance.rate = segment.speechRate ?? segment.rate
       spokenUtterance.pitch = 1
       let settled = false
       let voiceTimer: number | undefined
       let waitingForVoices = false
       let segmentStarted = false
-      const watchdog = activityClock.setTimeout(() => finish(playbackError()), 15_000)
+      let watchdog = activityClock.setTimeout(() => finish(playbackError()), 15_000)
       const stopWaitingForVoices = () => {
         if (voiceTimer !== undefined) activityClock.clearTimeout(voiceTimer)
         voiceTimer = undefined
@@ -321,11 +338,19 @@ export function playAudioPlan(
         stopWaitingForVoices()
         if (activeUtterance === spokenUtterance) activeUtterance = null
         if (cancelActiveSegment === cancel) cancelActiveSegment = undefined
+        // A timed-out utterance must not continue over a later retry or cue.
+        if (error) activeSpeech.cancel()
         if (error) reject(error)
         else resolve()
       }
       const cancel = () => finish(new Error('Audio playback was cancelled.'))
-      spokenUtterance.onstart = () => { segmentStarted = true; markStarted() }
+      spokenUtterance.onstart = () => {
+        if (settled || segmentStarted) return
+        segmentStarted = true
+        activityClock.clearTimeout(watchdog)
+        watchdog = activityClock.setTimeout(() => finish(playbackError()), audioCompletionTimeoutMs(segment.text, spokenUtterance.rate))
+        markStarted()
+      }
       spokenUtterance.onend = () => finish(segmentStarted ? undefined : playbackError())
       spokenUtterance.onerror = () => finish(playbackError())
       cancelActiveSegment = cancel
@@ -458,7 +483,7 @@ function dictationSegments(word: Word, playbackRate: number, sentenceRate: numbe
 export function playCachedWordAudio(word: Word, _warmup = false, options: CachedAudioOptions = {}): PromptAudioAttempt {
   const playbackRate = options.playbackRate ?? 1
   const sentenceRate = options.sentenceRate ?? playbackRate
-  return playAudioPlan(dictationSegments(word, playbackRate, sentenceRate), options)
+  return playAudioPlan(dictationSegments(word, playbackRate, sentenceRate).map(segment => ({ ...segment, speechRate: options.speechRate })), options)
 }
 
 export function playCachedWordAudioOnce(word: Word, options: CachedAudioOptions = {}): Promise<void> {

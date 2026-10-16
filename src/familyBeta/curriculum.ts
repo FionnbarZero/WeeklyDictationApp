@@ -76,18 +76,40 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
   const env = (import.meta as ImportMeta & { env?: Record<string, string> }).env || {}
   // An owned frame uses the exact source selected by its parent. New frames
   // still receive today's source; a saved-lesson frame gets its original one.
-  const frame = typeof window === 'undefined' ? null : window.frameElement as HTMLIFrameElement | null
+  const frame = typeof window === 'undefined' ? null : (window.frameElement as HTMLIFrameElement | null)
   if (env.VITE_RECONCILIATION_PREVIEW === 'true' && frame?.dataset.familySlot && frame.dataset.familySource) {
     const loaded = await validateCurriculum(frame.dataset.familySource, grade)
     signal?.throwIfAborted()
     return loaded
   }
-  if (typeof navigator !== 'undefined' && !navigator.onLine)
-    throw new Error('The device is offline. Reopen an original lesson from Saved lessons.')
+  signal?.throwIfAborted()
+  const retained = async () =>
+    (await import('./curriculumCache.ts')).readRetainedCurriculum(localStorage, grade, signal)
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return retained()
   const base = env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
-  const response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
+  let response: Response
+  try {
+    response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
+  } catch (error) {
+    signal?.throwIfAborted()
+    if (!(error instanceof TypeError)) throw error
+    return retained()
+  }
   if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
-  const loaded = await validateCurriculum(await response.text(), grade)
+  let body: string
+  try {
+    body = await response.text()
+  } catch (error) {
+    // A network cut can occur after headers have arrived. Only transport
+    // failures may use retained material; parsing/validation remain outside.
+    signal?.throwIfAborted()
+    if (!(error instanceof TypeError)) throw error
+    return retained()
+  }
+  const loaded = await validateCurriculum(body, grade)
+  signal?.throwIfAborted()
+  if (typeof localStorage !== 'undefined')
+    (await import('./curriculumCache.ts')).retainValidatedCurriculum(localStorage, loaded.snapshot)
   if (response.headers.get('X-Curriculum-Warning'))
     loaded.warnings.push('Automatic refresh is unavailable. The last validated teacher snapshot is being served.')
   return loaded
