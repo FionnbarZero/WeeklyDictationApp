@@ -9,6 +9,7 @@ export default defineConfig({
   testIgnore: [],
   testMatch: [
     'writingTeaching.spec.ts',
+    'writingReleaseIdentity.spec.ts',
     'nativeWritingRelease.spec.ts',
     'a33AttemptIdentity.spec.ts',
     'a33CompletedScores.spec.ts',

@@ -585,7 +585,7 @@ function FamilyPreview() {
       data-report-revision={import.meta.env.VITE_GIT_REVISION || 'local'}
     >
       <header className="beta-toolbar">
-        <strong>{import.meta.env.VITE_GRADE2_WRITING_PILOT === 'true' ? 'Grade 2 writing pilot · Unpublished' : 'Ninja Dojo · Family beta'}</strong>
+        <strong>{import.meta.env.MODE === 'writing-pilot' ? 'Grade 2 writing pilot · Unpublished' : 'Ninja Dojo · Family beta'}</strong>
         <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
         <label>
           Practicing as{' '}

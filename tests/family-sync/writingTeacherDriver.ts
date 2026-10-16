@@ -62,10 +62,13 @@ export async function finishEnabledTeacher(page: Page) {
     await frame.getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true }).click()
     if (step === 5) await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
     await expect
-      .poll(async () =>
-        (await teacher.isVisible())
-          ? `${await teacher.getAttribute('data-character-index')}:${await teacher.getAttribute('data-step')}`
-          : 'acquisition',
+      .poll(() =>
+        teacher.evaluateAll((nodes) => {
+          const active = nodes[0]
+          return active
+            ? `${active.getAttribute('data-character-index')}:${active.getAttribute('data-step')}`
+            : 'acquisition'
+        }),
       )
       .not.toBe(`${index}:${step}`)
   }
