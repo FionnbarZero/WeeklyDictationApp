@@ -45,7 +45,9 @@ test('completed same-day attempts have separate graph points and older history l
     })
   })
   await page.goto('/?grade=grade5')
-  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
+  await expect(
+    page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ }),
+  ).toBeVisible()
   expect(olderRequests).toBe(0)
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
@@ -126,7 +128,9 @@ async function installLongHistory(page: Page, conflict?: 'keyed' | 'legacy') {
     })
   })
   await page.goto('/?grade=grade5')
-  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
+  await expect(
+    page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Progress', exact: true }).click()
   await expect(page.locator('[data-result-point]')).toHaveCount(50)
   return control

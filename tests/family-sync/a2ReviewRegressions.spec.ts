@@ -250,7 +250,9 @@ test('two retained Grade 2 weeks can both save reviewed answers without reopenin
   for (const item of completed)
     expect(item).toMatchObject({ childId: 'synthetic-g2', grade: 'Grade 2', correct: 1, attempted: 1 })
   await page.reload()
-  await expect(page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
+  await expect(
+    page.frameLocator('iframe:visible').getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ }),
+  ).toBeVisible()
   expect(await results()).toEqual(completed)
   const reloaded = await read()
   expect(reloaded.find((item: { id: string }) => item.id === first.id).revision).toBeGreaterThan(first.revision)
