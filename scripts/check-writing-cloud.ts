@@ -1,4 +1,5 @@
-// Explicit opt-in acceptance against a retained LOCAL build and real Firebase.
+// Explicit opt-in acceptance against a retained local build or the canonical
+// release and real Firebase. Exact served bytes are checked before signup.
 // Uses only a new, uniquely named disposable family; never an owner's session.
 import assert from 'node:assert/strict'
 import { createHash, randomUUID } from 'node:crypto'
@@ -13,7 +14,14 @@ import { getStrokeLayout } from '../src/strokeTeacherPrototype/original/strokeLa
 import { cleanSyntheticWritingFamily, syntheticWritingScope } from './syntheticWritingScope.ts'
 
 assert.equal(process.env.WRITING_CLOUD_ACCEPTANCE, '1', 'Explicit synthetic cloud acceptance opt-in required')
-const base = 'http://127.0.0.1:5198'
+const base = process.env.WRITING_CLOUD_ORIGIN || 'http://127.0.0.1:5198'
+assert.ok(['http://127.0.0.1:5198', 'https://ninjadojo.meghangames.com'].includes(base))
+if (base !== 'http://127.0.0.1:5198') {
+  assert.ok(
+    process.env.WRITING_CLOUD_REVISION && process.env.WRITING_CLOUD_TREE,
+    'Canonical acceptance requires the exact explicit release revision and tree',
+  )
+}
 const revision = process.env.WRITING_CLOUD_REVISION || '5d19f9588aee419fc06b719eb240c9205f9a2394'
 const tree = process.env.WRITING_CLOUD_TREE || '887827259ef05352397921a3023020b2edc8f6dbf2baffa967a37eb6e997dd83'
 assert.match(revision, /^[a-f0-9]{40}$/)
@@ -63,7 +71,7 @@ const probe = await adminRequest(
 )
 assert.equal(probe.status, 404, 'Cleanup access preflight failed; no account created')
 console.log(
-  `Exact local candidate verified (${verifiedFiles} public files); disposable-family cleanup access confirmed.`,
+  `Exact candidate verified at ${base} (${verifiedFiles} public files); disposable-family cleanup access confirmed.`,
 )
 
 const receipt = join(mkdtempSync(join(tmpdir(), 'ninja-writing-cloud-')), 'receipt.json')
@@ -74,6 +82,7 @@ const record = (cleanupComplete: boolean, deletedTestDocuments?: number) =>
     JSON.stringify(
       {
         sourceRevision: revision,
+        origin: base,
         fileTreeSha256: tree,
         grade,
         email,
