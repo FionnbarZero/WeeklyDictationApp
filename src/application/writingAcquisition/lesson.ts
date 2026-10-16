@@ -9,11 +9,24 @@ export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
 // Keep the approved preview's exact pinned identity when integrating its sequence.
 export const FIVE_STEP_WRITING_POLICY = 'grade2-five-step-preview-v6' as const
 export const TRACE_INDEPENDENT_PREVIEW_POLICY = 'grade2-trace-independent-preview-v7' as const
+export const KINDERGARTEN_WRITING_POLICY = 'kindergarten-five-step-preview-v1' as const
+export const GRADE5_WRITING_POLICY = 'grade5-five-step-preview-v1' as const
+
 import type { WritingLesson } from './contracts.ts'
+
 export type { WritingLesson } from './contracts.ts'
+
+export function writingPolicyGrade(policy: WritingLesson['policy']) {
+  if (policy === KINDERGARTEN_WRITING_POLICY) return 'Kindergarten'
+  if (policy === GRADE5_WRITING_POLICY) return 'Grade 5'
+  if ([WRITING_TEACHER_POLICY, FIVE_STEP_WRITING_POLICY, TRACE_INDEPENDENT_PREVIEW_POLICY].some((p) => p === policy))
+    return 'Grade 2'
+  throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
+}
 
 /** Existing saved lessons retain their pinned sequence; new pilot lessons opt into five steps. */
 export function writingTeacherStepCount(lesson: Pick<WritingLesson, 'policy'>) {
+  if (lesson.policy === KINDERGARTEN_WRITING_POLICY || lesson.policy === GRADE5_WRITING_POLICY) return 5
   if (lesson.policy === FIVE_STEP_WRITING_POLICY || lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY) return 5
   if (lesson.policy === WRITING_TEACHER_POLICY) return 6
   throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
@@ -37,8 +50,9 @@ export function createWritingLesson(
   policy: WritingLesson['policy'] = WRITING_TEACHER_POLICY,
 ): WritingLesson {
   writingTeacherStepCount({ policy })
-  if (source.grade !== 'Grade 2' || !source.words.length || source.words.length > 100)
-    throw new Error('Choose a validated Grade 2 writing lesson.')
+  const grade = writingPolicyGrade(policy)
+  if (source.grade !== grade || !source.words.length || source.words.length > 100)
+    throw new Error(`Choose a validated ${grade} writing lesson matching its teaching policy.`)
   const dataset = JSON.parse(JSON.stringify(source)) as Dataset
   if (
     new Set(dataset.words.map((w) => w.id)).size !== dataset.words.length ||

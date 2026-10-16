@@ -1,4 +1,5 @@
 import type { StrokePoint } from '../learningGames/strokeOrder/contracts.ts'
+import { type StrokeAssessmentSettings, teacherGradeProfiles } from './gradeProfiles.ts'
 
 export const TEACHER_STEPS = [
   'Watch and trace',
@@ -37,12 +38,25 @@ function segmentDistance(point: StrokePoint, a: StrokePoint, b: StrokePoint) {
   const t = Math.max(0, Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / squared))
   return distance(point, [a[0] + t * dx, a[1] + t * dy])
 }
-export function strokeMatchesGuide(drawn: readonly StrokePoint[], guide: readonly StrokePoint[]) {
+export function strokeMatchesGuide(
+  drawn: readonly StrokePoint[],
+  guide: readonly StrokePoint[],
+  settings: StrokeAssessmentSettings = teacherGradeProfiles['Grade 2'].assessment,
+) {
   if (drawn.length < 2 || guide.length < 2) return false
-  if (distance(drawn[0], guide[0]) > 18 || distance(drawn[drawn.length - 1], guide[guide.length - 1]) > 18) return false
+  if (
+    distance(drawn[0], guide[0]) > settings.maximumEndpointDistance ||
+    distance(drawn[drawn.length - 1], guide[guide.length - 1]) > settings.maximumEndpointDistance
+  )
+    return false
   const guideLength = length(guide)
   const drawnLength = length(drawn)
-  if (!guideLength || drawnLength < guideLength * 0.55 || drawnLength > guideLength * 1.8) return false
+  if (
+    !guideLength ||
+    drawnLength < guideLength * settings.minimumLengthRatio ||
+    drawnLength > guideLength * settings.maximumLengthRatio
+  )
+    return false
   let deviation = 0
   let samples = 0
   const sampleStep = Math.max(1, Math.floor(drawn.length / 18))
@@ -50,18 +64,19 @@ export function strokeMatchesGuide(drawn: readonly StrokePoint[], guide: readonl
     deviation += Math.min(...guide.slice(1).map((point, i) => segmentDistance(drawn[index], guide[i], point)))
     samples += 1
   }
-  return deviation / samples <= 11
+  return deviation / samples <= settings.maximumAverageDeviation
 }
 
 export function strokeFeedback(
   drawn: readonly StrokePoint[],
   guides: readonly (readonly StrokePoint[])[],
   next: number,
+  settings: StrokeAssessmentSettings = teacherGradeProfiles['Grade 2'].assessment,
 ) {
-  if (strokeMatchesGuide(drawn, guides[next])) return null
-  if (strokeMatchesGuide([...drawn].reverse(), guides[next]))
+  if (strokeMatchesGuide(drawn, guides[next], settings)) return null
+  if (strokeMatchesGuide([...drawn].reverse(), guides[next], settings))
     return `Go the other way. Follow stroke ${next + 1} from its number.`
-  const other = guides.findIndex((guide, index) => index !== next && strokeMatchesGuide(drawn, guide))
+  const other = guides.findIndex((guide, index) => index !== next && strokeMatchesGuide(drawn, guide, settings))
   if (other !== -1) return `That is stroke ${other + 1}. First, follow stroke ${next + 1}.`
   return `Try stroke ${next + 1} again. Start at the number and follow the bright path.`
 }

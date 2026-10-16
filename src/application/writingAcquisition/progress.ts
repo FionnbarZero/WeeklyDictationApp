@@ -9,19 +9,25 @@ import { createAcquisitionProgressEnvelope } from '../../acquisition/persistence
 import { applyAcquisitionCheckpoint, buildAcquisitionCheckpoint } from '../../acquisition/persistence/reducer.ts'
 import { validateAcquisitionProgressEnvelope } from '../../acquisition/persistence/validation.ts'
 import { grade2AcquisitionStrategy } from '../../acquisition/strategies/grade2.ts'
+import { grade5AcquisitionStrategy } from '../../acquisition/strategies/grade5.ts'
+import { kindergartenAcquisitionStrategy } from '../../acquisition/strategies/kindergarten.ts'
 import { schoolYearToken } from '../../curriculum/identity.ts'
 import type { Word } from '../../domain/contracts.ts'
-import {
-  validateWritingLesson,
-  writingTeacherStepCount,
-  TRACE_INDEPENDENT_PREVIEW_POLICY,
-  type WritingLesson,
-} from './lesson.ts'
 import { writingRefinementStrategy } from '../../writingAcquisition/refinementStrategy.ts'
+import {
+  TRACE_INDEPENDENT_PREVIEW_POLICY,
+  validateWritingLesson,
+  type WritingLesson,
+  writingPolicyGrade,
+  writingTeacherStepCount,
+} from './lesson.ts'
 
 export const WRITING_PROGRESS_CONTRACT = 'grade2-writing-progress-v1' as const
+export const CROSS_GRADE_WRITING_CONTRACT = 'cross-grade-writing-progress-v1' as const
 const fail = 'Saved writing could not be safely continued. Your progress was preserved; please report the problem.'
+
 import type { WritingProgress } from './contracts.ts'
+
 export type { WritingProgress } from './contracts.ts'
 export type TeachingPosition = { targetIndex: number; targetId: string; characterIndex: number; step: number }
 export type WritingCommand =
@@ -50,22 +56,30 @@ export function writingContext(
   owner: string,
   envelope?: AcquisitionProgressEnvelope<Word>,
 ): AcquisitionPersistenceContext<Word> {
+  const grade = writingPolicyGrade(lesson.policy)
+  if (lesson.dataset.grade !== grade) throw new Error(fail)
   const module = envelope?.activityModule || 'mandarin-tier1-writing'
   if (!/^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/.test(module)) throw new Error(fail)
   return {
     identity: {
       childId: owner,
-      grade: 'Grade 2',
+      grade,
       datasetId: lesson.dataset.id,
       schoolYear: schoolYearToken(lesson.dataset.schoolYear),
       activityModule: module,
       tier: 'tier-1',
     },
     lifecycleStage: { kind: 'acquisition' },
-    applicationVersion: WRITING_PROGRESS_CONTRACT,
+    applicationVersion: grade === 'Grade 2' ? WRITING_PROGRESS_CONTRACT : CROSS_GRADE_WRITING_CONTRACT,
     targetSet: { id: lesson.dataset.id, targets: lesson.dataset.words },
     strategy:
-      lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY ? writingRefinementStrategy : grade2AcquisitionStrategy,
+      grade === 'Kindergarten'
+        ? kindergartenAcquisitionStrategy
+        : grade === 'Grade 5'
+          ? grade5AcquisitionStrategy
+          : lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY
+            ? writingRefinementStrategy
+            : grade2AcquisitionStrategy,
   }
 }
 
@@ -98,7 +112,8 @@ export function validateWritingProgress(value: unknown, owner: string): asserts 
     const p = value as WritingProgress
     if (
       !p ||
-      p.contract !== WRITING_PROGRESS_CONTRACT ||
+      p.contract !==
+        (p.lesson?.dataset?.grade === 'Grade 2' ? WRITING_PROGRESS_CONTRACT : CROSS_GRADE_WRITING_CONTRACT) ||
       p.owner !== owner ||
       !validId(p.owner) ||
       !validId(p.attemptId) ||
@@ -222,7 +237,7 @@ export function createWritingProgress(
     )
   const firstTeacherTargetIndex = options.legacy ? Math.min(lesson.targets.length, acquisition.flow.targetIndex + 1) : 0
   const progress: WritingProgress = {
-    contract: WRITING_PROGRESS_CONTRACT,
+    contract: lesson.dataset.grade === 'Grade 2' ? WRITING_PROGRESS_CONTRACT : CROSS_GRADE_WRITING_CONTRACT,
     owner,
     attemptId,
     revision: 0,

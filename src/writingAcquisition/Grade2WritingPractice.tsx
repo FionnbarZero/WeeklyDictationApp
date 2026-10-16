@@ -35,6 +35,7 @@ export default function Grade2WritingPractice({
         <div className="st-original-stage">
           <main className="st-original-content">
             <StrokeTeacher
+              grade={props.session.grade}
               key={`${props.session.id}:${position.targetId}:${position.characterIndex}`}
               targetId={target.id}
               character={[...target.text][position.characterIndex]}

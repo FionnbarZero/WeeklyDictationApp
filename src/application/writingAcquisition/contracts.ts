@@ -4,14 +4,19 @@ import type { Dataset, Word } from '../../domain/contracts.ts'
 
 export type WritingLesson = {
   schema: 1
-  policy: 'grade2-six-step-v4' | 'grade2-five-step-preview-v6' | 'grade2-trace-independent-preview-v7'
+  policy:
+    | 'grade2-six-step-v4'
+    | 'grade2-five-step-preview-v6'
+    | 'grade2-trace-independent-preview-v7'
+    | 'kindergarten-five-step-preview-v1'
+    | 'grade5-five-step-preview-v1'
   dataset: Dataset
   targets: { id: string; text: string; pinyin: string; meaning: string; guideFingerprint: string }[]
   fingerprint: string
 }
 
 export type WritingProgress = {
-  contract: 'grade2-writing-progress-v1'
+  contract: 'grade2-writing-progress-v1' | 'cross-grade-writing-progress-v1'
   owner: string
   attemptId: string
   revision: number

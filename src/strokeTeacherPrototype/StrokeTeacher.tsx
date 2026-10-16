@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { ArrowRight, Play } from 'lucide-react'
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
 import { activityClock } from '../activity/activityLifecycle.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import type { StrokePoint } from '../learningGames/strokeOrder/contracts.ts'
-import { TEACHER_STEPS, SIX_STEP_SEQUENCE, type TeacherSequence, strokeFeedback, suppliedStrokes } from './model.ts'
+import { teacherProfileForGrade } from './gradeProfiles.ts'
+import { SIX_STEP_SEQUENCE, strokeFeedback, suppliedStrokes, TEACHER_STEPS, type TeacherSequence } from './model.ts'
+import type { StrokeOrderGameRound } from './original/contracts.ts'
 import { LearningGameShell, SelfAssessmentButtons } from './original/GameShell.tsx'
 import { DrawingTools, ReferencePad, StrokePad, VocabularyContext } from './original/StrokeUI.tsx'
-import type { StrokeOrderGameRound } from './original/contracts.ts'
 
 type Drawing = StrokePoint[][]
 
 export function StrokeTeacher({
+  grade = 'Grade 2',
   character,
   characterIndex,
   word,
@@ -24,6 +26,7 @@ export function StrokeTeacher({
   onComplete,
   onExit,
 }: {
+  grade?: string
   character: string
   characterIndex: number
   word: string
@@ -37,6 +40,7 @@ export function StrokeTeacher({
   onComplete: () => void
   onExit: () => void
 }) {
+  const profile = teacherProfileForGrade(grade)
   const [step, setStep] = useState(initialStep)
   const stage = sequence[step]
   const [drawing, setDrawing] = useState<Drawing>(() =>
@@ -77,7 +81,7 @@ export function StrokeTeacher({
   const next = drawing.length
   const complete = next === strokes.length
   const round: StrokeOrderGameRound = {
-    id: `grade2-character-teacher-${characterIndex}`,
+    id: `${profile.id}-character-teacher-${characterIndex}`,
     targetId,
     targetText: character,
     word,
@@ -181,14 +185,14 @@ export function StrokeTeacher({
 
   return (
     <LearningGameShell
-      gameId="stroke-order-slay-grade-2"
-      title="Stroke-order Slay - 2nd"
-      eyebrow="2nd Grade · Touch Writing"
+      gameId={`stroke-order-slay-${profile.id}`}
+      title={profile.title}
+      eyebrow={profile.eyebrow}
       progress={`${characterIndex + (comparison ? 1 : 0)}/${[...word].length} completed`}
       onExit={onExit}
     >
       <section
-        className="lg-card lg-production-card lg-stroke-order-card lg-stroke-profile-grade-2"
+        className={`lg-card lg-production-card lg-stroke-order-card lg-stroke-profile-${profile.id}`}
         aria-label="Stroke order teacher"
         data-step={step + 1}
         data-character-index={characterIndex}
@@ -235,7 +239,7 @@ export function StrokeTeacher({
                   strokes={drawing}
                   showGuide={false}
                   animationKey={animation}
-                  animationStepSeconds={0.7}
+                  animationStepSeconds={profile.animationStepSeconds}
                   label="Your completed character"
                 />
               </section>
@@ -263,15 +267,17 @@ export function StrokeTeacher({
               onStrokesChange={paused || savingStep ? undefined : setDrawing}
               showGuide
               animationKey={animation}
-              animationStepSeconds={stage === 0 ? 0.7 : 0}
+              animationStepSeconds={stage === 0 ? profile.animationStepSeconds : 0}
               resetKey={resetKey}
               rejectedStroke={rejected}
               suppliedStrokeCount={supplied}
-              guideMode={stage < 3 ? 'full' : stage < 5 ? 'faded' : 'hidden'}
+              guideMode={
+                stage < 3 || (stage === 5 && profile.memoryGuideVisible) ? 'full' : stage < 5 ? 'faded' : 'hidden'
+              }
               hintStrokeIndex={hint && !complete ? next : undefined}
               label={`Trace the guide · ${drawing.length - supplied}/${strokes.length - supplied} strokes`}
               validateStroke={(stroke, index) =>
-                !paused && index < strokes.length && strokeFeedback(stroke, strokes, index) === null
+                !paused && index < strokes.length && strokeFeedback(stroke, strokes, index, profile.assessment) === null
               }
               onStrokeAccepted={() => {
                 setRejected(null)
@@ -285,7 +291,7 @@ export function StrokeTeacher({
                 setHint(true)
                 setHasError(true)
                 setAnimation((value) => value + 1)
-                setMessage(strokeFeedback(stroke, strokes, next) || 'Try that stroke again.')
+                setMessage(strokeFeedback(stroke, strokes, next, profile.assessment) || 'Try that stroke again.')
               }}
             />
             <div className="lg-stroke-actions">
