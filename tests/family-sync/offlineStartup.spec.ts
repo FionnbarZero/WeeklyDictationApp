@@ -57,7 +57,9 @@ for (const [slug, , id] of grades)
       await expect(page.getByLabel('Child profile')).toHaveValue(id)
       // Retained validated curriculum now permits ordinary entry offline.
       // Keep exercising the explicit saved-lesson path as a compatibility gate.
-      await expect(page.getByRole('alert')).toContainText('Offline curriculum: using the last validated teacher lesson')
+      await expect(
+        page.getByRole('alert').filter({ hasText: 'Offline curriculum: using the last validated teacher lesson' }),
+      ).toBeVisible()
       await expect(page.locator('iframe:visible')).toHaveCount(1)
       await expect(frame.getByRole('heading', { name: /^(Kindergarten|Grade 2|Grade 5)$/ })).toBeVisible()
       await page.getByText('Saved lessons', { exact: true }).click()
