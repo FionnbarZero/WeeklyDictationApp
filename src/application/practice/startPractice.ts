@@ -179,7 +179,7 @@ export async function startPractice(input: {
           startedAt,
           Math.random,
           !input.persistence.cloud,
-          context => {
+          (context) => {
             const resolved = input.resolveAcquisitionContext?.(context) || context
             return input.writingPilot?.prepareContext(state, resolved) || resolved
           },
