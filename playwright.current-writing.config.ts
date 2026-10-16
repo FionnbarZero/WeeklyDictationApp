@@ -4,6 +4,9 @@ import family from './playwright.family-sync.config.ts'
 process.env.FAMILY_CURRENT_WRITING = '1'
 export default defineConfig({
   ...family,
+  // Only retained-package rehearsals switch the server's active artifact.
+  // Ordinary CI contexts are isolated and may run independently.
+  workers: process.env.FAMILY_SYNC_REHEARSAL_OLD_ARTIFACT ? 1 : 3,
   timeout: 180_000,
   use: { ...family.use, actionTimeout: 20_000 },
   testIgnore: [],
