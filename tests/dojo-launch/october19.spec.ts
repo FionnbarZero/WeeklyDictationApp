@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { kindergartenAcquisitionStrategy } from '../../src/acquisition/strategies/kindergarten.ts'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
 import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
@@ -152,9 +153,27 @@ test('October 19: both words complete guided teaching and enter native acquisiti
 })
 
 test('October 19: reading opens, reports, exits and reopens with the source cohort intact', async ({ page }) => {
+  // Exercise the supported no-microphone path, without requesting or retaining a real recording.
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException('Test microphone unavailable', 'NotAllowedError')
+    }
+  })
   for (let visit = 0; visit < 2; visit++) {
     const frame = await dojo(page)
     await frame.getByRole('button', { name: 'High-frequency words', exact: true }).click()
+    if (visit === 0) {
+      // Native reading intentionally starts with two familiar trials, not the first new target.
+      for (let familiar = 0; familiar < 2; familiar++) {
+        await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toBeVisible()
+        expect(kindergartenAcquisitionStrategy.familiarDtTargets.map((target) => target.text)).toContain(
+          await frame.locator('.reading-answer-word').textContent(),
+        )
+        await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+        await frame.getByRole('button', { name: 'Continue without recording', exact: true }).click()
+        await frame.getByRole('button', { name: 'Yes', exact: true }).click()
+      }
+    }
     await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toBeVisible()
     await expect(frame.locator('.reading-answer-word')).toHaveText('你')
     await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
