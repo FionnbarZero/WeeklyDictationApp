@@ -1,6 +1,6 @@
 /** Current-week supplement, extracted October 16, 2026 from hanzi-writer-data
  * revision 68d10a4b21150cae5e1ebbd223eed289cf32d90c (data/*.json).
- * Eight additional teacher-source characters; medians only, never child ink.
+ * Eight October 16 characters, plus 虫 for October 19; medians only, never child ink.
  * Make Me A Hanzi / Arphic; see NOTICE.md and ARPHICPL.TXT. */
 export const octoberStrokeMedians = {
   土: [
@@ -500,6 +500,53 @@ export const octoberStrokeMedians = {
       [836, 124],
       [891, 116],
       [942, 97],
+    ],
+  ],
+  虫: [
+    [
+      [233, 528],
+      [268, 503],
+      [280, 478],
+      [331, 284],
+    ],
+    [
+      [299, 526],
+      [320, 514],
+      [506, 539],
+      [641, 569],
+      [690, 570],
+      [722, 551],
+      [738, 530],
+      [701, 418],
+      [671, 398],
+    ],
+    [
+      [351, 311],
+      [364, 324],
+      [380, 327],
+      [659, 367],
+      [711, 366],
+      [739, 357],
+    ],
+    [
+      [442, 782],
+      [502, 734],
+      [505, 699],
+      [497, 168],
+      [475, 146],
+    ],
+    [
+      [176, 88],
+      [242, 58],
+      [648, 156],
+      [672, 161],
+      [693, 155],
+    ],
+    [
+      [657, 243],
+      [782, 93],
+      [800, 56],
+      [808, 15],
     ],
   ],
 } as const
