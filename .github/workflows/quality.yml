@@ -77,6 +77,11 @@ jobs:
         run: |
           npx vite build --config vite.cross-grade-writing.config.ts
           npx playwright test --config playwright.cross-grade-writing.config.ts
+      - name: Isolated Grade 5 October 23 assessment prototype
+        run: |
+          npx playwright install webkit
+          npx vite build --config vite.grade5-oct23.config.ts
+          npx playwright test --config playwright.grade5-oct23.config.ts
       - name: Preserve failed browser evidence
         if: failure()
         uses: actions/upload-artifact@v4

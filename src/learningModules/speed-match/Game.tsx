@@ -29,6 +29,8 @@ type SavedSpeedMatchProps = Omit<PairGameProps, 'onAttempt'> & {
   readonly onAttempt?: (attempt: LearningGameAttempt) => void | Promise<void>
   readonly onTimer?: (remainingMs: number) => Promise<void>
   readonly onRestart?: () => Promise<void>
+  /** Opt-in prototype only. Legacy missions retain their existing feedback. */
+  readonly correctionPolicy?: 'prompt-correct'
 }
 
 function shuffled<T>(values: readonly T[]) {
@@ -75,6 +77,7 @@ export function SpeedMatch({
   remainingMs = MISSION_SECONDS * 1000,
   onTimer,
   onRestart,
+  correctionPolicy,
 }: SavedSpeedMatchProps) {
   const initialCards = useMemo<readonly SpeedMatchCard[]>(() => shuffled([
     ...pairs.map((pair) => ({
@@ -110,6 +113,10 @@ export function SpeedMatch({
   const [timedOut, setTimedOut] = useState(remainingMs === 0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [correctionPairId, setCorrectionPairId] = useState<string | null>(null)
+  const [correctionAnchorId, setCorrectionAnchorId] = useState<string | null>(null)
+  const correctionPair = pairs.find(pair => pair.id === correctionPairId)
+  const correctionAnchor = cards.find(card => card.id === correctionAnchorId)
   const pending = useRef<{
     kind: 'timer' | 'answer' | 'restart'
     save: () => void | Promise<void>
@@ -181,42 +188,49 @@ export function SpeedMatch({
   } as CSSProperties
 
   useEffect(() => {
-    if (!missionStarted || timedOut || missionFinished) return
+    if (!missionStarted || timedOut || missionFinished || correctionPairId) return
     const timer = activityClock.setInterval(() => {
       if (busy.current) return
       const next = Math.max(0, timeLeft - 1)
       saveChange('timer', () => onTimer?.(next * 1000), () => setTimeLeft(next))
     }, 1000)
     return () => activityClock.clearInterval(timer)
-  }, [missionFinished, missionStarted, timedOut, timeLeft, onTimer])
+  }, [missionFinished, missionStarted, timedOut, timeLeft, onTimer, correctionPairId])
 
   useEffect(() => {
-    if (timeLeft > 0 || !missionStarted || missionFinished) return
+    if (timeLeft > 0 || !missionStarted || missionFinished || correctionPairId) return
     setMissionStarted(false)
     setTimedOut(true)
     setSelectedCardIds([])
     setFeedback(null)
     setStrikeQuality(null)
     setLastMessage('The moon gate closed. Reset the mission and strike faster.')
-  }, [missionFinished, missionStarted, timeLeft])
+  }, [missionFinished, missionStarted, timeLeft, correctionPairId])
 
   useEffect(() => {
     if (!feedback) return
     const timer = activityClock.setTimeout(() => {
-      if (feedback === 'incorrect') setCards((current) => reshuffleUnmatched(current, matchedPairIds))
-      setSelectedCardIds([])
+      if (feedback === 'incorrect' && correctionPairId && correctionAnchorId) {
+        setSelectedCardIds([correctionAnchorId])
+        setLastMessage('Try the same target again. Find its matching box.')
+      } else {
+        if (feedback === 'incorrect') setCards((current) => reshuffleUnmatched(current, matchedPairIds))
+        setSelectedCardIds([])
+      }
       setFeedback(null)
       setStrikeQuality(null)
       activityClock.requestAnimationFrame(drainQueuedChoice)
-    }, feedback === 'correct' ? 520 : 650)
+    }, feedback === 'correct' ? 520 : correctionPairId ? 2000 : 650)
     return () => activityClock.clearTimeout(timer)
-  }, [feedback, matchedPairIds])
+  }, [feedback, matchedPairIds, correctionPairId, correctionAnchorId])
 
   function resetMission() {
     saveChange('restart', () => onRestart?.(), () => {
       setCards(shuffled(initialCards))
       setSelectedCardIds([])
       setMatchedPairIds([])
+      setCorrectionPairId(null)
+      setCorrectionAnchorId(null)
       setFeedback(null)
       setStrikeQuality(null)
       setLastMessage('Tap a word seal to begin the rooftop mission.')
@@ -250,6 +264,8 @@ export function SpeedMatch({
       void spoken.then(() => playGameSound(correct ? 'correct' : 'incorrect'))
 
       if (correct) {
+        setCorrectionPairId(null)
+        setCorrectionAnchorId(null)
         setMatchedPairIds((current) => current.includes(pair.id) ? current : [...current, pair.id])
         setStreak((current) => {
           const next = current + 1
@@ -261,12 +277,18 @@ export function SpeedMatch({
           : `Clean strike! ${first.label} matches ${second.label}.`)
       } else {
         setStreak(0)
-        setLastMessage('Decoy seals! Watch the smoke—they are changing positions.')
+        if (correctionPolicy === 'prompt-correct') {
+          queuedChoices.current = []
+          setCorrectionPairId(pair.id)
+          setCorrectionAnchorId(first.id)
+          setLastMessage('Look at the green matching box. Then try this target again.')
+        } else setLastMessage('Decoy seals! Watch the smoke—they are changing positions.')
       }
     })
   }
 
   function choose(card: SpeedMatchCard, spoken: Promise<void>) {
+    if (activityClock.paused || (correctionAnchor && card.kind === correctionAnchor.kind)) return
     if (busy.current) {
       if (queuedChoices.current.length < 2 && !queuedChoices.current.some(item => item.card.id === card.id))
         queuedChoices.current.push({ card, spoken })
@@ -336,16 +358,20 @@ export function SpeedMatch({
         <span><strong>{Math.round(accuracy * 100)}%</strong> accuracy</span>
       </div>
 
+      {correctionPair && <p className="lg-guided-match" role="status">
+        {feedback === 'incorrect' ? 'Look at the green box…' : 'Your turn: try this same match again.'} The clock is paused.
+      </p>}
+
       <div className={`lg-shuriken-board${feedback ? ` is-${feedback}` : ''}${timedOut ? ' is-timeout' : ''}`}>
         <div className="lg-seal-grid">
           {cards.map((card) => <button
             key={card.id}
             type="button"
-            className={`lg-choice lg-word-seal is-${card.kind}${selectedCardIds.includes(card.id) ? ' is-selected' : ''}${matchedPairIds.includes(card.pairId) ? ' is-matched' : ''}`}
+            className={`lg-choice lg-word-seal is-${card.kind}${selectedCardIds.includes(card.id) ? ' is-selected' : ''}${matchedPairIds.includes(card.pairId) ? ' is-matched' : ''}${feedback === 'incorrect' && card.pairId === correctionPairId && card.id !== correctionAnchorId ? ' is-correction-hint' : ''}`}
             // Timer saves share the write slot but must not disable a button
             // between pointer-down and pointer-up. choose queues those inputs;
             // answer/restart saves and failed writes still freeze the board.
-            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut || (saving && pending.current?.kind !== 'timer') || Boolean(saveError)}
+            disabled={matchedPairIds.includes(card.pairId) || Boolean(feedback) || timedOut || (saving && pending.current?.kind !== 'timer') || Boolean(saveError) || Boolean(correctionAnchor && card.kind === correctionAnchor.kind)}
             aria-label={`${card.accessibleLabel || card.label}. Click to hear and select.`}
             onClick={() => {
               const spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(() => undefined, () => undefined)
@@ -374,7 +400,7 @@ export function SpeedMatch({
         <strong>{lastMessage}</strong>
         <span>{feedback === 'correct'
           ? strikeQuality === 'lightning' ? 'Lightning bonus · ninja advancing!' : 'Target cleared · ninja advancing!'
-          : feedback === 'incorrect' ? 'Smoke reset · stay sharp!' : 'Hear it. Match it. Strike fast.'}</span>
+          : feedback === 'incorrect' ? correctionPair ? 'Practice the correct pair · clock paused' : 'Smoke reset · stay sharp!' : 'Hear it. Match it. Strike fast.'}</span>
       </div>
     </section>}
   </LearningGameShell>

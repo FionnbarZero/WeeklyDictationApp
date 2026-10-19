@@ -1,4 +1,6 @@
 node_modules
+grade5-oct23-preview-dist/
+grade5-oct23-test-results/
 native-writing-integration-dist/
 native-writing-test-results/
 dist

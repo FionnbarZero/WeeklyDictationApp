@@ -34,7 +34,9 @@ export function playGameSound(sound: GameSound) {
   try {
     audioContext ||= new AudioContextClass()
     const now = audioContext.currentTime
-    if (audioContext.state === 'suspended') void audioContext.resume()
+    // Report can close the context while WebKit is still resuming it.
+    // Decorative sound must not produce an unhandled rejection or block input.
+    if (audioContext.state === 'suspended') void audioContext.resume().catch(() => undefined)
 
     if (sound === 'select') tone(audioContext, 330, now, .08, .035, 'triangle')
     if (sound === 'flip') {
