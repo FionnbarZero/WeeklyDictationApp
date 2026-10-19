@@ -95,6 +95,9 @@ test('Shuriken green hint pauses, hides, retries same match, retains errors and 
   await expect(card(page, TARGETS[0].text)).toHaveClass(/is-matched/)
   await expect(page.locator('.lg-shuriken-stat-row')).toContainText('33%')
   for (const target of TARGETS.slice(1)) {
+    // Finish the brief feedback animation before WebKit scrolls to another row.
+    await expect(page.locator('.lg-shuriken-board')).not.toHaveClass(/is-correct|is-incorrect/)
+    await expect(card(page, target.text)).toBeEnabled()
     await card(page, target.text).click()
     await card(page, target.meaning).click()
     await expect(card(page, target.text)).toHaveClass(/is-matched/)
