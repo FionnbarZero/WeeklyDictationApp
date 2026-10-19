@@ -1,5 +1,17 @@
 # Weekly Dictation roadmap
 
+## Current action — owner test of the Grade 5 shared-target prototype
+
+The owner requested automatic completion/review of this prototype stage and email delivery. **[10/19 – Fifth Grade Ninja Dojo, Prototype 1 / `c3a5c0e`](https://weekly-dictation-staging--grade5-oct23-v1-tyb8tom9.web.app/)** is now separately published, verified and emailed (SENT `1a153406a07e234d`), expiring **October 26, 2026 at 1:19 a.m. Pacific**. Exact source/test identities, failed-check closure and hosted evidence are at the top of STATUS.
+
+- **Next: 10–15 minute working iPad approval.** Both menu sections share all eight page-2 words for reading/writing, Shuriken uses their definitions with the approved brief green hint and same-target retry, and Sushi uses their reference sentences. Check all four interactions, physical audio/temporary recording, touch/rotation, Report pause and writing resume. Do not change the accepted writing layout or native acquisition rules.
+- **After approval:** integrate the explicitly scoped Grade 5 assessment into native Practice Your Ninja Skills, Final Boss, and Return to Dojo selection, retaining separate reading/writing progress modes but one vocabulary list. Preserve scheduled-start curriculum activation, existing attempts and other grades/weeks. Prototype-only browser saving is not evidence of family persistence or cloud-sync acceptance.
+- **Integration/release gates remain:** current-main reconciliation, scoped independent review under appropriate authorization, saved-progress compatibility, exact-package tests and existing protected release gates. This prototype publication is not approval to merge/publish the new behavior in the regular app.
+- **Separate pending work stays open:** Kindergarten resource prototype `6557420`; correction/target overrides outside this Grade 5 slice; Warmup, voice replacement, other game/recovery reports, and deferred activity-card cleanup. Existing canonical `9d06a02` and family records are unchanged.
+
+Confirmed implementation/review assignment remains **GPT-6 Astra · Extra High**. Bounded preview publication recommendation: **GPT-6.1 Sol · High**; documentation/status: **GPT-6 Luna · Medium**. Do not repeat model confirmation for the same approved stage. Earlier dated handoff instructions below are superseded by this queue.
+
+
 ## Approved writing reliability — integration and release
 
 The owner accepted Prototype 2 (`2a435f9`) and requested continuation on October 16. Preserve that frozen interaction reference, integrate the already-reviewed homepage from current main `4825f78`, then complete the focused independent Astra · Extra High review, exact-package saving/offline/cross-device and guarded-recovery gates, protected integration and verified canonical publication. Ordinary release authority remains bounded by those safeguards. Regular-app smoke testing is premature until the served build passes. The accepted prototype's audio/exit/current-lesson repairs do not implement the separately queued correction, target editing, Warmup redesign or Google voice requests. Do not reopen prototype approval or silently reset reports/progress.
