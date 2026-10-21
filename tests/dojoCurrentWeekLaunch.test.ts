@@ -102,7 +102,7 @@ test('the new guide supplement never changes previously supported guide fingerpr
   for (const character of Object.keys(octoberStrokeMedians)) assert.equal(character in prior, false)
   assert.deepEqual(
     Object.values(octoberStrokeMedians).map((strokes) => strokes.length),
-    [3, 7, 7, 12, 9, 10, 7, 7],
+    [3, 7, 7, 12, 9, 10, 7, 7, 6],
   )
 })
 

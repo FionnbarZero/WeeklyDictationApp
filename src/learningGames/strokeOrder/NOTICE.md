@@ -8,6 +8,7 @@ extracting only validated stroke medians for 37 missing curriculum characters.
 The October 16 current-week supplement in `octoberStrokeAssets.ts` uses the same
 revision for 土、花、走、最、哪、家、住、里. Existing guide coordinates are unchanged.
 The October 23 Grade 5 assessment prototype adds 沟、快、速、意、思 from the same pinned revision; existing guides are unchanged.
+The October 19 supplement adds 虫 from the same revision, with six validated strokes.
 The upstream data originated in Make Me A Hanzi and
 Arphic Technology fonts.
 

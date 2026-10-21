@@ -24,6 +24,7 @@ import {
   type PromptAudioAttempt,
 } from '../audio/promptAudio.ts'
 import { TARGET_WRITING_RESPONSE_SECONDS } from '../practice/writingTimer.ts'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 
 export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly mode: TestReviewMode
@@ -63,7 +64,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   useEffect(() => {
     if (confirmingDiscard) return pauseForReport()
   }, [confirmingDiscard])
-  const pauseButton = hasFamilyActivityOwner() && (
+  const pauseButton = !regressionPreview && hasFamilyActivityOwner() && (
     <button className="back-button" type="button" onClick={pauseToFamilyHub}>
       Pause and return
     </button>
@@ -120,6 +121,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     setConfirmingDiscard(false)
     onDiscard()
   }
+  const requestDiscard = () => (regressionPreview ? discard() : setConfirmingDiscard(true))
 
   function submit() {
     if (submittedRef.current) return
@@ -238,7 +240,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
         data-report-phase="no-targets"
       >
         <p className="error-banner">This Test Review has no available targets.</p>
-        <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}>
+        <button className="back-button" type="button" onClick={requestDiscard}>
           <X size={18} /> {exitLabel}
         </button>
         {discardConfirmation}
@@ -260,7 +262,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
             setReview((current) => assessTestReviewTarget(current, targetId, correct ? 'correct' : 'incorrect'))
           }
           onPlayReference={onPlayReference}
-          onRequestDiscard={() => setConfirmingDiscard(true)}
+          onRequestDiscard={requestDiscard}
           onSubmit={submit}
           exitLabel={exitLabel}
         />
@@ -279,7 +281,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     >
       <div className="practice-top">
         {pauseButton}
-        <button className="back-button" type="button" onClick={() => setConfirmingDiscard(true)}>
+        <button className="back-button" type="button" onClick={requestDiscard}>
           <X size={18} /> {exitLabel}
         </button>
         <span className="practice-count">

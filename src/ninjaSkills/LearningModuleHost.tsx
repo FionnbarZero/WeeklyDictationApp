@@ -45,7 +45,12 @@ export function LearningModuleHost({ pack, playAudio, onExit, onAttempt, onCompl
   }
 
   return (
-    <div className="ninja-game-surface">
+    <div
+      className="ninja-game-surface"
+      data-report-activity={pack.title}
+      data-report-phase="game"
+      data-report-game={pack.moduleId}
+    >
       <Suspense
         fallback={
           <main className="page loading-surface" role="status">

@@ -6,8 +6,21 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const out = resolve(root, 'dojo-launch-preview-dist')
+const regressions = process.argv.includes('--regressions-oct20')
+const out = resolve(root, regressions ? 'regression-preview-dist' : 'dojo-launch-preview-dist')
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
+const octoberResources = process.argv.includes('--kindergarten-oct19')
+const prototype = regressions
+  ? 'October 20 regression repairs / Prototype 3'
+  : octoberResources
+    ? 'Kindergarten October 19 resources / Prototype 1'
+    : 'Writing reliability / Prototype 2'
+const description = regressions
+  ? 'Reading, writing, games, audio and Exit repairs'
+  : octoberResources
+    ? 'October 19 writing and reading resources'
+    : 'Audio and exit repairs'
+const bannerLabel = regressions || octoberResources ? prototype : 'Writing reliability · Prototype 2'
 const grades = [
   ['kindergarten', 'Kindergarten'],
   ['grade2', 'Grade 2'],
@@ -37,6 +50,7 @@ execFileSync(
       VITE_RECONCILIATION_PREVIEW: 'true',
       VITE_PUBLIC_PREVIEW: 'true',
       VITE_GIT_REVISION: revision,
+      VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),
     },
   },
 )
@@ -51,7 +65,7 @@ writeFileSync(
   entry,
   readFileSync(entry, 'utf8').replace(
     /(<body\b[^>]*>)/,
-    `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">Writing reliability · Prototype 2 · ${revision.slice(0, 7)} · Audio and exit repairs · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
+    `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">${bannerLabel} · ${revision.slice(0, 7)} · ${description} · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
   ),
 )
 const files = artifactFileRecords(out).filter((file) => file.path !== 'dojo-launch-manifest.json')
@@ -60,7 +74,8 @@ writeFileSync(
   JSON.stringify(
     {
       schema: 1,
-      prototype: 'Writing reliability / Prototype 2',
+      prototype,
+      ...(octoberResources ? { resourceLessonStartDate: '2026-10-19' } : {}),
       sourceRevision: revision,
       curriculumSnapshotDate: '2026-10-16',
       targetActivation: 'scheduled-start-date',

@@ -1,5 +1,15 @@
 import { activityClock } from '../../../activity/activityLifecycle.ts'
-export type GameSound = 'select' | 'flip' | 'correct' | 'incorrect' | 'progress' | 'victory' | 'lantern-flip' | 'lantern-match' | 'lantern-miss' | 'lantern-victory'
+export type GameSound =
+  | 'select'
+  | 'flip'
+  | 'correct'
+  | 'incorrect'
+  | 'progress'
+  | 'victory'
+  | 'lantern-flip'
+  | 'lantern-match'
+  | 'lantern-miss'
+  | 'lantern-victory'
 
 let audioContext: AudioContext | null = null
 type LanternSound = Extract<GameSound, `lantern-${string}`>
@@ -12,9 +22,12 @@ const lanternSoundUrls: Readonly<Record<LanternSound, string>> = {
 }
 const lanternAudio = new Map<LanternSound, HTMLAudioElement>()
 let activeLanternAudio: HTMLAudioElement | null = null
-activityClock.subscribe(paused => {
+activityClock.subscribe((paused) => {
   if (!paused) return
-  if (audioContext) { void audioContext.close().catch(() => undefined); audioContext = null }
+  if (audioContext) {
+    void audioContext.close().catch(() => undefined)
+    audioContext = null
+  }
   activeLanternAudio?.pause()
   activeLanternAudio = null
   if (typeof navigator !== 'undefined') navigator.vibrate?.(0)
@@ -25,7 +38,7 @@ function getLanternAudio(sound: LanternSound) {
   if (cached) return cached
   const audio = new Audio(lanternSoundUrls[sound])
   audio.preload = 'auto'
-  audio.volume = .68
+  audio.volume = 0.68
   lanternAudio.set(sound, audio)
   return audio
 }
@@ -51,13 +64,20 @@ function playLanternRecording(sound: LanternSound) {
   })
 }
 
-function tone(context: AudioContext, frequency: number, startsAt: number, duration: number, gainValue: number, type: OscillatorType = 'sine') {
+function tone(
+  context: AudioContext,
+  frequency: number,
+  startsAt: number,
+  duration: number,
+  gainValue: number,
+  type: OscillatorType = 'sine',
+) {
   const oscillator = context.createOscillator()
   const gain = context.createGain()
   oscillator.type = type
   oscillator.frequency.setValueAtTime(frequency, startsAt)
   gain.gain.setValueAtTime(0.0001, startsAt)
-  gain.gain.exponentialRampToValueAtTime(gainValue, startsAt + .012)
+  gain.gain.exponentialRampToValueAtTime(gainValue, startsAt + 0.012)
   gain.gain.exponentialRampToValueAtTime(0.0001, startsAt + duration)
   oscillator.connect(gain)
   gain.connect(context.destination)
@@ -66,7 +86,7 @@ function tone(context: AudioContext, frequency: number, startsAt: number, durati
     gain.disconnect()
   }
   oscillator.start(startsAt)
-  oscillator.stop(startsAt + duration + .02)
+  oscillator.stop(startsAt + duration + 0.02)
 }
 
 export function playGameSound(sound: GameSound) {
@@ -81,24 +101,26 @@ export function playGameSound(sound: GameSound) {
   try {
     audioContext ||= new AudioContextClass()
     const now = audioContext.currentTime
-    if (audioContext.state === 'suspended') void audioContext.resume()
+    if (audioContext.state === 'suspended') void audioContext.resume().catch(() => undefined)
 
-    if (sound === 'select') tone(audioContext, 330, now, .08, .035, 'triangle')
+    if (sound === 'select') tone(audioContext, 330, now, 0.08, 0.035, 'triangle')
     if (sound === 'flip') {
-      tone(audioContext, 220, now, .09, .035, 'triangle')
-      tone(audioContext, 430, now + .045, .11, .025, 'sine')
+      tone(audioContext, 220, now, 0.09, 0.035, 'triangle')
+      tone(audioContext, 430, now + 0.045, 0.11, 0.025, 'sine')
     }
     if (sound === 'correct' || sound === 'progress') {
-      tone(audioContext, 440, now, .12, .045, 'triangle')
-      tone(audioContext, 660, now + .075, .16, .04, 'triangle')
-      tone(audioContext, 880, now + .15, .19, .032, 'sine')
+      tone(audioContext, 440, now, 0.12, 0.045, 'triangle')
+      tone(audioContext, 660, now + 0.075, 0.16, 0.04, 'triangle')
+      tone(audioContext, 880, now + 0.15, 0.19, 0.032, 'sine')
     }
     if (sound === 'incorrect') {
-      tone(audioContext, 185, now, .14, .045, 'sawtooth')
-      tone(audioContext, 145, now + .09, .2, .035, 'sawtooth')
+      tone(audioContext, 185, now, 0.14, 0.045, 'sawtooth')
+      tone(audioContext, 145, now + 0.09, 0.2, 0.035, 'sawtooth')
     }
     if (sound === 'victory') {
-      ;[523, 659, 784, 1047].forEach((frequency, index) => tone(audioContext!, frequency, now + index * .08, .28, .038, index === 3 ? 'sine' : 'triangle'))
+      ;[523, 659, 784, 1047].forEach((frequency, index) =>
+        tone(audioContext!, frequency, now + index * 0.08, 0.28, 0.038, index === 3 ? 'sine' : 'triangle'),
+      )
     }
     if ('vibrate' in navigator) {
       if (sound === 'incorrect') navigator.vibrate?.([35, 45, 35])

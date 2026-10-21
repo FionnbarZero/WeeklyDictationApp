@@ -1,0 +1,46 @@
+/* Isolated prototype only. Drawing still captures touch; the surrounding page scrolls. */
+html[data-regression-preview="true"] {
+  overflow-y: auto;
+  scroll-padding-block: 16px;
+}
+html[data-regression-preview="true"] body {
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+}
+html[data-regression-preview="true"] .lg-stroke-shell {
+  width: calc(100% - 24px);
+  max-width: 1200px;
+  padding-bottom: 32px;
+  touch-action: pan-y;
+}
+html[data-regression-preview="true"] .lg-stroke-pad {
+  touch-action: none;
+}
+html[data-regression-preview="true"] .lg-stroke-order-card {
+  --slay-pad-size: min(620px, max(340px, calc(100svh - 265px)), calc(100vw - 256px));
+}
+html[data-regression-preview="true"]
+  .grade2-writing-pilot:not(:has(#slay-acquisition-root, .st-original-stage))
+  .practice-page.has-skywriting-response {
+  height: max(700px, calc(100dvh - 24px));
+  overflow: visible;
+}
+html[data-regression-preview="true"] .app-shell:has(.grade2-writing-pilot) > .topbar {
+  display: none;
+}
+html[data-regression-preview="true"] .lg-word-seal.is-word > span {
+  font-size: clamp(40px, 5vw, 60px);
+  line-height: 1.25;
+}
+html[data-regression-preview="true"] .lg-word-seal.is-meaning > span {
+  font-size: clamp(18px, 2.2vw, 26px);
+  line-height: 1.25;
+}
+html[data-regression-preview="true"] .lg-word-seal {
+  min-height: 100px;
+}
+@media (max-width: 899px) {
+  html[data-regression-preview="true"] .lg-stroke-order-card {
+    --slay-pad-size: min(560px, max(320px, calc(100svh - 340px)), calc(100vw - 56px));
+  }
+}

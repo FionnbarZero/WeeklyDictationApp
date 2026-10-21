@@ -8,6 +8,8 @@ import '../strokeTeacherPrototype/preview.css'
 import { useEffect } from 'react'
 import { hasFamilyActivityOwner } from '../activity/activityLifecycle.ts'
 import { SlayWritingAcquisition } from './SlayWritingAcquisition.tsx'
+import { regressionPreview } from '../regressionPreview/policy.ts'
+import '../regressionPreview/styles.css'
 
 export default function Grade2WritingPractice({
   progress,
@@ -18,12 +20,13 @@ export default function Grade2WritingPractice({
   onTeachingStep: (step: number) => Promise<void>
 }) {
   const writingStage = props.session.segment === 'primary' && props.session.primaryPhase === 'acquisition'
+  const fullWritingFrame = writingStage || regressionPreview
   useEffect(() => {
-    if (!writingStage || !hasFamilyActivityOwner()) return
+    if (!fullWritingFrame || !hasFamilyActivityOwner()) return
     const frame = window.frameElement!
     frame.setAttribute('data-writing-stage', 'true')
     return () => frame.removeAttribute('data-writing-stage')
-  }, [writingStage])
+  }, [fullWritingFrame])
   const position = progress && props.session.segment === 'primary' ? teachingPosition(progress) : null
   const target = position && progress?.lesson.targets[position.targetIndex]
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 import type {
   LearningHubActivity,
   LearningHubLaunchContext,
@@ -6,6 +7,10 @@ import type {
   LearningHubViewModel,
   LearningHubWordGroup,
 } from './contracts.ts'
+
+// Document-local navigation only. Each family frame owns one grade/lesson;
+// remembering its menu does not save answers or restart an activity.
+const returnSections = new Map<string, string | null>()
 
 export type LearningHubProps<Launch> = {
   model: LearningHubViewModel<Launch>
@@ -15,14 +20,18 @@ export type LearningHubProps<Launch> = {
 }
 
 function WordGroup({ group }: { group: LearningHubWordGroup }) {
-  return <div className="learning-hub-word-group">
-    <p className="learning-hub-word-label">{group.label}</p>
-    <div className="learning-hub-word-list">
-      {group.words.length
-        ? group.words.map((word, index) => <span key={`${word}-${index}`}>{word}</span>)
-        : <small>No words listed</small>}
+  return (
+    <div className="learning-hub-word-group">
+      <p className="learning-hub-word-label">{group.label}</p>
+      <div className="learning-hub-word-list">
+        {group.words.length ? (
+          group.words.map((word, index) => <span key={`${word}-${index}`}>{word}</span>)
+        ) : (
+          <small>No words listed</small>
+        )}
+      </div>
     </div>
-  </div>
+  )
 }
 
 function ActivityCard<Launch>({
@@ -39,23 +48,39 @@ function ActivityCard<Launch>({
   onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
 }) {
   const action = activity.action
-  return <article className={`learning-hub-activity learning-hub-theme-${theme}`}>
-    <span className="learning-hub-activity-number">{index + 1}</span>
-    <span className="learning-hub-activity-icon" aria-hidden="true">{activity.icon}</span>
-    <p className="learning-hub-eyebrow">{activity.eyebrow}</p>
-    <h3>{activity.title}</h3>
-    <p>{activity.description}</p>
-    {activity.note && <small className="learning-hub-activity-note">{activity.note}</small>}
-    {action.kind === 'link'
-      ? <a className="learning-hub-action" href={action.url} target="_blank" rel="noopener noreferrer" aria-label={action.accessibleLabel}>{action.label}</a>
-      : <button
+  return (
+    <article className={`learning-hub-activity learning-hub-theme-${theme}`}>
+      <span className="learning-hub-activity-number">{index + 1}</span>
+      <span className="learning-hub-activity-icon" aria-hidden="true">
+        {activity.icon}
+      </span>
+      <p className="learning-hub-eyebrow">{activity.eyebrow}</p>
+      <h3>{activity.title}</h3>
+      <p>{activity.description}</p>
+      {activity.note && <small className="learning-hub-activity-note">{activity.note}</small>}
+      {action.kind === 'link' ? (
+        <a
+          className="learning-hub-action"
+          href={action.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={action.accessibleLabel}
+        >
+          {action.label}
+        </a>
+      ) : (
+        <button
           className="learning-hub-action"
           type="button"
           disabled={action.kind === 'disabled'}
           title={action.kind === 'disabled' ? action.reason : undefined}
           onClick={() => action.kind === 'launch' && onLaunch(action.launch, launchContext)}
-        >{action.label}</button>}
-  </article>
+        >
+          {action.label}
+        </button>
+      )}
+    </article>
+  )
 }
 
 function SectionDetail<Launch>({
@@ -71,11 +96,8 @@ function SectionDetail<Launch>({
     ? section.defaultCohortId!
     : section.cohorts[0]?.id || ''
   const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
-  const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId)
-    || section.cohorts[0]
-  const visibleCohorts = section.cohortPickerLabel && selectedCohort
-    ? [selectedCohort]
-    : section.cohorts
+  const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId) || section.cohorts[0]
+  const visibleCohorts = section.cohortPickerLabel && selectedCohort ? [selectedCohort] : section.cohorts
   const launchContext: LearningHubLaunchContext = {
     sectionId: section.id,
     cohortId: section.cohortPickerLabel ? selectedCohort?.id || null : section.cohorts[0]?.id || null,
@@ -91,53 +113,109 @@ function SectionDetail<Launch>({
     setSelectedCohortId(defaultCohortId)
   }, [defaultCohortId])
 
-  return <section className={`learning-hub-detail learning-hub-theme-${section.theme}`} data-report-activity={`Learning hub: ${section.id}`}>
-    <button className="learning-hub-back" type="button" onClick={onBack}>← Back to all challenges</button>
-    <header className="learning-hub-detail-heading">
-      <div>
-        <p className="learning-hub-eyebrow">{section.kicker}</p>
-        <h1>{section.detailTitle || section.title}</h1>
-        <p>{section.detailSubtitle || section.subtitle}</p>
-      </div>
-      <span className="learning-hub-section-mark">{section.number}</span>
-    </header>
-
-    {section.cohortPickerLabel && section.cohorts.length > 0 && <label className="learning-hub-cohort-picker">
-      <span>{section.cohortPickerLabel}</span>
-      <select value={selectedCohort?.id || ''} onChange={(event) => setSelectedCohortId(event.target.value)}>
-        {section.cohorts.map((cohort) => <option key={cohort.id} value={cohort.id}>{cohort.label}</option>)}
-      </select>
-    </label>}
-
-    <div className="learning-hub-cohorts">
-      {visibleCohorts.length ? visibleCohorts.map((cohort) => <article className="learning-hub-cohort" key={cohort.id}>
-        <div className="learning-hub-cohort-heading">
-          <div><p className="learning-hub-eyebrow">{cohort.label}</p><h2>Words in this challenge</h2></div>
-          <span>{cohort.countLabel}</span>
+  return (
+    <section
+      className={`learning-hub-detail learning-hub-theme-${section.theme}`}
+      data-report-activity={`Learning hub: ${section.id}`}
+    >
+      <button className="learning-hub-back" type="button" onClick={onBack}>
+        ← Back to all challenges
+      </button>
+      <header className="learning-hub-detail-heading">
+        <div>
+          <p className="learning-hub-eyebrow">{section.kicker}</p>
+          <h1>{section.detailTitle || section.title}</h1>
+          <p>{section.detailSubtitle || section.subtitle}</p>
         </div>
-        <div className="learning-hub-word-groups">{cohort.groups.map((group) => <WordGroup key={group.label} group={group} />)}</div>
-        <details className="learning-hub-source-details">
-          <summary>Source details</summary>
-          <p>Cohort: {cohort.id}</p>
-          {cohort.preservedGroups?.map((group) => <WordGroup key={group.label} group={group} />)}
-        </details>
-      </article>) : <p className="learning-hub-unavailable">{section.unavailableReason || 'No cohort is available.'}</p>}
-    </div>
+        <span className="learning-hub-section-mark">{section.number}</span>
+      </header>
 
-    <div className="learning-hub-activity-heading">
-      <p className="learning-hub-eyebrow">Choose an activity</p>
-      <h2>How do you want to train?</h2>
-    </div>
-    <div className="learning-hub-activity-grid">
-      {section.activities.map((activity, index) =>
-        <ActivityCard key={activity.id} activity={activity} index={index} theme={section.theme} launchContext={launchContext} onLaunch={onLaunch} />)}
-    </div>
-  </section>
+      {section.cohortPickerLabel && section.cohorts.length > 0 && (
+        <label className="learning-hub-cohort-picker">
+          <span>{section.cohortPickerLabel}</span>
+          <select value={selectedCohort?.id || ''} onChange={(event) => setSelectedCohortId(event.target.value)}>
+            {section.cohorts.map((cohort) => (
+              <option key={cohort.id} value={cohort.id}>
+                {cohort.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <div className="learning-hub-cohorts">
+        {visibleCohorts.length ? (
+          visibleCohorts.map((cohort) => (
+            <article className="learning-hub-cohort" key={cohort.id}>
+              <div className="learning-hub-cohort-heading">
+                <div>
+                  <p className="learning-hub-eyebrow">{cohort.label}</p>
+                  <h2>Words in this challenge</h2>
+                </div>
+                <span>{cohort.countLabel}</span>
+              </div>
+              <div className="learning-hub-word-groups">
+                {cohort.groups.map((group) => (
+                  <WordGroup key={group.label} group={group} />
+                ))}
+              </div>
+              <details className="learning-hub-source-details">
+                <summary>Source details</summary>
+                <p>Cohort: {cohort.id}</p>
+                {cohort.preservedGroups?.map((group) => (
+                  <WordGroup key={group.label} group={group} />
+                ))}
+              </details>
+            </article>
+          ))
+        ) : (
+          <p className="learning-hub-unavailable">{section.unavailableReason || 'No cohort is available.'}</p>
+        )}
+      </div>
+
+      <div className="learning-hub-activity-heading">
+        <p className="learning-hub-eyebrow">Choose an activity</p>
+        <h2>How do you want to train?</h2>
+      </div>
+      <div className="learning-hub-activity-grid">
+        {section.activities.map((activity, index) => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            index={index}
+            theme={section.theme}
+            launchContext={launchContext}
+            onLaunch={onLaunch}
+          />
+        ))}
+      </div>
+    </section>
+  )
 }
 
-export function LearningHub<Launch>({ model: originalModel, onLaunch, hideUnavailable = false }: LearningHubProps<Launch>) {
-  const model = hideUnavailable ? { ...originalModel, sections: originalModel.sections.map(section => ({ ...section, activities: section.activities.filter(activity => activity.action.kind !== 'disabled') })).filter(section => section.activities.length > 0) } : originalModel
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+export function LearningHub<Launch>({
+  model: originalModel,
+  onLaunch,
+  hideUnavailable = false,
+}: LearningHubProps<Launch>) {
+  const model = hideUnavailable
+    ? {
+        ...originalModel,
+        sections: originalModel.sections
+          .map((section) => ({
+            ...section,
+            activities: section.activities.filter((activity) => activity.action.kind !== 'disabled'),
+          }))
+          .filter((section) => section.activities.length > 0),
+      }
+    : originalModel
+  const [selectedSectionId, setSection] = useState<string | null>(() =>
+    regressionPreview ? returnSections.get(model.profileLabel) || null : null,
+  )
+  const setSelectedSectionId = (id: string | null) => {
+    if (regressionPreview) returnSections.set(model.profileLabel, id)
+    setSection(id)
+  }
   const selected = model.sections.find((section) => section.id === selectedSectionId)
 
   useEffect(() => {
@@ -150,26 +228,41 @@ export function LearningHub<Launch>({ model: originalModel, onLaunch, hideUnavai
     return <SectionDetail section={selected} onBack={() => setSelectedSectionId(null)} onLaunch={onLaunch} />
   }
 
-  return <>
-    <header className="learning-hub-topbar">
-      <span className="learning-hub-profile" role="heading" aria-level={1}>{model.profileLabel}</span>
-    </header>
-    <section className="learning-hub-section-grid" aria-label={`${model.profileLabel} activities`} data-report-activity="Learning hub">
-      {model.sections.map((section) => <button
-        className={`learning-hub-section-card learning-hub-theme-${section.theme}`}
-        type="button"
-        key={section.id}
-        disabled={!section.available}
-        title={!section.available ? section.unavailableReason : undefined}
-        onClick={() => setSelectedSectionId(section.id)}
+  return (
+    <>
+      <header className="learning-hub-topbar">
+        <span className="learning-hub-profile" role="heading" aria-level={1}>
+          {model.profileLabel}
+        </span>
+      </header>
+      <section
+        className="learning-hub-section-grid"
+        aria-label={`${model.profileLabel} activities`}
+        data-report-activity="Learning hub"
       >
-        <span className="learning-hub-section-number">{section.number}</span>
-        <span className="learning-hub-eyebrow">{section.kicker}</span>
-        <strong>{section.title}</strong>
-        <span>{section.subtitle}</span>
-        <small>{section.cohortSummaryLabel || section.cohorts[0]?.label || section.unavailableReason || 'Waiting for this challenge'}</small>
-        <b>{section.available ? `${section.actionLabel} →` : 'Not available yet'}</b>
-      </button>)}
-    </section>
-  </>
+        {model.sections.map((section) => (
+          <button
+            className={`learning-hub-section-card learning-hub-theme-${section.theme}`}
+            type="button"
+            key={section.id}
+            disabled={!section.available}
+            title={!section.available ? section.unavailableReason : undefined}
+            onClick={() => setSelectedSectionId(section.id)}
+          >
+            <span className="learning-hub-section-number">{section.number}</span>
+            <span className="learning-hub-eyebrow">{section.kicker}</span>
+            <strong>{section.title}</strong>
+            <span>{section.subtitle}</span>
+            <small>
+              {section.cohortSummaryLabel ||
+                section.cohorts[0]?.label ||
+                section.unavailableReason ||
+                'Waiting for this challenge'}
+            </small>
+            <b>{section.available ? `${section.actionLabel} →` : 'Not available yet'}</b>
+          </button>
+        ))}
+      </section>
+    </>
+  )
 }

@@ -12,6 +12,7 @@ test('the recording presentation has a small explicit boundary and no persistenc
     'Tier2ReadingPractice.tsx',
     'audioRecorder.ts',
     'contracts.ts',
+    'recordingLevel.ts',
     'useAudioRecorder.ts',
   ])
   const combined = [
@@ -19,10 +20,14 @@ test('the recording presentation has a small explicit boundary and no persistenc
     source('src/readingPractice/Tier2ReadingPractice.tsx'),
     source('src/readingPractice/audioRecorder.ts'),
     source('src/readingPractice/contracts.ts'),
+    source('src/readingPractice/recordingLevel.ts'),
     source('src/readingPractice/useAudioRecorder.ts'),
   ].join('\n')
   assert.doesNotMatch(combined, /firebase|firestore|localStorage|indexedDB|fetch\s*\(|XMLHttpRequest|WebSocket/i)
-  assert.doesNotMatch(source('src/tier2/contracts.ts'), /from ['"].*(?:react|firebase|firestore)|\bMediaRecorder\b|\bgetUserMedia\b/i)
+  assert.doesNotMatch(
+    source('src/tier2/contracts.ts'),
+    /from ['"].*(?:react|firebase|firestore)|\bMediaRecorder\b|\bgetUserMedia\b/i,
+  )
 })
 
 test('Tier 1 and Tier 2 use the same red and green self-assessment component', () => {
@@ -61,11 +66,7 @@ test('the smoke presentation records once, compares automatically, and exposes s
 })
 
 test('recording is exposed only through the shared Tier 2 runner and stays outside persistence infrastructure', () => {
-  const infrastructure = [
-    source('index.html'),
-    source('src/main.tsx'),
-    source('src/firestoreClient.ts'),
-  ].join('\n')
+  const infrastructure = [source('index.html'), source('src/main.tsx'), source('src/firestoreClient.ts')].join('\n')
   assert.doesNotMatch(infrastructure, /ReadingResponsePanel|Tier2ReadingPractice|getUserMedia|MediaRecorder/)
   assert.match(source('src/App.tsx'), /Tier2ReadingPractice/)
   assert.match(source('src/grade5LearningHubHarness.tsx'), /Tier2ReadingPractice/)

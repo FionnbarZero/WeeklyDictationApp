@@ -20,18 +20,20 @@ export type ProblemReport = {
 
 // Explicit diagnostic attributes only: never scrape page text, inputs, answers, or storage.
 export function captureScreenContext(doc: Document): ReportContext {
-  const context: ReportContext = { route: doc.location.pathname }
+  const context: ReportContext = { route: doc.location.pathname, origin: doc.location.origin }
   const workspace = doc.querySelector('[data-report-grade]')
   for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision']) {
     const value = workspace?.getAttribute(`data-report-${key}`)
     if (value) context[key] = value.slice(0, 300)
   }
   let surface = doc
+  context.viewport = `${doc.defaultView?.innerWidth || 0} × ${doc.defaultView?.innerHeight || 0}`
   const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame:not([hidden])')
   try {
     if (frame?.contentDocument) {
       surface = frame.contentDocument
       context.route = new URL(frame.src).pathname
+      context.activityViewport = `${surface.defaultView?.innerWidth || 0} × ${surface.defaultView?.innerHeight || 0}`
       for (const key of ['week', 'curriculum', 'revision']) {
         const value = frame.getAttribute(`data-family-${key}`)
         if (value) context[key] = value.slice(0, 300)
@@ -45,13 +47,14 @@ export function captureScreenContext(doc: Document): ReportContext {
     (element) => element.getClientRects().length && !element.closest('[hidden]'),
   )
   const marker = modal || markers[markers.length - 1]
-  for (const key of ['activity', 'phase', 'target', 'position', 'audio']) {
+  for (const key of ['activity', 'phase', 'target', 'position', 'audio', 'game']) {
     const value = marker?.getAttribute(`data-report-${key}`)
     if (value) context[key] = value.slice(0, 300)
   }
   if (!marker && frame) {
     context.activity ||= 'Activity loading or unavailable'
   }
+  context.activityPaused = surface.documentElement.dataset.activityPaused || 'false'
   context.screen ||= doc.querySelector('[role="alert"]') ? 'Preview error' : 'Loading or parent sign-in'
   return context
 }
