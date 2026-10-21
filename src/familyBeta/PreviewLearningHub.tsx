@@ -378,6 +378,39 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       return {
         ...section,
         activities,
+        ...(grade5PresentationPreview && assessment && section.id === 'test-review-2'
+          ? {
+              activityGroups: [
+                {
+                  id: 'boss-test',
+                  title: 'Boss Test',
+                  description: 'Choose the writing test or the reading test.',
+                  icon: '🏆',
+                  activityIds: activities
+                    .filter((activity) => ['Writing Test', 'Reading Test'].includes(activity.title))
+                    .map((activity) => activity.id),
+                },
+                {
+                  id: 'boss-games',
+                  title: 'Boss Games',
+                  description: 'Play games with this Final Boss word set.',
+                  icon: '🎮',
+                  activityIds: activities
+                    .filter((activity) => activity.id.startsWith('preview-game-'))
+                    .map((activity) => activity.id),
+                },
+                {
+                  id: 'boss-training',
+                  title: 'Need more training?',
+                  description: 'Return to the Dojo for writing or reading practice.',
+                  icon: '🥋',
+                  activityIds: activities
+                    .filter((activity) => activity.title.startsWith('Return to Dojo'))
+                    .map((activity) => activity.id),
+                },
+              ],
+            }
+          : {}),
         ...(spirit ? { subtitle: 'Mastered words follow the adaptive warmup rules.' } : {}),
       }
     }),

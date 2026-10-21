@@ -56,6 +56,7 @@
 .learning-hub-unavailable { margin: 0; padding: 18px; border-radius: 15px; color: #69717e; background: #f1eee8; }
 .learning-hub-activity-heading { margin: 41px 0 18px; }
 .learning-hub-activity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.learning-hub-group-grid > :last-child { grid-column: 1 / -1; }
 .learning-hub-activity { position: relative; display: flex; min-height: 330px; padding: 28px; overflow: hidden; flex-direction: column; align-items: flex-start; border-radius: 24px; box-shadow: 0 14px 30px rgb(35 49 57 / 7%); }
 .learning-hub-activity-icon { font-size: 31px; line-height: 1; }
 .learning-hub-activity .learning-hub-eyebrow { margin-top: 15px; }

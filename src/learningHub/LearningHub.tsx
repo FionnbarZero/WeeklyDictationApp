@@ -97,6 +97,11 @@ function SectionDetail<Launch>({
     ? section.defaultCohortId!
     : section.cohorts[0]?.id || ''
   const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const selectedGroup = section.activityGroups?.find((group) => group.id === selectedGroupId)
+  const visibleActivities = selectedGroup
+    ? section.activities.filter((activity) => selectedGroup.activityIds.includes(activity.id))
+    : section.activities
   const selectedCohort = section.cohorts.find((cohort) => cohort.id === selectedCohortId) || section.cohorts[0]
   const visibleCohorts = section.cohortPickerLabel && selectedCohort ? [selectedCohort] : section.cohorts
   const launchContext: LearningHubLaunchContext = {
@@ -175,21 +180,48 @@ function SectionDetail<Launch>({
       </div>
 
       <div className="learning-hub-activity-heading">
+        {selectedGroup && (
+          <button className="learning-hub-back" type="button" onClick={() => setSelectedGroupId(null)}>
+            ← Back to Final Boss
+          </button>
+        )}
         <p className="learning-hub-eyebrow">Choose an activity</p>
-        <h2>How do you want to train?</h2>
+        <h2>{selectedGroup?.title || 'How do you want to train?'}</h2>
       </div>
-      <div className="learning-hub-activity-grid">
-        {section.activities.map((activity, index) => (
-          <ActivityCard
-            key={activity.id}
-            activity={activity}
-            index={index}
-            theme={section.theme}
-            launchContext={launchContext}
-            onLaunch={onLaunch}
-          />
-        ))}
-      </div>
+      {section.activityGroups && !selectedGroup ? (
+        <div className="learning-hub-activity-grid learning-hub-group-grid">
+          {section.activityGroups.map((group, index) => (
+            <ActivityCard
+              key={group.id}
+              activity={{
+                id: group.id,
+                title: group.title,
+                description: group.description,
+                icon: group.icon,
+                eyebrow: 'Final Boss',
+                action: { kind: 'launch', label: group.title, launch: group.id },
+              }}
+              index={index}
+              theme={section.theme}
+              launchContext={launchContext}
+              onLaunch={setSelectedGroupId}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="learning-hub-activity-grid">
+          {visibleActivities.map((activity, index) => (
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              index={index}
+              theme={section.theme}
+              launchContext={launchContext}
+              onLaunch={onLaunch}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

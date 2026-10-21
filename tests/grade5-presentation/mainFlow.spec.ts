@@ -82,6 +82,14 @@ async function open(page: Page, section: RegExp, activity?: string) {
   const back = frame.getByRole('button', { name: '← Back to all challenges', exact: true })
   if (await back.isVisible()) await back.click()
   await frame.getByRole('button', { name: section }).click()
+  if (activity && section.source.includes('Final Boss')) {
+    const group = activity.startsWith('Return to Dojo')
+      ? 'Need more training?'
+      : activity.endsWith(' Test')
+        ? 'Boss Test'
+        : 'Boss Games'
+    await frame.getByRole('button', { name: group, exact: true }).click()
+  }
   if (activity) await frame.getByRole('button', { name: activity, exact: true }).click()
   return frame
 }
@@ -134,6 +142,35 @@ test('one Grade 5 entry exposes all eight shared words in all three paths with c
   await page.getByText('Parent controls', { exact: true }).click()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath('grade5-main-menu.png'), fullPage: true })
+})
+
+test('Final Boss nests tests, games and training separately with safe back and report controls', async ({
+  page,
+}, info) => {
+  const frame = await open(page, sectionNames[2])
+  const activityButtons = frame.locator('.learning-hub-activity-grid button')
+  await expect(activityButtons).toHaveText(['Boss Test', 'Boss Games', 'Need more training?'])
+  const cards = frame.locator('.learning-hub-group-grid > article')
+  const first = (await cards.nth(0).boundingBox())!
+  const second = (await cards.nth(1).boundingBox())!
+  const training = (await cards.nth(2).boundingBox())!
+  expect(training.y).toBeGreaterThanOrEqual(Math.max(first.y + first.height, second.y + second.height))
+  await page.screenshot({ path: info.outputPath('grade5-final-boss-nested.png'), fullPage: true })
+  const groups: [string, string[]][] = [
+    ['Boss Test', ['Writing Test', 'Reading Test']],
+    ['Boss Games', ['Shuriken Match', 'Shadow Strike Dojo', 'Memory Lanterns', 'Context Gap Dash', 'Sushi Scramble']],
+    ['Need more training?', ['Return to Dojo · Writing', 'Return to Dojo · Reading']],
+  ]
+  for (const [group, buttons] of groups) {
+    await frame.getByRole('button', { name: group, exact: true }).click()
+    await expect(activityButtons).toHaveText(buttons)
+    await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+    await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+    await expect(activityButtons).toHaveText(buttons)
+    await frame.getByRole('button', { name: '← Back to Final Boss', exact: true }).click()
+    await expect(activityButtons).toHaveText(['Boss Test', 'Boss Games', 'Need more training?'])
+  }
+  expect(await results(page)).toEqual([])
 })
 
 for (const [sectionIndex, section] of sectionNames.slice(1).entries()) {
