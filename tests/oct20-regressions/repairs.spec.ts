@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
+import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
+import { reinforcementGames } from '../../src/familyBeta/gamePools.ts'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
+import { checkpointGameAnswer, gameScopeKey, startGameCheckpoint } from '../../src/ninjaSkills/progress.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
 
 test.beforeEach(async ({ page }) => {
   if (!test.info().title.includes('Lily Pads')) await page.clock.setFixedTime(new Date('2026-10-20T19:00:00Z'))
@@ -84,9 +89,15 @@ test.beforeEach(async ({ page }) => {
 })
 
 const frameOf = (page: Page) => page.frameLocator('iframe:visible')
+const gameCheckpoints = (page: Page) =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      Object.entries(localStorage).filter(([key]) => /^family-beta-games-v1:[\w-]+:checkpoint:/.test(key)),
+    ),
+  )
 async function launch(page: Page, grade: string, section: RegExp, activity: string) {
   await page.goto(`/family-beta-preview.html?grade=${grade}`)
-  await expect(page.getByRole('note')).toContainText('October 20 regression repairs / Prototype 1')
+  await expect(page.getByRole('note')).toContainText('October 20 regression repairs / Prototype 2')
   const frame = frameOf(page)
   await frame.getByRole('button', { name: section }).click()
   await frame.getByRole('button', { name: activity, exact: true }).click()
@@ -274,12 +285,209 @@ test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer
   await page.screenshot({ path: test.info().outputPath('grade2-shuriken.png'), fullPage: true })
   await cards.filter({ hasText: /^hero$/i }).click()
   await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('1 targets cleared')
-  const active = frame.locator('.lg-word-seal:not(:disabled)')
-  await active.first().click()
-  await expect(frame.locator('.lg-word-seal.is-selected')).toHaveCount(1)
-  expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /game-checkpoint/.test(key)))).toEqual([])
+  await cards.filter({ hasText: /^每个$/ }).click()
+  await cards.filter({ hasText: /^each$/i }).click()
+  await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('2 targets cleared')
+  expect(await gameCheckpoints(page)).toEqual({})
   await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
   await expect(frame.getByRole('button', { name: 'Shuriken Match', exact: true })).toBeVisible()
+})
+
+for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
+  for (const action of ['finish', 'answer']) {
+    test(`${activity}: delayed ${action} cannot write or close a reopened visit`, async ({ page }) => {
+      const frame = await launch(page, 'kindergarten', /Enter the Dojo/, activity)
+      await expect(frame.getByRole('heading', { name: activity, exact: true })).toBeVisible()
+      if (action === 'answer') {
+        if (activity === 'Whispering Scrolls') {
+          await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+          await frame.getByRole('button', { name: 'Stop recording', exact: true }).click()
+        } else {
+          await frame.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+        }
+        await expect(frame.getByRole('button', { name: /^(Continue|Yes)$/ })).toBeEnabled()
+      }
+      const owner = await (await page.locator('iframe:visible').elementHandle())!.contentFrame()
+      const moduleId = activity === 'Whispering Scrolls' ? 'whispering-scrolls' : 'stroke-order-slay'
+      const lockName = await owner!.evaluate((moduleId) => {
+        const entry = Object.entries(localStorage).find(
+          ([key, value]) => key.startsWith('family-beta-acquisition-v1:') && value.includes(moduleId),
+        )
+        if (!entry) throw new Error('Expected an actual acquisition checkpoint')
+        const name = `ninja-scrolls-write:${entry[0]}`
+        const host = window as Window & { releaseAuditLock?: () => void; auditLockReady?: boolean }
+        void navigator.locks.request(name, async () => {
+          host.auditLockReady = true
+          await new Promise<void>((resolve) => {
+            host.releaseAuditLock = resolve
+          })
+        })
+        return name
+      }, moduleId)
+      await expect
+        .poll(() => owner!.evaluate(() => (window as Window & { auditLockReady?: boolean }).auditLockReady))
+        .toBe(true)
+      const before = await stored(page)
+      await frame
+        .getByRole('button', { name: action === 'finish' ? 'Done for today' : /^(Continue|Yes)$/, exact: true })
+        .click()
+      await expect
+        .poll(() =>
+          owner!.evaluate(
+            async (name) => (await navigator.locks.query()).pending?.filter((l) => l.name === name).length,
+            lockName,
+          ),
+        )
+        .toBe(1)
+      await frame.getByRole('button', { name: 'Pause and return', exact: true }).click()
+      await frame.getByRole('button', { name: activity, exact: true }).click()
+      await expect(frame.getByRole('heading', { name: activity, exact: true })).toBeVisible()
+      await owner!.evaluate(() => (window as Window & { releaseAuditLock?: () => void }).releaseAuditLock!())
+      await expect
+        .poll(() =>
+          owner!.evaluate(async (name) => {
+            const locks = await navigator.locks.query()
+            return [...(locks.held || []), ...(locks.pending || [])].filter((l) => l.name === name).length
+          }, lockName),
+        )
+        .toBe(0)
+      await expect(frame.getByRole('heading', { name: activity, exact: true })).toBeVisible()
+      expect(await stored(page)).toEqual(before)
+      // The new visit is still usable: its own completion exits normally.
+      await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
+      await expect(frame.getByRole('button', { name: activity, exact: true })).toBeVisible()
+    })
+  }
+}
+
+test('Legacy game checkpoint is detected but cannot change the current lesson or be overwritten', async ({ page }) => {
+  const datasets = inspectSnapshot(
+    JSON.parse(readFileSync(new URL('../../public/curriculum/beta/grade2.json', import.meta.url), 'utf8')),
+  ).datasets
+  const capability = reinforcementGames(datasets, '2026-10-05', 'Grade 2').find(
+    ({ capability }) => capability.status === 'ready' && capability.pack.moduleId === 'speed-match',
+  )!.capability
+  if (capability.status !== 'ready' || capability.pack.moduleId !== 'speed-match')
+    throw new Error('Missing real curriculum Shuriken pack')
+  const pack = capability.pack
+  const pair = pack.pairs[0]
+  const saved = checkpointGameAnswer(
+    startGameCheckpoint(
+      { childId: 'preview-1', grade: 'Grade 2', week: '2026-10-05', gameId: 'speed-match' },
+      pack,
+      'synthetic-legacy-attempt',
+      'synthetic-writer',
+      '2026-10-06T19:00:00.000Z',
+    ),
+    {
+      gameId: 'speed-match',
+      promptId: pair.id,
+      targetId: pair.targetId,
+      correct: true,
+      assessmentMode: 'automatic',
+      response: [pair.left.id, pair.right.id],
+    },
+    '2026-10-06T19:01:00.000Z',
+  )
+  const key = `family-beta-games-v1:device-preview:checkpoint:${encodeURIComponent(gameScopeKey(saved.scope))}`
+  const value = JSON.stringify(saved)
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (window === window.top) localStorage.setItem(key, value)
+    },
+    { key, value },
+  )
+  await page.goto('/family-beta-preview.html?grade=grade2')
+  await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', '2026-10-13')
+  // Negative control for the same detector used by the no-checkpoint test.
+  expect(await gameCheckpoints(page)).toEqual({ [key]: value })
+  await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resume Shuriken Match', exact: true })).toBeHidden()
+  await page.getByRole('button', { name: 'Shuriken Match', exact: true }).click()
+  await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', '2026-10-13')
+  const frame = frameOf(page)
+  await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('0 targets cleared')
+  await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+  await page.getByRole('button', { name: 'Activities', exact: true }).click()
+  await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', '2026-10-13')
+  expect(await gameCheckpoints(page)).toEqual({ [key]: value })
+})
+
+for (const [grade, activity, next] of [
+  ['kindergarten', 'Writing characters', '小'],
+  ['grade2', 'Learn to Write', '最'],
+]) {
+  test(`${grade}: complete teacher and acquisition cycle resumes and teaches the next word`, async ({ page }) => {
+    test.setTimeout(240_000)
+    expect(process.env.FAMILY_CURRENT_WRITING).toBe('1')
+    const frame = await launch(page, grade, /Enter the Dojo/, activity)
+    const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+    await finishEnabledTeacher(page)
+    await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+    const before = await stored(page)
+    await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+    await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+    expect(await stored(page)).toEqual(before)
+    await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+    await frame.getByRole('button', { name: activity, exact: true }).click()
+    await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+    await expect(teacher).toBeHidden()
+    for (let trial = 0; trial < 40 && !(await teacher.isVisible()); trial++) {
+      const right = frame.getByRole('button', { name: 'I got it right', exact: true })
+      const skip = frame.getByRole('button', { name: 'Skip Timer', exact: true })
+      await expect(teacher.or(skip).or(right)).toBeVisible()
+      if (await teacher.isVisible()) break
+      if (await skip.isVisible()) await skip.click()
+      await right.click()
+    }
+    await expect(teacher).toHaveAttribute('data-step', '1')
+    await expect(teacher.getByRole('heading', { name: next, exact: true })).toBeVisible()
+    await finishEnabledTeacher(page)
+    await expect(frame.locator('.slay-writing-integration')).toBeVisible()
+  })
+}
+
+test('Grade 2 reading recovers on the reported 雨林 expanded target and reaches the next word', async ({ page }) => {
+  test.setTimeout(180_000)
+  const frame = await launch(page, 'grade2', /Enter the Dojo/, 'Read the Words')
+  const current = frame.locator('[data-report-activity="Reading practice"]')
+  let exercisedReportedTarget = false
+  for (let trial = 0; trial < 40; trial++) {
+    await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toBeVisible()
+    if ((await current.getAttribute('data-report-position')) === '2') break
+    const injectStall =
+      !exercisedReportedTarget &&
+      (await current.getAttribute('data-report-phase')) === 'expanded-trials · target' &&
+      (await frame.locator('.reading-answer-word').textContent()) === '雨林'
+    if (injectStall)
+      await page.evaluate(() => {
+        ;(window as unknown as { regressionAudio: { hold: boolean } }).regressionAudio.hold = true
+      })
+    await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
+    await frame.getByRole('button', { name: 'Stop recording', exact: true }).click()
+    if (injectStall) {
+      await expect(frame.getByRole('button', { name: 'Restart playback', exact: true })).toBeVisible()
+      const before = await stored(page)
+      await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+      await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+      expect(await stored(page)).toEqual(before)
+      await page.evaluate(() => {
+        ;(window as unknown as { regressionAudio: { hold: boolean } }).regressionAudio.hold = false
+      })
+      await frame.getByRole('button', { name: 'Restart playback', exact: true }).click()
+      exercisedReportedTarget = true
+    }
+    const before = await stored(page)
+    await frame.getByRole('button', { name: /^(Continue|Yes)$/ }).click()
+    await expect.poll(() => stored(page)).not.toEqual(before)
+  }
+  expect(exercisedReportedTarget).toBe(true)
+  await expect(current).toHaveAttribute('data-report-position', '2')
+  const before = await stored(page)
+  await frame.getByRole('button', { name: 'Exit reading', exact: true }).click()
+  await frame.getByRole('button', { name: 'Read the Words', exact: true }).click()
+  await expect(current).toHaveAttribute('data-report-position', '2')
+  expect(await stored(page)).toEqual(before)
 })
 
 test('Final Boss exits directly, frees the temporary visit and returns to its test menu', async ({ page }) => {

@@ -33,6 +33,7 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
   const [reviewPending, setReviewPending] = useState(false)
   const [closedElsewhere, setClosedElsewhere] = useState(false)
   const saving = useRef(false)
+  const activeVisit = useRef(true)
   const [savingScore, setSavingScore] = useState(false)
   const [finishing, setFinishing] = useState(() =>
     pendingResults().some((result) => result.id === store.current.sessionId),
@@ -43,9 +44,23 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
   const scored = current.assessments.filter((item) => item.countsTowardWeeklyScore)
   const total = (datasets[0].vocabulary?.tier1 || datasets[0].words).length
   const selected = store.context.targetSet.targets.length
-  useEffect(() => () => stopActiveAudio(), [])
+  useEffect(() => {
+    activeVisit.current = true
+    return () => {
+      activeVisit.current = false
+      stopActiveAudio()
+    }
+  }, [])
+
+  function exit() {
+    // Invalidate synchronously, before React unmounts or a queued lock resolves.
+    activeVisit.current = false
+    stopActiveAudio()
+    onExit()
+  }
 
   function assertWritable() {
+    if (!activeVisit.current) throw new Error('This visit has ended. Reviewed saved work is preserved.')
     if (activityClock.paused) throw new Error('Close the report or return to this activity before saving.')
     const profile = previewProfile()
     if (profile?.id !== store.current.envelope.childId || profile.grade !== store.current.envelope.grade)
@@ -59,15 +74,16 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
         assertScrollsAnswerOpen(localStorage, store.current.sessionId)
         return store.answer(correct, method)
       })
+      if (!activeVisit.current) return
       setCurrent(saved)
       setError('')
     } catch (failure) {
-      if (failure instanceof ScrollsAttemptClosedError) setClosedElsewhere(true)
+      if (activeVisit.current && failure instanceof ScrollsAttemptClosedError) setClosedElsewhere(true)
       throw failure
     }
   }
   async function finish() {
-    if (activityClock.paused || reviewPending || saving.current) return
+    if (!activeVisit.current || activityClock.paused || reviewPending || saving.current) return
     saving.current = true
     setSavingScore(true)
     if (scored.length) setFinishing(true)
@@ -89,13 +105,13 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
           if (!result) throw new Error('The Stroke Order Slay score could not be confirmed.')
         }
       })
-      stopActiveAudio()
-      onExit()
+      if (activeVisit.current) exit()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The score could not be saved. Please retry.')
+      if (activeVisit.current)
+        setError(failure instanceof Error ? failure.message : 'The score could not be saved. Please retry.')
     } finally {
       saving.current = false
-      setSavingScore(false)
+      if (activeVisit.current) setSavingScore(false)
     }
   }
   return (
@@ -109,7 +125,7 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
       <div className="practice-top">
         <button
           onClick={() => {
-            if (!pauseToFamilyHub()) onExit()
+            if (!pauseToFamilyHub()) exit()
           }}
         >
           Pause and return
@@ -132,14 +148,7 @@ export function StrokeOrderSlay({ datasets, onExit }: { datasets: Dataset[]; onE
             Your earlier score and teaching progress are safe. Return to the Dojo and reopen Stroke Order Slay to repeat
             only this unfinished response in a new visit.
           </p>
-          <button
-            onClick={() => {
-              stopActiveAudio()
-              onExit()
-            }}
-          >
-            Return to Dojo
-          </button>
+          <button onClick={exit}>Return to Dojo</button>
         </section>
       ) : complete ? (
         <section>

@@ -604,8 +604,11 @@ function FamilyPreview() {
     /* Preserve an unreadable history; do not start a replacement round. */
   }
   const savedOwner = child ? `${scope}:${child.id}:${child.grade}` : ''
+  // Session-only games must ignore the entire legacy resume route, not just its
+  // pack: the label and launch week otherwise reintroduce the old lesson scope.
+  // Leave the underlying checkpoints intact for older clients/recovery.
   const savedByModule =
-    savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
+    !regressionPreview && savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
       ? resumableGameCheckpoints(savedGames.checkpoints, completedGames, child.id, child.grade)
       : new Map<string, GameCheckpoint>()
   const capabilities = reinforcementGames(
@@ -624,7 +627,7 @@ function FamilyPreview() {
         moduleId,
         reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.',
       }
-    const saved = regressionPreview ? undefined : savedByModule.get(moduleId)
+    const saved = savedByModule.get(moduleId)
     return saved ? { status: 'ready' as const, pack: saved.pack } : game.capability
   })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
