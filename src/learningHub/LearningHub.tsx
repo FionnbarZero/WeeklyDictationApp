@@ -7,6 +7,7 @@ import type {
   LearningHubViewModel,
   LearningHubWordGroup,
 } from './contracts.ts'
+import { retiredStandaloneCard, standaloneGamesRetired } from './standaloneGameRetirement.ts'
 
 // Document-local navigation only. Each family frame owns one grade/lesson;
 // remembering its menu does not save answers or restart an activity.
@@ -198,7 +199,7 @@ export function LearningHub<Launch>({
   onLaunch,
   hideUnavailable = false,
 }: LearningHubProps<Launch>) {
-  const model = hideUnavailable
+  const availableModel = hideUnavailable
     ? {
         ...originalModel,
         sections: originalModel.sections
@@ -209,6 +210,15 @@ export function LearningHub<Launch>({
           .filter((section) => section.activities.length > 0),
       }
     : originalModel
+  const model = standaloneGamesRetired
+    ? {
+        ...availableModel,
+        sections: availableModel.sections.map((section) => ({
+          ...section,
+          activities: section.activities.filter((activity) => !retiredStandaloneCard(activity.id)),
+        })),
+      }
+    : availableModel
   const [selectedSectionId, setSection] = useState<string | null>(() =>
     regressionPreview ? returnSections.get(model.profileLabel) || null : null,
   )

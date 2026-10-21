@@ -43,6 +43,7 @@ import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './worksp
 import '../styles.css'
 import './preview.css'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
+import { retiredStandaloneExperience, standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
 import { regressionPreview } from '../regressionPreview/policy.ts'
 import { PreviewParentTools } from './PreviewParentTools.tsx'
@@ -272,7 +273,14 @@ function FamilyPreview() {
     let cancelled = false
     void listSavedLessons(localStorage, child)
       .then((value) => {
-        if (!cancelled) setSavedLessons({ owner: child.id, ...value })
+        if (!cancelled)
+          setSavedLessons({
+            owner: child.id,
+            ...value,
+            lessons: standaloneGamesRetired
+              ? value.lessons.filter((lesson) => !retiredStandaloneExperience(lesson.experience))
+              : value.lessons,
+          })
       })
       .catch((e) => {
         if (!cancelled) setActivityError(message(e))
@@ -690,6 +698,10 @@ function FamilyPreview() {
     if (!child || !practiceReady || resumeInFlight.current) return
     resumeInFlight.current = true
     try {
+      if (standaloneGamesRetired && retiredStandaloneExperience(lesson.experience))
+        throw new Error(
+          'This standalone game has been removed. Open Writing or Reading in Enter the Dojo. Saved records are retained.',
+        )
       const saved = await readSavedLesson(localStorage, child, lesson)
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')

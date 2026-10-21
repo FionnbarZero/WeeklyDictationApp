@@ -6,7 +6,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const compactParents = process.argv.includes('--compact-parent-controls')
+const retireStandalone = process.argv.includes('--retire-standalone-games')
+const compactParents = retireStandalone || process.argv.includes('--compact-parent-controls')
 const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs')
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
@@ -15,15 +16,17 @@ const out = resolve(
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = compactParents
-  ? 'Compact parent toolbar / Prototype 1'
-  : grade5Repairs
-    ? 'Grade 5 regression repairs / Prototype 2'
-    : regressions
-      ? 'October 20 regression repairs / Prototype 3'
-      : octoberResources
-        ? 'Kindergarten October 19 resources / Prototype 1'
-        : 'Writing reliability / Prototype 2'
+const prototype = retireStandalone
+  ? 'Streamlined Dojo / Prototype 1'
+  : compactParents
+    ? 'Compact parent toolbar / Prototype 1'
+    : grade5Repairs
+      ? 'Grade 5 regression repairs / Prototype 2'
+      : regressions
+        ? 'October 20 regression repairs / Prototype 3'
+        : octoberResources
+          ? 'Kindergarten October 19 resources / Prototype 1'
+          : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -62,6 +65,7 @@ execFileSync(
       VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),
       VITE_GRADE5_REPAIR_PREVIEW: String(grade5Repairs),
       VITE_COMPACT_PARENT_PREVIEW: String(compactParents),
+      VITE_RETIRE_STANDALONE_GAMES: String(retireStandalone),
     },
   },
 )

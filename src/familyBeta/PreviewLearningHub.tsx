@@ -1,33 +1,38 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
-import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
+import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
+import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import type { Dataset } from '../domain/contracts.ts'
-import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
-import { fetchCurriculum } from './curriculum.ts'
-import type { BetaGrade, BetaResult } from './model.ts'
 import { localDateKey } from '../domain.ts'
+import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
+import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
+import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
+import { SkyWriting } from '../skywriting/SkyWriting.tsx'
+import { fetchCurriculum } from './curriculum.ts'
 import {
-  reinforcementGames,
   channelWords,
   latestEarlierTargets,
-  sectionDatasets,
   type PracticeChannel,
+  reinforcementGames,
+  sectionDatasets,
 } from './gamePools.ts'
-import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
-import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
-import { strokeOrderLesson } from './strokeOrderSlay.ts'
+import type { BetaGrade, BetaResult } from './model.ts'
 import { ReentryPractice } from './ReentryPractice.tsx'
+import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
 import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
-import { SkyWriting } from '../skywriting/SkyWriting.tsx'
+import { strokeOrderLesson } from './strokeOrderSlay.ts'
 
 const ModuleHost = lazy(() =>
   import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
-const WhisperingScrolls = lazy(() => import('./WhisperingScrolls.tsx').then(module => ({ default: module.WhisperingScrolls })))
-const StrokeOrderSlay = lazy(() => import('./StrokeOrderSlay.tsx').then(module => ({ default: module.StrokeOrderSlay })))
+const WhisperingScrolls = lazy(() =>
+  import('./WhisperingScrolls.tsx').then((module) => ({ default: module.WhisperingScrolls })),
+)
+const StrokeOrderSlay = lazy(() =>
+  import('./StrokeOrderSlay.tsx').then((module) => ({ default: module.StrokeOrderSlay })),
+)
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
@@ -37,7 +42,8 @@ type ExtraLaunch =
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
   | { previewAction: 'scrolls'; channel: 'reading'; datasets: Dataset[] }
 
-const gameHistoryWarning = 'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
+const gameHistoryWarning =
+  'Saved game history could not be checked. Keep this page open and report the problem. New game rounds are temporarily unavailable.'
 
 export type StrokeWarmupLauncher = (dataset: Dataset, ready: () => void) => void
 type PreviewHubProps<Launch> = LearningHubProps<Launch> & { onStrokeOrderWarmup?: StrokeWarmupLauncher }
@@ -129,7 +135,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
   // A history read must not unmount an active game or its completion retry.
   // Unverified history also cannot become a fresh round's rotation cursor.
   let completedGames: BetaResult[] | null = null
-  try { completedGames = previewResults() } catch { /* Preserve stored records and the active game. */ }
+  try {
+    completedGames = previewResults()
+  } catch {
+    /* Preserve stored records and the active game. */
+  }
   const model: LearningHubViewModel<Launch | ExtraLaunch> = {
     ...props.model,
     sections: props.model.sections.map((section) => {
@@ -155,22 +165,40 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             const lesson = strokeOrderLesson(scope)
             writingReady = true
             writingNote = `${lesson.targetSet.targets.length} of ${lesson.total} writing targets have guides.${lesson.unsupported.length ? ` Not yet supported: ${lesson.unsupported.join('、')}.` : ''}`
-          } catch (failure) { writingNote = failure instanceof Error ? failure.message : writingNote }
+          } catch (failure) {
+            writingNote = failure instanceof Error ? failure.message : writingNote
+          }
         }
         activities.push({
-          id: 'dojo-stroke-order-slay', title: 'Stroke Order Slay', eyebrow: 'Tier 1 · Writing acquisition',
+          id: 'dojo-stroke-order-slay',
+          title: 'Stroke Order Slay',
+          eyebrow: 'Tier 1 · Writing acquisition',
           description: 'Learn stroke order through your grade’s full writing sequence. Progress saves separately.',
-          icon: '✍️', note: writingNote, action: writingReady
-            ? { kind: 'launch', label: 'Stroke Order Slay', launch: { previewAction: 'stroke', channel: 'writing', datasets: scope } }
+          icon: '✍️',
+          note: writingNote,
+          action: writingReady
+            ? {
+                kind: 'launch',
+                label: 'Stroke Order Slay',
+                launch: { previewAction: 'stroke', channel: 'writing', datasets: scope },
+              }
             : { kind: 'disabled', label: 'Coming soon', reason: writingNote },
         })
         const eligible = section.available && scope.length === 1 && channelWords(scope[0], 'reading').length > 0
         const reason = 'A current Tier 2 reading cohort is needed for this acquisition activity.'
         activities.push({
-          id: 'dojo-whispering-scrolls', title: 'Whispering Scrolls', eyebrow: 'Tier 2 · Reading acquisition',
-          description: 'Read each scroll, compare your recording with the model, and learn through your grade’s teaching sequence. Progress saves separately.',
-          icon: '📜', action: eligible
-            ? { kind: 'launch', label: 'Whispering Scrolls', launch: { previewAction: 'scrolls', channel: 'reading', datasets: scope } }
+          id: 'dojo-whispering-scrolls',
+          title: 'Whispering Scrolls',
+          eyebrow: 'Tier 2 · Reading acquisition',
+          description:
+            'Read each scroll, compare your recording with the model, and learn through your grade’s teaching sequence. Progress saves separately.',
+          icon: '📜',
+          action: eligible
+            ? {
+                kind: 'launch',
+                label: 'Whispering Scrolls',
+                launch: { previewAction: 'scrolls', channel: 'reading', datasets: scope },
+              }
             : { kind: 'disabled', label: 'Coming soon', reason },
         })
       }
@@ -231,16 +259,27 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
               launch: { previewAction: 'lily', channel: 'reading', datasets: reading },
             },
           })
-        for (const { capability: availableCapability, channel, datasets } of reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)) {
-          const capability = completedGames === null && availableCapability.status === 'ready'
-            ? { status: 'unavailable' as const, moduleId: availableCapability.pack.moduleId, reason: gameHistoryWarning }
-            : availableCapability
+        for (const { capability: availableCapability, channel, datasets } of reinforcementGames(
+          source.datasets,
+          anchor,
+          grade,
+          completedGames || [],
+          previewProfile()?.id,
+        )) {
+          const capability =
+            completedGames === null && availableCapability.status === 'ready'
+              ? {
+                  status: 'unavailable' as const,
+                  moduleId: availableCapability.pack.moduleId,
+                  reason: gameHistoryWarning,
+                }
+              : availableCapability
           const id = capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId
           const entry = learningModuleCatalogEntry(id)
           activities.push({
             id: `preview-game-${id}`,
             title: entry.title,
-            eyebrow: `${entry.eyebrow} · ${datasets.map(dataset => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
+            eyebrow: `${entry.eyebrow} · ${datasets.map((dataset) => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
             description: entry.description,
             icon: entry.icon,
             note: capability.status === 'unavailable' ? capability.reason : capability.pack.scopeNote,
@@ -256,7 +295,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
                       datasets,
                     },
                   }
-                : { kind: 'disabled', label: capability.reason === gameHistoryWarning ? 'Temporarily unavailable' : 'Coming soon', reason: capability.reason },
+                : {
+                    kind: 'disabled',
+                    label: capability.reason === gameHistoryWarning ? 'Temporarily unavailable' : 'Coming soon',
+                    reason: capability.reason,
+                  },
           })
         }
         if (section.id === 'ninja-skills')
@@ -295,20 +338,35 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
   if (resumeChannel === 'writing' || resumeChannel === 'reading') {
     // A retained source is a route to this unfinished Dojo only, never a menu
     // for starting unrelated games/tests from obsolete teacher content.
-    model.sections = model.sections.map(section => ({ ...section,
-      activities: section.activities.filter(activity => resumeExperience === 'whispering-scrolls'
-        ? activity.id === 'dojo-whispering-scrolls'
-        : resumeExperience === 'stroke-order-slay' ? activity.id === 'dojo-stroke-order-slay'
-        : activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`),
-    })).filter(section => section.activities.length > 0)
+    model.sections = model.sections
+      .map((section) => ({
+        ...section,
+        activities: section.activities.filter((activity) =>
+          resumeExperience === 'whispering-scrolls'
+            ? activity.id === 'dojo-whispering-scrolls'
+            : resumeExperience === 'stroke-order-slay'
+              ? activity.id === 'dojo-stroke-order-slay'
+              : activity.id === `dojo-${resumeChannel}` || activity.id === `acquisition-${resumeChannel}`,
+        ),
+      }))
+      .filter((section) => section.activities.length > 0)
   }
   return (
     <>
       {error && <p role="alert">{error}</p>}
-      {completedGames === null && <div role="alert">
-        <p>{gameHistoryWarning}</p>
-        <button onClick={() => { setError(''); refreshHistory(value => value + 1) }}>Check saved history again</button>
-      </div>}
+      {completedGames === null && (
+        <div role="alert">
+          <p>{gameHistoryWarning}</p>
+          <button
+            onClick={() => {
+              setError('')
+              refreshHistory((value) => value + 1)
+            }}
+          >
+            Check saved history again
+          </button>
+        </div>
+      )}
       <div hidden={Boolean(active)}>
         <LearningHub
           {...props}
@@ -316,14 +374,20 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
           hideUnavailable={false}
           onLaunch={(launch, context) => {
             if (launch && typeof launch === 'object' && 'previewAction' in launch) {
+              if (standaloneGamesRetired && ['stroke', 'scrolls'].includes((launch as ExtraLaunch).previewAction)) {
+                setError('This standalone game has been removed. Choose Writing or Reading in Enter the Dojo.')
+                return
+              }
               if ((launch as ExtraLaunch).previewAction === 'game') {
                 try {
                   // History can change after the menu renders (for example in
                   // another tab). Check again before starting an unsaved round.
                   previewResults()
                   assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack)
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'This game is not ready.')
+                  return
                 }
-                catch (e) { setError(e instanceof Error ? e.message : 'This game is not ready.'); return }
               }
               setSessionId(crypto.randomUUID())
               const next = launch as ExtraLaunch
@@ -349,7 +413,9 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
               try {
                 const reviewed = reviewGameSummary(active.pack, summary)
                 complete(reviewed.correct, reviewed.attempted)
-              } catch (e) { setError(e instanceof Error ? e.message : 'The game result could not be verified.') }
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'The game result could not be verified.')
+              }
             }}
           />
         </Suspense>
@@ -357,9 +423,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       {active?.previewAction === 'reenter' && (
         <ReentryPractice datasets={active.datasets} channel={active.channel} onExit={exit} />
       )}
-      {active?.previewAction === 'scrolls' && <Suspense fallback={<p>Opening Whispering Scrolls…</p>}>
-        <WhisperingScrolls datasets={active.datasets} onExit={exit} />
-      </Suspense>}
+      {active?.previewAction === 'scrolls' && (
+        <Suspense fallback={<p>Opening Whispering Scrolls…</p>}>
+          <WhisperingScrolls datasets={active.datasets} onExit={exit} />
+        </Suspense>
+      )}
       {active?.previewAction === 'lily' && (
         <Suspense fallback={<p>Loading game…</p>}>
           <ListeningLilyPads
@@ -389,9 +457,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
           onComplete={(summary) => complete(summary.correct, summary.total)}
         />
       )}
-      {active?.previewAction === 'stroke' && <Suspense fallback={<p>Opening Stroke Order Slay…</p>}>
-        <StrokeOrderSlay datasets={active.datasets} onExit={exit} />
-      </Suspense>}
+      {active?.previewAction === 'stroke' && (
+        <Suspense fallback={<p>Opening Stroke Order Slay…</p>}>
+          <StrokeOrderSlay datasets={active.datasets} onExit={exit} />
+        </Suspense>
+      )}
     </>
   )
 }
