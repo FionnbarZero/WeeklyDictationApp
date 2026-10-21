@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current action — verify standalone game removal, October 21
+
+The owner's latest request supersedes the deferred activity-card cleanup only for **standalone Stroke Order Slay and Whispering Scrolls**, including the legacy Stroke Order alias. The isolated **Streamlined Dojo / Prototype 1 (`5f64beb`)** removes their launch cards across Kindergarten, Grade 2 and Grade 5 and removes their parent saved-lesson launch buttons. Native Writing keeps the approved embedded teacher. Existing scores and checkpoint/export compatibility are retained; no data reset or host retirement is included. The new links, expiry, checks and delivery status are in STATUS and [the bounded removal record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/standalone-game-removal-preview.md).
+
+**Next: working-prototype approval**, then current-main reconciliation, appropriate scoped review/compatibility checks and protected regular-app release. The preview-first rule still applies; canonical and earlier frozen previews retain their previous menus until separately updated under those gates. Do not claim every published version is already changed, remove the teacher from Writing, delete old scores/checkpoints, or treat deletion of game entries as authorization to retire hosting. Recommended UI/publication routing remains Sol · High; further persistence changes retain Astra · Extra High. Other activity deletion remains outside this request.
+
 ## Current action — compact toolbar prototype check, October 21
 
 The owner asked to make the adult/test area much smaller and authorized proceeding and delivery of the links. **`284dea0` / Compact parent toolbar Prototype 1** is separately published and verified for Kindergarten, Grade 2 and Grade 5, with a 44px top row and setup/report-email options inside Parent controls. Exact links, October 28 expiry, passing checks and confirmed SENT receipt are at the top of STATUS. The model recommendation was **Sol · High**; the owner authorized proceeding, and no chat-model switch is claimed.
