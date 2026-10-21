@@ -1,6 +1,7 @@
 import { pauseToFamilyHub } from '../../../activity/activityLifecycle.ts'
 import { Check, Sparkles, X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
+import { GameDestination } from '../../../ninjaSkills/gameDestination.ts'
 import type { LearningGameId, LearningGameSummary } from './contracts'
 import '../styles.css'
 
@@ -40,6 +41,7 @@ export function LearningGameComplete({ summary, message, onDone }: {
   readonly onDone: () => void
 }) {
   const accuracy = summary.attempted ? Math.round((summary.correct / summary.attempted) * 100) : 0
+  const destination = useContext(GameDestination)
   const retries = summary.attempted - summary.correct
   const achievement = retries === 0 ? 'Flawless run' : retries <= 2 ? 'Strong run' : 'Practice powered'
   return <section className="lg-card lg-complete" aria-live="polite">
@@ -52,7 +54,7 @@ export function LearningGameComplete({ summary, message, onDone }: {
       <span>{retries ? <><strong>{retries}</strong> learning {retries === 1 ? 'retry' : 'retries'}</> : <><strong>★</strong> first try</>}</span>
     </div>
     <p>{message}</p>
-    <button className="lg-primary" type="button" onClick={onDone}>Back to Ninja Skills</button>
+    <button className="lg-primary" type="button" onClick={onDone}>Back to {destination}</button>
   </section>
 }
 

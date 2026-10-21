@@ -4,6 +4,7 @@ import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/p
 import type { Dataset } from '../domain/contracts.ts'
 import { localDateKey } from '../domain.ts'
 import { grade5AssessmentGames } from '../grade5PresentationPreview/games.ts'
+import { grade5MasteredDatasets, grade5MasteredGames } from '../grade5PresentationPreview/masteredGames.ts'
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
@@ -39,7 +40,13 @@ const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
 type ExtraLaunch =
-  | { previewAction: 'game'; pack: LearningModulePack; channel: PracticeChannel | 'mixed'; datasets: Dataset[] }
+  | {
+      previewAction: 'game'
+      pack: LearningModulePack
+      channel: PracticeChannel | 'mixed'
+      datasets: Dataset[]
+      mastered?: boolean
+    }
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
   | { previewAction: 'scrolls'; channel: 'reading'; datasets: Dataset[] }
@@ -155,6 +162,8 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       const ninja = section.id === 'ninja-skills' || section.id === 'test-review-1'
       const boss = section.id === 'final-boss' || section.id.startsWith('test-review-')
       const spirit = section.id === 'spirit-realm' || section.id === 'review'
+      const masteredArcade = grade5PresentationPreview && grade === 'Grade 5' && spirit
+      const masteredScope = masteredArcade ? grade5MasteredDatasets(scope, source.datasets, date) : []
       const activities: LearningHubActivity<Launch | ExtraLaunch>[] = section.activities.filter(
         (a) =>
           a.action.kind !== 'disabled' &&
@@ -209,7 +218,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             : { kind: 'disabled', label: 'Coming soon', reason },
         })
       }
-      if (spirit)
+      if (spirit && !masteredArcade)
         for (const channel of ['writing', 'reading'] as const) {
           if (!scope.some((d) => channelWords(d, channel).length)) continue
           for (const direct of [true, false]) {
@@ -244,7 +253,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             },
           })
         }
-      if (ninja || (assessment && boss)) {
+      if (ninja || (assessment && boss) || masteredArcade) {
         const anchor =
           new URLSearchParams(location.search).get('week') ||
           [...source.datasets]
@@ -266,9 +275,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
               launch: { previewAction: 'lily', channel: 'reading', datasets: reading },
             },
           })
-        const games = grade5PresentationPreview && assessment
-          ? grade5AssessmentGames(scope, completedGames || [], previewProfile()?.id || '')
-          : reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)
+        const games = masteredArcade
+          ? grade5MasteredGames(masteredScope, completedGames || [], previewProfile()?.id || '')
+          : grade5PresentationPreview && assessment
+            ? grade5AssessmentGames(scope, completedGames || [], previewProfile()?.id || '')
+            : reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)
         for (const { capability: availableCapability, channel, datasets } of games) {
           if (assessment && availableCapability.status !== 'ready') continue
           const capability =
@@ -284,7 +295,9 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
           activities.push({
             id: `preview-game-${id}`,
             title: entry.title,
-            eyebrow: `${entry.eyebrow} · ${datasets.map((dataset) => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
+            eyebrow: masteredArcade
+              ? 'Mastered words'
+              : `${entry.eyebrow} · ${datasets.map((dataset) => dataset.dateRange).join(' / ') || 'No earlier targets'}`,
             description: entry.description,
             icon: entry.icon,
             note: capability.status === 'unavailable' ? capability.reason : capability.pack.scopeNote,
@@ -298,6 +311,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
                       pack: capability.pack,
                       channel,
                       datasets,
+                      ...(masteredArcade ? { mastered: true } : {}),
                     },
                   }
                 : {
@@ -330,6 +344,36 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             ],
             activities,
           }
+      }
+      if (masteredArcade) {
+        const words = [
+          ...new Set(
+            masteredScope.flatMap((dataset) =>
+              [...dataset.words, ...channelWords(dataset, 'reading')].map((word) => word.text.trim()),
+            ),
+          ),
+        ]
+        return {
+          ...section,
+          available: words.length > 0,
+          unavailableReason: words.length
+            ? undefined
+            : 'Games open when mastered words are available. Current learning words are excluded.',
+          subtitle: 'Choose a game and play with mastered words.',
+          detailSubtitle: 'The same Ninja Skills games, using mastered words. No warm-up needed.',
+          cohortPickerLabel: undefined,
+          cohorts: words.length
+            ? [
+                {
+                  id: `mastered:${masteredScope.map((dataset) => dataset.id).join(':')}`,
+                  label: 'Mastered word sets',
+                  countLabel: `${words.length} mastered words`,
+                  groups: [{ label: 'Mastered words', words }],
+                },
+              ]
+            : [],
+          activities,
+        }
       }
       return {
         ...section,
@@ -411,9 +455,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost
             pack={active.pack}
+            destination={active.mastered ? 'Spirit Realm' : undefined}
             correctionPolicy={
               grade5PresentationPreview &&
-              active.pack.cohort.provenance.some((source) => source.source.sourceType === 'owner-assessment')
+              (active.mastered ||
+                active.pack.cohort.provenance.some((source) => source.source.sourceType === 'owner-assessment'))
                 ? 'prompt-correct'
                 : undefined
             }

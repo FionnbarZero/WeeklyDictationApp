@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { GameDestination } from './gameDestination.ts'
 import './surface.css'
 import type {
   LearningModuleAttempt,
@@ -33,6 +34,7 @@ export type LearningModuleHostProps = {
   readonly onAttempt?: (attempt: LearningModuleAttempt) => void
   readonly onComplete: (summary: LearningModuleSummary) => void
   readonly correctionPolicy?: 'prompt-correct'
+  readonly destination?: 'Spirit Realm'
 }
 
 export function LearningModuleHost({
@@ -42,10 +44,11 @@ export function LearningModuleHost({
   onAttempt,
   onComplete,
   correctionPolicy,
+  destination,
 }: LearningModuleHostProps) {
   const shared = {
     title: pack.title,
-    eyebrow: `${pack.cohort.grade} · Practice your Ninja Skills`,
+    eyebrow: `${pack.cohort.grade} · ${destination || 'Practice your Ninja Skills'}`,
     playAudio,
     onExit,
     onAttempt,
@@ -53,33 +56,35 @@ export function LearningModuleHost({
   }
 
   return (
-    <div
-      className="ninja-game-surface"
-      data-report-activity={pack.title}
-      data-report-phase="game"
-      data-report-game={pack.moduleId}
-    >
-      <Suspense
-        fallback={
-          <main className="page loading-surface" role="status">
-            Loading {pack.title}…
-          </main>
-        }
+    <GameDestination value={destination || 'Ninja Skills'}>
+      <div
+        className="ninja-game-surface"
+        data-report-activity={pack.title}
+        data-report-phase="game"
+        data-report-game={pack.moduleId}
       >
-        {pack.moduleId === 'dictation-streak' ? (
-          <DictationStreak {...shared} rounds={pack.rounds} />
-        ) : pack.moduleId === 'speed-match' ? (
-          <SpeedMatch {...shared} pairs={pack.pairs} correctionPolicy={correctionPolicy} />
-        ) : pack.moduleId === 'target-blast' ? (
-          <TargetBlast {...shared} rounds={pack.rounds} />
-        ) : pack.moduleId === 'memory-flip' ? (
-          <MemoryLanterns {...shared} pairs={pack.pairs} />
-        ) : pack.moduleId === 'context-gap-dash' ? (
-          <ContextGapDash {...shared} rounds={pack.rounds} />
-        ) : (
-          <SushiScramble {...shared} rounds={pack.rounds} />
-        )}
-      </Suspense>
-    </div>
+        <Suspense
+          fallback={
+            <main className="page loading-surface" role="status">
+              Loading {pack.title}…
+            </main>
+          }
+        >
+          {pack.moduleId === 'dictation-streak' ? (
+            <DictationStreak {...shared} rounds={pack.rounds} />
+          ) : pack.moduleId === 'speed-match' ? (
+            <SpeedMatch {...shared} pairs={pack.pairs} correctionPolicy={correctionPolicy} />
+          ) : pack.moduleId === 'target-blast' ? (
+            <TargetBlast {...shared} rounds={pack.rounds} />
+          ) : pack.moduleId === 'memory-flip' ? (
+            <MemoryLanterns {...shared} pairs={pack.pairs} />
+          ) : pack.moduleId === 'context-gap-dash' ? (
+            <ContextGapDash {...shared} rounds={pack.rounds} />
+          ) : (
+            <SushiScramble {...shared} rounds={pack.rounds} />
+          )}
+        </Suspense>
+      </div>
+    </GameDestination>
   )
 }
