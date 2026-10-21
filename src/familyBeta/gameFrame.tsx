@@ -10,6 +10,7 @@ import type { FamilyActivitySlot } from './activitySlots.ts'
 import { familyPreview, previewProfile, savePreviewResult } from './runtime.ts'
 import { SavedLearningGame } from './SavedLearningGame.tsx'
 import '../styles.css'
+import '../regressionPreview/styles.css'
 import { regressionPreview } from '../regressionPreview/policy.ts'
 
 function readGame() {
