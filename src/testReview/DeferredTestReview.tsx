@@ -1,27 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
-import { hasFamilyActivityOwner, pauseForReport, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { Headphones, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useDialogFocus } from '../accessibility/useDialogFocus.ts'
+import { hasFamilyActivityOwner, pauseForReport, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { emptyWritingPadState, type WritingPadState } from '../skywriting/model.ts'
 import type { WritingPadStateUpdater } from '../skywriting/WritingPad.tsx'
 import type {
-  TestReviewCompletion,
   TestReviewCollectionMethod,
+  TestReviewCompletion,
   TestReviewMode,
   TestReviewState,
   TestReviewTarget,
 } from './contracts.ts'
 import { FinalReviewPage } from './FinalReviewPage.tsx'
 import { ReadingResponseCollector } from './ReadingResponseCollector.tsx'
-import { releaseRetainedReadingCaptures, type RetainedReadingCapture } from './retainedReadingClips.ts'
+import { type RetainedReadingCapture, releaseRetainedReadingCaptures } from './retainedReadingClips.ts'
 import { assessTestReviewTarget, completeTestReview, createTestReviewState } from './state.ts'
 import { WritingResponseCollector } from './WritingResponseCollector.tsx'
 import './testReview.css'
 import {
+  type PromptAudioAttempt,
   promptAudioCompleted,
   promptAudioStarted,
   stopActiveAudio,
-  type PromptAudioAttempt,
 } from '../audio/promptAudio.ts'
 import { TARGET_WRITING_RESPONSE_SECONDS } from '../practice/writingTimer.ts'
 import { regressionPreview } from '../regressionPreview/policy.ts'
@@ -37,6 +37,7 @@ export type DeferredTestReviewProps<TTarget extends TestReviewTarget> = {
   readonly onComplete: (completion: TestReviewCompletion<TTarget>) => void
   readonly exitLabel?: string
   readonly sessionNote?: string
+  readonly retrySaveFailures?: boolean
 }
 
 export function DeferredTestReview<TTarget extends TestReviewTarget>({
@@ -50,6 +51,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   onComplete,
   exitLabel = 'Exit without saving',
   sessionNote = 'No answers are scored during collection.',
+  retrySaveFailures = false,
 }: DeferredTestReviewProps<TTarget>) {
   const [phase, setPhase] = useState<'collect' | 'review'>('collect')
   const [index, setIndex] = useState(0)
@@ -61,6 +63,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     error: null,
   })
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   useEffect(() => {
     if (confirmingDiscard) return pauseForReport()
   }, [confirmingDiscard])
@@ -127,6 +130,20 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     if (submittedRef.current) return
     const completion = completeTestReview(mode, targets, review, collectionMethodsRef.current)
     submittedRef.current = true
+    if (retrySaveFailures) {
+      try {
+        onComplete(completion)
+        releaseCaptures()
+        setWritingByTargetId({})
+        setSubmitError('')
+      } catch {
+        submittedRef.current = false
+        setSubmitError(
+          'Your result could not be saved. Your review is still here. Please try Submit final review again.',
+        )
+      }
+      return
+    }
     releaseCaptures()
     setWritingByTargetId({})
     onComplete(completion)
@@ -252,6 +269,11 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
     return (
       <div className="deferred-test-review" data-report-activity={`${mode} final test`} data-report-phase="review">
         {pauseButton}
+        {submitError && (
+          <p role="alert" className="error-banner">
+            {submitError}
+          </p>
+        )}
         <FinalReviewPage
           mode={mode}
           targets={targets}

@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 
 /** The isolated preview keeps adult setup available without surrounding the
@@ -13,9 +14,13 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
         <summary>Parent controls</summary>
         <div className="beta-parent-tools-panel">
           <p className="beta-preview-details" role="note">
-            {standaloneGamesRetired ? 'Streamlined Dojo' : 'Compact parent toolbar'} · Prototype 1 ·{' '}
-            {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only. Progress saves in this
-            browser; no account, cloud sync or offline installation.
+            {grade5PresentationPreview
+              ? '10/19 – Fifth Grade Ninja Dojo'
+              : standaloneGamesRetired
+                ? 'Streamlined Dojo'
+                : 'Compact parent toolbar'}{' '}
+            · Prototype 1 · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only. Progress
+            saves in this browser; no account, cloud sync or offline installation.
           </p>
           {children}
           <div id="compact-parent-report-controls" />

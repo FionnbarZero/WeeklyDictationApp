@@ -3,6 +3,8 @@ import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import type { Dataset } from '../domain/contracts.ts'
 import { localDateKey } from '../domain.ts'
+import { grade5AssessmentGames } from '../grade5PresentationPreview/games.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
@@ -145,6 +147,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
     sections: props.model.sections.map((section) => {
       if (!source) return section
       const scope = sectionDatasets(section, source.datasets, source.candidates, date)
+      const assessment =
+        grade5PresentationPreview &&
+        grade === 'Grade 5' &&
+        scope.length === 1 &&
+        scope[0].source?.sourceType === 'owner-assessment'
       const ninja = section.id === 'ninja-skills' || section.id === 'test-review-1'
       const boss = section.id === 'final-boss' || section.id.startsWith('test-review-')
       const spirit = section.id === 'spirit-realm' || section.id === 'review'
@@ -221,7 +228,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             })
           }
         }
-      if (boss)
+      if (boss && !assessment)
         for (const channel of ['writing', 'reading'] as const) {
           if (!scope.some((d) => channelWords(d, channel).length)) continue
           activities.push({
@@ -237,7 +244,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             },
           })
         }
-      if (ninja) {
+      if (ninja || (assessment && boss)) {
         const anchor =
           new URLSearchParams(location.search).get('week') ||
           [...source.datasets]
@@ -259,13 +266,11 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
               launch: { previewAction: 'lily', channel: 'reading', datasets: reading },
             },
           })
-        for (const { capability: availableCapability, channel, datasets } of reinforcementGames(
-          source.datasets,
-          anchor,
-          grade,
-          completedGames || [],
-          previewProfile()?.id,
-        )) {
+        const games = grade5PresentationPreview && assessment
+          ? grade5AssessmentGames(scope, completedGames || [], previewProfile()?.id || '')
+          : reinforcementGames(source.datasets, anchor, grade, completedGames || [], previewProfile()?.id)
+        for (const { capability: availableCapability, channel, datasets } of games) {
+          if (assessment && availableCapability.status !== 'ready') continue
           const capability =
             completedGames === null && availableCapability.status === 'ready'
               ? {
@@ -406,6 +411,12 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost
             pack={active.pack}
+            correctionPolicy={
+              grade5PresentationPreview &&
+              active.pack.cohort.provenance.some((source) => source.source.sourceType === 'owner-assessment')
+                ? 'prompt-correct'
+                : undefined
+            }
             onSavedComplete={exit}
             playAudio={audio}
             onExit={exit}

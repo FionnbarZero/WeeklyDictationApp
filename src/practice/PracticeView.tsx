@@ -36,6 +36,7 @@ export type PracticeViewProps = {
   onSpeakReviewInstruction: () => PromptAudioAttempt
   reviewInstruction: string
   warmupRequired?: boolean
+  retryTestSaveFailures?: boolean
 }
 
 export type PracticeAnswer =
@@ -221,6 +222,7 @@ export function PracticeView(props: PracticeViewProps) {
       targets={session.primaryQueue}
       activityLabel="Writing Test Review"
       writingTimerSeconds={TARGET_WRITING_RESPONSE_SECONDS}
+      retrySaveFailures={props.retryTestSaveFailures}
       onPlayReference={async (word) => { await promptAudioStarted(props.onSpeakWord(word, false)) }}
       onPlayWritingPrompt={(word) => props.onSpeakWord(word, false)}
       onDiscard={() => props.onAnswer('skip-test-review')}

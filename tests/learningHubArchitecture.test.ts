@@ -31,9 +31,10 @@ function typeScriptFiles(directory = hubDirectory): string[] {
 
 test('the shared Learning Hub remains a grade-neutral presentation boundary', () => {
   const approvedImports: Record<string, string[]> = {
-    'LearningHub.tsx': ['react', '../regressionPreview/policy.ts', './contracts.ts'],
+    'LearningHub.tsx': ['react', '../regressionPreview/policy.ts', './contracts.ts', './standaloneGameRetirement.ts'],
     'activityNames.ts': [],
     'contracts.ts': [],
+    'standaloneGameRetirement.ts': [],
   }
   assert.deepEqual(typeScriptFiles(), Object.keys(approvedImports).sort())
   const combined = typeScriptFiles()

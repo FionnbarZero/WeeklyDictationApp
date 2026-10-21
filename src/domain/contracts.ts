@@ -26,7 +26,7 @@ export type AuthoritativeLearningModuleMetadata = {
 }
 
 export type DatasetSourceMetadata = {
-  sourceType: 'google-slides' | 'google-sheets'
+  sourceType: 'google-slides' | 'google-sheets' | 'owner-assessment'
   sourceDocumentId: string
   sourceUnitId: string
   adapterId: string

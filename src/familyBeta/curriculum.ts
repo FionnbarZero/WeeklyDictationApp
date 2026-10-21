@@ -6,6 +6,9 @@ import { grade2DeckProfile } from '../slidesImporter.ts'
 import { inspectKindergartenWorkbook } from '../kindergartenSheetsImporter.ts'
 import { GRADE2_DECK_ID, GRADE5_DECK_ID, KINDERGARTEN_SHEETS_ID } from '../config.ts'
 import type { BetaGrade } from './model.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { GRADE5_ASSESSMENT_SOURCE_ID } from '../grade5PresentationPreview/sourceIdentity.ts'
+import { extractGrade5Assessment } from '../grade5PresentationPreview/assessmentSource.ts'
 
 export const sourceIds: Record<BetaGrade, string> = {
   Kindergarten: KINDERGARTEN_SHEETS_ID,
@@ -28,10 +31,12 @@ export type CurriculumSnapshot = {
 }
 
 export function inspectSnapshot(snapshot: CurriculumSnapshot) {
+  const assessment = grade5PresentationPreview && snapshot.grade === 'Grade 5'
+    && snapshot.sourceId === GRADE5_ASSESSMENT_SOURCE_ID && snapshot.payload?.sourceType === 'owner-assessment'
   if (
     snapshot.schema !== 1 ||
     !sourceIds[snapshot.grade] ||
-    snapshot.sourceId !== sourceIds[snapshot.grade] ||
+    (!assessment && snapshot.sourceId !== sourceIds[snapshot.grade]) ||
     !Number.isFinite(Date.parse(snapshot.retrievedAt)) ||
     !/^[a-f0-9]{64}$/.test(snapshot.contentSha256)
   )
@@ -39,7 +44,11 @@ export function inspectSnapshot(snapshot: CurriculumSnapshot) {
   let candidates: WeeklyDatasetCandidate[]
   let warnings: string[] = []
   const p = snapshot.payload
-  if (snapshot.grade === 'Kindergarten') {
+  if (grade5PresentationPreview && assessment && p.sourceType === 'owner-assessment') {
+    const extraction = extractGrade5Assessment(p)
+    candidates = extraction.classification.selectedCandidates
+    warnings = extraction.issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message)
+  } else if (snapshot.grade === 'Kindergarten') {
     if (p.sourceType !== 'google-sheets' || p.spreadsheetId !== snapshot.sourceId)
       throw new Error('Wrong Kindergarten source.')
     candidates = inspectKindergartenWorkbook(p)

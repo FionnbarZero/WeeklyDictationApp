@@ -8,6 +8,8 @@ import { revealAcquisition, startAcquisition } from '../acquisition/engine.ts'
 import { transitionAcquisition } from '../acquisition/transition.ts'
 import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import { grade5WritingLabProfile } from './practiceProfile.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { isGrade5AssessmentCandidate } from '../grade5PresentationPreview/sourceIdentity.ts'
 
 export type Grade5LabRevealMethod = 'timer' | 'skip_timer'
 
@@ -38,7 +40,9 @@ export function grade5AcquisitionTargetSet(candidate: WeeklyDatasetCandidate): A
     targets: candidate.tier1.map((word) => ({
       id: word.targetOccurrenceId!,
       text: word.text,
-      sentence: '',
+      sentence: grade5PresentationPreview && isGrade5AssessmentCandidate(candidate) ? word.learningModule?.context?.sentence || '' : '',
+      ...(grade5PresentationPreview && isGrade5AssessmentCandidate(candidate) && word.learningModule
+        ? { learningModule: structuredClone(word.learningModule) } : {}),
       datasetId: candidate.datasetId!,
       grade: 'Grade 5',
       sourceUnitId: candidate.source.sourceUnitId,

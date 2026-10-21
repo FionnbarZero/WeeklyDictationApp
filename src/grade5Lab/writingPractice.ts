@@ -4,8 +4,12 @@ import type { Dataset } from '../domain/contracts.ts'
 import { grade5AcquisitionTargetSet } from './acquisitionLab.ts'
 import { resolveGrade5SourceLifecycle, type Grade5ActivityLaunchRequest } from './learningHub.ts'
 import { grade5WritingLabProfile } from './practiceProfile.ts'
+import { datasetFromCanonicalCandidate } from '../curriculum/datasetProjection.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { isGrade5AssessmentCandidate } from '../grade5PresentationPreview/sourceIdentity.ts'
 
 export function grade5LabDataset(candidate: WeeklyDatasetCandidate): Dataset {
+  if (grade5PresentationPreview && isGrade5AssessmentCandidate(candidate)) return datasetFromCanonicalCandidate(candidate)
   if (!candidate.datasetId || !candidate.dateRangeLabel || !candidate.normalizedStartDate || !candidate.normalizedEndDate) {
     throw new Error('The validated Grade 5 cohort is missing canonical dates or identity.')
   }

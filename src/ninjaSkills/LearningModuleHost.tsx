@@ -32,9 +32,17 @@ export type LearningModuleHostProps = {
   readonly onExit: () => void
   readonly onAttempt?: (attempt: LearningModuleAttempt) => void
   readonly onComplete: (summary: LearningModuleSummary) => void
+  readonly correctionPolicy?: 'prompt-correct'
 }
 
-export function LearningModuleHost({ pack, playAudio, onExit, onAttempt, onComplete }: LearningModuleHostProps) {
+export function LearningModuleHost({
+  pack,
+  playAudio,
+  onExit,
+  onAttempt,
+  onComplete,
+  correctionPolicy,
+}: LearningModuleHostProps) {
   const shared = {
     title: pack.title,
     eyebrow: `${pack.cohort.grade} · Practice your Ninja Skills`,
@@ -61,7 +69,7 @@ export function LearningModuleHost({ pack, playAudio, onExit, onAttempt, onCompl
         {pack.moduleId === 'dictation-streak' ? (
           <DictationStreak {...shared} rounds={pack.rounds} />
         ) : pack.moduleId === 'speed-match' ? (
-          <SpeedMatch {...shared} pairs={pack.pairs} />
+          <SpeedMatch {...shared} pairs={pack.pairs} correctionPolicy={correctionPolicy} />
         ) : pack.moduleId === 'target-blast' ? (
           <TargetBlast {...shared} rounds={pack.rounds} />
         ) : pack.moduleId === 'memory-flip' ? (

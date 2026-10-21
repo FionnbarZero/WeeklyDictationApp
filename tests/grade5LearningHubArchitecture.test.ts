@@ -54,7 +54,9 @@ test('the Grade 5 learning hub connects separate Tier 1 writing and Tier 2 readi
 
   assert.match(harnessSource, /not connected yet/i)
   assert.match(harnessSource, /startGrade5AcquisitionLab/)
-  assert.match(harnessSource, /<Tier2ReadingPractice/)
+  assert.match(harnessSource, /const ReadingPractice = grade5PresentationPreview \? Grade5PresentationReading : Tier2ReadingPractice/)
+  assert.match(harnessSource, /<ReadingPractice/)
+  assert.match(source('src/grade5PresentationPreview/ReadingPractice.tsx'), /<Tier2ReadingPractice \{\.\.\.props\}/)
   assert.match(harnessSource, /<DeferredTestReview/)
   assert.match(harnessSource, /mode="reading"/)
   assert.match(harnessSource, /grade5LabReadingPathway/)

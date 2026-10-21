@@ -1,32 +1,47 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import {
+  buildGrade5AssessmentPayload,
+  extractGrade5Assessment,
+  GRADE5_ASSESSMENT_SOURCE_ID,
+} from '../src/grade5PresentationPreview/assessmentSource.ts'
 import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const retireStandalone = process.argv.includes('--retire-standalone-games')
+const presentation = process.argv.includes('--grade5-presentation')
+const retireStandalone = presentation || process.argv.includes('--retire-standalone-games')
 const compactParents = retireStandalone || process.argv.includes('--compact-parent-controls')
 const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs')
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  grade5Repairs ? 'grade5-repair-preview-dist' : regressions ? 'regression-preview-dist' : 'dojo-launch-preview-dist',
+  presentation
+    ? 'grade5-presentation-preview-dist'
+    : grade5Repairs
+      ? 'grade5-repair-preview-dist'
+      : regressions
+        ? 'regression-preview-dist'
+        : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = retireStandalone
-  ? 'Streamlined Dojo / Prototype 1'
-  : compactParents
-    ? 'Compact parent toolbar / Prototype 1'
-    : grade5Repairs
-      ? 'Grade 5 regression repairs / Prototype 2'
-      : regressions
-        ? 'October 20 regression repairs / Prototype 3'
-        : octoberResources
-          ? 'Kindergarten October 19 resources / Prototype 1'
-          : 'Writing reliability / Prototype 2'
+const prototype = presentation
+  ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 1'
+  : retireStandalone
+    ? 'Streamlined Dojo / Prototype 1'
+    : compactParents
+      ? 'Compact parent toolbar / Prototype 1'
+      : grade5Repairs
+        ? 'Grade 5 regression repairs / Prototype 2'
+        : regressions
+          ? 'October 20 regression repairs / Prototype 3'
+          : octoberResources
+            ? 'Kindergarten October 19 resources / Prototype 1'
+            : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -66,10 +81,11 @@ execFileSync(
       VITE_GRADE5_REPAIR_PREVIEW: String(grade5Repairs),
       VITE_COMPACT_PARENT_PREVIEW: String(compactParents),
       VITE_RETIRE_STANDALONE_GAMES: String(retireStandalone),
+      VITE_GRADE5_PRESENTATION_PREVIEW: String(presentation),
     },
   },
 )
-if (grade5Repairs) {
+if (grade5Repairs && !presentation) {
   const shared = resolve(root, 'grade5-shared-target-repair-dist')
   execFileSync(
     process.execPath,
@@ -96,13 +112,39 @@ if (grade5Repairs) {
   )
   cpSync(shared, out, { recursive: true })
 }
+if (presentation) {
+  const baseline = JSON.parse(readFileSync(resolve(root, 'tests/fixtures/dojo-launch-2026-10-16/grade5.json'), 'utf8'))
+  const payload = buildGrade5AssessmentPayload(baseline.payload)
+  extractGrade5Assessment(payload)
+  writeFileSync(
+    resolve(out, 'curriculum/beta/grade5.json'),
+    JSON.stringify(
+      {
+        ...baseline,
+        sourceId: GRADE5_ASSESSMENT_SOURCE_ID,
+        retrievedAt: new Date().toISOString(),
+        sourceModifiedAt: null,
+        contentSha256: createHash('sha256').update(JSON.stringify(payload)).digest('hex'),
+        payload,
+      },
+      null,
+      2,
+    ),
+  )
+}
 for (const [slug] of grades) {
+  if (presentation && slug === 'grade5') continue
   copyFileSync(
     resolve(root, `tests/fixtures/dojo-launch-2026-10-16/${slug}.json`),
     resolve(out, `curriculum/beta/${slug}.json`),
   )
 }
 const entry = resolve(out, 'family-beta-preview.html')
+if (presentation)
+  writeFileSync(
+    entry,
+    readFileSync(entry, 'utf8').replace(/<title>[^<]*<\/title>/, '<title>10/19 – Fifth Grade Ninja Dojo</title>'),
+  )
 if (!compactParents)
   writeFileSync(
     entry,
@@ -118,6 +160,9 @@ writeFileSync(
     {
       schema: 1,
       prototype,
+      ...(presentation
+        ? { grades: ['Grade 5'], assessment: '2026-10-23 · PDF page 2 · eight shared reading/writing targets' }
+        : {}),
       ...(octoberResources ? { resourceLessonStartDate: '2026-10-19' } : {}),
       sourceRevision: revision,
       curriculumSnapshotDate: '2026-10-16',

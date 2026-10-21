@@ -19,6 +19,8 @@ import { eligibleGameTier, GAME_POLICY_VERSION, rotatingGameTerms } from './poli
 import { withSupplementalContent } from './supplemental.ts'
 import { dictationAudioText, withDictationContent } from './dictationContent.ts'
 import { isExactPinyin } from '../learningModules/dictation-streak/runtime/pinyin.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { isGrade5AssessmentSource } from '../grade5PresentationPreview/sourceIdentity.ts'
 
 function distinctTerms(terms: readonly LearningModuleTerm[]) {
   const seen = new Set<string>()
@@ -223,7 +225,11 @@ function speedMatchPack(cohort: LearningModuleCohort, profile: NinjaSkillsProfil
       meanings.add(meaning)
       return true
     })
-  const terms = rotatingGameTerms('speed-match', eligible, profile.maximumItems['speed-match'], visit)
+  // The approved PDF is one shared reading/writing cohort. Deduplicating that
+  // cohort must not make matching unavailable because it has no second cohort.
+  const sharedAssessment = grade5PresentationPreview && cohort.grade === 'Grade 5'
+    && cohort.provenance.length > 0 && cohort.provenance.every((source) => isGrade5AssessmentSource(source.source))
+  const terms = sharedAssessment ? eligible : rotatingGameTerms('speed-match', eligible, profile.maximumItems['speed-match'], visit)
   if (terms.length < 2)
     return unavailable(
       'speed-match',

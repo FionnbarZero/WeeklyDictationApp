@@ -4,11 +4,14 @@ import { GAME_POLICIES, GAME_POLICY_VERSION } from './policy.ts'
 import { NINJA_SKILLS_PROFILES } from './profiles.ts'
 import type { SupportedGrade } from '../config.ts'
 import { serializeGameRecord } from './serialization.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { grade5AssessmentGameProfile } from '../grade5PresentationPreview/gameProfile.ts'
 
 /** Rebuild against the pinned cohort, not today's source or a new language
  * catalog. The cohort contains the exact supporting content used at launch. */
 export function assertGamePack(pack: LearningModulePack) {
-  const profile = NINJA_SKILLS_PROFILES[pack.cohort.grade as SupportedGrade]
+  const baseProfile = NINJA_SKILLS_PROFILES[pack.cohort.grade as SupportedGrade]
+  const profile = grade5PresentationPreview && baseProfile ? grade5AssessmentGameProfile(baseProfile, pack.cohort) : baseProfile
   if (!profile || !pack.selection || pack.selection.policyVersion !== GAME_POLICY_VERSION)
     throw new Error('This game needs a current validated selection. Return to Ninja Skills.')
   const expected = learningModuleCapability(pack.moduleId, pack.cohort, profile, pack.selection.visit, true)

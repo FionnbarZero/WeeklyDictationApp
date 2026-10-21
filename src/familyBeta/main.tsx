@@ -42,6 +42,7 @@ import { syncCompletedBeforePractice } from './syncProgress.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import '../styles.css'
 import './preview.css'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
 import { retiredStandaloneExperience, standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
@@ -62,13 +63,16 @@ const initialProfiles: BetaProfile[] = BETA_GRADES.map((grade, i) => ({
   grade,
   active: true,
 }))
+const presentationGrades = grade5PresentationPreview ? (['Grade 5'] as const) : BETA_GRADES
 const message = (error: unknown) => (error instanceof Error ? error.message : 'The operation could not be completed.')
 const workspaceOwner = createFamilyWorkspaceOwner(localStorage)
 ;(window as FamilyWorkspaceWindow).familyWorkspaceOwner = workspaceOwner
 
 function FamilyPreview() {
   const requested = new URLSearchParams(location.search).get('grade')
-  const initialGrade = BETA_GRADES.find((g) => gradeSlugs[g] === requested) || 'Kindergarten'
+  const initialGrade = grade5PresentationPreview
+    ? 'Grade 5'
+    : BETA_GRADES.find((g) => gradeSlugs[g] === requested) || 'Kindergarten'
   const [auth, setAuth] = useState<AuthState>({
     status: firebaseConfigReady ? 'loading' : 'unconfigured',
     user: null,
@@ -129,7 +133,8 @@ function FamilyPreview() {
   const refreshRef = useRef<() => Promise<void>>(async () => {})
   const [readyChildren, setReadyChildren] = useState<ReadonlySet<string>>(new Set())
   const [offlineShell, setOfflineShell] = useState(document.documentElement.dataset.offlineShell || '')
-  const child = profiles.find((p) => p.id === selectedId && p.active) || profiles.find((p) => p.active)
+  const eligibleProfiles = grade5PresentationPreview ? profiles.filter((p) => p.grade === 'Grade 5') : profiles
+  const child = eligibleProfiles.find((p) => p.id === selectedId && p.active) || eligibleProfiles.find((p) => p.active)
   const currentGrade = child?.grade || initialGrade
   const curriculum = curricula[currentGrade] || null
   const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChildren.has(child.id))
@@ -820,7 +825,7 @@ function FamilyPreview() {
               }}
             >
               {profiles
-                .filter((p) => p.active)
+                .filter((p) => p.active && (!grade5PresentationPreview || p.grade === 'Grade 5'))
                 .map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nickname} · {p.grade}
@@ -835,7 +840,7 @@ function FamilyPreview() {
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
           </button>
           <AudioCheck />
-          {grade5RepairPreview && child?.grade === 'Grade 5' && (
+          {grade5RepairPreview && !grade5PresentationPreview && child?.grade === 'Grade 5' && (
             <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
           )}
         </header>
@@ -1156,7 +1161,7 @@ function FamilyPreview() {
               >
                 Download this device's records
               </button>
-              {profiles.map((p) => (
+              {eligibleProfiles.map((p) => (
                 <div key={p.id} className="beta-profile">
                   <strong>
                     {p.nickname} · {p.grade}
@@ -1189,7 +1194,7 @@ function FamilyPreview() {
                           void editProfile(p, { grade: next })
                       }}
                     >
-                      {BETA_GRADES.map((g) => (
+                      {presentationGrades.map((g) => (
                         <option key={g}>{g}</option>
                       ))}
                     </select>
@@ -1221,7 +1226,7 @@ function FamilyPreview() {
                 <label>
                   Grade{' '}
                   <select value={grade} onChange={(e) => setGrade(e.target.value as BetaGrade)}>
-                    {BETA_GRADES.map((g) => (
+                    {presentationGrades.map((g) => (
                       <option key={g}>{g}</option>
                     ))}
                   </select>

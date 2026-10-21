@@ -3,6 +3,8 @@ import { chooseCheckpointWinner } from '../familyBeta/checkpointConflict.ts'
 import { BETA_GRADES, makeResult, type BetaProfile, type BetaResult } from '../familyBeta/model.ts'
 import type { LearningModuleAttempt, LearningModulePack } from './contracts.ts'
 import { assertGamePack, reviewGameAnswer } from './review.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { isGrade5AssessmentSource } from '../grade5PresentationPreview/sourceIdentity.ts'
 
 export const GAME_PROGRESS_SCHEMA = 'ninja-game-progress-v1'
 export const GAME_PROGRESS_BYTES = 200_000
@@ -134,7 +136,8 @@ function validatePack(pack: LearningModulePack) {
   for (const source of cohort.provenance) {
     keys(source, ['datasetId', 'contentFingerprint', 'source'])
     keys(source.source, ['sourceType', 'sourceDocumentId', 'sourceUnitId', 'adapterId'])
-    if (!['google-sheets', 'google-slides'].includes(source.source.sourceType))
+    if (!['google-sheets', 'google-slides'].includes(source.source.sourceType)
+      && !(grade5PresentationPreview && isGrade5AssessmentSource(source.source)))
       throw new Error('Invalid curriculum source type.')
     for (const value of [source.source.sourceDocumentId, source.source.sourceUnitId, source.source.adapterId])
       text(value)

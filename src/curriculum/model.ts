@@ -1,4 +1,4 @@
-export type CurriculumSourceType = 'google-slides' | 'google-sheets'
+export type CurriculumSourceType = 'google-slides' | 'google-sheets' | 'owner-assessment'
 export type VocabularyTier = 'tier-1' | 'tier-2' | 'tier-3'
 export type InstructionalRole = 'weekly-acquisition' | 'current-confirmation' | 'next-week-preview' | 'unassigned'
 export type CandidateStatus = 'valid' | 'no-instruction' | 'malformed'
@@ -77,7 +77,25 @@ export type SheetsWorkbookPayload = {
   sheets?: SheetSourceUnit[]
 }
 
-export type CurriculumSourcePayload = SlidesPresentationPayload | SheetsWorkbookPayload
+export type OwnerAssessmentPayload = {
+  sourceType: 'owner-assessment'
+  assessmentId: string
+  documentId: string
+  page: number
+  startDate: string
+  endDate: string
+  targets: Array<{
+    key: string
+    text: string
+    pinyin: string
+    meaning: string
+    sentence: string
+    tokens: string[]
+  }>
+  baseline: SlidesPresentationPayload
+}
+
+export type CurriculumSourcePayload = SlidesPresentationPayload | SheetsWorkbookPayload | OwnerAssessmentPayload
 
 export type CurriculumSourceIssue = {
   code: string

@@ -42,6 +42,11 @@ import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
 import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
+import { grade5PresentationPreview } from './grade5PresentationPreview/policy.ts'
+import { extractGrade5Assessment } from './grade5PresentationPreview/assessmentSource.ts'
+import { Grade5PresentationReading } from './grade5PresentationPreview/ReadingPractice.tsx'
+
+const ReadingPractice = grade5PresentationPreview ? Grade5PresentationReading : Tier2ReadingPractice
 
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
@@ -263,7 +268,8 @@ function recordWritingResult(correct: number, attempted: number) {
   try {
     if (activeSession.primaryPhase === 'acquisition' && acquisitionStore)
       activeSession = { ...activeSession, id: acquisitionStore.prepareResult().sessionId }
-    savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
+    const saved = savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
+    if (grade5PresentationPreview && attempted > 0 && !saved) throw new Error('The writing result could not be saved.')
     return true
   } catch {
     window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
@@ -344,7 +350,10 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
     const primaryAnswers = writingSessionAnswers(answer.completion)
     activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
     const correct = primaryAnswers.filter((item) => item.correct).length
-    if (!recordWritingResult(correct, primaryAnswers.length)) return
+    if (!recordWritingResult(correct, primaryAnswers.length)) {
+      if (grade5PresentationPreview) throw new Error('The writing result could not be saved. Please retry.')
+      return
+    }
     leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
   }
   else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
@@ -393,6 +402,7 @@ function renderPracticeView() {
       onSpeakWord={speakWord}
       onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
+      retryTestSaveFailures={grade5PresentationPreview}
     />,
   )
 }
@@ -452,8 +462,15 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     const pathway = grade5LabReadingPathway(sourceExtraction, request)
     const readingSessionId = crypto.randomUUID()
     const finishReading = (correct: number, attempted: number, savedSessionId?: string) => {
-      try { savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted }) }
-      catch { window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin); return }
+      try {
+        const saved = savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted })
+        if (grade5PresentationPreview && attempted > 0 && !saved) throw new Error('The reading result could not be saved. Please retry.')
+      }
+      catch (error) {
+        window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+        if (grade5PresentationPreview) throw error
+        return
+      }
       leavePractice(`Reading complete: ${correct}/${attempted}. ${familyPreview ? 'See family progress for saving status.' : 'This lab result was not saved.'}`)
     }
     activePractice = null
@@ -472,6 +489,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       practiceRoot.render(<DeferredTestReview
         key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
         mode="reading"
+        retrySaveFailures={grade5PresentationPreview}
         targets={targets}
         activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
         onPlayReference={speakReadingReference}
@@ -483,7 +501,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       return
     }
     practiceSummary.textContent = 'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
-    practiceRoot.render(<Tier2ReadingPractice
+    practiceRoot.render(<ReadingPractice
       key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
       profile={grade5Tier2ReadingProfile}
       pathway={pathway}
@@ -557,7 +575,10 @@ async function loadHub() {
   try {
     const response = familyPreview ? new Response(JSON.stringify((await fetchCurriculum('Grade 5')).snapshot.payload)) : await fetch(fixtureUrl, { cache: 'no-store' })
     if (!response.ok) throw new Error(`Fixture request failed with HTTP ${response.status}.`)
-    sourceExtraction = extractGrade5Presentation(normalizePayload(await response.json()))
+    const payload = await response.json()
+    sourceExtraction = grade5PresentationPreview && payload.sourceType === 'owner-assessment'
+      ? extractGrade5Assessment(payload)
+      : extractGrade5Presentation(normalizePayload(payload))
     const date = familyPreview ? new URLSearchParams(window.location.search).get('week') || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined
     learningHubModel = buildGrade5LearningHub(sourceExtraction, date)
   hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} hideUnavailable={familyPreview}

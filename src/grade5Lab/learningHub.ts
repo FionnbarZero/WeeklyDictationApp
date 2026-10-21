@@ -7,6 +7,8 @@ import type { WeeklyDatasetCandidate } from '../curriculum/model.ts'
 import { lifecycleProgressionEventsFrom } from '../lifecycle/curriculumProgression.ts'
 import { resolveLifecycle } from '../lifecycle/registry.ts'
 import { SHARED_LEARNING_PATH_TITLES } from '../learningHub/activityNames.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { isGrade5AssessmentCandidate } from '../grade5PresentationPreview/assessmentSource.ts'
 
 export type Grade5HubStage = 'acquisition' | 'test-review-1' | 'test-review-2' | 'mastery'
 export type Grade5LearningChannel = 'tier-1-writing' | 'tier-2-reading'
@@ -268,9 +270,12 @@ export function buildGrade5LearningHub(
       .map((candidate) => [candidate.datasetId!, candidate]),
   )
   const lifecycle = resolveGrade5SourceLifecycle(extraction, currentDateKey)
-  const acquisition = candidateByDatasetId.get(lifecycle.acquisitionDatasetId || '')
-  const testReview1 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 1)?.datasetId || '')
-  const testReview2 = candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 2)?.datasetId || '')
+  const assessment = grade5PresentationPreview
+    ? [...candidateByDatasetId.values()].find(candidate => isGrade5AssessmentCandidate(candidate) && candidate.normalizedStartDate! <= currentDateKey)
+    : undefined
+  const acquisition = assessment || candidateByDatasetId.get(lifecycle.acquisitionDatasetId || '')
+  const testReview1 = assessment || candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 1)?.datasetId || '')
+  const testReview2 = assessment || candidateByDatasetId.get(lifecycle.testReviews.find((review) => review.cycle === 2)?.datasetId || '')
   const mastery = lifecycle.masteryDatasetIds
     .map((datasetId) => candidateByDatasetId.get(datasetId))
     .filter((candidate): candidate is WeeklyDatasetCandidate => Boolean(candidate))
@@ -318,5 +323,23 @@ export function buildGrade5LearningHub(
     },
   ]
 
+  if (assessment) {
+    for (const section of sections.filter(section => section.stage !== 'mastery')) {
+      section.subtitle = 'October 23: the same eight words for writing and reading.'
+      section.activities = section.activities.filter(activity => !activity.id.endsWith('-book') && !activity.id.includes('reenter'))
+      if (section.stage !== 'acquisition' && section.stage !== 'mastery') {
+        for (const channel of ['tier-1-writing', 'tier-2-reading'] as const) {
+          const label = `Return to Dojo · ${channel === 'tier-1-writing' ? 'Writing' : 'Reading'}`
+          section.activities.push({
+            id: `${section.stage}-guided-${channel}`,
+            label,
+            description: 'Continue guided teaching for the same eight words.',
+            availability: 'not-connected',
+            launchRequests: [launchRequest(assessment, 'acquisition', channel, 'acquisition')],
+          })
+        }
+      }
+    }
+  }
   return { grade: 'Grade 5', sections }
 }
