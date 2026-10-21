@@ -808,12 +808,17 @@ function FamilyPreview() {
               ))}
           </select>
         </label>
+        {regressionPreview && tab !== 'activities' && (
+          <button onClick={() => setTab('activities')}>Back to activities</button>
+        )}
         <button onClick={() => setTab('parent')}>Parent controls</button>
         <AudioCheck />
       </header>
-      <div className="beta-status" role="status">
-        {status}
-      </div>
+      {!regressionPreview && (
+        <div className="beta-status" role="status">
+          {status}
+        </div>
+      )}
       {error && (
         <div className="error-banner" role="alert">
           {error} <button onClick={() => void refreshProgress()}>Retry saving</button>
@@ -829,20 +834,22 @@ function FamilyPreview() {
           {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
         </div>
       )}
-      <nav className="beta-tabs" aria-label="Family preview navigation">
-        {(['activities', 'games', 'progress'] as const).map((t) => (
-          <button
-            key={t}
-            aria-current={tab === t ? 'page' : undefined}
-            onClick={() => {
-              setTab(t)
-              if (t === 'progress') void refreshProgress()
-            }}
-          >
-            {t === 'games' ? 'Ninja Skills' : t === 'activities' ? 'Activities' : 'Progress'}
-          </button>
-        ))}
-      </nav>
+      {!regressionPreview && (
+        <nav className="beta-tabs" aria-label="Family preview navigation">
+          {(['activities', 'games', 'progress'] as const).map((t) => (
+            <button
+              key={t}
+              aria-current={tab === t ? 'page' : undefined}
+              onClick={() => {
+                setTab(t)
+                if (t === 'progress') void refreshProgress()
+              }}
+            >
+              {t === 'games' ? 'Ninja Skills' : t === 'activities' ? 'Activities' : 'Progress'}
+            </button>
+          ))}
+        </nav>
+      )}
       {familyId && child && !readyChildren.has(child.id) && (
         <section className="beta-panel" role="status">
           <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
@@ -1042,6 +1049,16 @@ function FamilyPreview() {
       {tab === 'parent' && (
         <section className="beta-panel">
           <h1>Parent controls</h1>
+          {regressionPreview && (
+            <button
+              onClick={() => {
+                setTab('progress')
+                void refreshProgress()
+              }}
+            >
+              View saved scores
+            </button>
+          )}
           {!adultUnlocked ? (
             <form
               onSubmit={async (e) => {

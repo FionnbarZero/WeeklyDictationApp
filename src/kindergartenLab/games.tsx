@@ -701,7 +701,9 @@ export function NinjaRecord({
       )}
       <small>
         {persistent
-          ? 'This visit’s scores. Open family Progress above for saved history and saving status.'
+          ? regressionPreview
+            ? 'This visit’s scores.'
+            : 'This visit’s scores. Open family Progress above for saved history and saving status.'
           : 'Development lab: these scores stay only for this open visit and are not saved to a child account.'}
       </small>
     </section>
