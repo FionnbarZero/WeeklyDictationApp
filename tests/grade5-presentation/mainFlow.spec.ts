@@ -90,6 +90,12 @@ async function open(page: Page, section: RegExp, activity?: string) {
         : 'Boss Games'
     await frame.getByRole('button', { name: group, exact: true }).click()
   }
+  if (
+    activity &&
+    section.source.includes('Ninja Skills') &&
+    (activity.startsWith('Return to Dojo') || activity.endsWith(' Test'))
+  )
+    await frame.getByRole('button', { name: 'More activities', exact: true }).click()
   if (activity) await frame.getByRole('button', { name: activity, exact: true }).click()
   return frame
 }

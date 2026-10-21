@@ -45,6 +45,8 @@ export type LearningHubSection<Launch> = {
   cohortSummaryLabel?: string
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]
+  showUngroupedActivities?: boolean
+  activityGroupLabel?: string
   activityGroups?: {
     id: string
     title: string

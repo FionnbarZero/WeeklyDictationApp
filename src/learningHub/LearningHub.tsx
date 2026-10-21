@@ -99,6 +99,11 @@ function SectionDetail<Launch>({
   const [selectedCohortId, setSelectedCohortId] = useState(defaultCohortId)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const selectedGroup = section.activityGroups?.find((group) => group.id === selectedGroupId)
+  const groupedIds = new Set(section.activityGroups?.flatMap((group) => group.activityIds))
+  const ungroupedActivities = section.showUngroupedActivities
+    ? section.activities.filter((activity) => !groupedIds.has(activity.id))
+    : []
+  const groupLabel = section.activityGroupLabel || 'Final Boss'
   const visibleActivities = selectedGroup
     ? section.activities.filter((activity) => selectedGroup.activityIds.includes(activity.id))
     : section.activities
@@ -182,7 +187,7 @@ function SectionDetail<Launch>({
       <div className="learning-hub-activity-heading">
         {selectedGroup && (
           <button className="learning-hub-back" type="button" onClick={() => setSelectedGroupId(null)}>
-            ← Back to Final Boss
+            ← Back to {groupLabel}
           </button>
         )}
         <p className="learning-hub-eyebrow">Choose an activity</p>
@@ -190,6 +195,16 @@ function SectionDetail<Launch>({
       </div>
       {section.activityGroups && !selectedGroup ? (
         <div className="learning-hub-activity-grid learning-hub-group-grid">
+          {ungroupedActivities.map((activity, index) => (
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              index={index}
+              theme={section.theme}
+              launchContext={launchContext}
+              onLaunch={onLaunch}
+            />
+          ))}
           {section.activityGroups.map((group, index) => (
             <ActivityCard
               key={group.id}
@@ -198,10 +213,10 @@ function SectionDetail<Launch>({
                 title: group.title,
                 description: group.description,
                 icon: group.icon,
-                eyebrow: 'Final Boss',
+                eyebrow: groupLabel,
                 action: { kind: 'launch', label: group.title, launch: group.id },
               }}
-              index={index}
+              index={ungroupedActivities.length + index}
               theme={section.theme}
               launchContext={launchContext}
               onLaunch={setSelectedGroupId}

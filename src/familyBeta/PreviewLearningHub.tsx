@@ -382,6 +382,27 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       return {
         ...section,
         activities,
+        ...(grade5PresentationPreview && assessment && section.id === 'test-review-1'
+          ? {
+              showUngroupedActivities: true,
+              activityGroupLabel: 'Ninja Skills',
+              activityGroups: [
+                {
+                  id: 'ninja-more-activities',
+                  title: 'More activities',
+                  description: 'Return to the Dojo or take the writing and reading tests for this word set.',
+                  icon: '🥋',
+                  activityIds: activities
+                    .filter(
+                      (activity) =>
+                        activity.title.startsWith('Return to Dojo') ||
+                        ['Writing Test', 'Reading Test'].includes(activity.title),
+                    )
+                    .map((activity) => activity.id),
+                },
+              ],
+            }
+          : {}),
         ...(grade5PresentationPreview && assessment && section.id === 'test-review-2'
           ? {
               activityGroups: [
