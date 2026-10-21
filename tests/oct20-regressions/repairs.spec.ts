@@ -294,11 +294,11 @@ test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer
 })
 
 for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
-  for (const action of ['finish', 'answer']) {
+  for (const action of ['finish', 'scored finish', 'answer']) {
     test(`${activity}: delayed ${action} cannot write or close a reopened visit`, async ({ page }) => {
       const frame = await launch(page, 'kindergarten', /Enter the Dojo/, activity)
       await expect(frame.getByRole('heading', { name: activity, exact: true })).toBeVisible()
-      if (action === 'answer') {
+      async function prepareResponse() {
         if (activity === 'Whispering Scrolls') {
           await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
           await frame.getByRole('button', { name: 'Stop recording', exact: true }).click()
@@ -307,6 +307,23 @@ for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
         }
         await expect(frame.getByRole('button', { name: /^(Continue|Yes)$/ })).toBeEnabled()
       }
+      if (action === 'scored finish') {
+        for (let trial = 0; trial < 4; trial++) {
+          await prepareResponse()
+          const before = await stored(page)
+          await frame.getByRole('button', { name: /^(Continue|Yes)$/ }).click()
+          await expect.poll(() => stored(page)).not.toEqual(before)
+        }
+      } else if (action === 'answer') await prepareResponse()
+      const ledgers = () =>
+        page.evaluate(() =>
+          Object.fromEntries(
+            Object.entries(localStorage).filter(
+              ([key]) =>
+                key.startsWith('family-beta-preview-results-v1') || key.startsWith('family-beta-preview-pending-v1'),
+            ),
+          ),
+        )
       const owner = await (await page.locator('iframe:visible').elementHandle())!.contentFrame()
       const moduleId = activity === 'Whispering Scrolls' ? 'whispering-scrolls' : 'stroke-order-slay'
       const lockName = await owner!.evaluate((moduleId) => {
@@ -328,8 +345,9 @@ for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
         .poll(() => owner!.evaluate(() => (window as Window & { auditLockReady?: boolean }).auditLockReady))
         .toBe(true)
       const before = await stored(page)
+      const ledgerBefore = await ledgers()
       await frame
-        .getByRole('button', { name: action === 'finish' ? 'Done for today' : /^(Continue|Yes)$/, exact: true })
+        .getByRole('button', { name: action === 'answer' ? /^(Continue|Yes)$/ : 'Done for today', exact: true })
         .click()
       await expect
         .poll(() =>
@@ -353,9 +371,15 @@ for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
         .toBe(0)
       await expect(frame.getByRole('heading', { name: activity, exact: true })).toBeVisible()
       expect(await stored(page)).toEqual(before)
+      expect(await ledgers()).toEqual(ledgerBefore)
       // The new visit is still usable: its own completion exits normally.
       await frame.getByRole('button', { name: 'Done for today', exact: true }).click()
       await expect(frame.getByRole('button', { name: activity, exact: true })).toBeVisible()
+      const completed = Object.entries(await ledgers()).filter(([key]) =>
+        key.startsWith('family-beta-preview-results-v1:'),
+      )
+      expect(completed).toHaveLength(action === 'scored finish' ? 1 : 0)
+      if (action === 'scored finish') expect(JSON.parse(completed[0][1]).attempted).toBe(1)
     })
   }
 }
