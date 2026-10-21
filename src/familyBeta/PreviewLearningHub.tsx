@@ -46,6 +46,7 @@ type ExtraLaunch =
       channel: PracticeChannel | 'mixed'
       datasets: Dataset[]
       mastered?: boolean
+      boss?: boolean
     }
   | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
@@ -312,6 +313,9 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
                       channel,
                       datasets,
                       ...(masteredArcade ? { mastered: true } : {}),
+                      ...(grade5PresentationPreview && assessment && section.id === 'test-review-2'
+                        ? { boss: true }
+                        : {}),
                     },
                   }
                 : {
@@ -488,7 +492,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost
             pack={active.pack}
-            destination={active.mastered ? 'Spirit Realm' : undefined}
+            destination={active.mastered ? 'Spirit Realm' : active.boss ? 'Boss Games' : undefined}
             correctionPolicy={
               grade5PresentationPreview &&
               (active.mastered ||

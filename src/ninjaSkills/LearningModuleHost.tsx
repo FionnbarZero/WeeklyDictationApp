@@ -34,7 +34,7 @@ export type LearningModuleHostProps = {
   readonly onAttempt?: (attempt: LearningModuleAttempt) => void
   readonly onComplete: (summary: LearningModuleSummary) => void
   readonly correctionPolicy?: 'prompt-correct'
-  readonly destination?: 'Spirit Realm'
+  readonly destination?: 'Spirit Realm' | 'Boss Games'
 }
 
 export function LearningModuleHost({
