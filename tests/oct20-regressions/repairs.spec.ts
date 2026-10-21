@@ -269,6 +269,7 @@ test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer
   expect(
     await first.locator('span').evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
   ).toBeGreaterThanOrEqual(40)
+  await page.screenshot({ path: test.info().outputPath('grade2-shuriken.png'), fullPage: true })
   // Public teacher vocabulary: Mandarin/English, never synthetic lesson edits.
   await first.click()
   await cards.filter({ hasText: /^hero$/i }).click()
@@ -301,6 +302,7 @@ test('Lily Pads completed game survives a failed save and retries exactly one re
     await expect(frame.locator('.lg-progress')).toContainText(`${crossing}/3`, { timeout: 20000 })
   }
   const canvas = await frame.locator('.lg-phaser-stage canvas').elementHandle()
+  await page.screenshot({ path: test.info().outputPath('kindergarten-lily.png'), fullPage: true })
   const activityFrame = await (await page.locator('iframe:visible').elementHandle())!.contentFrame()
   await activityFrame!.evaluate(() => {
     const host = window as unknown as { failScoreSave: boolean }
