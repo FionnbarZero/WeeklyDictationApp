@@ -47,6 +47,11 @@ export type ReadingTeachingIntroductionContext = {
   readonly firstPresentationOfNewTarget: boolean
 }
 
+export type ReadingAcquisitionStore = Pick<
+  NonNullable<ReturnType<typeof familyAcquisitionStore<Tier2ReadingTarget, 'recording-comparison'>>>,
+  'context' | 'current' | 'answer' | 'assertActive' | 'prepareResult'
+>
+
 export type Tier2ReadingPracticeProps = {
   readonly profile: Tier2ReadingProfile
   readonly pathway: Tier2ReadingPathway
@@ -61,6 +66,8 @@ export type Tier2ReadingPracticeProps = {
   readonly random?: () => number
   readonly sessionNote?: string
   readonly persistAcquisition?: boolean
+  /** Explicit storage adapter for isolated, browser-only prototypes. */
+  readonly openSavedAcquisition?: () => ReadingAcquisitionStore
 }
 
 function defaultReadingReference(profile: Tier2ReadingProfile, target: Tier2ReadingTarget) {
@@ -154,16 +161,19 @@ function ImmediateTier2ReadingPractice({
   random = Math.random,
   sessionNote = 'Your recording is temporary and is never saved or uploaded.',
   persistAcquisition = true,
+  openSavedAcquisition,
 }: Tier2ReadingPracticeProps) {
   const randomRef = useRef(random)
   const [savedStore] = useState(() =>
     pathway.kind === 'acquisition' && persistAcquisition
-      ? familyAcquisitionStore<Tier2ReadingTarget, 'recording-comparison'>(
-          tier2ReadingAcquisitionTargetSet(pathway),
-          profile.acquisitionStrategy,
-          'reading-dojo',
-          'tier-2',
-        )
+      ? openSavedAcquisition
+        ? openSavedAcquisition()
+        : familyAcquisitionStore<Tier2ReadingTarget, 'recording-comparison'>(
+            tier2ReadingAcquisitionTargetSet(pathway),
+            profile.acquisitionStrategy,
+            'reading-dojo',
+            'tier-2',
+          )
       : null,
   )
   const [saveError, setSaveError] = useState('')

@@ -12,6 +12,7 @@ import { assertScrollsAnswerOpen, withScrollsWrite } from '../familyBeta/scrolls
 import { PracticeView, type PracticeViewProps } from '../practice/PracticeView.tsx'
 import Grade2WritingPractice from './Grade2WritingPractice.tsx'
 import './nativeWritingIntegration.css'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 
 type NativeStore = {
   key: string
@@ -81,7 +82,7 @@ export default function NativeWritingPractice({ store, ...props }: PracticeViewP
     props.onExit()
   }
 
-  if (props.session.segment !== 'primary') return <PracticeView {...props} onExit={exit} />
+  if (props.session.segment !== 'primary' && !regressionPreview) return <PracticeView {...props} onExit={exit} />
   return (
     <div className="native-writing-integration">
       {error && (

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const grade of ['kindergarten', 'grade2']) {
+for (const grade of ['kindergarten', 'grade2', 'grade5']) {
   test(`${grade}: real WAV playback advances, balances quiet synthetic sound and unloads the temporary player`, async ({
     page,
   }) => {

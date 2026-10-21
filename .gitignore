@@ -47,3 +47,5 @@ firestore-debug.log
 playwright-report/
 test-results/
 home-text-preview-dist/
+grade5-repair-preview-dist/
+grade5-shared-target-repair-dist/

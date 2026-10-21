@@ -27,6 +27,8 @@ import { WritingTrainer } from './WritingTrainer.tsx'
 import '../styles.css'
 import '../writingAcquisition/crossGradePreview.css'
 import './styles.css'
+import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
+import { openGrade5PreviewReading } from '../grade5RepairPreview/readingStore.ts'
 
 type Activity = 'writing-test' | 'reading-test' | 'writing-dojo' | 'reading-dojo' | 'shuriken' | 'sushi'
 type Section = 'Practice Your Ninja Skills' | 'Final Boss Test'
@@ -79,7 +81,7 @@ function App() {
     >
       <header className="cross-grade-banner">
         <span>
-          {PROTOTYPE_TITLE} · Prototype 1 · {build.slice(0, 7)}
+          {PROTOTYPE_TITLE} · Prototype {grade5RepairPreview ? '2' : '1'} · {build.slice(0, 7)}
         </span>
         <div id="problem-reporter-controls" />
       </header>
@@ -87,6 +89,13 @@ function App() {
         <main className="oct23-menu">
           <h1>{PROTOTYPE_TITLE}</h1>
           <p className="oct23-safety">Isolated test learners only · Not the regular app · October 23 test</p>
+          {grade5RepairPreview && (
+            <p>
+              <a href="/family-beta-preview.html?grade=grade5">
+                Grade 5 activity repair tests: Warmup, Shadow Strike and Memory Lanterns
+              </a>
+            </p>
+          )}
           <p>One shared target list for both reading and writing:</p>
           <p className="oct23-targets" lang="zh-Hans">
             {TARGETS.map((t) => t.text).join(' · ')}
@@ -116,9 +125,11 @@ function App() {
               word-tile boundaries are proposed.
             </p>
             <p>
-              Writing teaching steps save only in this browser and are shared between both Return to Dojo buttons.
-              Tests, reading practice and games are session-only here and restart after exit/reload. Ink and recordings
-              are temporary. No account, family scores, cloud sync, offline installation or live curriculum change.
+              Writing teaching steps {grade5RepairPreview ? 'and reading acquisition' : ''} save only in this browser
+              and are shared between both Return to Dojo buttons. Tests,{' '}
+              {grade5RepairPreview ? '' : 'reading practice and '}games are session-only here and restart after
+              exit/reload. Ink and recordings are temporary. No account, family scores, cloud sync, offline installation
+              or live curriculum change.
             </p>
             <p>
               Existing Grade 5 acquisition rules—including familiar trials—remain. Tests contain only the eight listed
@@ -133,11 +144,15 @@ function App() {
         <Tier2ReadingPractice
           profile={grade5Tier2ReadingProfile}
           pathway={readingPathway}
-          persistAcquisition={false}
+          persistAcquisition={grade5RepairPreview}
+          openSavedAcquisition={grade5RepairPreview ? openGrade5PreviewReading : undefined}
           label="Return to Dojo · Reading · October 23 shared targets"
           onExit={leave}
           onComplete={(result) => {
-            setSummary(`Reading practice: ${result.correct}/${result.attempted}. Session-only prototype.`)
+            if (grade5RepairPreview) openGrade5PreviewReading().finishSession()
+            setSummary(
+              `Reading practice: ${result.correct}/${result.attempted}. ${grade5RepairPreview ? 'Teaching position saved in this browser.' : 'Session-only prototype.'}`,
+            )
             leave()
           }}
         />

@@ -43,6 +43,7 @@ import {
 import '../styles.css'
 import './preview.css'
 import { regressionPreview } from '../regressionPreview/policy.ts'
+import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
 const routes: Record<BetaGrade, string> = {
@@ -784,7 +785,9 @@ function FamilyPreview() {
       <header className="beta-toolbar">
         <strong>
           {import.meta.env.MODE === 'writing-pilot'
-            ? 'Grade 2 writing pilot · Unpublished'
+            ? grade5RepairPreview
+              ? 'Grade 5 repair prototype'
+              : 'Grade 2 writing pilot · Unpublished'
             : 'Ninja Dojo · Family beta'}
         </strong>
         <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
@@ -813,6 +816,9 @@ function FamilyPreview() {
         )}
         <button onClick={() => setTab('parent')}>Parent controls</button>
         <AudioCheck />
+        {grade5RepairPreview && child?.grade === 'Grade 5' && (
+          <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
+        )}
       </header>
       {!regressionPreview && (
         <div className="beta-status" role="status">

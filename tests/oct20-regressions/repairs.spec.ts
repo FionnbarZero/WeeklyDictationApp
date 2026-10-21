@@ -97,7 +97,9 @@ const gameCheckpoints = (page: Page) =>
   )
 async function launch(page: Page, grade: string, section: RegExp, activity: string) {
   await page.goto(`/family-beta-preview.html?grade=${grade}`)
-  await expect(page.getByRole('note')).toContainText('October 20 regression repairs / Prototype 3')
+  await expect(page.getByRole('note')).toContainText(
+    /October 20 regression repairs \/ Prototype 3|Grade 5 regression repairs \/ Prototype 2/,
+  )
   const frame = frameOf(page)
   await frame.getByRole('button', { name: section }).click()
   await frame.getByRole('button', { name: activity, exact: true }).click()
@@ -115,6 +117,7 @@ const stored = (page: Page) =>
 for (const [grade, activity, character] of [
   ['kindergarten', 'Writing characters', '虫'],
   ['grade2', 'Learn to Write', '走'],
+  ['grade5', 'Learn to Write', '盐'],
 ]) {
   test(`${grade}: enlarged teacher scrolls, reports and resumes its confirmed step`, async ({ page }) => {
     let frame = await launch(page, grade, /Enter the Dojo/, activity)
@@ -179,7 +182,7 @@ test('Grade 2 Warmup has larger writing boxes and exits to the same activity men
   await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeHidden()
 })
 
-for (const grade of ['kindergarten', 'grade2']) {
+for (const grade of ['kindergarten', 'grade2', 'grade5']) {
   test(`${grade}: reading recovers stalled playback and a failed save without losing the prompt`, async ({ page }) => {
     const frame = await launch(
       page,
@@ -230,47 +233,52 @@ for (const grade of ['kindergarten', 'grade2']) {
   })
 }
 
-for (const game of ['Shadow Strike Dojo', 'Memory Lanterns', 'Listening Lily Pads']) {
-  test(`Kindergarten: ${game} responds repeatedly and exits without a saved-game dialog`, async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
-    let frame = await launch(page, 'kindergarten', /Practice your Ninja Skills/, game)
-    for (let visit = 0; visit < 2; visit++) {
-      await expect(frame.getByRole('button', { name: /^Exit (game|learning module)$/ })).toBeVisible()
-      if (game === 'Memory Lanterns') {
-        const lanterns = frame.locator('.lg-lantern-card:not(:disabled)')
-        await expect(lanterns.first()).toBeVisible()
-        await lanterns.nth(0).click()
-        await lanterns.nth(1).click()
-        await expect(frame.locator('.lg-stat-row')).toContainText('1')
-      } else if (game === 'Listening Lily Pads') {
-        await expect(frame.locator('.lg-phaser-stage canvas')).toBeVisible()
-        await expect(frame.locator('.lg-phaser-stage')).toHaveAttribute('data-input-ready', 'true', { timeout: 20000 })
-        const box = (await frame.locator('.lg-phaser-stage').boundingBox())!
-        expect(box.width).toBeLessThanOrEqual(test.info().project.use.viewport!.width)
-        await frame.getByRole('button', { name: 'Hear clue', exact: true }).click()
-        await frame.locator('.lg-phaser-stage').click({ position: { x: box.width * 0.79, y: box.height * 0.7 } })
-        await expect(frame.locator('.lg-progress')).toContainText('1/3', { timeout: 20000 })
-      } else {
-        const targets = frame.getByRole('group', { name: 'Answer choices', exact: true }).getByRole('button')
-        await expect(targets.first()).toBeVisible()
-        await targets.first().click()
-        await expect(frame.locator('.lg-feedback')).toBeVisible()
+for (const grade of ['kindergarten', 'grade5'])
+  for (const game of grade === 'kindergarten'
+    ? ['Shadow Strike Dojo', 'Memory Lanterns', 'Listening Lily Pads']
+    : ['Shadow Strike Dojo', 'Memory Lanterns']) {
+    test(`${grade}: ${game} responds repeatedly and exits without a saved-game dialog`, async ({ page }) => {
+      const errors: string[] = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      let frame = await launch(page, grade, /Practice your Ninja Skills/, game)
+      for (let visit = 0; visit < 2; visit++) {
+        await expect(frame.getByRole('button', { name: /^Exit (game|learning module)$/ })).toBeVisible()
+        if (game === 'Memory Lanterns') {
+          const lanterns = frame.locator('.lg-lantern-card:not(:disabled)')
+          await expect(lanterns.first()).toBeVisible()
+          await lanterns.nth(0).click()
+          await lanterns.nth(1).click()
+          await expect(frame.locator('.lg-stat-row')).toContainText('1')
+        } else if (game === 'Listening Lily Pads') {
+          await expect(frame.locator('.lg-phaser-stage canvas')).toBeVisible()
+          await expect(frame.locator('.lg-phaser-stage')).toHaveAttribute('data-input-ready', 'true', {
+            timeout: 20000,
+          })
+          const box = (await frame.locator('.lg-phaser-stage').boundingBox())!
+          expect(box.width).toBeLessThanOrEqual(test.info().project.use.viewport!.width)
+          await frame.getByRole('button', { name: 'Hear clue', exact: true }).click()
+          await frame.locator('.lg-phaser-stage').click({ position: { x: box.width * 0.79, y: box.height * 0.7 } })
+          await expect(frame.locator('.lg-progress')).toContainText('1/3', { timeout: 20000 })
+        } else {
+          const targets = frame.getByRole('group', { name: 'Answer choices', exact: true }).getByRole('button')
+          await expect(targets.first()).toBeVisible()
+          await targets.first().click()
+          await expect(frame.locator('.lg-feedback')).toBeVisible()
+        }
+        await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+        await expect(page.getByRole('dialog', { name: 'Report a problem', exact: true })).toContainText(game)
+        await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+        await frame.getByRole('button', { name: /^Exit (game|learning module)$/ }).click()
+        await expect(frame.getByRole('button', { name: game, exact: true })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeHidden()
+        if (visit === 0) {
+          await frame.getByRole('button', { name: game, exact: true }).click()
+          frame = frameOf(page)
+        }
       }
-      await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
-      await expect(page.getByRole('dialog', { name: 'Report a problem', exact: true })).toContainText(game)
-      await page.getByRole('button', { name: 'Close and return', exact: true }).click()
-      await frame.getByRole('button', { name: /^Exit (game|learning module)$/ }).click()
-      await expect(frame.getByRole('button', { name: game, exact: true })).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Your paused work' })).toBeHidden()
-      if (visit === 0) {
-        await frame.getByRole('button', { name: game, exact: true }).click()
-        frame = frameOf(page)
-      }
-    }
-    expect(errors).toEqual([])
-  })
-}
+      expect(errors).toEqual([])
+    })
+  }
 
 test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer tick', async ({ page }) => {
   const frame = await launch(page, 'grade2', /Practice your Ninja Skills/, 'Shuriken Match')

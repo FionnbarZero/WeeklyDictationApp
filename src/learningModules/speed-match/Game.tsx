@@ -472,10 +472,15 @@ export function SpeedMatch({
                   }
                   aria-label={`${card.accessibleLabel || card.label}. Click to hear and select.`}
                   onClick={() => {
-                    const spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(
-                      () => undefined,
-                      () => undefined,
-                    )
+                    let spoken: Promise<void>
+                    try {
+                      spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(
+                        () => undefined,
+                        () => undefined,
+                      )
+                    } catch {
+                      spoken = Promise.resolve()
+                    }
                     choose(card, spoken)
                   }}
                 >

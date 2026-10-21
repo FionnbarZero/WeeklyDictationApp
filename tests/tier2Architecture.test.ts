@@ -76,6 +76,8 @@ test('the Tier 2 boundary is imported only by approved reading integration surfa
     // Isolated owner-requested assessment; no native lifecycle selection changes.
     'src/grade5Oct23Prototype/App.tsx',
     'src/grade5Oct23Prototype/content.ts',
+    // Explicit browser-only persistence adapter for the approved Grade 5 PDF prototype.
+    'src/grade5RepairPreview/readingStore.ts',
     'src/kindergartenLab/readingPractice.ts',
     'src/kindergartenLearningLabHarness.tsx',
     'src/readingPractice/Tier2ReadingPractice.tsx',

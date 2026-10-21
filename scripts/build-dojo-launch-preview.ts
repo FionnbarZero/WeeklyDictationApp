@@ -1,20 +1,26 @@
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { validateCurriculum } from '../src/familyBeta/curriculum.ts'
 import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const regressions = process.argv.includes('--regressions-oct20')
-const out = resolve(root, regressions ? 'regression-preview-dist' : 'dojo-launch-preview-dist')
+const grade5Repairs = process.argv.includes('--grade5-repairs')
+const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
+const out = resolve(
+  root,
+  grade5Repairs ? 'grade5-repair-preview-dist' : regressions ? 'regression-preview-dist' : 'dojo-launch-preview-dist',
+)
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = regressions
-  ? 'October 20 regression repairs / Prototype 3'
-  : octoberResources
-    ? 'Kindergarten October 19 resources / Prototype 1'
-    : 'Writing reliability / Prototype 2'
+const prototype = grade5Repairs
+  ? 'Grade 5 regression repairs / Prototype 2'
+  : regressions
+    ? 'October 20 regression repairs / Prototype 3'
+    : octoberResources
+      ? 'Kindergarten October 19 resources / Prototype 1'
+      : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -51,9 +57,37 @@ execFileSync(
       VITE_PUBLIC_PREVIEW: 'true',
       VITE_GIT_REVISION: revision,
       VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),
+      VITE_GRADE5_REPAIR_PREVIEW: String(grade5Repairs),
     },
   },
 )
+if (grade5Repairs) {
+  const shared = resolve(root, 'grade5-shared-target-repair-dist')
+  execFileSync(
+    process.execPath,
+    [
+      resolve(root, 'node_modules/vite/bin/vite.js'),
+      'build',
+      '--config',
+      'vite.grade5-oct23.config.ts',
+      '--mode',
+      'writing-pilot',
+      '--outDir',
+      shared,
+    ],
+    {
+      cwd: root,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        VITE_GIT_REVISION: revision,
+        VITE_REGRESSION_REPAIR_PREVIEW: 'true',
+        VITE_GRADE5_REPAIR_PREVIEW: 'true',
+      },
+    },
+  )
+  cpSync(shared, out, { recursive: true })
+}
 for (const [slug] of grades) {
   copyFileSync(
     resolve(root, `tests/fixtures/dojo-launch-2026-10-16/${slug}.json`),

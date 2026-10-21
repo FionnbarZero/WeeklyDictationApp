@@ -44,3 +44,23 @@ html[data-regression-preview="true"] .lg-word-seal {
     --slay-pad-size: min(560px, max(320px, calc(100svh - 340px)), calc(100vw - 56px));
   }
 }
+@media (orientation: portrait) and (min-width: 600px) {
+  html[data-regression-preview="true"]
+    .native-writing-integration
+    .grade2-writing-pilot:not(:has(.st-original-stage, #slay-acquisition-root))
+    .practice-page.has-skywriting-response {
+    height: max(1100px, calc(100dvh - 24px));
+  }
+  html[data-regression-preview="true"]
+    .native-writing-integration
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+  html[data-regression-preview="true"]
+    .native-writing-integration
+    .skywriting-grand-scroll-grid[data-character-count="4"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+}
