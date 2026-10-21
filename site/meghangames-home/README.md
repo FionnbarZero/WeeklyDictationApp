@@ -1,5 +1,9 @@
 # Meghan Games homepage
 
+## October 21 standalone Grade 5 update
+
+The source below was reconciled with the actual ten published assets from homepage Worker version `9bb835ab-c243-435a-8989-3dcfac46d725`, which has seven game cards plus the separate Saoirse Quest button. Preserve that newer live content, not the historical three-card source. The new **5th grade Dojo** eighth card points to its independent `5thgradedojo.meghangames.com` site and accurately identifies browser/device-only saving. All other links, art, CSS and scripts remain as published. See the standalone deployment record and STATUS for completed publication/verification; the historical notes below do not describe the current full project catalog.
+
 This is the static source for the existing `meghangames-home` Cloudflare Worker at https://meghangames.com/. It is not the EduGames Worker or one of the grade applications.
 
 The seven public homepage assets were recovered from the live site on October 5, 2026 because no homepage source checkout was present in the inspected project directories. Existing design, art, EduGames link, and Stroke-order link are preserved. The Ninja Dojo card now has three grade links on `ninjadojo.meghangames.com`, sharing one parent session. Existing separate grade addresses were also updated without erasing their browser data.

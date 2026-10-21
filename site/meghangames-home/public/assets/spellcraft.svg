@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 606" role="img" aria-labelledby="title desc">
+  <title id="title">SpellCraft spelling lesson</title>
+  <desc id="desc">An enchanted study desk with a spellbook, glowing letter tiles, stars, and a rising progress graph.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#251b53"/>
+      <stop offset="1" stop-color="#0f233d"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6cc"/>
+      <stop offset="1" stop-color="#efd28a"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="606" fill="url(#night)"/>
+  <circle cx="121" cy="104" r="2" fill="#fff5bf"/><circle cx="188" cy="54" r="4" fill="#8ce2d7"/>
+  <circle cx="866" cy="88" r="3" fill="#fff5bf"/><circle cx="922" cy="156" r="2" fill="#b6a5f3"/>
+  <circle cx="773" cy="52" r="2" fill="#fff"/><circle cx="63" cy="222" r="3" fill="#b6a5f3"/>
+  <path d="m109 153 7 17 17 7-17 7-7 17-7-17-17-7 17-7z" fill="#f4ca68" opacity=".9"/>
+  <path d="m881 236 5 12 12 5-12 5-5 12-5-12-12-5 12-5z" fill="#8ce2d7"/>
+
+  <rect x="0" y="487" width="1000" height="119" fill="#132d31"/>
+  <rect x="0" y="487" width="1000" height="14" fill="#305c58"/>
+  <ellipse cx="500" cy="493" rx="377" ry="40" fill="#07151e" opacity=".45"/>
+
+  <path d="M254 168c79-29 157-17 246 38v263c-84-45-165-54-246-25z" fill="url(#paper)" stroke="#c89b4b" stroke-width="8"/>
+  <path d="M746 168c-79-29-157-17-246 38v263c84-45 165-54 246-25z" fill="url(#paper)" stroke="#c89b4b" stroke-width="8"/>
+  <path d="M500 206v263" stroke="#a97937" stroke-width="6" opacity=".65"/>
+  <path d="M286 209c58-13 112-3 174 29M286 240c58-13 112-3 174 29" fill="none" stroke="#c6a560" stroke-width="5" stroke-linecap="round" opacity=".62"/>
+  <path d="M540 238h159M540 269h122" fill="none" stroke="#c6a560" stroke-width="5" stroke-linecap="round" opacity=".62"/>
+
+  <g transform="translate(305 303)">
+    <rect width="66" height="72" rx="12" fill="#8ce2d7" stroke="#326e72" stroke-width="5"/>
+    <text x="33" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="39" font-weight="700" fill="#162c3a">S</text>
+  </g>
+  <g transform="translate(383 303)">
+    <rect width="66" height="72" rx="12" fill="#8ce2d7" stroke="#326e72" stroke-width="5"/>
+    <text x="33" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="39" font-weight="700" fill="#162c3a">P</text>
+  </g>
+  <g transform="translate(551 303)">
+    <rect width="66" height="72" rx="12" fill="#b6a5f3" stroke="#6656a8" stroke-width="5"/>
+    <text x="33" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="39" font-weight="700" fill="#22194a">E</text>
+  </g>
+  <g transform="translate(629 303)">
+    <rect width="66" height="72" rx="12" fill="#b6a5f3" stroke="#6656a8" stroke-width="5"/>
+    <text x="33" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="39" font-weight="700" fill="#22194a">L</text>
+  </g>
+
+  <g transform="translate(782 305)">
+    <rect width="142" height="137" rx="19" fill="#251d4d" stroke="#6e5cae" stroke-width="5"/>
+    <path d="M25 98 52 72l24 13 38-48" fill="none" stroke="#f4ca68" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="25" cy="98" r="7" fill="#8ce2d7"/><circle cx="52" cy="72" r="7" fill="#8ce2d7"/>
+    <circle cx="76" cy="85" r="7" fill="#8ce2d7"/><circle cx="114" cy="37" r="7" fill="#f4ca68"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <circle cx="194" cy="343" r="52" fill="#f4ca68" opacity=".18"/>
+    <path d="m194 292 12 36 38 4-29 24 9 37-30-20-31 20 10-37-30-24 38-4z" fill="#f4ca68"/>
+    <circle cx="194" cy="347" r="17" fill="#8ce2d7"/>
+  </g>
+
+  <path d="M177 465c-8-47-1-82 17-105M823 462c7-38 28-63 60-78" fill="none" stroke="#f4ca68" stroke-width="6" stroke-linecap="round" opacity=".75"/>
+  <text x="500" y="565" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-weight="700" fill="#fff6cc">SPELLCRAFT</text>
+</svg>

@@ -42,7 +42,7 @@ import { syncCompletedBeforePractice } from './syncProgress.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import '../styles.css'
 import './preview.css'
-import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { grade5PresentationPreview, grade5Standalone } from '../grade5PresentationPreview/policy.ts'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
 import { retiredStandaloneExperience, standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
@@ -806,11 +806,13 @@ function FamilyPreview() {
       <ParentTools {...(compactParentPreview ? { grade: currentGrade, page: tab } : {})}>
         <header className="beta-toolbar">
           <strong>
-            {import.meta.env.MODE === 'writing-pilot'
-              ? grade5RepairPreview
-                ? 'Grade 5 repair prototype'
-                : 'Grade 2 writing pilot · Unpublished'
-              : 'Ninja Dojo · Family beta'}
+            {grade5Standalone
+              ? '5th grade Dojo'
+              : import.meta.env.MODE === 'writing-pilot'
+                ? grade5RepairPreview
+                  ? 'Grade 5 repair prototype'
+                  : 'Grade 2 writing pilot · Unpublished'
+                : 'Ninja Dojo · Family beta'}
           </strong>
           <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
           <label>

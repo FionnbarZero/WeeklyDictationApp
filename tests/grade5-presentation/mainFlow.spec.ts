@@ -141,7 +141,9 @@ test('one Grade 5 entry exposes all eight shared words in all three paths with c
     await expect(frame.locator('.learning-hub-cohort-heading')).toContainText('8 writing · 8 reading')
   }
   await page.getByText('Parent controls', { exact: true }).click()
-  await expect(page.getByRole('note')).toContainText('10/19 – Fifth Grade Ninja Dojo')
+  await expect(page.getByRole('note')).toContainText(
+    process.env.GRADE5_PRESENTATION_NAME || '10/19 – Fifth Grade Ninja Dojo',
+  )
   if (process.env.GRADE5_PRESENTATION_REVISION)
     await expect(page.getByRole('note')).toContainText(process.env.GRADE5_PRESENTATION_REVISION.slice(0, 7))
   await expect(page.getByRole('option', { name: /Kindergarten|Grade 2/ })).toHaveCount(0)

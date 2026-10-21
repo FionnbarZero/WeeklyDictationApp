@@ -12,36 +12,41 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const presentation = process.argv.includes('--grade5-presentation')
+const standalone = process.argv.includes('--grade5-standalone')
+const presentation = standalone || process.argv.includes('--grade5-presentation')
 const retireStandalone = presentation || process.argv.includes('--retire-standalone-games')
 const compactParents = retireStandalone || process.argv.includes('--compact-parent-controls')
 const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs')
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  presentation
-    ? 'grade5-presentation-preview-dist'
-    : grade5Repairs
-      ? 'grade5-repair-preview-dist'
-      : regressions
-        ? 'regression-preview-dist'
-        : 'dojo-launch-preview-dist',
+  standalone
+    ? 'grade5-standalone-dist'
+    : presentation
+      ? 'grade5-presentation-preview-dist'
+      : grade5Repairs
+        ? 'grade5-repair-preview-dist'
+        : regressions
+          ? 'regression-preview-dist'
+          : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = presentation
-  ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-  : retireStandalone
-    ? 'Streamlined Dojo / Prototype 1'
-    : compactParents
-      ? 'Compact parent toolbar / Prototype 1'
-      : grade5Repairs
-        ? 'Grade 5 regression repairs / Prototype 2'
-        : regressions
-          ? 'October 20 regression repairs / Prototype 3'
-          : octoberResources
-            ? 'Kindergarten October 19 resources / Prototype 1'
-            : 'Writing reliability / Prototype 2'
+const prototype = standalone
+  ? '5th grade Dojo / Standalone 1'
+  : presentation
+    ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+    : retireStandalone
+      ? 'Streamlined Dojo / Prototype 1'
+      : compactParents
+        ? 'Compact parent toolbar / Prototype 1'
+        : grade5Repairs
+          ? 'Grade 5 regression repairs / Prototype 2'
+          : regressions
+            ? 'October 20 regression repairs / Prototype 3'
+            : octoberResources
+              ? 'Kindergarten October 19 resources / Prototype 1'
+              : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -82,6 +87,7 @@ execFileSync(
       VITE_COMPACT_PARENT_PREVIEW: String(compactParents),
       VITE_RETIRE_STANDALONE_GAMES: String(retireStandalone),
       VITE_GRADE5_PRESENTATION_PREVIEW: String(presentation),
+      VITE_GRADE5_STANDALONE: String(standalone),
     },
   },
 )
@@ -143,7 +149,10 @@ const entry = resolve(out, 'family-beta-preview.html')
 if (presentation)
   writeFileSync(
     entry,
-    readFileSync(entry, 'utf8').replace(/<title>[^<]*<\/title>/, '<title>10/19 – Fifth Grade Ninja Dojo</title>'),
+    readFileSync(entry, 'utf8').replace(
+      /<title>[^<]*<\/title>/,
+      `<title>${standalone ? '5th grade Dojo' : '10/19 – Fifth Grade Ninja Dojo'}</title>`,
+    ),
   )
 if (!compactParents)
   writeFileSync(
@@ -153,6 +162,10 @@ if (!compactParents)
       `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">${bannerLabel} · ${revision.slice(0, 7)} · ${description} · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
     ),
   )
+if (standalone) {
+  copyFileSync(resolve(root, 'site/5th-grade-dojo/_headers'), resolve(out, '_headers'))
+  copyFileSync(resolve(root, 'site/5th-grade-dojo/_redirects'), resolve(out, '_redirects'))
+}
 const files = artifactFileRecords(out).filter((file) => file.path !== 'dojo-launch-manifest.json')
 writeFileSync(
   resolve(out, 'dojo-launch-manifest.json'),
@@ -160,6 +173,13 @@ writeFileSync(
     {
       schema: 1,
       prototype,
+      ...(standalone
+        ? {
+            name: '5th grade Dojo',
+            edition: 'standalone-browser-only',
+            approvedPreviewRevision: '97c559d74db813ef839a0a3c793838c2c33a4f38',
+          }
+        : {}),
       ...(presentation
         ? { grades: ['Grade 5'], assessment: '2026-10-23 · PDF page 2 · eight shared reading/writing targets' }
         : {}),
