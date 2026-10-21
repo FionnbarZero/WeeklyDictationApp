@@ -163,7 +163,13 @@ test('each of the four nested native activities opens and exits back to More act
   // Reopening Writing uses the original native checkpoint, not a reset caused
   // by the nested navigation or by entering either test.
   await frame.getByRole('button', { name: 'Return to Dojo · Writing', exact: true }).click()
-  await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '1')
+  const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+  const warmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+  await expect(teacher.or(warmup)).toBeVisible()
+  // No stroke was completed in this bounded launch check. Retain the native
+  // initial-checkpoint warmup behavior instead of requiring it to be skipped.
+  if (await warmup.isVisible()) await warmup.click()
+  await expect(teacher).toHaveAttribute('data-step', '1')
   const reopened = await records(page)
   for (const [key, raw] of Object.entries(savedPractice)) expect(reopened[key]).toBe(raw)
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
