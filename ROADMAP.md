@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — test the published 5th grade Dojo, October 21
+
+The owner authorized separate publication and naming, confirming **GPT-6.1 Sol · High**. **Standalone 1 / `1a9db3e`** is published at **https://5thgradedojo.meghangames.com/** and linked from MeghanGames. It retains the approved eight-word lesson, integrated writing and current menus. No scheduled expiry. Existing canonical/preview releases and other grades are unchanged.
+
+**Next: one 3–5 minute physical-iPad check**, using the exact link/build in STATUS and the confirmed sent email. Automated gates pass (1,197 units, 42 local and 17 hosted browser cases). Public DNS resolves; the publication record explicitly notes this Mac's stale default lookup and the fresh-DNS HTTPS verification method. Do not ask the owner to clear browser data. Verify actual device reachability, sound, touch, Writing resume, nested menus and Report/return.
+
+This edition remains browser-only with separate progress on the new origin, not authenticated cloud integration or automatic weekly teacher-source updates. Do not silently promote it to the canonical family app, transfer/reset records, retire old links or restart Kindergarten/Grade 2 work. Any further behavior/persistence work follows **Astra · Extra High**, the prototype-first rule and existing integration/release gates; bounded publication remains **Sol · High**, routine documentation **Luna · Medium**. No model switch is claimed. Earlier queue entries below are historical or deferred.
+
 ## Current priority — approve the audited Grade 5 preview, October 21
 
 **`97c559d` / Integrated Preview 3** is published and byte-verified at the same single Grade 5 URL. Ninja Skills puts all five games first and nests the four test/Return to Dojo activities under More activities. All 45 local game journeys pass across the three activity areas and three browser layouts, with no confirmed new application defect. Teaching/scoring/saving are unchanged.

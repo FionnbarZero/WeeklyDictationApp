@@ -1,5 +1,7 @@
 # 5th grade Dojo — standalone edition
 
+Published October 21, 2026: **https://5thgradedojo.meghangames.com/**, Standalone 1 / `1a9db3e`, no scheduled preview expiry. App Worker version `acbf25e2-2cd5-40ac-9034-5c535a52a38f`; homepage version `4b68566c-f571-4c7f-8a93-f1673b34346f`. See [the verified publication record](../../docs/grade5-integrated-presentation-preview.md) for test counts, exact package, the local stale-DNS caveat, email confirmation and device limits.
+
 Owner-authorized October 21, 2026: publish the particular audited Grade 5 app separately on MeghanGames under this name. This does not replace the authenticated three-grade Ninja Dojo.
 
 - Repository: FionnbarZero/WeeklyDictationApp.

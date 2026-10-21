@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current handoff — 5th grade Dojo standalone publication, October 21
+
+**[5th grade Dojo](https://5thgradedojo.meghangames.com/) · Standalone 1 · application `1a9db3e`** is published separately and added as the eighth card on [MeghanGames](https://meghangames.com/). No scheduled preview expiry. This is the approved Grade 5 eight-word/browser-only edition, not the authenticated three-grade canonical app. Existing seven homepage cards, all fourteen existing links and nine non-HTML assets are preserved. Canonical `9d06a02` and Firebase preview `97c559d` remain unchanged; Kindergarten and Grade 2 stay paused.
+
+**Verified:** 1,197 units; type/lint/format/build/performance; 39 local app cases plus three homepage checks; 14 hosted app cases plus three real homepage-to-app navigation checks. All 183 public files / 1,098 headers, four redirects and approved curriculum payload match the frozen package. New app Worker version `acbf25e2-2cd5-40ac-9034-5c535a52a38f`; homepage version `4b68566c-f571-4c7f-8a93-f1673b34346f`. Both have no database/secret bindings. Details and rollback reference are in the [publication record](./docs/grade5-integrated-presentation-preview.md).
+
+**DNS caveat:** both public resolvers 1.1.1.1 and 8.8.8.8 resolve the new domain; this Mac's default resolver still returns a stale not-found answer. Hosted byte/browser checks used fresh public DNS through a temporary loopback tunnel, with normal end-to-end HTTPS validation and no mocked application responses. Do not misreport this as default-resolver acceptance. No hostname workaround, browser-data reset or redeployment is needed; propagation on the owner's actual connection remains a device check.
+
+**Email confirmed SENT**, metadata readback `1a1608ceb7bb5fe2`. Next: 3–5 minute physical iPad check of Hear, finger/Pencil, Writing Exit/reopen, More activities/Final Boss, wrong/right Shuriken and Report/return in both orientations. This new origin starts separate browser progress; old preview progress stays there. No cloud/cross-device/offline capability; incomplete games/tests restart, media remain temporary. Use this single permanent Grade 5 link going forward. Earlier handoffs below are historical.
+
 ## Current handoff — Grade 5 games-first menu and all-game audit, October 21
 
 **Integrated Preview 3 · application `97c559d`** is published and byte-verified at the **same [single Grade 5 link](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/family-beta-preview.html?grade=grade5)**, expiring **October 28, 2026 at 2:10 p.m. Pacific**. Ninja Skills shows the five games first, with both tests and both Return to Dojo routes under **More activities**. Preview 2's nested Final Boss and direct mastered games remain. Teaching, game logic, eight-word content, scoring and existing browser records are unchanged.
