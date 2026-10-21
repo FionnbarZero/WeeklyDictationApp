@@ -25,7 +25,7 @@ const TargetBlast = lazy(() =>
   import('../learningModules/target-blast/Game.tsx').then((module) => ({ default: module.TargetBlast })),
 )
 const DictationStreak = lazy(() =>
-  import('../learningModules/dictation-streak/Game.tsx').then(module => ({ default: module.DictationStreak })),
+  import('../learningModules/dictation-streak/Game.tsx').then((module) => ({ default: module.DictationStreak })),
 )
 
 export function SavedLearningGame({
@@ -36,7 +36,15 @@ export function SavedLearningGame({
 }: {
   pack: Extract<
     LearningModulePack,
-    { moduleId: 'memory-flip' | 'sentence-scramble' | 'context-gap-dash' | 'speed-match' | 'target-blast' | 'dictation-streak' }
+    {
+      moduleId:
+        | 'memory-flip'
+        | 'sentence-scramble'
+        | 'context-gap-dash'
+        | 'speed-match'
+        | 'target-blast'
+        | 'dictation-streak'
+    }
   >
   playAudio: PlayLearningModuleAudio
   onExit: () => void
@@ -81,7 +89,7 @@ export function SavedLearningGame({
   }, [pack, retry])
   if (!loaded)
     return (
-      <section>
+      <section data-report-activity={pack.title} data-report-phase="opening-saved-game">
         <p role={error ? 'alert' : 'status'}>{error || 'Opening saved game…'}</p>
         {error && (
           <button

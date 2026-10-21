@@ -1,5 +1,7 @@
 import { ReadingRecorderError, type EphemeralAudioClip } from './contracts.ts'
 import { stopActiveAudio } from '../audio/promptAudio.ts'
+import { regressionPreview } from '../regressionPreview/policy.ts'
+import { balanceTemporaryRecording } from './recordingLevel.ts'
 
 export const READING_RECORDING_LIMIT_MS = 8_000
 export const READING_AUDIO_MIME_CANDIDATES = [
@@ -48,9 +50,11 @@ export function selectReadingAudioMimeType(isTypeSupported: (mimeType: string) =
 }
 
 export function browserSupportsAudioRecording() {
-  return typeof navigator !== 'undefined'
-    && typeof navigator.mediaDevices?.getUserMedia === 'function'
-    && typeof MediaRecorder !== 'undefined'
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.mediaDevices?.getUserMedia === 'function' &&
+    typeof MediaRecorder !== 'undefined'
+  )
 }
 
 export function browserAudioRecorderDependencies(): AudioRecorderDependencies {
@@ -58,22 +62,23 @@ export function browserAudioRecorderDependencies(): AudioRecorderDependencies {
     throw new ReadingRecorderError('unsupported', 'Audio recording is not available in this browser.')
   }
 
-  const mimeType = typeof MediaRecorder.isTypeSupported === 'function'
-    ? selectReadingAudioMimeType((candidate) => MediaRecorder.isTypeSupported(candidate))
-    : undefined
+  const mimeType =
+    typeof MediaRecorder.isTypeSupported === 'function'
+      ? selectReadingAudioMimeType((candidate) => MediaRecorder.isTypeSupported(candidate))
+      : undefined
   return {
-    getUserMedia: () => navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: { ideal: 1 },
-        echoCancellation: { ideal: true },
-        noiseSuppression: { ideal: true },
-      },
-      video: false,
-    }),
-    createRecorder: (stream) => new MediaRecorder(
-      stream as MediaStream,
-      mimeType ? { mimeType } : undefined,
-    ) as unknown as AudioMediaRecorder,
+    getUserMedia: () =>
+      navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: { ideal: 1 },
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
+        },
+        video: false,
+      }),
+    createRecorder: (stream) =>
+      new MediaRecorder(stream as MediaStream, mimeType ? { mimeType } : undefined) as unknown as AudioMediaRecorder,
     createObjectURL: (blob) => URL.createObjectURL(blob),
     revokeObjectURL: (url) => URL.revokeObjectURL(url),
     schedule: (callback, delayMs) => window.setTimeout(callback, delayMs),
@@ -85,7 +90,10 @@ function recorderError(error: unknown): ReadingRecorderError {
   if (error instanceof ReadingRecorderError) return error
   if (error instanceof DOMException) {
     if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
-      return new ReadingRecorderError('permission-denied', 'Microphone access is blocked. Open this site’s browser permissions, allow Microphone, and try again. Also check your computer’s microphone permission for this browser.')
+      return new ReadingRecorderError(
+        'permission-denied',
+        'Microphone access is blocked. Open this site’s browser permissions, allow Microphone, and try again. Also check your computer’s microphone permission for this browser.',
+      )
     }
     if (error.name === 'NotFoundError' || error.name === 'NotReadableError') {
       return new ReadingRecorderError('device-unavailable', 'A working microphone could not be found.')
@@ -109,7 +117,7 @@ export async function startEphemeralAudioRecording(
   }
 
   if (signal?.aborted) {
-    stream.getTracks().forEach(track => track.stop())
+    stream.getTracks().forEach((track) => track.stop())
     throw new ReadingRecorderError('recording-failed', 'The recording was interrupted. Record this prompt again.')
   }
 
@@ -136,7 +144,7 @@ export async function startEphemeralAudioRecording(
   const releaseMicrophone = () => {
     if (microphoneReleased) return
     microphoneReleased = true
-    stream.getTracks().forEach(track => track.stop())
+    stream.getTracks().forEach((track) => track.stop())
   }
   const clearLimit = () => {
     if (timer !== undefined) dependencies.cancelSchedule(timer)
@@ -160,8 +168,9 @@ export async function startEphemeralAudioRecording(
   recorder.ondataavailable = (event) => {
     if (!discarded && event.data.size > 0) chunks.push(event.data)
   }
-  recorder.onerror = () => rejectOnce(new ReadingRecorderError('recording-failed', 'The recording stopped unexpectedly.'))
-  recorder.onstop = () => {
+  recorder.onerror = () =>
+    rejectOnce(new ReadingRecorderError('recording-failed', 'The recording stopped unexpectedly.'))
+  recorder.onstop = async () => {
     if (settled) return
     clearLimit()
     releaseMicrophone()
@@ -173,14 +182,20 @@ export async function startEphemeralAudioRecording(
 
     try {
       const mimeType = recorder.mimeType || chunks[0]?.type || 'audio/webm'
-      const blob = new Blob(chunks, { type: mimeType })
-      if (blob.size === 0) throw new ReadingRecorderError('recording-failed', 'No audio was captured. Check your microphone and record again.')
+      let blob = new Blob(chunks, { type: mimeType })
+      if (blob.size === 0)
+        throw new ReadingRecorderError(
+          'recording-failed',
+          'No audio was captured. Check your microphone and record again.',
+        )
+      if (regressionPreview) blob = await balanceTemporaryRecording(blob)
+      if (discarded || settled) return
       const url = dependencies.createObjectURL(blob)
       let disposed = false
       settled = true
       resolveFinished({
         url,
-        mimeType,
+        mimeType: blob.type,
         size: blob.size,
         dispose: () => {
           if (disposed) return
@@ -237,7 +252,9 @@ export async function startEphemeralAudioRecording(
       clearLimit()
       paused = true
       return true
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
   const resume = () => {
     if (!paused || settled || discarded) return
@@ -247,7 +264,9 @@ export async function startEphemeralAudioRecording(
       paused = false
       startedAt = now()
       timer = dependencies.schedule(stop, remaining)
-    } catch (error) { rejectOnce(error) }
+    } catch (error) {
+      rejectOnce(error)
+    }
   }
   startedAt = now()
   timer = dependencies.schedule(stop, remaining)

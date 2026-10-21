@@ -64,14 +64,37 @@ const word: Word = {
   audio: { storagePath: 'audio/kindergarten/u4e09.wav', voice: 'test' },
 }
 
+test('a recording with no ended event fails recoverably and releases its player', async (t) => {
+  const audio = new FakeAudio()
+  let deadline: (() => void) | undefined
+  t.mock.method(activityClock, 'setTimeout', (callback: () => void) => {
+    deadline = callback
+    return 0
+  })
+  t.mock.method(activityClock, 'clearTimeout', () => undefined)
+  const completion = playManagedMediaElement(audio as unknown as HTMLMediaElement)
+  const rejected = assert.rejects(completion, /could not be played/)
+  assert.ok(deadline)
+  deadline()
+  await rejected
+  assert.equal(audio.pauseCount, 1)
+  assert.equal(audio.listeners.get('ended')?.size, 0)
+})
+
 test('report interruption pauses playback, retains the prompt and retries its interrupted cue on resume', async () => {
   const audios: FakeAudio[] = []
   const completion = playCachedWordAudioOnce(word, {
-    createAudio: () => { const audio = new FakeAudio(); audios.push(audio); return audio },
-    resolveUrl: path => path,
+    createAudio: () => {
+      const audio = new FakeAudio()
+      audios.push(audio)
+      return audio
+    },
+    resolveUrl: (path) => path,
   })
   let completed = false
-  void completion.then(() => { completed = true })
+  void completion.then(() => {
+    completed = true
+  })
   try {
     assert.equal(audios.length, 1)
     activityClock.setPaused('unit-report', true)
@@ -85,14 +108,18 @@ test('report interruption pauses playback, retains the prompt and retries its in
     audios[1].emit('ended')
     await completion
     assert.equal(completed, true)
-  } finally { activityClock.setPaused('unit-report', false) }
+  } finally {
+    activityClock.setPaused('unit-report', false)
+  }
 })
 
 test('a completed recording playback event cannot advance the comparison while reporting is open', async () => {
   const audio = new FakeAudio()
   const completion = playManagedMediaElement(audio as unknown as HTMLMediaElement)
   let complete = false
-  void completion.then(() => { complete = true })
+  void completion.then(() => {
+    complete = true
+  })
   try {
     activityClock.setPaused('recording-report', true)
     audio.emit('ended')
@@ -102,7 +129,9 @@ test('a completed recording playback event cannot advance the comparison while r
     activityClock.setPaused('recording-report', false)
     await completion
     assert.equal(complete, true)
-  } finally { activityClock.setPaused('recording-report', false) }
+  } finally {
+    activityClock.setPaused('recording-report', false)
+  }
 })
 
 test('reading teaching plays a cached English announcement before the Mandarin sequence without browser voices', async () => {
@@ -143,12 +172,15 @@ test('reading teaching plays a cached English announcement before the Mandarin s
   }
   await completion
 
-  assert.deepEqual(audios.map((audio) => audio.src), [
-    'audio/kindergarten/instructions/lets-learn-a-new-word.wav',
-    'audio/kindergarten/u4e09.wav',
-    'audio/kindergarten/u4e09.wav',
-    'audio/kindergarten/u4e09.wav',
-  ])
+  assert.deepEqual(
+    audios.map((audio) => audio.src),
+    [
+      'audio/kindergarten/instructions/lets-learn-a-new-word.wav',
+      'audio/kindergarten/u4e09.wav',
+      'audio/kindergarten/u4e09.wav',
+      'audio/kindergarten/u4e09.wav',
+    ],
+  )
 })
 
 test('reading teaching applies the grade-owned English instruction rate', async () => {
@@ -164,14 +196,17 @@ test('reading teaching applies the grade-owned English instruction rate', async 
     },
   } as unknown as SpeechSynthesis
 
-  await playReadingTeachingSequence({ ...word, audio: undefined }, {
-    instructionRate: 0.8,
-    playbackRate: 0.25,
-    createUtterance: (text) => ({ text } as SpeechSynthesisUtterance),
-    pauseMs: 0,
-    speech,
-    voiceLoadTimeoutMs: 0,
-  })
+  await playReadingTeachingSequence(
+    { ...word, audio: undefined },
+    {
+      instructionRate: 0.8,
+      playbackRate: 0.25,
+      createUtterance: (text) => ({ text }) as SpeechSynthesisUtterance,
+      pauseMs: 0,
+      speech,
+      voiceLoadTimeoutMs: 0,
+    },
+  )
 
   assert.deepEqual(spokenRates, [0.8, 0.25, 0.25, 0.25])
 })
@@ -250,12 +285,15 @@ test('an approved context produces word, context, word, word at one rate with 0.
   }
   await promptAudioCompleted(attempt)
 
-  assert.deepEqual(audios.map((audio) => audio.src), [
-    'audio/kindergarten/u4e09.wav',
-    'audio/kindergarten/context/u4e09.wav',
-    'audio/kindergarten/u4e09.wav',
-    'audio/kindergarten/u4e09.wav',
-  ])
+  assert.deepEqual(
+    audios.map((audio) => audio.src),
+    [
+      'audio/kindergarten/u4e09.wav',
+      'audio/kindergarten/context/u4e09.wav',
+      'audio/kindergarten/u4e09.wav',
+      'audio/kindergarten/u4e09.wav',
+    ],
+  )
   assert.ok(audios.every((audio) => audio.playbackRate === 1.5))
 })
 
@@ -314,7 +352,7 @@ test('a failed cached recording immediately falls back to browser speech for the
   } as unknown as SpeechSynthesis
   const attempt = playCachedWordAudioOnce(word, {
     createAudio: () => audio,
-    createUtterance: (text) => ({ text } as SpeechSynthesisUtterance),
+    createUtterance: (text) => ({ text }) as SpeechSynthesisUtterance,
     resolveUrl: (path) => path,
     speech,
     voiceLoadTimeoutMs: 0,
@@ -349,7 +387,7 @@ test('browser fallback waits for the preferred female Mandarin voice before spea
   } as unknown as SpeechSynthesis
   const playback = playCachedWordAudioOnce(word, {
     createAudio: () => audio,
-    createUtterance: (text) => ({ text } as SpeechSynthesisUtterance),
+    createUtterance: (text) => ({ text }) as SpeechSynthesisUtterance,
     resolveUrl: (path) => path,
     speech,
     voiceLoadTimeoutMs: 5_000,
@@ -369,21 +407,33 @@ test('slow speech gets a bounded completion deadline only after starting', async
   const timers = new Map<number, { callback: () => void; delay: number }>()
   let next = 0
   t.mock.method(activityClock, 'setTimeout', (callback: () => void, delay: number) => {
-    timers.set(++next, { callback, delay }); return next
+    timers.set(++next, { callback, delay })
+    return next
   })
   t.mock.method(activityClock, 'clearTimeout', (id: number) => timers.delete(id))
   let spoken!: SpeechSynthesisUtterance
   let cancelled = 0
   const speech = {
-    cancel() { cancelled++ }, resume() {}, getVoices: () => [],
-    speak(utterance: SpeechSynthesisUtterance) { spoken = utterance },
+    cancel() {
+      cancelled++
+    },
+    resume() {},
+    getVoices: () => [],
+    speak(utterance: SpeechSynthesisUtterance) {
+      spoken = utterance
+    },
   } as unknown as SpeechSynthesis
   const attempt = playAudioPlan([{ text: '盐可以让食物更有味道。', language: 'zh-CN', rate: 0.25 }], {
-    speech, voiceLoadTimeoutMs: 0, createUtterance: text => ({ text } as SpeechSynthesisUtterance),
+    speech,
+    voiceLoadTimeoutMs: 0,
+    createUtterance: (text) => ({ text }) as SpeechSynthesisUtterance,
   })
   await Promise.resolve()
   await Promise.resolve()
-  assert.deepEqual([...timers.values()].map(timer => timer.delay), [15_000])
+  assert.deepEqual(
+    [...timers.values()].map((timer) => timer.delay),
+    [15_000],
+  )
   spoken.onstart?.({} as SpeechSynthesisEvent)
   await promptAudioStarted(attempt)
   assert.ok([...timers.values()][0].delay > 15_000)
@@ -409,10 +459,15 @@ test('completion allowance is finite and does not change the short startup deadl
 test('writing can slow browser fallback independently of natural-speed recordings', async () => {
   const rates: number[] = []
   const attempt = playCachedWordAudio({ ...word, sentence: '这是一句句子。' }, false, {
-    playbackRate: 1, speechRate: 0.7, pauseMs: 0, voiceLoadTimeoutMs: 0,
-    createUtterance: text => ({ text } as SpeechSynthesisUtterance),
+    playbackRate: 1,
+    speechRate: 0.7,
+    pauseMs: 0,
+    voiceLoadTimeoutMs: 0,
+    createUtterance: (text) => ({ text }) as SpeechSynthesisUtterance,
     speech: {
-      cancel() {}, resume() {}, getVoices: () => [],
+      cancel() {},
+      resume() {},
+      getVoices: () => [],
       speak(utterance: SpeechSynthesisUtterance) {
         rates.push(utterance.rate)
         utterance.onstart?.({} as SpeechSynthesisEvent)

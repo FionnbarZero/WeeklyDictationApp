@@ -1,5 +1,6 @@
 import type { Word } from '../domain/contracts.ts'
 import { activityClock } from '../activity/activityLifecycle.ts'
+import { gesturePlaybackElement } from './gesturePlayback.ts'
 
 export const DICTATION_AUDIO_GAP_MS = 750
 
@@ -71,7 +72,7 @@ const ENGLISH_FALLBACK_VOICE_NAMES = [
 // completion allowance. Paused activity time is excluded by activityClock.
 export function audioCompletionTimeoutMs(text: string, rate: number) {
   const safeRate = Number.isFinite(rate) && rate > 0 ? rate : 1
-  return Math.min(180_000, Math.max(15_000, 5_000 + [...text].length * 1_000 / safeRate))
+  return Math.min(180_000, Math.max(15_000, 5_000 + ([...text].length * 1_000) / safeRate))
 }
 
 let activePromptAudio: PromptAudioHandle | null = null
@@ -91,7 +92,11 @@ function browserUtterance(text: string) {
 }
 
 function availableVoices(speech: SpeechSynthesis) {
-  try { return speech.getVoices() } catch { return [] }
+  try {
+    return speech.getVoices()
+  } catch {
+    return []
+  }
 }
 
 function preferredVoiceFor(speech: SpeechSynthesis, language: string) {
@@ -102,9 +107,11 @@ function preferredVoiceFor(speech: SpeechSynthesis, language: string) {
 
 function voiceFor(speech: SpeechSynthesis, language: string) {
   const voices = availableVoices(speech)
-  return preferredVoiceFor(speech, language)
-    || voices.find((voice) => voice.lang.toLowerCase() === language.toLowerCase())
-    || voices.find((voice) => voice.lang.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()))
+  return (
+    preferredVoiceFor(speech, language) ||
+    voices.find((voice) => voice.lang.toLowerCase() === language.toLowerCase()) ||
+    voices.find((voice) => voice.lang.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()))
+  )
 }
 
 export function stopActiveAudio() {
@@ -123,18 +130,40 @@ export function stopActiveAudio() {
  */
 export function playManagedMediaElement(element: HTMLMediaElement): Promise<void> {
   stopActiveAudio()
+  const activated = gesturePlaybackElement()
+  if (activated && activated !== element) {
+    activated.src = element.currentSrc || element.src
+    activated.playbackRate = 1
+    activated.load()
+    element = activated
+  }
+  const ownedSource = element.src
   return new Promise((resolve, reject) => {
     let settled = false
     let endedWhilePaused = false
+    // Active time only: reporting pauses the deadline, just like prompt audio.
+    const duration = Number.isFinite(element.duration) ? element.duration * 1000 : 0
+    const watchdog = activityClock.setTimeout(() => cancel(), Math.min(30_000, Math.max(15_000, duration + 5000)))
     const cleanup = () => {
+      activityClock.clearTimeout(watchdog)
       unsubscribe()
       element.removeEventListener('ended', finish)
       element.removeEventListener('error', fail)
       if (activeMediaStop === cancel) activeMediaStop = null
+      // Revoking the clip URL alone does not release a loaded media buffer.
+      // Only unload our singleton's current source, never a later owner's cue.
+      if (element === activated && element.src === ownedSource) {
+        element.pause()
+        element.removeAttribute('src')
+        element.load()
+      }
     }
     const finish = () => {
       if (settled) return
-      if (activityClock.paused) { endedWhilePaused = true; return }
+      if (activityClock.paused) {
+        endedWhilePaused = true
+        return
+      }
       settled = true
       cleanup()
       resolve()
@@ -149,7 +178,7 @@ export function playManagedMediaElement(element: HTMLMediaElement): Promise<void
       element.pause()
       fail()
     }
-    const unsubscribe = activityClock.subscribe(paused => {
+    const unsubscribe = activityClock.subscribe((paused) => {
       if (paused) element.pause()
       else if (endedWhilePaused) finish()
       else if (!settled) void element.play().catch(fail)
@@ -196,7 +225,9 @@ export function playAudioPlan(
   stopActiveAudio()
 
   const resolveUrl = options.resolveUrl || defaultAudioUrl
-  const setTimer = options.setTimer || ((callback, delay) => activityClock.setTimeout(callback, delay) as unknown as ReturnType<typeof setTimeout>)
+  const setTimer =
+    options.setTimer ||
+    ((callback, delay) => activityClock.setTimeout(callback, delay) as unknown as ReturnType<typeof setTimeout>)
   const clearTimer = options.clearTimer || ((timer) => activityClock.clearTimeout(timer as unknown as number))
   const speech = options.speech || browserSpeech()
   const createUtterance = options.createUtterance || browserUtterance
@@ -216,12 +247,32 @@ export function playAudioPlan(
   let settleCompleted!: () => void
   let failCompleted!: (error: Error) => void
   const started = new Promise<void>((resolve, reject) => {
-    settleStarted = () => { if (!startedSettled) { startedSettled = true; resolve() } }
-    failStarted = (error) => { if (!startedSettled) { startedSettled = true; reject(error) } }
+    settleStarted = () => {
+      if (!startedSettled) {
+        startedSettled = true
+        resolve()
+      }
+    }
+    failStarted = (error) => {
+      if (!startedSettled) {
+        startedSettled = true
+        reject(error)
+      }
+    }
   })
   const completed = new Promise<void>((resolve, reject) => {
-    settleCompleted = () => { if (!completedSettled) { completedSettled = true; resolve() } }
-    failCompleted = (error) => { if (!completedSettled) { completedSettled = true; reject(error) } }
+    settleCompleted = () => {
+      if (!completedSettled) {
+        completedSettled = true
+        resolve()
+      }
+    }
+    failCompleted = (error) => {
+      if (!completedSettled) {
+        completedSettled = true
+        reject(error)
+      }
+    }
   })
 
   function markStarted() {
@@ -256,7 +307,7 @@ export function playAudioPlan(
         reject(playbackError())
         return
       }
-      const audio = options.createAudio ? options.createAudio() : new Audio()
+      const audio = options.createAudio ? options.createAudio() : gesturePlaybackElement() || new Audio()
       activeAudio = audio
       let settled = false
       let watchdog = activityClock.setTimeout(() => fail(), 15_000)
@@ -348,7 +399,10 @@ export function playAudioPlan(
         if (settled || segmentStarted) return
         segmentStarted = true
         activityClock.clearTimeout(watchdog)
-        watchdog = activityClock.setTimeout(() => finish(playbackError()), audioCompletionTimeoutMs(segment.text, spokenUtterance.rate))
+        watchdog = activityClock.setTimeout(
+          () => finish(playbackError()),
+          audioCompletionTimeoutMs(segment.text, spokenUtterance.rate),
+        )
         markStarted()
       }
       spokenUtterance.onend = () => finish(segmentStarted ? undefined : playbackError())
@@ -403,19 +457,29 @@ export function playAudioPlan(
         const segment = segments[index]
         const generation = interruption
         try {
-          try { await cachedSegment(segment) }
-          catch {
+          try {
+            await cachedSegment(segment)
+          } catch {
             if (cancelled) return
-            if (generation !== interruption) { index -= 1; continue }
+            if (generation !== interruption) {
+              index -= 1
+              continue
+            }
             await speechSegment(segment)
           }
         } catch {
           if (cancelled) return
-          if (generation !== interruption) { index -= 1; continue }
+          if (generation !== interruption) {
+            index -= 1
+            continue
+          }
           throw playbackError()
         }
         if (activityClock.paused) await activityClock.waitUntilRunning(abort.signal)
-        if (generation !== interruption) { index -= 1; continue }
+        if (generation !== interruption) {
+          index -= 1
+          continue
+        }
         if (cancelled) return
         if (index < segments.length - 1) await wait(segment.pauseAfterMs ?? options.pauseMs ?? DICTATION_AUDIO_GAP_MS)
       }
@@ -434,7 +498,7 @@ export function playAudioPlan(
     }
   }
 
-  const unsubscribe = activityClock.subscribe(paused => {
+  const unsubscribe = activityClock.subscribe((paused) => {
     if (!paused || cancelled) return
     interruption += 1
     // Repeating the interrupted cue keeps speech engines consistent without
@@ -483,30 +547,44 @@ function dictationSegments(word: Word, playbackRate: number, sentenceRate: numbe
 export function playCachedWordAudio(word: Word, _warmup = false, options: CachedAudioOptions = {}): PromptAudioAttempt {
   const playbackRate = options.playbackRate ?? 1
   const sentenceRate = options.sentenceRate ?? playbackRate
-  return playAudioPlan(dictationSegments(word, playbackRate, sentenceRate).map(segment => ({ ...segment, speechRate: options.speechRate })), options)
+  return playAudioPlan(
+    dictationSegments(word, playbackRate, sentenceRate).map((segment) => ({
+      ...segment,
+      speechRate: options.speechRate,
+    })),
+    options,
+  )
 }
 
 export function playCachedWordAudioOnce(word: Word, options: CachedAudioOptions = {}): Promise<void> {
-  const playback = playAudioPlan([{
-    text: word.text,
-    language: 'zh-CN',
-    rate: options.playbackRate ?? 1,
-    storagePath: word.audio?.storagePath,
-  }], options)
+  const playback = playAudioPlan(
+    [
+      {
+        text: word.text,
+        language: 'zh-CN',
+        rate: options.playbackRate ?? 1,
+        storagePath: word.audio?.storagePath,
+      },
+    ],
+    options,
+  )
   return promptAudioCompleted(playback)
 }
 
 export function playReadingTeachingSequence(word: Word, options: CachedAudioOptions = {}): Promise<void> {
   const playbackRate = options.playbackRate ?? 1
-  const playback = playAudioPlan([
-    {
-      text: options.newTargetAnnouncement || 'Read and record',
-      language: 'en-GB',
-      rate: options.instructionRate ?? 0.9,
-      storagePath: options.newTargetAnnouncementStoragePath,
-      pauseAfterMs: 0,
-    },
-    ...dictationSegments(word, playbackRate, options.sentenceRate ?? playbackRate),
-  ], options)
+  const playback = playAudioPlan(
+    [
+      {
+        text: options.newTargetAnnouncement || 'Read and record',
+        language: 'en-GB',
+        rate: options.instructionRate ?? 0.9,
+        storagePath: options.newTargetAnnouncementStoragePath,
+        pauseAfterMs: 0,
+      },
+      ...dictationSegments(word, playbackRate, options.sentenceRate ?? playbackRate),
+    ],
+    options,
+  )
   return promptAudioCompleted(playback)
 }

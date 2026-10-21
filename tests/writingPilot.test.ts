@@ -5,7 +5,7 @@ import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
 import { acquisitionPersistenceContext } from '../src/application/acquisitionPersistence.ts'
 import { recordPracticeAnswer } from '../src/application/practice/recordPracticeAnswer.ts'
 import { startPractice } from '../src/application/practice/startPractice.ts'
-import { primaryStartState } from '../src/application/practice/warmupTransitions.ts'
+import { primaryStartState, skipWarmup } from '../src/application/practice/warmupTransitions.ts'
 import {
   createWritingLesson,
   FIVE_STEP_WRITING_POLICY,
@@ -100,6 +100,85 @@ test('actual launch inserts teaching after optional Warmup, and disabled build c
   assert.equal(rejected.status, 'blocked')
   assert.deepEqual(opened.state.results, [])
 })
+
+for (const partialWarmup of [false, true]) {
+  test(`reviewed prototype resumes a confirmed writing step atomically with ${partialWarmup ? 'partial legacy' : 'empty'} Warmup`, async () => {
+    const mastered = {
+      ...dataset,
+      id: 'mastered-week',
+      startDate: '2026-09-01',
+      endDate: '2026-09-04',
+      words: ['天', '月', '日'].map((text, index) => ({
+        ...dataset.words[0],
+        id: `mastered-${index}`,
+        datasetId: 'mastered-week',
+        text,
+      })),
+    }
+    const input = {
+      ...launchInput({ ...fresh(), datasets: [mastered, dataset] }),
+      primaryDatasets: [mastered, dataset],
+      lifecycleResolution: {
+        ...resolveDatasetLifecycles([mastered, dataset], date),
+        mastered: [mastered],
+        lifecycleByDatasetId: { [mastered.id]: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+      },
+    }
+    const first = await pilot.createConfirmedWritingLaunch().start('first', input, () => true, true)
+    if (first.status !== 'started') throw new Error('Fixture failed')
+    assert.equal(first.session.stage, 'warmup-intro', 'a genuinely new lesson keeps its optional Warmup')
+    const skipped = skipWarmup({ state: first.state, session: first.session, occurredAt: date, persistence })
+    if (skipped.status !== 'applied') throw new Error('Fixture skip failed')
+    let before = pilot.completeStep(skipped.state, skipped.session, 0, date.toISOString())
+    const legacy = await startPractice({ ...input, state: before, sessionId: 'legacy-reopen' })
+    if (legacy.status !== 'started') throw new Error('Fixture reopen failed')
+    assert.equal(legacy.session.stage, 'warmup-intro', 'ordinary unflagged behavior is unchanged')
+    before = legacy.state
+    if (partialWarmup) {
+      const answered = recordPracticeAnswer({
+        state: before,
+        session: { ...legacy.session, stage: 'review' },
+        correct: true,
+        occurredAt: date,
+        persistence,
+        writingPilot: pilot,
+      })
+      if (answered.status !== 'advanced') throw new Error('Fixture answer failed')
+      before = answered.state
+    }
+    const original = structuredClone(before)
+    const launcher = pilot.createConfirmedWritingLaunch()
+    const retryInput = {
+      ...input,
+      state: before,
+      sessionId: 'reviewed-reopen',
+      persistence: {
+        ...persistence,
+        saveLocalState: () => assert.fail('No intermediate write'),
+        journalWarmup: () => assert.fail('No intermediate journal'),
+        acknowledgeWarmup: () => assert.fail('No intermediate acknowledgement'),
+      },
+    }
+    const candidates: AppState[] = []
+    const save = (_before: AppState, next: AppState) => {
+      candidates.push(next)
+      return candidates.length > 1
+    }
+    assert.equal((await launcher.start('resume', retryInput, save, true)).status, 'blocked')
+    assert.deepEqual(before, original, 'failed confirmation cannot mutate existing progress')
+    const resumed = await launcher.start('resume', retryInput, save, true)
+    if (resumed.status !== 'started') throw new Error(resumed.message)
+    assert.equal(candidates[0], candidates[1], 'retry retains the exact candidate')
+    assert.equal(resumed.session.segment, 'primary')
+    assert.notEqual(resumed.session.stage, 'warmup-intro')
+    assert.deepEqual(resumed.state.writingAcquisitionProgress, before.writingAcquisitionProgress)
+    assert.deepEqual(resumed.state.warmupAttemptsV1, before.warmupAttemptsV1)
+    assert.deepEqual(resumed.state.results, before.results)
+    const visit = resumed.state.warmupVisitsV1!.find((v) => v.id === legacy.session.adaptiveWarmupVisitId)!
+    assert.equal(visit.status, partialWarmup ? 'partial' : 'skipped')
+    assert.equal(visit.attemptedCount, partialWarmup ? 1 : 0)
+  })
+}
 
 test('real application completes all characters and all targets with the normal scoring checkpoint exactly once', async () => {
   const opened = await launch()

@@ -61,6 +61,7 @@ import { tier2ReadingProfileForScope } from './tier2/registry'
 import { playAudioPlan, playCachedWordAudio, stopActiveAudio } from './audio/lazyPromptAudio.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
+import { regressionPreview } from './regressionPreview/policy.ts'
 import type { ProfileChild } from './profiles/ProfileModal.tsx'
 
 const Tier2ReadingPractice = lazy(() =>
@@ -710,6 +711,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         const key = JSON.stringify([selectedChild.id, target!.dataset.id, requestedWritingLesson?.progressionId || 'current'])
         return writingLaunch.current.start(key, input, (before, next) =>
           pilot.withScrollsWrite(`writing:${selectedChild.id}`, () => sharedWorkspace.save(before, next, false)),
+          regressionPreview,
         )
       }).catch((error) => ({ status: 'blocked' as const, message: authErrorMessage(error), state: undefined })).finally(() => setPracticeStartInFlight(false))
       if (result.status !== 'started' && externalPrimary) {

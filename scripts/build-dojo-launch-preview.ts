@@ -6,14 +6,21 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const out = resolve(root, 'dojo-launch-preview-dist')
+const regressions = process.argv.includes('--regressions-oct20')
+const out = resolve(root, regressions ? 'regression-preview-dist' : 'dojo-launch-preview-dist')
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = octoberResources
-  ? 'Kindergarten October 19 resources / Prototype 1'
-  : 'Writing reliability / Prototype 2'
-const description = octoberResources ? 'October 19 writing and reading resources' : 'Audio and exit repairs'
-const bannerLabel = octoberResources ? prototype : 'Writing reliability · Prototype 2'
+const prototype = regressions
+  ? 'October 20 regression repairs / Prototype 1'
+  : octoberResources
+    ? 'Kindergarten October 19 resources / Prototype 1'
+    : 'Writing reliability / Prototype 2'
+const description = regressions
+  ? 'Reading, writing, games, audio and Exit repairs'
+  : octoberResources
+    ? 'October 19 writing and reading resources'
+    : 'Audio and exit repairs'
+const bannerLabel = regressions || octoberResources ? prototype : 'Writing reliability · Prototype 2'
 const grades = [
   ['kindergarten', 'Kindergarten'],
   ['grade2', 'Grade 2'],
@@ -43,6 +50,7 @@ execFileSync(
       VITE_RECONCILIATION_PREVIEW: 'true',
       VITE_PUBLIC_PREVIEW: 'true',
       VITE_GIT_REVISION: revision,
+      VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),
     },
   },
 )

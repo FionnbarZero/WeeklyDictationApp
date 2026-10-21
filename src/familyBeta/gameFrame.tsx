@@ -10,6 +10,7 @@ import type { FamilyActivitySlot } from './activitySlots.ts'
 import { familyPreview, previewProfile, savePreviewResult } from './runtime.ts'
 import { SavedLearningGame } from './SavedLearningGame.tsx'
 import '../styles.css'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 
 function readGame() {
   if (!familyPreview || !previewProfile()) return null
@@ -31,20 +32,24 @@ function FamilyGame() {
   const [error, setError] = useState('')
   useEffect(() => () => stopActiveAudio(), [])
   if (!game) return <p role="alert">Open this game from your family’s Ninja Skills page.</p>
+  const exit = () => {
+    stopActiveAudio()
+    if (regressionPreview) parent.postMessage({ type: 'family-beta-game-exited' }, location.origin)
+    else pauseToFamilyHub()
+  }
   return (
     <div data-report-activity={game.pack.title} data-report-phase="game">
       {error && <p role="alert">{error}</p>}
-      {game.pack.moduleId === 'memory-flip' ||
-      game.pack.moduleId === 'sentence-scramble' ||
-      game.pack.moduleId === 'context-gap-dash' ||
-      game.pack.moduleId === 'target-blast' ||
-      game.pack.moduleId === 'dictation-streak' ||
-      game.pack.moduleId === 'speed-match' ? (
+      {!regressionPreview &&
+      (game.pack.moduleId === 'memory-flip' ||
+        game.pack.moduleId === 'sentence-scramble' ||
+        game.pack.moduleId === 'context-gap-dash' ||
+        game.pack.moduleId === 'target-blast' ||
+        game.pack.moduleId === 'dictation-streak' ||
+        game.pack.moduleId === 'speed-match') ? (
         <SavedLearningGame
           pack={game.pack}
-          onExit={() => {
-            pauseToFamilyHub()
-          }}
+          onExit={exit}
           playAudio={(text, language = 'zh-CN', rate = 0.65) =>
             promptAudioCompleted(
               playAudioPlan([
@@ -62,9 +67,7 @@ function FamilyGame() {
       ) : (
         <LearningModuleHost
           pack={game.pack}
-          onExit={() => {
-            pauseToFamilyHub()
-          }}
+          onExit={exit}
           playAudio={(text, language = 'zh-CN', rate = 0.65) =>
             promptAudioCompleted(
               playAudioPlan([

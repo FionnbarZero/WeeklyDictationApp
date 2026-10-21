@@ -19,6 +19,7 @@ slay-acquisition-test-results/
 slay-acquisition-hosted-test-results/
 writing-pilot-dist
 dojo-launch-preview-dist/
+regression-preview-dist/
 dojo-sync-test-dist/
 writing-pilot-test-results/
 writing-slay-integration-dist/

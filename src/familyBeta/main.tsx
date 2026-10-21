@@ -26,10 +26,23 @@ import { deviceWriter } from './deviceWriter.ts'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { localDateKey } from '../domain.ts'
-import { cacheLessonSource, discardSavedLesson, listSavedLessons, readSavedLesson, type SavedLessonLaunch } from './lessonLaunch.ts'
-import { isConnectionFailure, isFamilyAccessDenied, offlineFamilyKey, readOfflineFamily, rememberOfflineFamily } from './offlineFamily.ts'
+import {
+  cacheLessonSource,
+  discardSavedLesson,
+  listSavedLessons,
+  readSavedLesson,
+  type SavedLessonLaunch,
+} from './lessonLaunch.ts'
+import {
+  isConnectionFailure,
+  isFamilyAccessDenied,
+  offlineFamilyKey,
+  readOfflineFamily,
+  rememberOfflineFamily,
+} from './offlineFamily.ts'
 import '../styles.css'
 import './preview.css'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
 const routes: Record<BetaGrade, string> = {
@@ -69,7 +82,9 @@ function FamilyPreview() {
   const [selectedId, setSelectedId] = useState(initialProfiles.find((p) => p.grade === initialGrade)!.id)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>('activities')
-  const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>({})
+  const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>(
+    {},
+  )
   const [week, setWeek] = useState('')
   const [results, setResults] = useState<BetaResult[]>([])
   const [historyCursor, setHistoryCursor] = useState({ owner: '', token: '' })
@@ -90,7 +105,9 @@ function FamilyPreview() {
   const [slots, setSlots] = useState<FamilyActivitySlot[]>([])
   const [resumingId, setResumingId] = useState<string | null>(null)
   const [savedLessonsOpen, setSavedLessonsOpen] = useState(false)
-  const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>({ owner: '', lessons: [], warnings: [] })
+  const [savedLessons, setSavedLessons] = useState<{ owner: string; lessons: SavedLessonLaunch[]; warnings: string[] }>(
+    { owner: '', lessons: [], warnings: [] },
+  )
   const [resumeRefresh, setResumeRefresh] = useState(0)
   const [savedGames, setSavedGames] = useState<{
     owner: string
@@ -111,12 +128,15 @@ function FamilyPreview() {
   const curriculum = curricula[currentGrade] || null
   const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChildren.has(child.id))
   const today = localDateKey(new Date())
-  const available = curriculum?.datasets.filter(d => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) || []
-  const dataset = available.find(d => d.startDate === week) || available[0]
-  const resumeSlot = tab === 'activities' ? slots.find(slot => slot.id === resumingId && slot.profile.id === child?.id) : undefined
+  const available =
+    curriculum?.datasets.filter((d) => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) ||
+    []
+  const dataset = available.find((d) => d.startDate === week) || available[0]
+  const resumeSlot =
+    tab === 'activities' ? slots.find((slot) => slot.id === resumingId && slot.profile.id === child?.id) : undefined
   const workspace = resumeSlot?.workspace || (child ? activityWorkspace(child, dataset?.startDate || week) : '')
   const selectedSlot = selectedSlots[`${workspace}:${tab}`]
-  const pack = slots.find(slot => slot.id === selectedSlot)?.game?.pack
+  const pack = slots.find((slot) => slot.id === selectedSlot)?.game?.pack
   const scope = `${auth.user?.uid || ''}:${familyId || ''}`
   const scopeRef = useRef(scope)
   scopeRef.current = scope
@@ -124,16 +144,26 @@ function FamilyPreview() {
   childRef.current = child?.id
   const profilesRef = useRef(profiles)
   profilesRef.current = profiles
-  ;(window as FamilyGameWindow).familyGameOwner = source => {
-    const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(item => item.contentWindow === source)
-    const slot = slotsRef.current.find(item => item.id === frame?.dataset.familySlot)
+  ;(window as FamilyGameWindow).familyGameOwner = (source) => {
+    const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
+      (item) => item.contentWindow === source,
+    )
+    const slot = slotsRef.current.find((item) => item.id === frame?.dataset.familySlot)
     if (!slot || !practiceReady || (firebaseConfigReady && (!familyId || !auth.user)))
       throw new Error('The saved game has no active family owner.')
-    return { familyId: familyId || 'device-preview', writerId: deviceWriter(localStorage), profile: slot.profile, week: slot.week,
-      stillOwner: () => scopeRef.current === scope && Boolean(frame?.isConnected) &&
+    return {
+      familyId: familyId || 'device-preview',
+      writerId: deviceWriter(localStorage),
+      profile: slot.profile,
+      week: slot.week,
+      stillOwner: () =>
+        scopeRef.current === scope &&
+        Boolean(frame?.isConnected) &&
         frame?.getAttribute('data-family-profile') === JSON.stringify(slot.profile) &&
-        slotsRef.current.some(item => item.id === slot.id) &&
-        profilesRef.current.some(item => item.id === slot.profile.id && item.grade === slot.profile.grade && item.active),
+        slotsRef.current.some((item) => item.id === slot.id) &&
+        profilesRef.current.some(
+          (item) => item.id === slot.profile.id && item.grade === slot.profile.grade && item.active,
+        ),
     }
   }
 
@@ -164,43 +194,58 @@ function FamilyPreview() {
       setFamilyId(cached.familyId)
       setProfiles(cached.profiles)
       setReadyChildren(new Set(cached.ready))
-      setSelectedId((cached.profiles.find(c => c.grade === initialGrade && cached.ready.includes(c.id)) || cached.profiles.find(c => cached.ready.includes(c.id)))?.id || '')
-      setStatus('Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.')
+      setSelectedId(
+        (
+          cached.profiles.find((c) => c.grade === initialGrade && cached.ready.includes(c.id)) ||
+          cached.profiles.find((c) => cached.ready.includes(c.id))
+        )?.id || '',
+      )
+      setStatus(
+        'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.',
+      )
       setAdultUnlocked(false)
       return true
     }
-    const connect = () => { void ensureParentFamily(auth.user!)
-      .then(async ({ family }) => {
-        const children = (await listChildren(family.id)).filter((c) =>
-          BETA_GRADES.includes(c.grade as BetaGrade),
-        ) as BetaProfile[]
-        if (cancelled) return
-        setFamilyId(family.id)
-        setProfiles(children)
-        setSelectedId((children.find((c) => c.grade === initialGrade) || children[0])?.id || '')
-        setStatus('Family account connected.')
-        setAdultUnlocked(false)
-        try { rememberOfflineFamily(localStorage, uid, family.id, children) }
-        catch (e) { setError(message(e)) }
-      })
-      .catch((e) => {
-        if (cancelled) return
-        if (isConnectionFailure(e) && restoreOffline()) return
-        if (isFamilyAccessDenied(e)) {
-          localStorage.removeItem(offlineFamilyKey(uid))
-          setReadyChildren(new Set())
-          setProfiles([])
-          setFamilyId(null)
-        }
-        setError(message(e))
-      }) }
+    const connect = () => {
+      void ensureParentFamily(auth.user!)
+        .then(async ({ family }) => {
+          const children = (await listChildren(family.id)).filter((c) =>
+            BETA_GRADES.includes(c.grade as BetaGrade),
+          ) as BetaProfile[]
+          if (cancelled) return
+          setFamilyId(family.id)
+          setProfiles(children)
+          setSelectedId((children.find((c) => c.grade === initialGrade) || children[0])?.id || '')
+          setStatus('Family account connected.')
+          setAdultUnlocked(false)
+          try {
+            rememberOfflineFamily(localStorage, uid, family.id, children)
+          } catch (e) {
+            setError(message(e))
+          }
+        })
+        .catch((e) => {
+          if (cancelled) return
+          if (isConnectionFailure(e) && restoreOffline()) return
+          if (isFamilyAccessDenied(e)) {
+            localStorage.removeItem(offlineFamilyKey(uid))
+            setReadyChildren(new Set())
+            setProfiles([])
+            setFamilyId(null)
+          }
+          setError(message(e))
+        })
+    }
     // A disconnected browser must not try to refresh an expired token first.
     // This is local access only, and requires an existing signed-in owner.
     if (!navigator.onLine) {
-      if (!restoreOffline()) setError('Connect once with this parent account and finish family syncing before reopening offline.')
+      if (!restoreOffline())
+        setError('Connect once with this parent account and finish family syncing before reopening offline.')
     } else connect()
     // Revalidate membership on reconnect. Do not replace mounted workspaces.
-    const reconnect = () => { if (!slotsRef.current.length) connect() }
+    const reconnect = () => {
+      if (!slotsRef.current.length) connect()
+    }
     addEventListener('online', reconnect)
     return () => {
       cancelled = true
@@ -209,7 +254,7 @@ function FamilyPreview() {
   }, [auth.user?.uid, initialGrade])
 
   useEffect(() => {
-    workspaceOwner.retain(slots.map(slot => slot.profile.id))
+    workspaceOwner.retain(slots.map((slot) => slot.profile.id))
   }, [slots])
 
   useEffect(() => {
@@ -220,10 +265,16 @@ function FamilyPreview() {
   useEffect(() => {
     if (!child || !practiceReady) return
     let cancelled = false
-    void listSavedLessons(localStorage, child).then(value => {
-      if (!cancelled) setSavedLessons({ owner: child.id, ...value })
-    }).catch(e => { if (!cancelled) setActivityError(message(e)) })
-    return () => { cancelled = true }
+    void listSavedLessons(localStorage, child)
+      .then((value) => {
+        if (!cancelled) setSavedLessons({ owner: child.id, ...value })
+      })
+      .catch((e) => {
+        if (!cancelled) setActivityError(message(e))
+      })
+    return () => {
+      cancelled = true
+    }
   }, [child?.id, child?.grade, practiceReady, resumeRefresh])
 
   useEffect(() => {
@@ -237,11 +288,11 @@ function FamilyPreview() {
       .then(({ createGameProgressStore }) => {
         const checkpoints = createGameProgressStore(localStorage, familyId || 'device-preview')
           .checkpoints(child.id)
-          .filter(value => value.scope.grade === child.grade)
+          .filter((value) => value.scope.grade === child.grade)
         if (!cancelled && scopeRef.current === scope && childRef.current === child.id)
           setSavedGames({ owner, checkpoints, warning: '' })
       })
-      .catch(e => {
+      .catch((e) => {
         if (!cancelled && scopeRef.current === scope && childRef.current === child.id)
           setSavedGames({
             owner,
@@ -249,7 +300,9 @@ function FamilyPreview() {
             warning: `Saved games could not be checked. ${message(e)} Existing records were preserved.`,
           })
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [child?.id, child?.grade, familyId, practiceReady, resumeRefresh, scope])
 
   useEffect(() => {
@@ -259,7 +312,7 @@ function FamilyPreview() {
       void fetchCurriculum(currentGrade, controller.signal)
         .then((loaded) => {
           if (!controller.signal.aborted) {
-            setCurricula(current => ({ ...current, [currentGrade]: loaded }))
+            setCurricula((current) => ({ ...current, [currentGrade]: loaded }))
             setCurriculumError('offline' in loaded ? loaded.warnings[loaded.warnings.length - 1] || '' : '')
           }
         })
@@ -280,53 +333,70 @@ function FamilyPreview() {
 
   const refreshProgress = useCallback(async () => {
     if (!child) return
-    if (syncing.current) { syncAgain.current = true; return }
+    if (syncing.current) {
+      syncAgain.current = true
+      return
+    }
     syncing.current = true
     try {
       if (familyId && auth.user) {
         if (!navigator.onLine) throw new Error('This device is offline. Reviewed progress remains in this browser.')
         const repository = familyResultRepository(familyId)
-        const current = () => scopeRef.current === scope && childRef.current === child.id &&
-          profilesRef.current.some(p => p.id === child.id && p.grade === child.grade && p.active)
+        const current = () =>
+          scopeRef.current === scope &&
+          childRef.current === child.id &&
+          profilesRef.current.some((p) => p.id === child.id && p.grade === child.grade && p.active)
         const practiceSync: { conflict?: PracticeSyncConflictError } = {}
         const gameSync: { source: 'device' | 'cloud' | 'device-and-cloud' } = { source: 'device' }
-        if (!await syncCompletedBeforePractice({
-          isCurrent: current,
-          pending: pendingResults,
-          belongsToFamily: item => profiles.some(p => p.id === item.childId),
-          validate: item => assertResultCopiesMatch(localStorage, RESULT_KEY, item),
-          save: repository.save,
-          acknowledge: acknowledgeResult,
-          syncPractice: async () => {
-            try {
-              await familyDeviceSyncRepository(familyId).sync(localStorage, child.id,
-                () => current() && !slotsRef.current.some(slot => slot.profile.id === child.id))
-            } catch (e) {
-              if (!(e instanceof PracticeSyncConflictError)) throw e
-              // A preserved conflict cannot complete practice reconciliation,
-              // but must not prevent the remaining online checks from earning
-              // first-time entry. Access/validation errors still fail closed.
-              practiceSync.conflict = e
-            }
-            if (!current()) return
-            const [{ reconcileGameHistory }, { createLockedGameProgressStore }, { familyGameHistoryRepository }] =
-              await Promise.all([
-                import('../ninjaSkills/gameHistory.ts'),
-                import('../ninjaSkills/progressStore.ts'),
-                import('./gameSync.ts'),
-              ])
-            const game = await reconcileGameHistory({
-              store: createLockedGameProgressStore(localStorage, familyId, current),
-              remote: familyGameHistoryRepository(familyId, current),
-              childId: child.id,
-              stillOwner: current,
-              canReplaceCheckpoint: gameScope => current() && !slotsRef.current.some(slot =>
-                slot.profile.id === gameScope.childId && slot.profile.grade === gameScope.grade &&
-                slot.week === gameScope.week && slot.game?.pack.moduleId === gameScope.gameId),
-            })
-            gameSync.source = game.source
-          },
-        })) return
+        if (
+          !(await syncCompletedBeforePractice({
+            isCurrent: current,
+            pending: pendingResults,
+            belongsToFamily: (item) => profiles.some((p) => p.id === item.childId),
+            validate: (item) => assertResultCopiesMatch(localStorage, RESULT_KEY, item),
+            save: repository.save,
+            acknowledge: acknowledgeResult,
+            syncPractice: async () => {
+              try {
+                await familyDeviceSyncRepository(familyId).sync(
+                  localStorage,
+                  child.id,
+                  () => current() && !slotsRef.current.some((slot) => slot.profile.id === child.id),
+                )
+              } catch (e) {
+                if (!(e instanceof PracticeSyncConflictError)) throw e
+                // A preserved conflict cannot complete practice reconciliation,
+                // but must not prevent the remaining online checks from earning
+                // first-time entry. Access/validation errors still fail closed.
+                practiceSync.conflict = e
+              }
+              if (!current()) return
+              const [{ reconcileGameHistory }, { createLockedGameProgressStore }, { familyGameHistoryRepository }] =
+                await Promise.all([
+                  import('../ninjaSkills/gameHistory.ts'),
+                  import('../ninjaSkills/progressStore.ts'),
+                  import('./gameSync.ts'),
+                ])
+              const game = await reconcileGameHistory({
+                store: createLockedGameProgressStore(localStorage, familyId, current),
+                remote: familyGameHistoryRepository(familyId, current),
+                childId: child.id,
+                stillOwner: current,
+                canReplaceCheckpoint: (gameScope) =>
+                  current() &&
+                  !slotsRef.current.some(
+                    (slot) =>
+                      slot.profile.id === gameScope.childId &&
+                      slot.profile.grade === gameScope.grade &&
+                      slot.week === gameScope.week &&
+                      slot.game?.pack.moduleId === gameScope.gameId,
+                  ),
+              })
+              gameSync.source = game.source
+            },
+          }))
+        )
+          return
         const page = await repository.listPage(child.id)
         const saved = page.results
         if (!current()) return
@@ -337,7 +407,7 @@ function FamilyPreview() {
           if (!previous) localStorage.setItem(key, JSON.stringify(result))
         }
         rememberOfflineFamily(localStorage, auth.user.uid, familyId, profiles, child.id)
-        setReadyChildren(current => new Set([...current, child.id]))
+        setReadyChildren((current) => new Set([...current, child.id]))
         if (childRef.current !== child.id) return
         // Keep the visible remote page aligned with its cursor. Newly queued
         // results remain in the outbox and appear after their confirmed refresh.
@@ -345,16 +415,25 @@ function FamilyPreview() {
         setHistoryCursor({ owner: `${scope}:${child.id}`, token: page.nextPageToken })
         if (practiceSync.conflict) {
           setError(message(practiceSync.conflict))
-          setStatus('Using this device’s saved practice. Your family account and scores are confirmed; online practice syncing is paused by a conflict. Both copies are preserved. You can continue here.')
+          setStatus(
+            'Using this device’s saved practice. Your family account and scores are confirmed; online practice syncing is paused by a conflict. Both copies are preserved. You can continue here.',
+          )
           return
         }
-        setStatus(`Scores, saved practice, and game detail confirmed in your private family account${
-          gameSync.source === 'cloud' ? ' from this family’s online history' :
-            gameSync.source === 'device-and-cloud' ? ' from this device and the family’s online history' : ''
-        }. Use the same parent account on your other device.`)
+        setStatus(
+          `Scores, saved practice, and game detail confirmed in your private family account${
+            gameSync.source === 'cloud'
+              ? ' from this family’s online history'
+              : gameSync.source === 'device-and-cloud'
+                ? ' from this device and the family’s online history'
+                : ''
+          }. Use the same parent account on your other device.`,
+        )
       } else {
         setResults(previewResults())
-        setStatus('Saved in this browser on this device. Online syncing is not enabled; use the same grade link and browser next time.')
+        setStatus(
+          'Saved in this browser on this device. Online syncing is not enabled; use the same grade link and browser next time.',
+        )
       }
       setError('')
     } catch (e) {
@@ -372,17 +451,29 @@ function FamilyPreview() {
       // turn access denials, malformed records or arbitrary errors into access.
       if (auth.user && (isConnectionFailure(e) || practiceConflict)) {
         const cached = readOfflineFamily(localStorage, auth.user.uid)
-        if (cached?.familyId === familyId && cached.ready.includes(child.id) && cached.profiles.some(p => p.id === child.id && p.grade === child.grade)) {
-          setReadyChildren(current => new Set([...current, child.id]))
+        if (
+          cached?.familyId === familyId &&
+          cached.ready.includes(child.id) &&
+          cached.profiles.some((p) => p.id === child.id && p.grade === child.grade)
+        ) {
+          setReadyChildren((current) => new Set([...current, child.id]))
           continuedLocally = true
         }
       }
       setError(message(e))
-      setStatus(practiceConflict
-        ? continuedLocally
-          ? 'Using this device’s saved practice. Online practice syncing is paused by a conflict; both copies are preserved. You can continue here. Keep this browser’s data while saving retries.'
-          : 'Practice syncing needs attention before this device can open activities. Both copies are preserved. Keep this browser’s data and retry.'
-        : accessDenied ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.' : restoredOffline ? 'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.' : familyId ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.' : 'Saving is not confirmed. Keep this browser’s data and retry.')
+      setStatus(
+        practiceConflict
+          ? continuedLocally
+            ? 'Using this device’s saved practice. Online practice syncing is paused by a conflict; both copies are preserved. You can continue here. Keep this browser’s data while saving retries.'
+            : 'Practice syncing needs attention before this device can open activities. Both copies are preserved. Keep this browser’s data and retry.'
+          : accessDenied
+            ? 'Family access needs confirmation. Existing work remains stored and paused. Reconnect or sign in again.'
+            : restoredOffline
+              ? 'Offline: using this parent’s previously confirmed device records. Saved lessons can continue; online saving will retry when connected.'
+              : familyId
+                ? 'Online saving is unavailable. Keep practicing here; saved work will retry automatically. Keep this browser’s data.'
+                : 'Saving is not confirmed. Keep this browser’s data and retry.',
+      )
       setHistoryCursor({ owner: '', token: '' })
       try {
         setResults(previewResults())
@@ -390,7 +481,7 @@ function FamilyPreview() {
         setResults([])
       }
     } finally {
-      if (scopeRef.current === scope) setResumeRefresh(value => value + 1)
+      if (scopeRef.current === scope) setResumeRefresh((value) => value + 1)
       syncing.current = false
       if (syncAgain.current) {
         syncAgain.current = false
@@ -404,27 +495,57 @@ function FamilyPreview() {
     void refreshProgress()
     const receive = (event: MessageEvent) => {
       if (event.origin !== location.origin) return
-      const source = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(frame => frame.contentWindow === event.source)
-      const slot = slots.find(item => item.id === source?.dataset.familySlot)
+      const source = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
+        (frame) => frame.contentWindow === event.source,
+      )
+      const slot = slots.find((item) => item.id === source?.dataset.familySlot)
       if (!slot) return
+      if (regressionPreview && event.data?.type === 'family-beta-game-exited' && slot.kind === 'game') {
+        setSlots((current) => current.filter((item) => item.id !== slot.id))
+        setSelectedSlots((current) => ({ ...current, [`${slot.workspace}:games`]: undefined }))
+        return
+      }
       if (event.data?.type === 'family-beta-activity-paused') {
         const key = `${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`
-        setSelectedSlots(current => ({ ...current, [key]: undefined }))
+        setSelectedSlots((current) => ({ ...current, [key]: undefined }))
       }
       if (event.data?.type === 'family-beta-game-completed' && slot.game?.attemptId === event.data.attemptId) {
         const resultId = event.data.resultId || slot.game?.attemptId
         let confirmed = false
-        try { confirmed = previewResults().some(result => result.id === resultId && result.childId === slot.profile.id && result.grade === slot.profile.grade && result.channel === 'game' && result.activity === slot.game?.pack.title) } catch { /* Keep this game open when its ledger cannot be read. */ }
-        if (!confirmed) { setActivityError('The game result is not confirmed. Keep it open and retry.'); return }
-        setSlots(current => current.filter(item => item.id !== slot.id))
-        setSelectedSlots(current => ({ ...current, [`${slot.workspace}:games`]: undefined }))
+        try {
+          confirmed = previewResults().some(
+            (result) =>
+              result.id === resultId &&
+              result.childId === slot.profile.id &&
+              result.grade === slot.profile.grade &&
+              result.channel === 'game' &&
+              result.activity === slot.game?.pack.title,
+          )
+        } catch {
+          /* Keep this game open when its ledger cannot be read. */
+        }
+        if (!confirmed) {
+          setActivityError('The game result is not confirmed. Keep it open and retry.')
+          return
+        }
+        setSlots((current) => current.filter((item) => item.id !== slot.id))
+        setSelectedSlots((current) => ({ ...current, [`${slot.workspace}:games`]: undefined }))
         void refreshProgress()
       }
       if (event.data?.type === 'family-beta-result-ready') {
         const lesson = event.data.lesson
-        if (lesson && /^acq-progress-v1-[a-f0-9]{16}$/.test(lesson.progressionId) && /^[a-f0-9]{16}$/.test(lesson.fingerprint)) {
-          setSlots(current => current.map(item => item.id === slot.id ? { ...item,
-            savedLesson: { progressionId: lesson.progressionId, fingerprint: lesson.fingerprint } } : item))
+        if (
+          lesson &&
+          /^acq-progress-v1-[a-f0-9]{16}$/.test(lesson.progressionId) &&
+          /^[a-f0-9]{16}$/.test(lesson.fingerprint)
+        ) {
+          setSlots((current) =>
+            current.map((item) =>
+              item.id === slot.id
+                ? { ...item, savedLesson: { progressionId: lesson.progressionId, fingerprint: lesson.fingerprint } }
+                : item,
+            ),
+          )
         }
         setActivityError('')
         void refreshProgress()
@@ -438,12 +559,15 @@ function FamilyPreview() {
     }
     const online = () => void refreshProgress()
     const storageChanged = (event: StorageEvent) => {
-      if (event.key && !event.key.startsWith('family-beta-sync-') && event.key.startsWith('family-beta-')) void refreshProgress()
+      if (event.key && !event.key.startsWith('family-beta-sync-') && event.key.startsWith('family-beta-'))
+        void refreshProgress()
     }
     addEventListener('message', receive)
     addEventListener('online', online)
     addEventListener('storage', storageChanged)
-    const interval = setInterval(() => { if (familyId) void refreshProgress() }, 15000)
+    const interval = setInterval(() => {
+      if (familyId) void refreshProgress()
+    }, 15000)
     return () => {
       removeEventListener('message', receive)
       removeEventListener('online', online)
@@ -474,21 +598,35 @@ function FamilyPreview() {
   const earlierWriting = latestEarlierTargets(available, dataset?.startDate || today, 'writing')
   const earlierReading = latestEarlierTargets(available, dataset?.startDate || today, 'reading')
   let completedGames: BetaResult[] | null = null
-  try { completedGames = previewResults() } catch { /* Preserve an unreadable history; do not start a replacement round. */ }
+  try {
+    completedGames = previewResults()
+  } catch {
+    /* Preserve an unreadable history; do not start a replacement round. */
+  }
   const savedOwner = child ? `${scope}:${child.id}:${child.grade}` : ''
-  const savedByModule = savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
-    ? resumableGameCheckpoints(savedGames.checkpoints, completedGames, child.id, child.grade)
-    : new Map<string, GameCheckpoint>()
-  const capabilities = reinforcementGames(available, dataset?.startDate || today, currentGrade, completedGames || [], child?.id)
-    .map(game => {
-      const moduleId = game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId
-      if (savedGames.owner === savedOwner && savedGames.warning)
-        return { status: 'unavailable' as const, moduleId, reason: savedGames.warning }
-      if (!completedGames) return { status: 'unavailable' as const, moduleId,
-        reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.' }
-      const saved = savedByModule.get(moduleId)
-      return saved ? { status: 'ready' as const, pack: saved.pack } : game.capability
-    })
+  const savedByModule =
+    savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
+      ? resumableGameCheckpoints(savedGames.checkpoints, completedGames, child.id, child.grade)
+      : new Map<string, GameCheckpoint>()
+  const capabilities = reinforcementGames(
+    available,
+    dataset?.startDate || today,
+    currentGrade,
+    completedGames || [],
+    child?.id,
+  ).map((game) => {
+    const moduleId = game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId
+    if (savedGames.owner === savedOwner && savedGames.warning)
+      return { status: 'unavailable' as const, moduleId, reason: savedGames.warning }
+    if (!completedGames)
+      return {
+        status: 'unavailable' as const,
+        moduleId,
+        reason: 'Stored game history could not be verified. Keep this browser’s data and report the problem.',
+      }
+    const saved = regressionPreview ? undefined : savedByModule.get(moduleId)
+    return saved ? { status: 'ready' as const, pack: saved.pack } : game.capability
+  })
   const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
 
   function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack, savedWeek?: string) {
@@ -496,29 +634,48 @@ function FamilyPreview() {
     const savedGame = kind === 'game' && gamePack && savedWeek
     if (!savedGame && (!curriculum || curriculum.snapshot.grade !== currentGrade || !dataset)) return
     if (!savedGame) {
-      try { cacheLessonSource(localStorage, child.id, curriculum!.snapshot) }
-      catch (e) { setActivityError(message(e)); return }
+      try {
+        cacheLessonSource(localStorage, child.id, curriculum!.snapshot)
+      } catch (e) {
+        setActivityError(message(e))
+        return
+      }
     }
     const id = crypto.randomUUID()
     const launchWeek = savedWeek || dataset!.startDate || week
     const launchWorkspace = activityWorkspace(child, launchWeek)
     const slot: FamilyActivitySlot = {
-      id, workspace: launchWorkspace, profile: { ...child }, week: launchWeek,
+      id,
+      workspace: launchWorkspace,
+      profile: { ...child },
+      week: launchWeek,
       curriculumVersion: savedGame
-        ? gamePack.cohort.provenance.map(item => item.contentFingerprint).join(':') || gamePack.cohort.id
+        ? gamePack.cohort.provenance.map((item) => item.contentFingerprint).join(':') || gamePack.cohort.id
         : curriculum!.snapshot.contentSha256,
       ...(!savedGame ? { source: curriculum!.snapshot } : {}),
       teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
-      kind, src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
+      kind,
+      src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
       ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
     }
-    setSlots(current => [...current, slot])
+    setSlots((current) => [...current, slot])
     if (savedWeek) setWeek(savedWeek)
-    setSelectedSlots(current => ({ ...current, [`${launchWorkspace}:${kind === 'game' ? 'games' : 'activities'}`]: id }))
+    setSelectedSlots((current) => ({
+      ...current,
+      [`${launchWorkspace}:${kind === 'game' ? 'games' : 'activities'}`]: id,
+    }))
   }
 
   useEffect(() => {
-    if (tab === 'activities' && !resumingId && child && curriculum && practiceReady && !slots.some(slot => slot.workspace === workspace && slot.kind === 'activities')) newSlot('activities')
+    if (
+      tab === 'activities' &&
+      !resumingId &&
+      child &&
+      curriculum &&
+      practiceReady &&
+      !slots.some((slot) => slot.workspace === workspace && slot.kind === 'activities')
+    )
+      newSlot('activities')
   }, [tab, child, curriculum, practiceReady, workspace, slots, resumingId])
 
   async function resumeSavedLesson(lesson: SavedLessonLaunch) {
@@ -528,42 +685,79 @@ function FamilyPreview() {
       const saved = await readSavedLesson(localStorage, child, lesson)
       if (scopeRef.current !== scope || childRef.current !== child.id) return
       if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')
-      const existing = slotsRef.current.find(slot => slot.profile.id === child.id && slot.kind === 'activities' &&
-        slot.savedLesson?.progressionId === saved.progressionId && slot.savedLesson.fingerprint === saved.lessonFingerprint)
+      const existing = slotsRef.current.find(
+        (slot) =>
+          slot.profile.id === child.id &&
+          slot.kind === 'activities' &&
+          slot.savedLesson?.progressionId === saved.progressionId &&
+          slot.savedLesson.fingerprint === saved.lessonFingerprint,
+      )
       const id = existing?.id || crypto.randomUUID()
       const savedWorkspace = existing?.workspace || `${activityWorkspace(child, saved.week)}:saved:${id}`
-      if (!existing) setSlots(current => [...current, {
-        id, workspace: savedWorkspace, profile: { ...child }, week: saved.week,
-        curriculumVersion: saved.sourceHash, source: saved.source, resumeChannel: saved.channel,
-        resumeExperience: saved.experience,
-        savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
-        teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local', kind: 'activities',
-        src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
-      }])
+      if (!existing)
+        setSlots((current) => [
+          ...current,
+          {
+            id,
+            workspace: savedWorkspace,
+            profile: { ...child },
+            week: saved.week,
+            curriculumVersion: saved.sourceHash,
+            source: saved.source,
+            resumeChannel: saved.channel,
+            resumeExperience: saved.experience,
+            savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
+            teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
+            kind: 'activities',
+            src: `${routes[child.grade]}?family-preview=1&week=${encodeURIComponent(saved.week)}`,
+          },
+        ])
       setResumingId(id)
       setSavedLessonsOpen(false)
       setTab('activities')
-      setSelectedSlots(current => ({ ...current, [`${savedWorkspace}:activities`]: id }))
+      setSelectedSlots((current) => ({ ...current, [`${savedWorkspace}:activities`]: id }))
       setActivityError('')
-    } catch (e) { setActivityError(message(e)) }
-    finally { resumeInFlight.current = false }
+    } catch (e) {
+      setActivityError(message(e))
+    } finally {
+      resumeInFlight.current = false
+    }
   }
 
   async function discardSlot(slot: FamilyActivitySlot) {
     if (!confirmActivityDiscard()) return
     try {
-      const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(item => item.dataset.familySlot === slot.id)
-      if (['memory-flip', 'sentence-scramble', 'context-gap-dash', 'speed-match', 'target-blast'].includes(slot.game?.pack.moduleId || '') && !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession)
+      const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
+        (item) => item.dataset.familySlot === slot.id,
+      )
+      if (
+        ['memory-flip', 'sentence-scramble', 'context-gap-dash', 'speed-match', 'target-blast'].includes(
+          slot.game?.pack.moduleId || '',
+        ) &&
+        !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession
+      )
         throw new Error('Wait for the saved game to open before discarding it.')
       await (frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession?.discard()
       if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)
-      const removed = slots.filter(item => item.id === slot.id || (slot.savedLesson && item.profile.id === slot.profile.id && item.savedLesson?.progressionId === slot.savedLesson.progressionId))
-      if (removed.some(item => item.id === resumingId)) setResumingId(null)
-      setSlots(current => current.filter(item => !removed.some(value => value.id === item.id)))
-      setSelectedSlots(current => Object.fromEntries(Object.entries(current).map(([key, id]) => [key, removed.some(item => item.id === id) ? undefined : id])))
-      setResumeRefresh(current => current + 1)
+      const removed = slots.filter(
+        (item) =>
+          item.id === slot.id ||
+          (slot.savedLesson &&
+            item.profile.id === slot.profile.id &&
+            item.savedLesson?.progressionId === slot.savedLesson.progressionId),
+      )
+      if (removed.some((item) => item.id === resumingId)) setResumingId(null)
+      setSlots((current) => current.filter((item) => !removed.some((value) => value.id === item.id)))
+      setSelectedSlots((current) =>
+        Object.fromEntries(
+          Object.entries(current).map(([key, id]) => [key, removed.some((item) => item.id === id) ? undefined : id]),
+        ),
+      )
+      setResumeRefresh((current) => current + 1)
       setActivityError('')
-    } catch (error) { setActivityError(message(error)) }
+    } catch (error) {
+      setActivityError(message(error))
+    }
   }
 
   if (auth.status === 'loading') return <p role="status">Loading family access…</p>
@@ -585,14 +779,22 @@ function FamilyPreview() {
       data-report-revision={import.meta.env.VITE_GIT_REVISION || 'local'}
     >
       <header className="beta-toolbar">
-        <strong>{import.meta.env.MODE === 'writing-pilot' ? 'Grade 2 writing pilot · Unpublished' : 'Ninja Dojo · Family beta'}</strong>
+        <strong>
+          {import.meta.env.MODE === 'writing-pilot'
+            ? 'Grade 2 writing pilot · Unpublished'
+            : 'Ninja Dojo · Family beta'}
+        </strong>
         <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
         <label>
           Practicing as{' '}
           <select
             aria-label="Child profile"
             value={child?.id || ''}
-            onChange={(e) => { setSelectedId(e.target.value); setWeek(''); setResumingId(null) }}
+            onChange={(e) => {
+              setSelectedId(e.target.value)
+              setWeek('')
+              setResumingId(null)
+            }}
           >
             {profiles
               .filter((p) => p.active)
@@ -638,17 +840,24 @@ function FamilyPreview() {
           </button>
         ))}
       </nav>
-      {familyId && child && !readyChildren.has(child.id) && <section className="beta-panel" role="status">
-        <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
-        <button type="button" onClick={() => void refreshProgress()}>Retry family sync</button>
-      </section>}
+      {familyId && child && !readyChildren.has(child.id) && (
+        <section className="beta-panel" role="status">
+          <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
+          <button type="button" onClick={() => void refreshProgress()}>
+            Retry family sync
+          </button>
+        </section>
+      )}
       {child && practiceReady && (tab === 'activities' || tab === 'games') && (
         <label className="beta-week">
           Practice week{' '}
           <select
             aria-label="Practice week"
             value={week}
-            onChange={(e) => { setWeek(e.target.value); setResumingId(null) }}
+            onChange={(e) => {
+              setWeek(e.target.value)
+              setResumingId(null)
+            }}
           >
             <option value="">Current teacher lesson</option>
             {available.map((d) => (
@@ -659,89 +868,174 @@ function FamilyPreview() {
           </select>
         </label>
       )}
-      {child && practiceReady && tab === 'activities' && <details className="beta-panel" open={savedLessonsOpen} onToggle={e => setSavedLessonsOpen(e.currentTarget.open)}>
-        <summary>Saved lessons</summary>
-        <p>Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat unfinished handwriting or recordings.</p>
-        {savedLessons.owner === child.id && savedLessons.warnings.map(warning => <p role="alert" key={warning}>{warning}</p>)}
-        {savedLessons.owner === child.id && savedLessons.lessons.map(lesson => <button key={`${lesson.progressionId}:${lesson.lessonFingerprint}`} onClick={() => void resumeSavedLesson(lesson)}>
-          Resume saved {lesson.experience === 'whispering-scrolls' ? 'Whispering Scrolls' : lesson.experience === 'stroke-order-slay' ? 'Stroke Order Slay' : lesson.channel} · {lesson.week}
-        </button>)}
-        {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && <p>No saved lessons are available yet.</p>}
-      </details>}
-      {resumeSlot && <section className="beta-panel" role="status">
-        Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the current teacher curriculum.
-        <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>
-      </section>}
+      {child && practiceReady && tab === 'activities' && (
+        <details
+          className="beta-panel"
+          open={savedLessonsOpen}
+          onToggle={(e) => setSavedLessonsOpen(e.currentTarget.open)}
+        >
+          <summary>Saved lessons</summary>
+          <p>
+            Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat
+            unfinished handwriting or recordings.
+          </p>
+          {savedLessons.owner === child.id &&
+            savedLessons.warnings.map((warning) => (
+              <p role="alert" key={warning}>
+                {warning}
+              </p>
+            ))}
+          {savedLessons.owner === child.id &&
+            savedLessons.lessons.map((lesson) => (
+              <button
+                key={`${lesson.progressionId}:${lesson.lessonFingerprint}`}
+                onClick={() => void resumeSavedLesson(lesson)}
+              >
+                Resume saved{' '}
+                {lesson.experience === 'whispering-scrolls'
+                  ? 'Whispering Scrolls'
+                  : lesson.experience === 'stroke-order-slay'
+                    ? 'Stroke Order Slay'
+                    : lesson.channel}{' '}
+                · {lesson.week}
+              </button>
+            ))}
+          {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && (
+            <p>No saved lessons are available yet.</p>
+          )}
+        </details>
+      )}
+      {resumeSlot && (
+        <section className="beta-panel" role="status">
+          Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the
+          current teacher curriculum.
+          <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>
+        </section>
+      )}
       {!child && <p>Add a child in Parent controls to begin.</p>}
-      {slots.map(slot => {
-        const active = practiceReady && slot.id === selectedSlot && slot.workspace === workspace && (tab === 'activities' || tab === 'games')
-        return <iframe key={slot.id} className="beta-grade-frame" title={slot.game?.pack.title || `${slot.profile.grade} activities`}
-          name={slot.id} data-family-slot={slot.id} data-family-active={String(active)} data-family-paused={String(!active)}
-          data-family-owner-paused={String(activityClock.paused)} data-family-profile={JSON.stringify(slot.profile)}
-          data-family-week={slot.week} data-family-curriculum={slot.curriculumVersion} data-family-revision={slot.teachingVersion}
-          data-family-source={slot.source ? JSON.stringify(slot.source) : undefined} data-family-resume-channel={slot.resumeChannel}
-          data-family-resume-experience={slot.resumeExperience}
-          data-family-resume-lesson={slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined}
-          data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
-          hidden={!active} src={slot.src} allow="microphone 'self'; autoplay 'self'" />
+      {slots.map((slot) => {
+        const active =
+          practiceReady &&
+          slot.id === selectedSlot &&
+          slot.workspace === workspace &&
+          (tab === 'activities' || tab === 'games')
+        return (
+          <iframe
+            key={slot.id}
+            className="beta-grade-frame"
+            title={slot.game?.pack.title || `${slot.profile.grade} activities`}
+            name={slot.id}
+            data-family-slot={slot.id}
+            data-family-active={String(active)}
+            data-family-paused={String(!active)}
+            data-family-owner-paused={String(activityClock.paused)}
+            data-family-profile={JSON.stringify(slot.profile)}
+            data-family-week={slot.week}
+            data-family-curriculum={slot.curriculumVersion}
+            data-family-revision={slot.teachingVersion}
+            data-family-source={slot.source ? JSON.stringify(slot.source) : undefined}
+            data-family-resume-channel={slot.resumeChannel}
+            data-family-resume-experience={slot.resumeExperience}
+            data-family-resume-lesson={
+              slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined
+            }
+            data-family-game={slot.game ? JSON.stringify(slot.game) : undefined}
+            hidden={!active}
+            src={slot.src}
+            allow="microphone 'self'; autoplay 'self'"
+          />
+        )
       })}
-      {practiceReady && (tab === 'activities' || tab === 'games') && !selectedSlot && slots.some(slot => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities')) && <section className="beta-panel">
-        <h2>Your paused work</h2>
-        <p>Your work stays here during this visit. After a reload, reviewed saved practice resumes; temporary writing and recordings must be repeated.</p>
-        {slots.filter(slot => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities')).map(slot => <div key={slot.id}>
-          <button onClick={() => setSelectedSlots(current => ({ ...current, [`${workspace}:${tab}`]: slot.id }))}>Resume {slot.game?.pack.title || `${slot.profile.grade} activity`}</button>
-          <button onClick={() => discardSlot(slot)}>Discard unfinished {slot.game?.pack.title || 'activity'}</button>
-        </div>)}
-      </section>}
-      {child &&
-        practiceReady &&
-        tab === 'games' &&
-        !pack && (
+      {practiceReady &&
+        (tab === 'activities' || tab === 'games') &&
+        !selectedSlot &&
+        slots.some(
+          (slot) => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities'),
+        ) && (
           <section className="beta-panel">
-            <h1>Practice your Ninja Skills</h1>
+            <h2>Your paused work</h2>
             <p>
-              Games use the most recent earlier week with relevant targets, separately for writing and reading. Writing:{' '}
-              {earlierWriting[0]?.dateRange || 'No earlier targets'}. Reading:{' '}
-              {earlierReading[0]?.dateRange || 'No earlier targets'}.
+              Your work stays here during this visit. After a reload, reviewed saved practice resumes; temporary writing
+              and recordings must be repeated.
             </p>
-            <div className="beta-game-grid">
-              {capabilities.map((c) =>
-                c.status === 'ready' ? (
-                  <article key={c.pack.moduleId}><button className="primary-button" onClick={() => {
-                    setActivityError('')
-                    const paused = slots.find(slot => slot.workspace === workspace && slot.game?.pack.moduleId === c.pack.moduleId)
-                    if (paused) setSelectedSlots(current => ({ ...current, [`${workspace}:games`]: paused.id }))
-                    else newSlot('game', c.pack, savedByModule.get(c.pack.moduleId)?.scope.week)
-                  }}>
-                    {savedByModule.has(c.pack.moduleId) ? `Resume ${c.pack.title}` : c.pack.title}
-                  </button><p>{savedByModule.has(c.pack.moduleId)
-                    ? `Resume the saved ${savedByModule.get(c.pack.moduleId)!.scope.week} round with its pinned targets.`
-                    : c.pack.scopeNote}</p></article>
-                ) : (
-                  <article key={c.moduleId}>
-                    <h2>{learningModuleCatalogEntry(c.moduleId).title}</h2>
-                    <p>{c.reason}</p>
-                    <button disabled>Coming soon</button>
-                  </article>
-                ),
-              )}
-            </div>
-            <p>Coming-soon activities unlock when their required content and game rules are ready.</p>
+            {slots
+              .filter((slot) => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities'))
+              .map((slot) => (
+                <div key={slot.id}>
+                  <button
+                    onClick={() => setSelectedSlots((current) => ({ ...current, [`${workspace}:${tab}`]: slot.id }))}
+                  >
+                    Resume {slot.game?.pack.title || `${slot.profile.grade} activity`}
+                  </button>
+                  <button onClick={() => discardSlot(slot)}>
+                    Discard unfinished {slot.game?.pack.title || 'activity'}
+                  </button>
+                </div>
+              ))}
           </section>
         )}
-      {child && tab === 'progress' && <ResultHistory
-        key={`${scope}:${child.id}`}
-        child={child}
-        results={results}
-        nextPageToken={historyCursor.owner === `${scope}:${child.id}` ? historyCursor.token : ''}
-        readLocalResults={previewResults}
-        loadPage={familyId && historyCursor.owner === `${scope}:${child.id}` ? async (token, signal) => {
-          const page = await familyResultRepository(familyId).listPage(child.id, token, signal)
-          signal.throwIfAborted()
-          assertSavedAttemptsMatch(page.results, localStorage, RESULT_KEY)
-          return page
-        } : undefined}
-      />}
+      {child && practiceReady && tab === 'games' && !pack && (
+        <section className="beta-panel">
+          <h1>Practice your Ninja Skills</h1>
+          <p>
+            Games use the most recent earlier week with relevant targets, separately for writing and reading. Writing:{' '}
+            {earlierWriting[0]?.dateRange || 'No earlier targets'}. Reading:{' '}
+            {earlierReading[0]?.dateRange || 'No earlier targets'}.
+          </p>
+          <div className="beta-game-grid">
+            {capabilities.map((c) =>
+              c.status === 'ready' ? (
+                <article key={c.pack.moduleId}>
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      setActivityError('')
+                      const paused = slots.find(
+                        (slot) => slot.workspace === workspace && slot.game?.pack.moduleId === c.pack.moduleId,
+                      )
+                      if (paused) setSelectedSlots((current) => ({ ...current, [`${workspace}:games`]: paused.id }))
+                      else newSlot('game', c.pack, savedByModule.get(c.pack.moduleId)?.scope.week)
+                    }}
+                  >
+                    {savedByModule.has(c.pack.moduleId) ? `Resume ${c.pack.title}` : c.pack.title}
+                  </button>
+                  <p>
+                    {savedByModule.has(c.pack.moduleId)
+                      ? `Resume the saved ${savedByModule.get(c.pack.moduleId)!.scope.week} round with its pinned targets.`
+                      : c.pack.scopeNote}
+                  </p>
+                </article>
+              ) : (
+                <article key={c.moduleId}>
+                  <h2>{learningModuleCatalogEntry(c.moduleId).title}</h2>
+                  <p>{c.reason}</p>
+                  <button disabled>Coming soon</button>
+                </article>
+              ),
+            )}
+          </div>
+          <p>Coming-soon activities unlock when their required content and game rules are ready.</p>
+        </section>
+      )}
+      {child && tab === 'progress' && (
+        <ResultHistory
+          key={`${scope}:${child.id}`}
+          child={child}
+          results={results}
+          nextPageToken={historyCursor.owner === `${scope}:${child.id}` ? historyCursor.token : ''}
+          readLocalResults={previewResults}
+          loadPage={
+            familyId && historyCursor.owner === `${scope}:${child.id}`
+              ? async (token, signal) => {
+                  const page = await familyResultRepository(familyId).listPage(child.id, token, signal)
+                  signal.throwIfAborted()
+                  assertSavedAttemptsMatch(page.results, localStorage, RESULT_KEY)
+                  return page
+                }
+              : undefined
+          }
+        />
+      )}
       {tab === 'parent' && (
         <section className="beta-panel">
           <h1>Parent controls</h1>
@@ -767,23 +1061,38 @@ function FamilyPreview() {
           ) : (
             <>
               {!firebaseConfigReady && (
+                <p>These learner profiles are stored only in this browser. They do not sync to another device.</p>
+              )}
+              <p>
+                Download a private copy of this site's saved scores, reviewed acquisition responses, checkpoints, and
+                problem reports before changing devices or website addresses. This does not move or erase anything.
+              </p>
+              {familyId && (
                 <p>
-                  These learner profiles are stored only in this browser. They do not sync to another device.
+                  Older device-only learner records remain on their original website and are not automatically assigned
+                  to an online child profile. Keep their export if you want those histories reconciled.
                 </p>
               )}
-              <p>Download a private copy of this site's saved scores, reviewed acquisition responses, checkpoints, and problem reports before changing devices or website addresses. This does not move or erase anything.</p>
-              {familyId && <p>Older device-only learner records remain on their original website and are not automatically assigned to an online child profile. Keep their export if you want those histories reconciled.</p>}
-              <button type="button" onClick={() => {
-                try {
-                  const data = deviceExport(localStorage, location.origin)
-                  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
-                  const link = document.createElement('a')
-                  link.href = url
-                  link.download = `ninja-dojo-device-records-${data.createdAt.slice(0, 10)}.json`
-                  link.click()
-                  setTimeout(() => URL.revokeObjectURL(url), 60_000)
-                } catch (error) { setError(message(error)) }
-              }}>Download this device's records</button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const data = deviceExport(localStorage, location.origin)
+                    const url = URL.createObjectURL(
+                      new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+                    )
+                    const link = document.createElement('a')
+                    link.href = url
+                    link.download = `ninja-dojo-device-records-${data.createdAt.slice(0, 10)}.json`
+                    link.click()
+                    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                  } catch (error) {
+                    setError(message(error))
+                  }
+                }}
+              >
+                Download this device's records
+              </button>
               {profiles.map((p) => (
                 <div key={p.id} className="beta-profile">
                   <strong>
@@ -903,7 +1212,11 @@ function FamilyPreview() {
           )}
         </section>
       )}
-      {offlineShell && <p className="beta-status" data-offline-shell-status>{offlineShell}</p>}
+      {offlineShell && (
+        <p className="beta-status" data-offline-shell-status>
+          {offlineShell}
+        </p>
+      )}
     </div>
   )
 }
