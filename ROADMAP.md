@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — Grade 5 only for tonight, October 21
+
+The owner explicitly paused the combined Kindergarten/Grade 2/Grade 5 effort. Focus only on the one integrated Grade 5 presentation preview. **`b61c8f5` / Integrated Preview 1** is published, verified and emailed; the single entry link, expiry and passing evidence are at the top of STATUS. Do not send a collection of earlier preview links or present an old separate assessment page as the integrated main flow.
+
+Next: a bounded five-minute physical-device check of the one Grade 5 app, then address Grade 5 feedback. The same eight approved PDF targets now appear in native Dojo, Ninja Skills and both Final Boss tests; native writing/reading saving, guided teacher, Shuriken correction and all eight Sushi sentences are included. Existing approved appearance and teaching remain the reference. Kindergarten/Grade 2 work stays paused until the owner resumes it.
+
+Model recommendations remain Astra · Extra High for behavior/persistence review, Sol · High for bounded publication, Luna · Medium for routine documentation; no model switch is claimed. Canonical integration remains subject to working-preview acceptance and the existing compatibility/release gates. Earlier entries below are historical or deferred, not instructions to restart other grades.
+
 ## Current action — verify standalone game removal, October 21
 
 The owner's latest request supersedes the deferred activity-card cleanup only for **standalone Stroke Order Slay and Whispering Scrolls**, including the legacy Stroke Order alias. The isolated **Streamlined Dojo / Prototype 1 (`5f64beb`)** removes their launch cards across Kindergarten, Grade 2 and Grade 5 and removes their parent saved-lesson launch buttons. Native Writing keeps the approved embedded teacher. Existing scores and checkpoint/export compatibility are retained; no data reset or host retirement is included. The new links, expiry, checks and delivery status are in STATUS and [the bounded removal record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/standalone-game-removal-preview.md).

@@ -20,8 +20,16 @@ Only the opt-in Grade 5 presentation package accepts this source. No teacher doc
 
 ## Verification and publication
 
-Pending final exact-build local/tablet checks and isolated publication. Do not present an earlier URL as containing this integration.
+Application `b61c8f5e0ad5626d3b8b2f6324e29cc3268f1733` is published at the single [Grade 5 entry](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/), expiring October 28, 2026 at 12:14 p.m. Pacific. It is an isolated preview. Its root and the former separate assessment path both lead to the same main Grade 5 flow.
 
-Review findings repaired before handoff: native writing dropped approved metadata; Sushi's eight sentences conflicted with the generic six-sentence validator; failed assessment saves discarded temporary responses and prevented retry; zero-score reading Done lacked the original checkpoint's stale-tab check.
+All 1,186 units, type/lint/format/production build and unchanged performance budgets pass. The exact frozen package passes 39 local browser cases on desktop Chromium and portrait/landscape WebKit. Independent source review was completed and findings rechecked. Earlier exploratory failures exposed source/architecture integration gaps and zero-score stale completion; fixes and reruns are retained separately, not presented as a clean first run.
+
+Hosted byte verification matches all 184 public files and 1,104 headers, with the approved composite source checksum and redirects verified. All 16 previous preview releases/expiries and canonical `9d06a02` remain unchanged. Hosting version: `0dfc6e6d2cc055c5`; package tree: `b85ece4e300c1733aab9e6419279cfb8e6255f777b36fed7522af0404178b3ea`. All eight final hosted desktop/portrait interaction cases pass, including complete character teaching and native next-word progression.
+
+Gmail send and metadata readback confirm SENT to the previously confirmed owner address: message/thread `1a15fe5bfa3cb890`, October 21. The email contains the single link, Grade 5 scope, exact build, expiry, limitations and five-minute device checklist. The app browser open request returned queued; this is not a claim that the owner's foreground tab navigated.
+
+Evidence and frozen package: `family-beta-artifacts/prototypes/grade5-presentation-b61c8f5/`.
+
+Review findings repaired before handoff: native writing dropped approved metadata; the shared eight-word cohort conflicted with the generic mixed-tier Shuriken rule; Sushi's eight sentences conflicted with the generic six-sentence validator; failed assessment saves discarded temporary responses and prevented retry; zero-score reading Done lacked the original checkpoint's stale-tab check. Production initial JavaScript remains exactly 549,995 bytes against the unchanged 550,000-byte budget.
 
 Device check after verified publication: spend about five minutes on an iPad or presentation computer checking automatic sound/Hear, writing with finger/Pencil or mouse, Exit/reopen at the same step, a wrong/right Shuriken retry, Final Boss entry, and Report/return. Automated browser media substitutes do not establish physical microphone, speaker or Pencil quality.
