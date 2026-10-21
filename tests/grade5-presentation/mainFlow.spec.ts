@@ -170,6 +170,14 @@ test('Final Boss nests tests, games and training separately with safe back and r
     await frame.getByRole('button', { name: '← Back to Final Boss', exact: true }).click()
     await expect(activityButtons).toHaveText(['Boss Test', 'Boss Games', 'Need more training?'])
   }
+  await frame.getByRole('button', { name: 'Need more training?', exact: true }).click()
+  await frame.getByRole('button', { name: 'Return to Dojo · Reading', exact: true }).click()
+  await expect(frame.getByRole('button', { name: 'Record my reading', exact: true })).toBeVisible()
+  await frame.getByRole('button', { name: 'Exit reading', exact: true }).click()
+  await expect(activityButtons).toHaveText(['Return to Dojo · Writing', 'Return to Dojo · Reading'])
+  await frame.getByRole('button', { name: '← Back to all challenges', exact: true }).click()
+  await frame.getByRole('button', { name: sectionNames[2] }).click()
+  await expect(activityButtons).toHaveText(['Boss Test', 'Boss Games', 'Need more training?'])
   expect(await results(page)).toEqual([])
 })
 
