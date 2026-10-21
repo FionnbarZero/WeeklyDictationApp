@@ -28,11 +28,12 @@ import '../styles.css'
 import '../writingAcquisition/crossGradePreview.css'
 import './styles.css'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
-import { openGrade5PreviewReading } from '../grade5RepairPreview/readingStore.ts'
+import { Grade5PreviewReading } from '../grade5RepairPreview/ReadingTrainer.tsx'
 
 type Activity = 'writing-test' | 'reading-test' | 'writing-dojo' | 'reading-dojo' | 'shuriken' | 'sushi'
 type Section = 'Practice Your Ninja Skills' | 'Final Boss Test'
 const build = import.meta.env.VITE_GIT_REVISION || 'local-uncommitted'
+const ReadingActivity = grade5RepairPreview ? Grade5PreviewReading : Tier2ReadingPractice
 function App() {
   const [active, setActive] = useState<{ section: Section; activity: Activity } | null>(null)
   const [summary, setSummary] = useState('')
@@ -141,15 +142,13 @@ function App() {
       ) : active.activity === 'writing-dojo' ? (
         <WritingTrainer onExit={leave} />
       ) : active.activity === 'reading-dojo' ? (
-        <Tier2ReadingPractice
+        <ReadingActivity
           profile={grade5Tier2ReadingProfile}
           pathway={readingPathway}
           persistAcquisition={grade5RepairPreview}
-          openSavedAcquisition={grade5RepairPreview ? openGrade5PreviewReading : undefined}
           label="Return to Dojo · Reading · October 23 shared targets"
           onExit={leave}
           onComplete={(result) => {
-            if (grade5RepairPreview) openGrade5PreviewReading().finishSession()
             setSummary(
               `Reading practice: ${result.correct}/${result.attempted}. ${grade5RepairPreview ? 'Teaching position saved in this browser.' : 'Session-only prototype.'}`,
             )
