@@ -15,9 +15,11 @@ test('real WAV playback finishes, balances quiet synthetic sound and unloads the
     state.revoked = []
     state.playedBlobs = []
     state.recordings = []
+    const createdBlobs = new Map<string, Blob>()
     const create = URL.createObjectURL
     URL.createObjectURL = (blob) => {
       const url = create.call(URL, blob)
+      if (blob instanceof Blob) createdBlobs.set(url, blob)
       // This test's recording is 44,144 bytes; the silent activation cue is 204.
       if (blob instanceof Blob && blob.size > 10000) state.recordings.push(url)
       return url
@@ -25,20 +27,21 @@ test('real WAV playback finishes, balances quiet synthetic sound and unloads the
     const play = HTMLMediaElement.prototype.play
     HTMLMediaElement.prototype.play = function () {
       if (!state.players.includes(this)) state.players.push(this)
-      if (this.src.startsWith('blob:')) {
-        // Inspect only our generated tone; do not touch a real microphone.
-        void fetch(this.src)
-          .then((r) => r.arrayBuffer())
-          .then((buffer) => {
-            const wav = new DataView(buffer)
-            if (buffer.byteLength > 10000) state.playedBlobs.push(Math.abs(wav.getInt16(100, true)))
-          })
+      const blob = createdBlobs.get(this.src)
+      if (blob && blob.size > 10000) {
+        // Inspect our generated tone directly. Fetching a blob URL would add a
+        // test-only request blocked by the hosted connect-src 'self' policy.
+        void blob.arrayBuffer().then((buffer) => {
+          const wav = new DataView(buffer)
+          if (buffer.byteLength > 10000) state.playedBlobs.push(Math.abs(wav.getInt16(100, true)))
+        })
       }
       return play.call(this)
     }
     const revoke = URL.revokeObjectURL
     URL.revokeObjectURL = (url) => {
       state.revoked.push(url)
+      createdBlobs.delete(url)
       revoke.call(URL, url)
     }
     Object.defineProperty(window, 'MediaRecorder', {
@@ -102,6 +105,14 @@ test('real WAV playback finishes, balances quiet synthetic sound and unloads the
   await frame.getByRole('button', { name: 'Record my reading', exact: true }).click()
   await frame.getByRole('button', { name: 'Stop recording', exact: true }).click()
   await expect(frame.getByRole('button', { name: 'Yes', exact: true })).toBeEnabled({ timeout: 25000 })
+  const activityFrame = await (await page.locator('iframe:visible').elementHandle())!.contentFrame()
+  await expect
+    .poll(() =>
+      activityFrame!.evaluate(() =>
+        (window as unknown as { playedBlobs: number[] }).playedBlobs.some((amplitude) => amplitude > 500),
+      ),
+    )
+    .toBe(true)
   await frame.getByRole('button', { name: 'Exit reading', exact: true }).click()
   const host = await (await page.locator('iframe:visible').elementHandle())!.contentFrame()
   const diagnostics = await host!.evaluate(() => {
