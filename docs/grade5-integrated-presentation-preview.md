@@ -2,7 +2,32 @@
 
 The owner paused the combined three-grade handoff and requested one Grade 5 app for tonight's presentation. Kindergarten and Grade 2 integration/testing are deferred. This preview uses the existing approved Slay writing appearance and a single main Grade 5 flow.
 
-## Current update — Integrated Preview 2
+## Current update — Integrated Preview 3: games-first Ninja Skills and all-game audit
+
+Application **`97c559d74db813ef839a0a3c793838c2c33a4f38`** is published at the **same [single Grade 5 entry](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/family-beta-preview.html?grade=grade5)**. Its manifest says **Integrated Preview 3**; the channel's URL still contains v1. It expires **October 28, 2026 at 2:10 p.m. Pacific**. This updates the isolated preview only, not canonical Ninja Dojo, Kindergarten or Grade 2. Existing browser records are retained.
+
+Practice your Ninja Skills shows all five games first. A full-width **More activities** card underneath contains the two existing tests and both Return to Dojo routes. Native activities return to that group; games return to the direct games menu. The optional grouping behavior defaults off elsewhere. Preview 2's nested Final Boss and direct mastered-word Spirit Realm remain intact. Teaching, target sets, scoring, timers, saving and game logic are unchanged.
+
+The owner confirmed **GPT-6.1 Sol · High** for the menu-only change, then expanded the task to audit every Grade 5 game. Independent read-only reviewers checked game input/correction, Report pause, completion/retry, source eligibility, content and score boundaries. No confirmed actionable application defect was found. The reviewers' 93 and 31 focused unit checks overlap the full **1,197 passing units** and are not added to that total. Typecheck, full lint, repository formatting, production build and unchanged performance budgets pass.
+
+Final-package browser evidence:
+
+- **43 broader regression scenarios** have passing evidence: the 42-case matrix covers desktop Chromium and portrait/landscape WebKit, including all four nested routes, repeated Back/Report, source words and browser-record preservation. The separate full progressed-writing/next-word teacher case is desktop-only.
+- **30 current-word game journeys** pass: all five games from Ninja Skills and Boss Games on all three profiles. They verify source words, completion, a failed-save/retry, exact result ownership, return, reopen, duplicate prevention and reload. Shadow, Memory and Context additionally exercise wrong-answer recovery and Report pauses; existing Shuriken/Sushi tests retain their wrong-answer checks.
+- **18 Spirit Realm cases** pass: all five completed mastered games plus the menu, on all three profiles. These protect mastered-only content and unchanged mastery records. Its three menu cases also occur in the 43-case set above; do not double-count them.
+- Together the two game matrices complete **45 full game journeys**, with no confirmed new blocking defect. This is bounded evidence, not a guarantee of no possible bugs or physical-device certification.
+
+Initial new-test failures are retained separately, not hidden as clean first runs. The 42-case broader run passed 41 cases and failed one new assertion that expected an untouched revision-zero writing lesson to skip its existing Warmup. The test-only correction retains/skips Warmup and still checks step 1 and byte-identical records; all six new-menu cases subsequently pass, plus the independent progressed-writing case. The first three-case all-game pilot expected the completion label Ninja Skills in a heading that correctly says Practice your Ninja Skills. Separating the two expected labels yields a passing three-case pilot and all 30 final cases. Neither correction changed application behavior or weakened score/progress assertions. Test-only commits `ada9b05` and `952a5ad` do not change the frozen application package.
+
+All **184 published files / 1,104 headers**, both redirects and the approved eight-word source checksum match the frozen package. Hosting version **`884fef4f12263688`** replaces `49c7264b58602eae`; tree **`1ca169875a613216d9379566ff5dd6ab2ded409699e047e05530e8787b2a04b8`**. All 15 other channels' releases/expiries and canonical `9d06a02` remain unchanged. One deployment; no auth/domain change or data reset.
+
+**All 20 hosted desktop/portrait interaction checks pass**, covering all five Boss Games through completion, failed saving/retry and reopen; all four nested native launches; games-first/More placement and repeated navigation/report; source/build identity; Final Boss groups and the mastered-only menu. Gmail send plus metadata readback confirm **SENT** to the previously confirmed owner address, message/thread **`1a1604fc3f06af56`**. The email contains the single URL, grade/build, preview status, expiry, limitations and a 3–5 minute iPad checklist. Independent evidence review verified the counts, revision and publication claims; its wording-precision recommendations are incorporated.
+
+Evidence and frozen package: `family-beta-artifacts/prototypes/grade5-ninja-menu-97c559d/`; temporary verification receipts: `/tmp/grade5-ninja-menu.dimG8A/`.
+
+**Device handoff now:** finish any open activity, reopen the same URL, and confirm Preview 3 / `97c559d` under Parent controls. Spend about 3–5 minutes checking games-first/More activities, Back, a wrong/right game response, sound and touch, and Report/return in both iPad orientations. Report feedback through the existing control. This remains synthetic browser-only progress; incomplete tests/games restart, recordings/ink are temporary, and cloud/cross-device/offline operation is not included. Physical speakers, microphone and Pencil quality require the owner's device. Working-preview approval and protected integration/release gates still precede canonical changes.
+
+## Historical update — Integrated Preview 2
 
 Application **`b27098bff6a8a5649250fac9ba7777d173fde66e`** is published at the **same [Grade 5 entry](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/family-beta-preview.html?grade=grade5)**. The channel name retains `v1`, but its served manifest says **Integrated Preview 2**. Expiry is **October 28, 2026, 1:40 p.m. Pacific**. This replaces the preview at that address only, not the live app. No browser records were cleared.
 
@@ -22,7 +47,7 @@ Frozen package and receipts: `family-beta-artifacts/prototypes/grade5-spirit-bos
 
 **Owner check now:** reopen this same link on iPad; try the three Final Boss cards, Back, a Spirit Realm game, sound/touch and Report/return in both orientations (about 3–5 minutes). Keep feedback in Report a problem. This remains synthetic browser-only progress; incomplete games/tests restart, ink/recordings are temporary, and cloud/cross-device/offline operation is not included. Physical speaker/microphone/Pencil quality still requires a real-device check. Working-preview acceptance remains required before canonical integration.
 
-## Original integrated scope (retained in Preview 2)
+## Original integrated scope (retained in Preview 3)
 
 - Enter the Dojo, Practice your Ninja Skills and Final Boss use the same approved page-2 targets: 或者、了解、完、兴奋的、告诉、沟通、快速地、有意思.
 - Both reading and writing assess complete words. Return to Dojo continues the native child-owned teaching position.
@@ -36,7 +61,7 @@ Frozen package and receipts: `family-beta-artifacts/prototypes/grade5-spirit-bos
 
 The explicit owner-approved PDF source is distinct from Google Slides. Its snapshot includes the unchanged baseline Slides payload plus the exact approved page-2 data and a checksum of the combined payload. Historical lessons remain available. The assessment activates October 19. Reading and writing retain separate progress identities for the same eight words.
 
-Only the opt-in Grade 5 presentation package accepts this source. No teacher document, real-family record, security setting, canonical website or earlier preview is changed. The Grade 5 site uses synthetic test learners and browser-local progress. Incomplete tests/games restart; ink and recordings remain temporary. Cloud/cross-device sync and installed offline operation are outside this preview.
+Only the opt-in Grade 5 presentation package accepts this source. No teacher document, real-family record, security setting, canonical website or other preview site is changed. The existing Grade 5 URL is updated in place. The Grade 5 site uses synthetic test learners and browser-local progress. Incomplete tests/games restart; ink and recordings remain temporary. Cloud/cross-device sync and installed offline operation are outside this preview.
 
 ## Historical Preview 1 verification and publication
 

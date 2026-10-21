@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — approve the audited Grade 5 preview, October 21
+
+**`97c559d` / Integrated Preview 3** is published and byte-verified at the same single Grade 5 URL. Ninja Skills puts all five games first and nests the four test/Return to Dojo activities under More activities. All 45 local game journeys pass across the three activity areas and three browser layouts, with no confirmed new application defect. Teaching/scoring/saving are unchanged.
+
+**All 20 hosted interaction checks pass and the owner email is confirmed SENT. Next: one bounded 3–5 minute physical-iPad check** of games-first/More activities, Back, a wrong/right game response, real sound/touch and Report/return in both orientations. Use only the current verified URL/build in STATUS, not a collection of older previews. Working-preview approval and existing compatibility/release gates still precede canonical integration. Kindergarten and Grade 2 stay paused; cloud/cross-device/offline acceptance remains separate.
+
+Model routing remains **Astra · Extra High** for behavior/persistence review, **Sol · High** for the confirmed menu/publication stage, **Luna · Medium** for routine status documentation. No model switch is claimed. Earlier queue entries are historical or deferred.
+
 ## Current priority — approve the updated single Grade 5 preview, October 21
 
 **`b27098b` / Integrated Preview 2** updates the existing single Grade 5 URL in place. Spirit Realm now directly launches the five mastered-word games; Final Boss nests Boss Test, Boss Games and Need more training? as requested. Current assessment content, native teaching, saved records and all other websites remain unchanged. Verified URL, expiry, regression receipts and confirmed SENT email are at the top of STATUS; do not send a collection of earlier links.

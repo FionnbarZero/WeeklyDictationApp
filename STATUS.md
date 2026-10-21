@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current handoff — Grade 5 games-first menu and all-game audit, October 21
+
+**Integrated Preview 3 · application `97c559d`** is published and byte-verified at the **same [single Grade 5 link](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/family-beta-preview.html?grade=grade5)**, expiring **October 28, 2026 at 2:10 p.m. Pacific**. Ninja Skills shows the five games first, with both tests and both Return to Dojo routes under **More activities**. Preview 2's nested Final Boss and direct mastered games remain. Teaching, game logic, eight-word content, scoring and existing browser records are unchanged.
+
+**Audit:** independent runtime/content/scoring reviews found no confirmed actionable application defect. **1,197 units**, quality/build/performance gates, **43 broader regression scenarios** after documented harness corrections, and **45 full game journeys** pass on the frozen package. The game journeys cover five games × Ninja Skills/Boss Games/Spirit Realm × desktop/portrait/landscape; the separate full progressed-writing case is desktop-only. Details and failed-check closure are in [the preview record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/grade5-integrated-presentation-preview.md). No zero-bug or physical-device guarantee is claimed.
+
+All **184 public files / 1,104 headers** match; fifteen other channel releases/expiries and canonical `9d06a02` are unchanged. Hosting version `884fef4f12263688`; tree `1ca169875a613216d9379566ff5dd6ab2ded409699e047e05530e8787b2a04b8`. **All 20 final hosted desktop/portrait cases pass. Email confirmed SENT**, metadata readback `1a1604fc3f06af56`.
+
+**Next: 3–5 minute iPad check.** Finish any open activity, reopen this same link and confirm Preview 3 / `97c559d` in Parent controls. Check More activities/Back, a wrong/right game response, real sound/touch, and Report/return in both orientations. This is an isolated preview, not live integration; Kindergarten/Grade 2 stay paused. Browser-only synthetic progress, no cloud/cross-device/offline acceptance; incomplete tests/games restart and media remain temporary.
+
 ## Current handoff — Grade 5 Spirit Realm and nested Final Boss, October 21
 
 **Integrated Preview 2 · application `b27098b`** is published, verified and emailed at the **same [single Grade 5 link](https://weekly-dictation-staging--grade5-integrated-oct21-v1-rcmw14ca.web.app/family-beta-preview.html?grade=grade5)**, now expiring **October 28, 2026 at 1:40 p.m. Pacific**. The URL's channel name retains v1; its served manifest is Preview 2. Spirit Realm opens five mastered-word games directly, without mastery warmups or writing/reading game groups. Final Boss now nests **Boss Test → two tests**, **Boss Games → five assessment games**, and **Need more training? → both Return to Dojo routes** beneath them. Approved teaching, eight assessment words and existing browser records are retained.
