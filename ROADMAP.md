@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — approve the updated single Grade 5 preview, October 21
+
+**`b27098b` / Integrated Preview 2** updates the existing single Grade 5 URL in place. Spirit Realm now directly launches the five mastered-word games; Final Boss nests Boss Test, Boss Games and Need more training? as requested. Current assessment content, native teaching, saved records and all other websites remain unchanged. Verified URL, expiry, regression receipts and confirmed SENT email are at the top of STATUS; do not send a collection of earlier links.
+
+**Next: one bounded 3–5 minute physical-iPad working-preview check**, then address this Grade 5 feedback. Review nested navigation/back/report, a mastered game, real sound and touch. Historical mastered games include labeled generated language support; the approved assessment sentences are unchanged. No live integration is claimed. Kindergarten and Grade 2 remain paused. Canonical work still requires working-preview acceptance and existing compatibility/release gates; browser-only testing is not authenticated cloud/offline acceptance.
+
+Model recommendations remain **Astra · Extra High** for behavior/persistence, **Sol · High** for bounded publication, **Luna · Medium** for routine documentation. No model switch is claimed. Earlier queue entries are historical or deferred, not authority to restart other grades.
+
 ## Current priority — Grade 5 only for tonight, October 21
 
 The owner explicitly paused the combined Kindergarten/Grade 2/Grade 5 effort. Focus only on the one integrated Grade 5 presentation preview. **`b61c8f5` / Integrated Preview 1** is published, verified and emailed; the single entry link, expiry and passing evidence are at the top of STATUS. Do not send a collection of earlier preview links or present an old separate assessment page as the integrated main flow.
