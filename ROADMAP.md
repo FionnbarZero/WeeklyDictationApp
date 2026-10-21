@@ -2,7 +2,7 @@
 
 ## Current action — compact toolbar prototype check, October 21
 
-The owner asked to make the adult/test area much smaller and authorized proceeding and delivery of the links. **`284dea0` / Compact parent toolbar Prototype 1** is separately published and verified for Kindergarten, Grade 2 and Grade 5, with a 44px top row and setup/report-email options inside Parent controls. Exact links, October 28 expiry, passing checks and confirmed SENT receipt are at the top of STATUS. The layout implementation and bounded publication followed the recommended **Sol · High** routing; no model switch is claimed.
+The owner asked to make the adult/test area much smaller and authorized proceeding and delivery of the links. **`284dea0` / Compact parent toolbar Prototype 1** is separately published and verified for Kindergarten, Grade 2 and Grade 5, with a 44px top row and setup/report-email options inside Parent controls. Exact links, October 28 expiry, passing checks and confirmed SENT receipt are at the top of STATUS. The model recommendation was **Sol · High**; the owner authorized proceeding, and no chat-model switch is claimed.
 
 **Next: 2–3 minute iPad working-layout check**, then the previously pending interaction approvals and regular-app compatibility/integration/release gates. The child’s teaching and acquisition behavior is unchanged. This prototype contains the reviewed Grade 5 repairs and shared K/Grade 2 fixes; it does not change canonical or any older preview. Keep browser progress and reports on their existing origins. Earlier handoffs below remain historical for this UI scope. [Exact scope and evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-parent-toolbar-preview.md).
 
