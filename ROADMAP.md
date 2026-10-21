@@ -1,6 +1,14 @@
 # Weekly Dictation roadmap
 
+## Current action — compact toolbar prototype check, October 21
+
+The owner asked to make the adult/test area much smaller and authorized proceeding and delivery of the links. **`284dea0` / Compact parent toolbar Prototype 1** is separately published and verified for Kindergarten, Grade 2 and Grade 5, with a 44px top row and setup/report-email options inside Parent controls. Exact links, October 28 expiry, passing checks and confirmed SENT receipt are at the top of STATUS. The layout implementation and bounded publication followed the recommended **Sol · High** routing; no model switch is claimed.
+
+**Next: 2–3 minute iPad working-layout check**, then the previously pending interaction approvals and regular-app compatibility/integration/release gates. The child’s teaching and acquisition behavior is unchanged. This prototype contains the reviewed Grade 5 repairs and shared K/Grade 2 fixes; it does not change canonical or any older preview. Keep browser progress and reports on their existing origins. Earlier handoffs below remain historical for this UI scope. [Exact scope and evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-parent-toolbar-preview.md).
+
 ## Current action — owner check of Grade 5 repair prototype, October 21
+
+**Requested final regression audit completed:** 50 additional hosted checks pass on unchanged `13f6c30` (46 cross-grade compatibility and four Grade 5 reading completion/recovery), with no new confirmed application regression. Exact identities and the initial test-setting correction are recorded in STATUS and the prototype record. No application edit or publication followed the audit; the next gate remains physical-iPad prototype approval, not a new implementation stage.
 
 Owner-confirmed **GPT-6 Astra · Extra High** implementation/review is complete for isolated **`13f6c30` / Grade 5 repair Prototype 2**. The verified regular-activity and approved eight-word links, expiry and SENT email receipt are at the top of STATUS. All applicable original reports are mapped; independent reading-adapter findings are repaired. Sixty-six local and 20 hosted browser checks pass, without changing native teaching rules or real-family records.
 
