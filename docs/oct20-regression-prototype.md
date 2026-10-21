@@ -1,5 +1,23 @@
 # October 20 regression repair prototype
 
+## Prototype 2 — verified publication and replacement handoff
+
+Application `6d6308756e022453b620ee3808e97d9a75656bf3` is hosted at **https://weekly-dictation-staging--regressions-oct20-v2-v7fxtyz7.web.app**, with `/family-beta-preview.html?grade=kindergarten` and `?grade=grade2` entries. Exact tree: `92773f6e94433d6f7387165897481ced9be5d1a53e34dcc93e428ccb47ae0ee7`. Preview version `44b83dfaffcf1c46`, expiry `2026-10-28T06:11:27.291584967Z` (October 27, 11:11 p.m. Pacific). Later `2c1d2a5` only strengthens tests; the hosted application/package was not rebuilt. Gmail SENT was read back for `1a15d19939fc0449`.
+
+Narrow independent review cleared the visit-ownership and legacy-week fixes, including independent scored-completion diagnostics. Those scored cases are now permanent tests. Test review caught the loss of direct-Exit cleanup coverage when adding advancement; the final test records a second unsubmitted clip, checks unchanged confirmed progress, and verifies all recorded URLs revoked and players unloaded. Final runtime evidence: 1,174 units; type/lint/format/production/performance; 92 cases (23 scenarios × four viewports); eight final native-media cases; 26 hosted desktop/portrait cases. No failed application cases in the repair matrix or hosted run. Physical device speech, microphone/Pencil and model-relative loudness remain unverified.
+
+All 182 public files and 1,092 configured headers match the frozen package. Twelve prior channel release objects/expiries and canonical `9d06a02` remain unchanged. The first provider-comparison receipt falsely reported differences because JSON object key order varied; a retained recursive key-normalized comparison proves every release value and expiry unchanged. Both receipts are retained, not conflated. No second upload, record reset, security relaxation or canonical release.
+
+Evidence: `family-beta-artifacts/prototypes/oct20-regressions-6d63087/` contains the frozen package, old failure evidence, focused/matrix/media/hosted results, independent review, deployment receipt and hosted/provider verification. The bounded 8–12 minute owner checklist and limitations are in current STATUS and the verified email. Only after working-prototype approval may canonical integration begin. The audit and Prototype 1 publication sections below are historical.
+
+## Audit supersedes the Prototype 1 handoff
+
+The owner-requested fresh audit withdrew the `e5657ca` ready-to-test recommendation and prior independent clearance. Confirmed defects: delayed Done can close a reopened Whispering Scrolls/Stroke Order Slay visit; queued answers can write after Exit; an old Shuriken checkpoint changes the teacher week despite starting a fresh game. The old checkpoint-absence assertion matched the wrong namespace. The prior 48 cases were twelve scenarios at four viewports, not 48 independent behaviors or physical-device acceptance.
+
+Repair candidate `6d63087` is local and under verification. New real-browser-lock cases failed against the old application for both activities and both answer/completion paths. The first legacy fixture run failed validation because its test timestamp omitted ISO milliseconds; after correcting that test data, the valid checkpoint exposed the old Resume route. All failure evidence is retained separately from passing repair runs. The new checkpoint detector includes a valid legacy checkpoint as a negative control, and repeated Shuriken input now clears two complete pairs.
+
+No physical audio or exact loudness matching is established. Bounded quiet-recording gain is not model-relative normalization. No canonical release, record reset or automatic whole-app integration is authorized by passing prototype tests. The publication/ready statements below describe the superseded Prototype 1 handoff only.
+
 ## Scope and authority
 
 Owner requested completion of the new problem reports with automatic review and no intermediate approval questions, followed by a new working prototype. Implementation and independent review use the roadmap's Astra / Extra High assignment. This is an isolated preview, **not approval to replace the live app**.
