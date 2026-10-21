@@ -4,15 +4,16 @@ import { APP_VERSION } from '../releaseMetadata.ts'
 import {
   captureScreenContext,
   exportProblemReports,
-  problemReportsEmailUrl,
-  readProblemReports,
-  REPORT_CATEGORIES,
-  saveProblemReport,
   type ProblemReport,
+  problemReportsEmailUrl,
+  REPORT_CATEGORIES,
   type ReportCategory,
+  readProblemReports,
+  saveProblemReport,
 } from './problemReports.ts'
 import './preview.css'
 import { pauseForReport } from '../activity/activityLifecycle.ts'
+import { compactParentPreview as compact } from '../regressionPreview/compactParentPolicy.ts'
 
 export function ProblemReporter({ grade }: { grade?: string }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -42,7 +43,8 @@ export function ProblemReporter({ grade }: { grade?: string }) {
     document.getElementById('problem-reporter-controls') ||
     document.getElementById('problem-reporter-root') ||
     document.body
-  const [launcherHost, setLauncherHost] = useState<HTMLElement>(defaultLauncherHost)
+  const [launcherHost, setLauncherHost] = useState<HTMLElement>(compact ? document.body : defaultLauncherHost)
+  const finishHost = compact ? document.getElementById('compact-parent-report-controls') : null
 
   useEffect(() => {
     const update = () => {
@@ -217,7 +219,7 @@ export function ProblemReporter({ grade }: { grade?: string }) {
   return (
     <>
       {createPortal(
-        <div className="beta-report-launcher-group">
+        <div className={`beta-report-launcher-group${compact ? ' beta-report-launcher-group--compact' : ''}`}>
           <button
             className="beta-report-launcher"
             ref={launcher}
@@ -229,12 +231,22 @@ export function ProblemReporter({ grade }: { grade?: string }) {
           >
             Report a problem
           </button>
-          <button className="beta-report-finish" onClick={finish}>
-            Finish session &amp; email reports
-          </button>
+          {!compact && (
+            <button className="beta-report-finish" onClick={finish}>
+              Finish session &amp; email reports
+            </button>
+          )}
         </div>,
         launcherHost,
       )}
+      {compact &&
+        finishHost &&
+        createPortal(
+          <button className="beta-report-finish" onClick={finish}>
+            Finish session &amp; email reports
+          </button>,
+          finishHost,
+        )}
       {createPortal(
         <dialog
           className="beta-report-dialog"

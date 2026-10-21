@@ -6,7 +6,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const grade5Repairs = process.argv.includes('--grade5-repairs')
+const compactParents = process.argv.includes('--compact-parent-controls')
+const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs')
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
@@ -14,13 +15,15 @@ const out = resolve(
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = grade5Repairs
-  ? 'Grade 5 regression repairs / Prototype 2'
-  : regressions
-    ? 'October 20 regression repairs / Prototype 3'
-    : octoberResources
-      ? 'Kindergarten October 19 resources / Prototype 1'
-      : 'Writing reliability / Prototype 2'
+const prototype = compactParents
+  ? 'Compact parent toolbar / Prototype 1'
+  : grade5Repairs
+    ? 'Grade 5 regression repairs / Prototype 2'
+    : regressions
+      ? 'October 20 regression repairs / Prototype 3'
+      : octoberResources
+        ? 'Kindergarten October 19 resources / Prototype 1'
+        : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -58,6 +61,7 @@ execFileSync(
       VITE_GIT_REVISION: revision,
       VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),
       VITE_GRADE5_REPAIR_PREVIEW: String(grade5Repairs),
+      VITE_COMPACT_PARENT_PREVIEW: String(compactParents),
     },
   },
 )
@@ -95,13 +99,14 @@ for (const [slug] of grades) {
   )
 }
 const entry = resolve(out, 'family-beta-preview.html')
-writeFileSync(
-  entry,
-  readFileSync(entry, 'utf8').replace(
-    /(<body\b[^>]*>)/,
-    `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">${bannerLabel} · ${revision.slice(0, 7)} · ${description} · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
-  ),
-)
+if (!compactParents)
+  writeFileSync(
+    entry,
+    readFileSync(entry, 'utf8').replace(
+      /(<body\b[^>]*>)/,
+      `$1\n<style>body:has(.beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .dojo-prototype-note { display:none }</style><aside class="dojo-prototype-note" role="note" style="padding:12px;text-align:center;background:#fff2cc;color:#332800;font:600 16px system-ui">${bannerLabel} · ${revision.slice(0, 7)} · ${description} · Test learners only · Browser-only progress; no account or cloud saving</aside>`,
+    ),
+  )
 const files = artifactFileRecords(out).filter((file) => file.path !== 'dojo-launch-manifest.json')
 writeFileSync(
   resolve(out, 'dojo-launch-manifest.json'),

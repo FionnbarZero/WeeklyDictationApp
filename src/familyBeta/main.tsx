@@ -1,31 +1,23 @@
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ProblemReporter } from './ProblemReporter.tsx'
-import { AudioCheck } from './AudioCheck.tsx'
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppErrorBoundary } from '../AppErrorBoundary.tsx'
-import { firebaseConfigReady, DEFAULT_SCHOOL_YEAR } from '../config.ts'
-import { subscribeAuth, signIn, signOut, type AuthState } from '../firebaseClient.ts'
+import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
+import { DEFAULT_SCHOOL_YEAR, firebaseConfigReady } from '../config.ts'
+import { localDateKey } from '../domain.ts'
+import { type AuthState, signIn, signOut, subscribeAuth } from '../firebaseClient.ts'
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
-import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
-import { BETA_GRADES, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
-import { ResultHistory } from './ResultHistory.tsx'
-import { assertSavedAttemptsMatch } from './resultHistory.ts'
-import { PROFILE_KEY, RESULT_KEY, acknowledgeResult, pendingResults, previewResults } from './runtime.ts'
-import { familyResultRepository } from './cloud.ts'
-import { deviceExport } from './deviceExport.ts'
-import { familyDeviceSyncRepository, PracticeSyncConflictError } from './deviceSync.ts'
-import { syncCompletedBeforePractice } from './syncProgress.ts'
-import { assertResultCopiesMatch } from './resultLedger.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
-import { latestEarlierTargets, reinforcementGames, resumableGameCheckpoints } from './gamePools.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
+import { AudioCheck } from './AudioCheck.tsx'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
-import type { FamilyGameWindow } from './gameOwner.ts'
+import { familyResultRepository } from './cloud.ts'
+import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
+import { deviceExport } from './deviceExport.ts'
+import { familyDeviceSyncRepository, PracticeSyncConflictError } from './deviceSync.ts'
 import { deviceWriter } from './deviceWriter.ts'
-import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
-import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
-import { localDateKey } from '../domain.ts'
+import type { FamilyGameWindow } from './gameOwner.ts'
+import { latestEarlierTargets, reinforcementGames, resumableGameCheckpoints } from './gamePools.ts'
 import {
   cacheLessonSource,
   discardSavedLesson,
@@ -33,6 +25,7 @@ import {
   readSavedLesson,
   type SavedLessonLaunch,
 } from './lessonLaunch.ts'
+import { BETA_GRADES, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import {
   isConnectionFailure,
   isFamilyAccessDenied,
@@ -40,10 +33,21 @@ import {
   readOfflineFamily,
   rememberOfflineFamily,
 } from './offlineFamily.ts'
+import { ProblemReporter } from './ProblemReporter.tsx'
+import { ResultHistory } from './ResultHistory.tsx'
+import { assertSavedAttemptsMatch } from './resultHistory.ts'
+import { assertResultCopiesMatch } from './resultLedger.ts'
+import { acknowledgeResult, PROFILE_KEY, pendingResults, previewResults, RESULT_KEY } from './runtime.ts'
+import { syncCompletedBeforePractice } from './syncProgress.ts'
+import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import '../styles.css'
 import './preview.css'
-import { regressionPreview } from '../regressionPreview/policy.ts'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
+import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
+import { regressionPreview } from '../regressionPreview/policy.ts'
+import { PreviewParentTools } from './PreviewParentTools.tsx'
+
+const ParentTools = compactParentPreview ? PreviewParentTools : Fragment
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
 const routes: Record<BetaGrade, string> = {
@@ -773,7 +777,7 @@ function FamilyPreview() {
     )
   return (
     <div
-      className="beta-workspace"
+      className={`beta-workspace${compactParentPreview ? ' beta-workspace--compact' : ''}`}
       data-report-grade={currentGrade}
       data-report-screen={tab}
       data-report-week={dataset?.startDate || week || 'unavailable'}
@@ -782,144 +786,165 @@ function FamilyPreview() {
       data-report-mode={familyId ? 'account' : 'device-preview'}
       data-report-revision={import.meta.env.VITE_GIT_REVISION || 'local'}
     >
-      <header className="beta-toolbar">
-        <strong>
-          {import.meta.env.MODE === 'writing-pilot'
-            ? grade5RepairPreview
-              ? 'Grade 5 repair prototype'
-              : 'Grade 2 writing pilot · Unpublished'
-            : 'Ninja Dojo · Family beta'}
-        </strong>
-        <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
-        <label>
-          Practicing as{' '}
-          <select
-            aria-label="Child profile"
-            value={child?.id || ''}
-            onChange={(e) => {
-              setSelectedId(e.target.value)
-              setWeek('')
-              setResumingId(null)
-            }}
-          >
-            {profiles
-              .filter((p) => p.active)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nickname} · {p.grade}
+      <ParentTools {...(compactParentPreview ? { grade: currentGrade, page: tab } : {})}>
+        <header className="beta-toolbar">
+          <strong>
+            {import.meta.env.MODE === 'writing-pilot'
+              ? grade5RepairPreview
+                ? 'Grade 5 repair prototype'
+                : 'Grade 2 writing pilot · Unpublished'
+              : 'Ninja Dojo · Family beta'}
+          </strong>
+          <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
+          <label>
+            Practicing as{' '}
+            <select
+              aria-label="Child profile"
+              value={child?.id || ''}
+              onChange={(e) => {
+                setSelectedId(e.target.value)
+                setWeek('')
+                setResumingId(null)
+              }}
+            >
+              {profiles
+                .filter((p) => p.active)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nickname} · {p.grade}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {regressionPreview && tab !== 'activities' && (
+            <button onClick={() => setTab('activities')}>Back to activities</button>
+          )}
+          <button onClick={() => setTab('parent')}>
+            {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
+          </button>
+          <AudioCheck />
+          {grade5RepairPreview && child?.grade === 'Grade 5' && (
+            <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
+          )}
+        </header>
+        {!regressionPreview && (
+          <div className="beta-status" role="status">
+            {status}
+          </div>
+        )}
+        {!compactParentPreview && error && (
+          <div className="error-banner" role="alert">
+            {error} <button onClick={() => void refreshProgress()}>Retry saving</button>
+          </div>
+        )}
+        {!compactParentPreview && activityError && (
+          <div className="error-banner" role="alert">
+            {activityError}
+          </div>
+        )}
+        {!compactParentPreview && curriculumError && (
+          <div className="error-banner" role="alert">
+            {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
+          </div>
+        )}
+        {!regressionPreview && (
+          <nav className="beta-tabs" aria-label="Family preview navigation">
+            {(['activities', 'games', 'progress'] as const).map((t) => (
+              <button
+                key={t}
+                aria-current={tab === t ? 'page' : undefined}
+                onClick={() => {
+                  setTab(t)
+                  if (t === 'progress') void refreshProgress()
+                }}
+              >
+                {t === 'games' ? 'Ninja Skills' : t === 'activities' ? 'Activities' : 'Progress'}
+              </button>
+            ))}
+          </nav>
+        )}
+        {familyId && child && !readyChildren.has(child.id) && (
+          <section className="beta-panel" role="status">
+            <p>
+              Checking this child’s saved practice before opening activities. Existing device records are preserved.
+            </p>
+            <button type="button" onClick={() => void refreshProgress()}>
+              Retry family sync
+            </button>
+          </section>
+        )}
+        {child && practiceReady && (tab === 'activities' || tab === 'games') && (
+          <label className="beta-week">
+            Practice week{' '}
+            <select
+              aria-label="Practice week"
+              value={week}
+              onChange={(e) => {
+                setWeek(e.target.value)
+                setResumingId(null)
+              }}
+            >
+              <option value="">Current teacher lesson</option>
+              {available.map((d) => (
+                <option key={d.id} value={d.startDate}>
+                  {d.dateRange}
                 </option>
               ))}
-          </select>
-        </label>
-        {regressionPreview && tab !== 'activities' && (
-          <button onClick={() => setTab('activities')}>Back to activities</button>
+            </select>
+          </label>
         )}
-        <button onClick={() => setTab('parent')}>Parent controls</button>
-        <AudioCheck />
-        {grade5RepairPreview && child?.grade === 'Grade 5' && (
-          <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
+        {child && practiceReady && tab === 'activities' && (
+          <details
+            className="beta-panel"
+            open={savedLessonsOpen}
+            onToggle={(e) => setSavedLessonsOpen(e.currentTarget.open)}
+          >
+            <summary>Saved lessons</summary>
+            <p>
+              Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved;
+              repeat unfinished handwriting or recordings.
+            </p>
+            {savedLessons.owner === child.id &&
+              savedLessons.warnings.map((warning) => (
+                <p role="alert" key={warning}>
+                  {warning}
+                </p>
+              ))}
+            {savedLessons.owner === child.id &&
+              savedLessons.lessons.map((lesson) => (
+                <button
+                  key={`${lesson.progressionId}:${lesson.lessonFingerprint}`}
+                  onClick={() => void resumeSavedLesson(lesson)}
+                >
+                  Resume saved{' '}
+                  {lesson.experience === 'whispering-scrolls'
+                    ? 'Whispering Scrolls'
+                    : lesson.experience === 'stroke-order-slay'
+                      ? 'Stroke Order Slay'
+                      : lesson.channel}{' '}
+                  · {lesson.week}
+                </button>
+              ))}
+            {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && (
+              <p>No saved lessons are available yet.</p>
+            )}
+          </details>
         )}
-      </header>
-      {!regressionPreview && (
-        <div className="beta-status" role="status">
-          {status}
-        </div>
-      )}
-      {error && (
+      </ParentTools>
+      {compactParentPreview && error && (
         <div className="error-banner" role="alert">
           {error} <button onClick={() => void refreshProgress()}>Retry saving</button>
         </div>
       )}
-      {activityError && (
+      {compactParentPreview && activityError && (
         <div className="error-banner" role="alert">
           {activityError}
         </div>
       )}
-      {curriculumError && (
+      {compactParentPreview && curriculumError && (
         <div className="error-banner" role="alert">
           {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
         </div>
-      )}
-      {!regressionPreview && (
-        <nav className="beta-tabs" aria-label="Family preview navigation">
-          {(['activities', 'games', 'progress'] as const).map((t) => (
-            <button
-              key={t}
-              aria-current={tab === t ? 'page' : undefined}
-              onClick={() => {
-                setTab(t)
-                if (t === 'progress') void refreshProgress()
-              }}
-            >
-              {t === 'games' ? 'Ninja Skills' : t === 'activities' ? 'Activities' : 'Progress'}
-            </button>
-          ))}
-        </nav>
-      )}
-      {familyId && child && !readyChildren.has(child.id) && (
-        <section className="beta-panel" role="status">
-          <p>Checking this child’s saved practice before opening activities. Existing device records are preserved.</p>
-          <button type="button" onClick={() => void refreshProgress()}>
-            Retry family sync
-          </button>
-        </section>
-      )}
-      {child && practiceReady && (tab === 'activities' || tab === 'games') && (
-        <label className="beta-week">
-          Practice week{' '}
-          <select
-            aria-label="Practice week"
-            value={week}
-            onChange={(e) => {
-              setWeek(e.target.value)
-              setResumingId(null)
-            }}
-          >
-            <option value="">Current teacher lesson</option>
-            {available.map((d) => (
-              <option key={d.id} value={d.startDate}>
-                {d.dateRange}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {child && practiceReady && tab === 'activities' && (
-        <details
-          className="beta-panel"
-          open={savedLessonsOpen}
-          onToggle={(e) => setSavedLessonsOpen(e.currentTarget.open)}
-        >
-          <summary>Saved lessons</summary>
-          <p>
-            Resume the original lesson even when the teacher’s document changes. Only reviewed progress is saved; repeat
-            unfinished handwriting or recordings.
-          </p>
-          {savedLessons.owner === child.id &&
-            savedLessons.warnings.map((warning) => (
-              <p role="alert" key={warning}>
-                {warning}
-              </p>
-            ))}
-          {savedLessons.owner === child.id &&
-            savedLessons.lessons.map((lesson) => (
-              <button
-                key={`${lesson.progressionId}:${lesson.lessonFingerprint}`}
-                onClick={() => void resumeSavedLesson(lesson)}
-              >
-                Resume saved{' '}
-                {lesson.experience === 'whispering-scrolls'
-                  ? 'Whispering Scrolls'
-                  : lesson.experience === 'stroke-order-slay'
-                    ? 'Stroke Order Slay'
-                    : lesson.channel}{' '}
-                · {lesson.week}
-              </button>
-            ))}
-          {savedLessons.owner === child.id && !savedLessons.lessons.length && !savedLessons.warnings.length && (
-            <p>No saved lessons are available yet.</p>
-          )}
-        </details>
       )}
       {resumeSlot && (
         <section className="beta-panel" role="status">
