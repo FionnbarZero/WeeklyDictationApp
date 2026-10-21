@@ -1,5 +1,14 @@
 # Weekly Dictation roadmap
 
+## Current action — owner check of Grade 5 repair prototype, October 21
+
+Owner-confirmed **GPT-6 Astra · Extra High** implementation/review is complete for isolated **`13f6c30` / Grade 5 repair Prototype 2**. The verified regular-activity and approved eight-word links, expiry and SENT email receipt are at the top of STATUS. All applicable original reports are mapped; independent reading-adapter findings are repaired. Sixty-six local and 20 hosted browser checks pass, without changing native teaching rules or real-family records.
+
+**Next: 10–15 minute physical-iPad working-prototype check and approval.** Check real audio/recording volume, finger/Pencil and scrolling in both orientations, reading/writing resume, repeated games, editable Report and direct Exit. Browser-only test saving is not cloud/offline acceptance. Keep the original sites and all records intact. Do not present this as canonical or imply the ordinary importer now contains the PDF list.
+
+After approval, preserve this frozen reference, reconcile current main and complete scoped independent integration, saved-progress/old-client compatibility, authenticated offline/cross-device/recovery and protected release gates. Kindergarten/Grade 2 prototype approval and deferred correction/target editing/card cleanup remain separate. Bounded publication recommendation remains **Sol · High**, routine documentation **Luna · Medium**; no model switch is claimed. [Grade 5 scope and verified handoff](./docs/grade5-regression-repairs-2026-10-21.md). Earlier Grade 5 next-action entries below are historical.
+
+
 ## Current action — owner test of the Grade 5 shared-target prototype
 
 The owner requested automatic completion/review of this prototype stage and email delivery. **[10/19 – Fifth Grade Ninja Dojo, Prototype 1 / `c3a5c0e`](https://weekly-dictation-staging--grade5-oct23-v1-tyb8tom9.web.app/)** is now separately published, verified and emailed (SENT `1a153406a07e234d`), expiring **October 26, 2026 at 1:19 a.m. Pacific**. Exact source/test identities, failed-check closure and hosted evidence are at the top of STATUS.

@@ -1,5 +1,14 @@
 # Weekly Dictation status
 
+## Current handoff — Grade 5 repair prototype, October 21
+
+**Grade 5 regression repairs / Prototype 2, application `13f6c30`**, is published, verified and emailed: [regular activities](https://weekly-dictation-staging--grade5-repairs-oct21-v1-6n48b1zs.web.app/family-beta-preview.html?grade=grade5) · [approved eight-word practice/tests](https://weekly-dictation-staging--grade5-repairs-oct21-v1-6n48b1zs.web.app/grade5-oct23-preview.html). Expires **October 28, 2026, 12:29 a.m. Pacific**. These are linked areas of one isolated website, not canonical; ordinary retained curriculum is not silently replaced by PDF targets.
+
+All 15 original reports are mapped (Lily Pads is Kindergarten-only). Applicable Grade 5 reading recovery/temporary gain, Warmup/teacher sizing, Report, game input/audio and direct Exit repairs are included. Approved eight-word reading now resumes confirmed browser progress. Independent review found and rechecked two new reading-adapter defects (stale Done and failed initialization); no findings remain. **1,180 units, type/lint/format/build/performance, 66 local browser cases and 20 hosted activity/navigation cases pass.** All **185 files / 1,110 headers** match; 14 prior previews and canonical `9d06a02` are unchanged. Gmail **SENT** readback: `1a15d611401a6840`.
+
+**Next: 10–15 minute owner physical-iPad check**, build `13f6c30`: audio/recording, finger/Pencil, both orientations and scrolling, reading/writing Exit/reopen, repeated games and Report typing. Browser-only synthetic progress; no cloud/cross-device/offline acceptance, exact voice-volume matching or live integration is claimed. Do not clear records/browser data. [Exact scope, review failures/closure, package identity and release evidence](./docs/grade5-regression-repairs-2026-10-21.md). Application source is `13f6c3038793ab7f49d21d8b4df88397db2cd61a`; later documentation commits do not change the hosted build. Earlier Grade 5 audit/software-open statements are superseded only for this isolated prototype; physical acceptance and regular-app release gates remain.
+
+
 ## Current handoff — Grade 5 assessment prototype published and emailed, October 19
 
 **10/19 – Fifth Grade Ninja Dojo · Prototype 1 · application build `c3a5c0e`** is ready for a bounded owner iPad check: [Practice Your Ninja Skills](https://weekly-dictation-staging--grade5-oct23-v1-tyb8tom9.web.app/#ninja-skills) and [Final Boss Test](https://weekly-dictation-staging--grade5-oct23-v1-tyb8tom9.web.app/#final-boss). These are two sections of the same isolated Grade 5 website, expiring **October 26, 2026, 1:19 a.m. Pacific**. Gmail confirms **SENT**, message/thread `1a153406a07e234d`, to the previously confirmed owner address with build, expiry, limitations and a 10–15 minute checklist.
