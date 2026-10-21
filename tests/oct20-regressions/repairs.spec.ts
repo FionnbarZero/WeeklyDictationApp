@@ -269,9 +269,9 @@ test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer
   expect(
     await first.locator('span').evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
   ).toBeGreaterThanOrEqual(40)
-  await page.screenshot({ path: test.info().outputPath('grade2-shuriken.png'), fullPage: true })
   // Public teacher vocabulary: Mandarin/English, never synthetic lesson edits.
   await first.click()
+  await page.screenshot({ path: test.info().outputPath('grade2-shuriken.png'), fullPage: true })
   await cards.filter({ hasText: /^hero$/i }).click()
   await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('1 targets cleared')
   const active = frame.locator('.lg-word-seal:not(:disabled)')

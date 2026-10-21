@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react'
 import './surface.css'
-import '../regressionPreview/styles.css'
 import type {
   LearningModuleAttempt,
   LearningModulePack,
