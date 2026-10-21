@@ -280,26 +280,30 @@ for (const grade of ['kindergarten', 'grade5'])
     })
   }
 
-test('Grade 2 Shuriken accepts multiple pairs and does not checkpoint each timer tick', async ({ page }) => {
-  const frame = await launch(page, 'grade2', /Practice your Ninja Skills/, 'Shuriken Match')
-  const cards = frame.locator('.lg-word-seal')
-  await expect(cards.first()).toBeVisible()
-  const first = cards.filter({ hasText: /^英雄$/ })
-  expect(
-    await first.locator('span').evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
-  ).toBeGreaterThanOrEqual(40)
-  // Public teacher vocabulary: Mandarin/English, never synthetic lesson edits.
-  await first.click()
-  await page.screenshot({ path: test.info().outputPath('grade2-shuriken.png'), fullPage: true })
-  await cards.filter({ hasText: /^hero$/i }).click()
-  await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('1 targets cleared')
-  await cards.filter({ hasText: /^每个$/ }).click()
-  await cards.filter({ hasText: /^each$/i }).click()
-  await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('2 targets cleared')
-  expect(await gameCheckpoints(page)).toEqual({})
-  await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
-  await expect(frame.getByRole('button', { name: 'Shuriken Match', exact: true })).toBeVisible()
-})
+for (const [grade, word, meaning, secondWord, secondMeaning] of [
+  ['grade2', '英雄', 'hero', '每个', 'each'],
+  ['grade5', '盐', 'salt', '咸', 'salty'],
+])
+  test(`${grade}: Shuriken accepts multiple pairs and does not checkpoint each timer tick`, async ({ page }) => {
+    const frame = await launch(page, grade, /Practice your Ninja Skills/, 'Shuriken Match')
+    const cards = frame.locator('.lg-word-seal')
+    await expect(cards.first()).toBeVisible()
+    const first = cards.filter({ hasText: new RegExp(`^${word}$`) })
+    expect(
+      await first.locator('span').evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+    ).toBeGreaterThanOrEqual(40)
+    // Public teacher vocabulary: Mandarin/English, never synthetic lesson edits.
+    await first.click()
+    await page.screenshot({ path: test.info().outputPath(`${grade}-shuriken.png`), fullPage: true })
+    await cards.filter({ hasText: new RegExp(`^${meaning}$`, 'i') }).click()
+    await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('1 targets cleared')
+    await cards.filter({ hasText: new RegExp(`^${secondWord}$`) }).click()
+    await cards.filter({ hasText: new RegExp(`^${secondMeaning}$`, 'i') }).click()
+    await expect(frame.locator('.lg-shuriken-stat-row')).toContainText('2 targets cleared')
+    expect(await gameCheckpoints(page)).toEqual({})
+    await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Shuriken Match', exact: true })).toBeVisible()
+  })
 
 for (const activity of ['Whispering Scrolls', 'Stroke Order Slay']) {
   for (const action of ['finish', 'scored finish', 'answer']) {
@@ -522,13 +526,16 @@ test('Grade 2 reading recovers on the reported 雨林 expanded target and reache
   expect(await stored(page)).toEqual(before)
 })
 
-test('Final Boss exits directly, frees the temporary visit and returns to its test menu', async ({ page }) => {
-  const frame = await launch(page, 'kindergarten', /The Final Boss Test/, 'Reading Test')
-  await expect(frame.getByRole('button', { name: 'Pause and return', exact: true })).toBeHidden()
-  await frame.getByRole('button', { name: 'Exit without saving', exact: true }).click()
-  await expect(frame.getByRole('button', { name: 'Reading Test', exact: true })).toBeVisible()
-  await expect(frame.getByRole('heading', { name: 'Exit without saving?', exact: true })).toBeHidden()
-})
+for (const grade of ['kindergarten', 'grade5'])
+  test(`${grade}: Final Boss exits directly, frees the temporary visit and returns to its test menu`, async ({
+    page,
+  }) => {
+    const frame = await launch(page, grade, /The Final Boss Test/, 'Reading Test')
+    await expect(frame.getByRole('button', { name: 'Pause and return', exact: true })).toBeHidden()
+    await frame.getByRole('button', { name: 'Exit without saving', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Reading Test', exact: true })).toBeVisible()
+    await expect(frame.getByRole('heading', { name: 'Exit without saving?', exact: true })).toBeHidden()
+  })
 
 test('Lily Pads completed game survives a failed save and retries exactly one result', async ({ page }) => {
   const errors: string[] = []
