@@ -65,7 +65,10 @@ const initialProfiles: BetaProfile[] = BETA_GRADES.map((grade, i) => ({
 }))
 const presentationGrades = grade5PresentationPreview ? (['Grade 5'] as const) : BETA_GRADES
 const message = (error: unknown) => (error instanceof Error ? error.message : 'The operation could not be completed.')
-const repairExample = import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true' && !firebaseConfigReady && new URLSearchParams(location.search).get('example') === 'curriculum-repair'
+const repairExample =
+  import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true' &&
+  !firebaseConfigReady &&
+  new URLSearchParams(location.search).get('example') === 'curriculum-repair'
 let repairProfile: BetaProfile | null = null
 const workspaceOwner = createFamilyWorkspaceOwner(localStorage)
 ;(window as FamilyWorkspaceWindow).familyWorkspaceOwner = workspaceOwner
@@ -85,14 +88,17 @@ function FamilyPreview() {
       ? []
       : (() => {
           try {
-            const saved: BetaProfile[] = JSON.parse(localStorage.getItem('beta-preview-profiles') || 'null') || initialProfiles
-            return repairProfile && !saved.some(p => p.id === repairProfile!.id) ? [...saved, repairProfile] : saved
+            const saved: BetaProfile[] =
+              JSON.parse(localStorage.getItem('beta-preview-profiles') || 'null') || initialProfiles
+            return repairProfile && !saved.some((p) => p.id === repairProfile!.id) ? [...saved, repairProfile] : saved
           } catch {
             return repairProfile ? [...initialProfiles, repairProfile] : initialProfiles
           }
         })(),
   )
-  const [selectedId, setSelectedId] = useState(repairProfile?.id || initialProfiles.find((p) => p.grade === initialGrade)!.id)
+  const [selectedId, setSelectedId] = useState(
+    repairProfile?.id || initialProfiles.find((p) => p.grade === initialGrade)!.id,
+  )
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>('activities')
   const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>(
@@ -753,7 +759,10 @@ function FamilyPreview() {
   }
 
   async function discardSlot(slot: FamilyActivitySlot) {
-    document.documentElement.setAttribute('data-report-module', slot.game?.pack.moduleId || slot.resumeChannel || 'activities')
+    document.documentElement.setAttribute(
+      'data-report-module',
+      slot.game?.pack.moduleId || slot.resumeChannel || 'activities',
+    )
     document.documentElement.setAttribute('data-report-phase', 'discard-attempt')
     if (!confirmActivityDiscard()) return
     try {
@@ -867,7 +876,12 @@ function FamilyPreview() {
           </div>
         )}
         {!compactParentPreview && activityError && (
-          <div className="error-banner" role="alert" data-report-activity="Activity could not open or close" data-report-phase="activity-error">
+          <div
+            className="error-banner"
+            role="alert"
+            data-report-activity="Activity could not open or close"
+            data-report-phase="activity-error"
+          >
             {activityError}
           </div>
         )}
@@ -966,12 +980,22 @@ function FamilyPreview() {
         </div>
       )}
       {compactParentPreview && activityError && (
-        <div className="error-banner" role="alert" data-report-activity="Activity could not open or close" data-report-phase="activity-error">
+        <div
+          className="error-banner"
+          role="alert"
+          data-report-activity="Activity could not open or close"
+          data-report-phase="activity-error"
+        >
           {activityError}
         </div>
       )}
       {compactParentPreview && curriculumError && (
-        <div className="error-banner" role="alert" data-report-activity="Curriculum unavailable" data-report-phase="curriculum-error">
+        <div
+          className="error-banner"
+          role="alert"
+          data-report-activity="Curriculum unavailable"
+          data-report-phase="curriculum-error"
+        >
           {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
         </div>
       )}
@@ -1308,17 +1332,24 @@ async function renderPreview() {
       await example.prepareRepairExample(localStorage)
       repairProfile = example.repairExampleProfile
     } catch (error) {
-      createRoot(document.getElementById('beta-root')!).render(<><p role="alert" data-report-activity="Repair example unavailable">{message(error)} All existing records were preserved.</p><ProblemReporter /></>)
+      createRoot(document.getElementById('beta-root')!).render(
+        <>
+          <p role="alert" data-report-activity="Repair example unavailable">
+            {message(error)} All existing records were preserved.
+          </p>
+          <ProblemReporter />
+        </>,
+      )
       return
     }
   }
-createRoot(document.getElementById('beta-root')!).render(
-  <>
-    <AppErrorBoundary>
-      <FamilyPreview />
-    </AppErrorBoundary>
-    <ProblemReporter />
-  </>,
-)
+  createRoot(document.getElementById('beta-root')!).render(
+    <>
+      <AppErrorBoundary>
+        <FamilyPreview />
+      </AppErrorBoundary>
+      <ProblemReporter />
+    </>,
+  )
 }
 void renderPreview()

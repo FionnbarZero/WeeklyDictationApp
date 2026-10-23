@@ -46,20 +46,24 @@ export function captureScreenContext(doc: Document): ReportContext {
   const modal = doc.querySelector<HTMLDialogElement>('dialog[open][data-report-activity]')
   const outerErrors = [...doc.querySelectorAll('[role="alert"][data-report-activity]')].filter(visible)
   const outerError = outerErrors[outerErrors.length - 1]
-  const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(
-    visible,
-  )
+  const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(visible)
   const marker = modal || outerError || markers[markers.length - 1]
   // The innermost game shell often supplies just a title. Inherit explicit
   // diagnostics from its ancestors rather than losing the host module/phase.
   const ancestors: Element[] = []
-  for (let element: Element | null = marker || null; element; element = element.parentElement) ancestors.unshift(element)
+  for (let element: Element | null = marker || null; element; element = element.parentElement)
+    ancestors.unshift(element)
   if (marker?.ownerDocument !== surface) ancestors.unshift(surface.documentElement)
   for (const element of ancestors) {
     for (const key of ['activity', 'phase', 'target', 'position', 'audio', 'game', 'module', 'section']) {
       const value = element.getAttribute(`data-report-${key}`)
       if (value) context[key] = value.slice(0, 300)
     }
+  }
+  // Some menus stay mounted but hidden while a game runs. Once visible again,
+  // their explicit menu phase must not inherit the previous game's details.
+  if (context.phase === 'activity-menu') {
+    for (const key of ['module', 'game', 'target', 'position', 'audio']) delete context[key]
   }
   if (!marker && frame) {
     context.activity ||= 'Activity loading or unavailable'
