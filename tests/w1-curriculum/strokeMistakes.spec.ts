@@ -40,9 +40,6 @@ test('corrected Grade 2 teacher survives repeated mistakes, retry, report and re
     await expect(warmup.or(teacher)).toBeVisible()
     if (await warmup.isVisible()) await warmup.click()
     await expect(teacher).toBeVisible()
-    // Undo is enabled for only the rejected stroke's 700 ms lifetime when
-    // there is no accepted ink. Control that lifetime, not machine load.
-    await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000))
   }
   await launch()
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
@@ -65,6 +62,9 @@ test('corrected Grade 2 teacher survives repeated mistakes, retry, report and re
     await expect(teacher).toHaveAttribute('data-step', String(step))
     const supplied = Number(await pad.getAttribute('data-next-stroke'))
     for (let mistake = 0; mistake < 6; mistake++) {
+      // Control only the 700 ms rejected-stroke lifetime. Real time continues
+      // for normal drawing, animation, navigation and saved-progress startup.
+      if (mistake < 2) await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000))
       // A reversed short stroke can fit the approved endpoint tolerance.
       // Use an unmistakably wrong path, without changing teaching criteria.
       await draw([
@@ -86,13 +86,12 @@ test('corrected Grade 2 teacher survives repeated mistakes, retry, report and re
         await expect(pad).toHaveAttribute('data-next-stroke', String(supplied))
         await expect(teacher.getByRole('status')).not.toHaveClass(/is-error/)
       }
+      if (mistake < 2) await page.clock.resume()
     }
     if (step === 3) {
       await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
       await expect(teacher).toHaveAttribute('data-step', '3')
-      // Real time is required for the normal saved-progress startup checks.
-      await page.clock.resume()
       await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
       await expect(frame.getByRole('button', { name: 'Learn to Write', exact: true })).toBeVisible()
       await page.reload()
@@ -118,7 +117,6 @@ test('corrected Grade 2 teacher survives repeated mistakes, retry, report and re
     }
     await frame.getByRole('button', { name: 'Compare', exact: true }).click()
   }
-  await page.clock.resume()
   await frame.getByRole('button', { name: 'I slayed it', exact: true }).click()
   await expect(teacher).toBeHidden()
   await expect(frame.getByRole('button', { name: 'Skip Timer', exact: true })).toBeVisible()
