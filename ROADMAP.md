@@ -1,5 +1,15 @@
 # Weekly Dictation roadmap
 
+## Current priority — W1 audit finding closed in Prototype 2; live gates remain, October 23
+
+The owner-authorized repair for separate **STROKE / ORDER** targets is published at the **same combined W1 test links** as **`2a00878` / Prototype 2**. Exact URLs, October 30 12:58 p.m. Pacific expiry, hosted identity and confirmed SENT email receipt are in STATUS. The earlier `47ac451` broad completion claim missed this historical saved-state variant; preserve that audit failure rather than reclassifying it as a pass. The new exact-pair comparison still requires a validated same-week replacement and preserves all history.
+
+**Verification is complete for this isolated repair:** 1,246 units, 14 local browser cases and 36 final hosted cases, exact file/header checks and unchanged frozen/canonical/other-channel releases. Both joined/split labels are covered, including prior reviewed scores, failed saves, stale state, ambiguous labels, first-character launch and repeated resume. No source, teacher vocabulary, teaching rules, timers or old records were reset.
+
+**Next:** bounded 3–5 minute physical-iPad working-prototype acceptance of this **one combined app**, then the existing independent integration, authenticated compatibility/offline/cross-device/recovery and protected-release gates. Do not claim those gates, or all W0/W1 canonical work, are complete. The focused same-site split-heading example uses a new synthetic learner without resetting prior examples. Parent target editing stays W0c; supporting meanings/Pinyin gaps stay W4.
+
+Keep [5th grade Dojo](https://5thgradedojo.meghangames.com/) `1a9db3e` frozen for Monday October 26. Its approved eight-word presentation curriculum differs from the regular retained W1 Grade 5 curriculum. Model routing remains **GPT-6 Astra · Extra High** for persistence/compatibility, **GPT-6.1 Sol · High** for bounded publication, **GPT-6 Luna · Medium** for documentation. Primary source/automated review was performed; no model switch or separate-agent review is claimed.
+
 ## Current priority — W1 combined candidate delivered; integration gates remain, October 23
 
 Owner-requested **W1 curriculum and activity-entry repairs** are implemented and published as **`47ac451` / W1 Prototype 1**, combining the latest W0 corrections and long-session repair. Exact all-grade links, October 30 11:54 a.m. Pacific expiry and confirmed SENT email receipt are in STATUS. The known instruction-label filter, explicit record-preserving invalid-lesson repair, all-grade entry checks, resource inventory and game/error report attribution are delivered in this isolated candidate. This does not declare canonical W0/W1 integration or every historical report closed.

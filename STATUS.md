@@ -1,5 +1,21 @@
 # Weekly Dictation status
 
+## Current handoff — audited split-heading case repaired in W1 Prototype 2, October 23
+
+The follow-up audit reproduced a missed case in `47ac451`: an older Grade 2 lesson containing separate **STROKE / ORDER** targets stayed blocked without a correction button. Earlier broad “W1 complete” wording did not cover that case. The owner authorized its repair. **Application `2a00878` / W1 curriculum and activity entry · Prototype 2** now recognizes the exact adjacent pair, only when removing it exactly matches the validated same-week source. All old checkpoints, reviewed answers, scores and reports remain; ambiguous labels and unrelated vocabulary/date changes are not silently removed. Teaching, timers, storage formats and other grades' policies are unchanged.
+
+The **same isolated combined W1 website** is updated:
+[Kindergarten](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade5).
+The URL retains v1; its served manifest is **Prototype 2 / `2a00878`**. Expires **October 30, 2026, 12:58 p.m. Pacific**. Hosting version `d5919149adc861a1`; tree `757ac24aaa9537a5c2cad2efbcd3729cefb48a0a766da0311789aef44f4ba8e7`. All **191 public files / 1,146 headers** match.
+
+**Verified:** regression tests fail on the predecessor (21 pass / 3 fail), then all **28 focused tests, 1,246 full-suite tests, 14 local browser cases and 36 hosted cases** (14 W1 + 22 W0) pass on the repaired candidate. Hosted coverage includes both label forms, corrected first-character teaching, reload/reopen, all-grade ordinary writing/reading, report pause, repeated correction and the 500-answer boundary. Type/lint/format/build and existing performance limits pass. Primary source/automated review only; no independent-agent or physical-device acceptance is claimed.
+
+**Email confirmed SENT**, metadata readback `1a16a5ce7699ef2c`. Ready for a **3–5 minute iPad/Safari check** using the [same-site split-heading repair example](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade2&example=curriculum-repair): tap “Use corrected lesson · keep old work”, wait for refresh, Enter the Dojo → Learn to Write, confirm first character **走**, check audio/Pencil, Report/return and Exit/reopen in both orientations. This now uses separate synthetic learner `w1-split-label-example`, preserving the original example and ordinary preview work without reseeding/resetting them.
+
+Frozen [5th grade Dojo](https://5thgradedojo.meghangames.com/) `1a9db3e`, older Grade 5 preview `97c559d`, W0 Prototype 2, canonical `9d06a02` and **all 17 other hosting releases/expiries** remain verified unchanged. Continue using the frozen eight-word Grade 5 website for Monday, not the regular-curriculum W1 Grade 5 entrance. This is browser-only synthetic testing with retained curriculum, not cloud/cross-device/offline or canonical release. Working-prototype acceptance and existing independent integration/authenticated compatibility/backend/recovery/protected-release gates remain; parent target editing is W0c, wider language content W4.
+
+[Repair/evidence record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w1-curriculum-entry.md), branch `codex/w1-curriculum-entry`. Original failed audit and pre-fix tests are retained. Later documentation commits do not change the served `2a00878` application. Older handoffs below are historical; the primary checkout's unrelated work is preserved.
+
 ## Current handoff — W1 curriculum/entry repairs verified and emailed, October 23
 
 **W1 implementation is complete in an isolated combined test app; canonical integration is not complete.** This follows the detailed W1 curriculum/entry scope, not earlier shorthand calling parent target editing W1. Target editing remains separate W0c work. The combined candidate carries the latest W0 copy/memory and long-session repairs. No ordinary approval/model prompt was added during this owner-authorized stage.
