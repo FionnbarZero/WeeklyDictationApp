@@ -757,6 +757,10 @@ function FamilyPreview() {
       const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
         (item) => item.dataset.familySlot === slot.id,
       )
+      for (const key of ['section', 'module']) {
+        const value = frame?.contentDocument?.documentElement.getAttribute(`data-report-${key}`)
+        if (value) document.documentElement.setAttribute(`data-report-${key}`, value)
+      }
       if (
         ['memory-flip', 'sentence-scramble', 'context-gap-dash', 'speed-match', 'target-blast'].includes(
           slot.game?.pack.moduleId || '',
@@ -799,6 +803,7 @@ function FamilyPreview() {
       className={`beta-workspace${compactParentPreview ? ' beta-workspace--compact' : ''}`}
       data-report-grade={currentGrade}
       data-report-screen={tab}
+      data-report-section={tab === 'games' ? 'ninja-skills' : undefined}
       data-report-week={dataset?.startDate || week || 'unavailable'}
       data-report-curriculum={curriculum?.snapshot.contentSha256}
       data-report-game={tab === 'games' ? pack?.title : undefined}

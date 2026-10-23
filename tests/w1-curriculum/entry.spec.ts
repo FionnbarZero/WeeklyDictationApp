@@ -70,6 +70,7 @@ test('label-only correction keeps all original records and ordinary Writing open
   await page.goto('/family-beta-preview.html?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('corrected-lesson-notice.png'), fullPage: true })
   const oldEnvelope = state.acquisitionProgressEnvelopes![0]
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
@@ -141,6 +142,11 @@ for (const slug of ['kindergarten', 'grade2', 'grade5'])
     expect(JSON.stringify(report.context)).not.toContain('Synthetic W1')
     await page.getByRole('button', { name: 'Close and return', exact: true }).click()
     await expect(frame.locator('.lg-shell')).toBeVisible()
+    await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
+    await expect(frame.getByRole('button', { name: 'Memory Lanterns', exact: true })).toBeVisible()
+    const menu = await page.evaluate(`(${captureScreenContext.toString()})(document)`)
+    expect(menu.phase).toBe('activity-menu')
+    expect(menu.module).toBeUndefined()
   })
 
 test('diagnostics prefer visible launch errors and never scrape inputs or page text', async ({ page }) => {

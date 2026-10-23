@@ -9,12 +9,10 @@ import { grade2WritingDatasets } from '../src/familyBeta/grade2LessonSelection.t
 import { hydrateLocalStateFromReadOnlySource } from '../src/localHydration.ts'
 import { grade2DeckProfile } from '../src/slidesImporter.ts'
 
-function fixture() {
+function fixture(targets = '走、最、哪里、家、住') {
   const incoming = hydrateLocalStateFromReadOnlySource(createInitialState(), {
     presentationId: grade2DeckProfile.sourceDeckId,
-    slides: [
-      { objectId: 'week', text: 'Week 10/13-10/16\nMandarin\nTier 1: 走、最、哪里、家、住\nTier 2: 城市、上班' },
-    ],
+    slides: [{ objectId: 'week', text: `Week 10/13-10/16\nMandarin\nTier 1: ${targets}\nTier 2: 城市、上班` }],
   }).state.datasets
   const corrected = incoming[0]
   const words = ['strokeorder', ...corrected.words.map((w) => w.text)].map((text, i) => ({
@@ -110,4 +108,38 @@ test('valid pinned work and arbitrary word edits are not offered this label-only
   state.datasets[0].words[0].text = 'strokeorder'
   state.datasets[0].words[1].text = '不同'
   assert.deepEqual(correctedWritingAttempts(state, incoming, 'child', storage), [])
+})
+
+test('a corrected edition with a missing guide never retires the original', () => {
+  const { incoming, state, storage, records, envelope } = fixture('龘')
+  const before = new Map(records)
+  assert.throws(() => startCorrectedWritingAttempt(storage, state, incoming, 'child', envelope.id), /stroke guide/)
+  assert.deepEqual(records, before)
+})
+
+test('a lost marker readback preserves history and reload safely selects the corrected edition', () => {
+  const { incoming, state, storage, records, envelope } = fixture()
+  const before = new Map(records)
+  let lost = false
+  const uncertain = {
+    getItem(key: string) {
+      if (lost && key === retirementKey('child', envelope.id)) {
+        lost = false
+        return null
+      }
+      return storage.getItem(key)
+    },
+    setItem(key: string, value: string) {
+      storage.setItem(key, value)
+      lost = true
+    },
+  }
+  assert.throws(() => startCorrectedWritingAttempt(uncertain, state, incoming, 'child', envelope.id), /confirmed/)
+  for (const [key, value] of before) assert.equal(records.get(key), value)
+  assert.equal(records.size, before.size + 1)
+  assert.equal(correctedWritingAttempts(state, incoming, 'child', storage).length, 0)
+  assert.equal(
+    grade2WritingDatasets(state, incoming, 'child', (e) => isAcquisitionRetired(storage, e))[0].words[0].text,
+    '走',
+  )
 })
