@@ -647,7 +647,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const startPractice = useCallback(
     async (target: PracticeTarget | null, externalPrimary = false) => {
-      if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) return
+      if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) {
+        if (import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true' && selectedChild && lifecycleResolution &&
+          !practiceStartInFlight && familyPreview && !lessonRetirement)
+          setCloudError('Your lesson is still loading. Please try Learn to Write again in a moment. Your saved work has not changed.')
+        return
+      }
       setPracticeStartInFlight(true)
       setShowChildMenu(false)
       const id = createSessionId()

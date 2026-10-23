@@ -49,6 +49,9 @@ test('teacher failures retain confirmed steps, expose a safe report code, retry 
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
   const recovery = frame.getByRole('alert', { name: 'Tracing needs a retry' })
   async function launch(fromHome = true) {
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', {
+      timeout: 12_000,
+    })
     if (fromHome) await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
     await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
     const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })

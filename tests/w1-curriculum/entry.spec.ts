@@ -34,6 +34,57 @@ test.beforeEach(async ({ page, baseURL }) => {
   })
 })
 
+test('Grade 2 early Writing click explains loading, preserves records and retries after readiness', async ({
+  page,
+}) => {
+  const source = JSON.parse(
+    readFileSync(new URL('../fixtures/dojo-launch-2026-10-16/grade2.json', import.meta.url), 'utf8'),
+  )
+  const state = hydrateLocalStateFromReadOnlySource(createInitialState(), source.payload).state
+  await page.addInitScript(
+    ({ state, key }) => {
+      if (window === window.top && !localStorage.getItem(key)) localStorage.setItem(key, state)
+    },
+    { state: JSON.stringify(state), key: `family-beta-activity:preview-1:${APP_STATE_KEY}` },
+  )
+  let release = () => {}
+  let requested = false
+  const hold = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/assets/automaticGrade2Curriculum-*.js', async (route) => {
+    requested = true
+    await hold
+    await route.continue()
+  })
+  try {
+    // Delay the first uncached request, while an existing valid local lesson
+    // already supplies the menu. Do not rely on iframe module-cache eviction.
+    await page.goto('/family-beta-preview.html?grade=grade2')
+    const frame = page.frameLocator('iframe:visible')
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await expect.poll(() => requested).toBe(true)
+    const records = () => page.evaluate(() => Object.fromEntries(Object.entries(localStorage)))
+    const before = await records()
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    const notice = frame.getByRole('alert').filter({ hasText: 'Your lesson is still loading.' })
+    await expect(notice).toBeVisible()
+    expect(await records()).toEqual(before)
+    await expect(frame.getByRole('region', { name: 'Stroke order teacher' })).toHaveCount(0)
+    release()
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.')
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+    const warmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+    await expect(teacher.or(warmup)).toBeVisible()
+    if (await warmup.isVisible()) await warmup.click()
+    await expect(teacher).toHaveAttribute('data-step', '1')
+    await expect(notice).toHaveCount(0)
+  } finally {
+    release()
+  }
+})
+
 for (const labels of [['strokeorder'], ['STROKE', 'ORDER']])
   test(`${labels.join('/')}: correction keeps original records and ordinary Writing opens the corrected lesson`, async ({
     page,
@@ -77,6 +128,9 @@ for (const labels of [['strokeorder'], ['STROKE', 'ORDER']])
     )
     await page.goto('/family-beta-preview.html?grade=grade2')
     const frame = page.frameLocator('iframe:visible')
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', {
+      timeout: 12_000,
+    })
     await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
     await page.screenshot({
       path: test.info().outputPath('corrected-lesson-notice.png'),
@@ -93,6 +147,9 @@ for (const labels of [['strokeorder'], ['STROKE', 'ORDER']])
     await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
     // Wait for the iframe reload, not an Enter the Dojo button still in its old DOM.
     await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', {
+      timeout: 12_000,
+    })
     await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
     await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
     await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
@@ -199,6 +256,7 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
 }) => {
   await page.goto('/family-beta-preview.html?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
+  await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', { timeout: 12_000 })
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
   const before = await page.evaluate(() =>
     Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('family-beta-activity:preview-1:'))),
@@ -207,6 +265,7 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
     localStorage.setItem('family-beta-activity:w1-label-example:retained-v1-check', 'keep-v1-example'),
   )
   await page.goto('/family-beta-preview.html?grade=grade2&example=curriculum-repair')
+  await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', { timeout: 12_000 })
   await expect(
     frame.getByText('This is a synthetic saved-lesson example. Your normal test learner is unchanged.'),
   ).toBeVisible()
@@ -219,6 +278,7 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
   })
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
   await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
+  await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', { timeout: 12_000 })
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()

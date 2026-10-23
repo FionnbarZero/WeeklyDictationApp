@@ -33,9 +33,13 @@ test('corrected Grade 2 teacher survives repeated mistakes, retry, report and re
   await page.goto('/family-beta-preview.html?grade=grade2&example=curriculum-repair')
   const frame = page.frameLocator('iframe:visible')
   const repair = frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })
+  await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', { timeout: 12_000 })
   await repair.click()
   await expect(repair).toHaveCount(0)
   async function launch() {
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', {
+      timeout: 12_000,
+    })
     await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
     await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
     const warmup = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
