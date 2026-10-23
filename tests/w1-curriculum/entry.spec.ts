@@ -34,99 +34,105 @@ test.beforeEach(async ({ page, baseURL }) => {
   })
 })
 
-test('label-only correction keeps all original records and ordinary Writing opens the corrected lesson', async ({
-  page,
-}) => {
-  const source = JSON.parse(
-    readFileSync(new URL('../fixtures/dojo-launch-2026-10-16/grade2.json', import.meta.url), 'utf8'),
-  )
-  const incoming = hydrateLocalStateFromReadOnlySource(createInitialState(), source.payload).state.datasets
-  const corrected = incoming.find((d) => d.startDate === '2026-10-13')!
-  const words = ['strokeorder', ...corrected.words.map((w) => w.text)].map((text, i) => ({
-    ...corrected.words[0],
-    id: `${corrected.id}-${i + 1}`,
-    text,
-  }))
-  const old = {
-    ...corrected,
-    words,
-    vocabulary: { ...corrected.vocabulary!, tier1: words },
-  }
-  const prepared = prepareAcquisitionProgress(
-    createInitialState([old, ...incoming.filter((d) => d.id !== old.id)]),
-    'preview-1',
-    old,
-    '2026-10-14T10:00:00.000Z',
-    () => 0,
-    true,
-  )
-  expect(prepared.status).toBe('ready')
-  const state = retainGrade2Editions(prepared.state, incoming)
-  await page.addInitScript(
-    ({ state, key }) => {
-      if (window !== window.top || localStorage.getItem('w1-seeded')) return
-      localStorage.setItem(key, state)
-      localStorage.setItem('w1-seeded', 'true')
-      localStorage.setItem('w1-unrelated-record', 'preserve')
-    },
-    {
-      state: JSON.stringify(state),
-      key: `family-beta-activity:preview-1:${APP_STATE_KEY}`,
-    },
-  )
-  await page.goto('/family-beta-preview.html?grade=grade2')
-  const frame = page.frameLocator('iframe:visible')
-  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
-  await page.screenshot({
-    path: test.info().outputPath('corrected-lesson-notice.png'),
-    fullPage: true,
-  })
-  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
-  await expect(frame.getByRole('alert')).toBeVisible()
-  const failedLaunch = await page.evaluate(`(${captureScreenContext.toString()})(document)`)
-  expect(failedLaunch.module).toMatch(/writing/)
-  expect(failedLaunch.phase).toBe('launch-alert')
-  expect(failedLaunch.activity).not.toContain('Learning hub')
-  const oldEnvelope = state.acquisitionProgressEnvelopes![0]
-  await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
-  // Wait for the iframe reload, not an Enter the Dojo button still in its old DOM.
-  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
-  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
-  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
-  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
-  const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
-  const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
-  await expect(skip.or(teacher)).toBeVisible()
-  if (await skip.isVisible()) await skip.click()
-  await expect(teacher).toBeVisible()
-  await expect(teacher.getByRole('heading', { name: '走', exact: true })).toBeVisible()
-  const records = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)))
-  expect(records['w1-unrelated-record']).toBe('preserve')
-  expect(Object.keys(records).filter((k) => k.includes('lesson-retirement-v1:'))).toHaveLength(1)
-  const savedStates = Object.values(records).flatMap((raw) => {
-    try {
-      const v = JSON.parse(raw)
-      return [
-        v,
-        ...Object.values(v.records || {}).map((s) => {
-          try {
-            return JSON.parse(s as string).values || {}
-          } catch {
-            return {}
-          }
-        }),
-      ]
-    } catch {
-      return []
+for (const labels of [['strokeorder'], ['STROKE', 'ORDER']])
+  test(`${labels.join('/')}: correction keeps original records and ordinary Writing opens the corrected lesson`, async ({
+    page,
+  }) => {
+    const source = JSON.parse(
+      readFileSync(new URL('../fixtures/dojo-launch-2026-10-16/grade2.json', import.meta.url), 'utf8'),
+    )
+    const incoming = hydrateLocalStateFromReadOnlySource(createInitialState(), source.payload).state.datasets
+    const corrected = incoming.find((d) => d.startDate === '2026-10-13')!
+    const words = [...labels, ...corrected.words.map((w) => w.text)].map((text, i) => ({
+      ...corrected.words[0],
+      id: `${corrected.id}-${i + 1}`,
+      text,
+    }))
+    const old = {
+      ...corrected,
+      words,
+      vocabulary: { ...corrected.vocabulary!, tier1: words },
     }
+    const prepared = prepareAcquisitionProgress(
+      createInitialState([old, ...incoming.filter((d) => d.id !== old.id)]),
+      'preview-1',
+      old,
+      '2026-10-14T10:00:00.000Z',
+      () => 0,
+      true,
+    )
+    expect(prepared.status).toBe('ready')
+    const state = retainGrade2Editions(prepared.state, incoming)
+    await page.addInitScript(
+      ({ state, key }) => {
+        if (window !== window.top || localStorage.getItem('w1-seeded')) return
+        localStorage.setItem(key, state)
+        localStorage.setItem('w1-seeded', 'true')
+        localStorage.setItem('w1-unrelated-record', 'preserve')
+      },
+      {
+        state: JSON.stringify(state),
+        key: `family-beta-activity:preview-1:${APP_STATE_KEY}`,
+      },
+    )
+    await page.goto('/family-beta-preview.html?grade=grade2')
+    const frame = page.frameLocator('iframe:visible')
+    await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
+    await page.screenshot({
+      path: test.info().outputPath('corrected-lesson-notice.png'),
+      fullPage: true,
+    })
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    await expect(frame.getByRole('alert')).toBeVisible()
+    const failedLaunch = await page.evaluate(`(${captureScreenContext.toString()})(document)`)
+    expect(failedLaunch.module).toMatch(/writing/)
+    expect(failedLaunch.phase).toBe('launch-alert')
+    expect(failedLaunch.activity).not.toContain('Learning hub')
+    const oldEnvelope = state.acquisitionProgressEnvelopes![0]
+    await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
+    // Wait for the iframe reload, not an Enter the Dojo button still in its old DOM.
+    await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
+    await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+    const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+    await expect(skip.or(teacher)).toBeVisible()
+    if (await skip.isVisible()) await skip.click()
+    await expect(teacher).toBeVisible()
+    await expect(teacher.getByRole('heading', { name: '走', exact: true })).toBeVisible()
+    const records = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)))
+    expect(records['w1-unrelated-record']).toBe('preserve')
+    expect(Object.keys(records).filter((k) => k.includes('lesson-retirement-v1:'))).toHaveLength(1)
+    const savedStates = Object.values(records).flatMap((raw) => {
+      try {
+        const v = JSON.parse(raw)
+        return [
+          v,
+          ...Object.values(v.records || {}).map((s) => {
+            try {
+              return JSON.parse(s as string).values || {}
+            } catch {
+              return {}
+            }
+          }),
+        ]
+      } catch {
+        return []
+      }
+    })
+    expect(
+      savedStates.flatMap((s) => s.acquisitionProgressEnvelopes || []).find((e) => e.id === oldEnvelope.id),
+    ).toEqual(oldEnvelope)
+    await page.reload()
+    await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
+    await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+    await expect(skip.or(teacher)).toBeVisible()
+    if (await skip.isVisible()) await skip.click()
+    await expect(teacher.getByRole('heading', { name: '走', exact: true })).toBeVisible()
   })
-  expect(savedStates.flatMap((s) => s.acquisitionProgressEnvelopes || []).find((e) => e.id === oldEnvelope.id)).toEqual(
-    oldEnvelope,
-  )
-  await page.reload()
-  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
-})
 
 for (const slug of ['kindergarten', 'grade2', 'grade5'])
   test(`${slug}: actual game's report inherits module, phase and section without child responses`, async ({ page }) => {
@@ -197,6 +203,9 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
   const before = await page.evaluate(() =>
     Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('family-beta-activity:preview-1:'))),
   )
+  await page.evaluate(() =>
+    localStorage.setItem('family-beta-activity:w1-label-example:retained-v1-check', 'keep-v1-example'),
+  )
   await page.goto('/family-beta-preview.html?grade=grade2&example=curriculum-repair')
   await expect(
     frame.getByText('This is a synthetic saved-lesson example. Your normal test learner is unchanged.'),
@@ -225,4 +234,7 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
     Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('family-beta-activity:preview-1:'))),
   )
   expect(after).toEqual(before)
+  expect(
+    await page.evaluate(() => localStorage.getItem('family-beta-activity:w1-label-example:retained-v1-check')),
+  ).toBe('keep-v1-example')
 })

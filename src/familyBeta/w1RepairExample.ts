@@ -6,8 +6,9 @@ import { validateCurriculum } from './curriculum.ts'
 import { practiceWorkspaceStorage } from './practiceWorkspaceStorage.ts'
 
 export const repairExampleProfile = {
-  id: 'w1-label-example',
-  nickname: 'Correction example',
+  // A new synthetic learner demonstrates the missed case without resetting v1.
+  id: 'w1-split-label-example',
+  nickname: 'Split-heading correction example',
   grade: 'Grade 2' as const,
   active: true,
 }
@@ -24,7 +25,7 @@ export async function prepareRepairExample(storage: Storage) {
   const corrected = incoming.find((d) => d.startDate === '2026-10-13')
   if (!corrected || corrected.words.map((w) => w.text).join('、') !== '走、最、哪里、家、住')
     throw new Error('This curriculum does not match the retained repair example. No records were changed.')
-  const words = ['strokeorder', ...corrected.words.map((w) => w.text)].map((text, i) => ({
+  const words = ['STROKE', 'ORDER', ...corrected.words.map((w) => w.text)].map((text, i) => ({
     ...corrected.words[0],
     id: `${corrected.id}-${i + 1}`,
     text,

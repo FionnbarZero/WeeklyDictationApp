@@ -1,7 +1,7 @@
 import { acquisitionProgressionId } from '../acquisition/persistence/identity.ts'
 import { COPY_MEMORY_WRITING_POLICY, createWritingLesson } from '../application/writingAcquisition/lesson.ts'
 import { originalDatasetId, sourceGrade2Datasets } from '../curriculum/grade2Revisions.ts'
-import { isStrokeOrderLabel } from '../curriculum/instructionLabels.ts'
+import { withoutStrokeOrderLabels } from '../curriculum/instructionLabels.ts'
 import { type AppState, type Dataset, loadState } from '../domain.ts'
 import { isCanonicalDataset } from '../slidesImporter.ts'
 import { envelopeIdentity, isAcquisitionRetired, retireAcquisition } from './acquisitionRetirement.ts'
@@ -18,7 +18,8 @@ export function correctedWritingAttempts(
   const latest = sourceGrade2Datasets(state, incoming)
   const selected = grade2WritingDatasets(state, incoming, childId, (e) => isAcquisitionRetired(storage, e))
   return selected.flatMap((old) => {
-    if (!old.words.some((w) => isStrokeOrderLabel(w.text))) return []
+    const correctedWords = withoutStrokeOrderLabels(old.words.map((w) => w.text))
+    if (correctedWords.length === old.words.length) return []
     const replacement = latest.find((d) => originalDatasetId(d) === originalDatasetId(old) && d.id !== old.id)
     const envelope = state.acquisitionProgressEnvelopes?.find(
       (e) => e.childId === childId && e.datasetId === old.id && !isAcquisitionRetired(storage, e),
@@ -28,8 +29,7 @@ export function correctedWritingAttempts(
     if (
       replacement.startDate !== old.startDate ||
       replacement.endDate !== old.endDate ||
-      JSON.stringify(old.words.filter((w) => !isStrokeOrderLabel(w.text)).map((w) => w.text)) !==
-        JSON.stringify(replacement.words.map((w) => w.text))
+      JSON.stringify(correctedWords) !== JSON.stringify(replacement.words.map((w) => w.text))
     )
       return []
     if (!isCanonicalDataset(replacement)) return []

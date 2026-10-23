@@ -38,7 +38,7 @@ export default function CorrectedWritingNotice({
       {proposals.map((p) => (
         <div key={p.envelope.id}>
           <strong>A corrected Writing lesson is ready · {p.old.dateRange}</strong>
-          {childId === 'w1-label-example' && (
+          {['w1-label-example', 'w1-split-label-example'].includes(childId) && (
             <p>This is a synthetic saved-lesson example. Your normal test learner is unchanged.</p>
           )}
           <p>
