@@ -39,6 +39,8 @@ export default function CorrectedWritingNotice({
             {p.replacement.words.map((w) => w.text).join('、')}. Your previous work and scores will stay saved.
           </p>
           <button
+            className="primary-button"
+            style={{ minHeight: 44 }}
             type="button"
             onClick={() => {
               try {

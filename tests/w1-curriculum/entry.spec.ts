@@ -182,6 +182,9 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
   await expect(
     frame.getByText('This is a synthetic saved-lesson example. Your normal test learner is unchanged.'),
   ).toBeVisible()
+  expect(
+    (await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).boundingBox())!.height,
+  ).toBeGreaterThanOrEqual(44)
   await page.screenshot({ path: test.info().outputPath('built-in-repair-example.png'), fullPage: true })
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
