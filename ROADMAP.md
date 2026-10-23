@@ -1,5 +1,17 @@
 # Weekly Dictation roadmap
 
+## Current priority — W1 combined candidate delivered; integration gates remain, October 23
+
+Owner-requested **W1 curriculum and activity-entry repairs** are implemented and published as **`47ac451` / W1 Prototype 1**, combining the latest W0 corrections and long-session repair. Exact all-grade links, October 30 11:54 a.m. Pacific expiry and confirmed SENT email receipt are in STATUS. The known instruction-label filter, explicit record-preserving invalid-lesson repair, all-grade entry checks, resource inventory and game/error report attribution are delivered in this isolated candidate. This does not declare canonical W0/W1 integration or every historical report closed.
+
+**Scope correction:** the detailed W1 definition governs; recent “W1 target editing” shorthand below is superseded. Parent target editing remains separate W0c work. Supporting meanings/Pinyin gaps remain W4. No teacher words, assessment policies, timer rules, existing records or frozen presentation files were reset or silently replaced.
+
+**Next:** bounded physical-iPad working-prototype acceptance of this **one combined app**, followed by the existing independent integration, authenticated compatibility/offline/cross-device/recovery and protected-release gates. Use the emailed grade links and Report a problem; the optional same-site Grade 2 example demonstrates the historical correction without resetting normal test work. Do not ask the owner to re-enter hundreds of answers. No live activation or new independent-agent review is claimed.
+
+Verification: **1,227 units, 45 local browser cases (33 W0 + 12 W1) and 34 final hosted cases (22 W0 + 12 W1)**, exact 191-file package/1,146-header comparison and preserved frozen/canonical releases. The standalone **5th grade Dojo `1a9db3e` remains frozen for Monday October 26**; it retains the approved eight-word lesson. The regular-curriculum W1 Grade 5 entrance is not its replacement. All 17 previous hosting-channel releases/expiries are unchanged.
+
+Continue the confirmed **GPT-6 Astra · Extra High** assignment for persistence/compatibility changes; bounded publication **GPT-6.1 Sol · High**; routine documentation **GPT-6 Luna · Medium**. No model switch is claimed. Owner requested no routine authorization prompts; prototype acceptance and existing release safeguards still govern activation. Worktree/receipts are linked in STATUS.
+
 ## Current priority — accept repaired W0 Prototype 2, October 23
 
 Owner-requested long-session repair is delivered as **`711c389` / W0 integrated writing Prototype 2**, with all-grade verified links, October 30 11:01 a.m. Pacific expiry and confirmed owner-email receipt in STATUS. The 500-assessment cutoff is removed without pruning answers; lossless long-workspace storage retains byte limits and old-client/stale-writer protection. Teaching policies, appearance and timers remain unchanged. Verification passes 1,215 units, 33 final local browser cases and 22 hosted cases, with exact-package and predecessor refusal checks. The frozen Grade 5 presentation, previous previews and canonical app are unchanged.

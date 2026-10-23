@@ -1,5 +1,23 @@
 # Weekly Dictation status
 
+## Current handoff — W1 curriculum/entry repairs verified and emailed, October 23
+
+**W1 implementation is complete in an isolated combined test app; canonical integration is not complete.** This follows the detailed W1 curriculum/entry scope, not earlier shorthand calling parent target editing W1. Target editing remains separate W0c work. The combined candidate carries the latest W0 copy/memory and long-session repairs. No ordinary approval/model prompt was added during this owner-authorized stage.
+
+**W1 curriculum and activity entry / Prototype 1 · application `47ac451`**:
+[Kindergarten](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade5).
+Expires **October 30, 2026, 11:54 a.m. Pacific**. Provider version `f13bf43d5e44f84b`; tree `61512c5188e50a9954214c6f412b142606b94a2021b063445e0a18058e8ca264`. All **191 public files / 1,146 security/cache headers** match the retained package.
+
+Repairs filter only the known stroke-order resource heading (including split Slides text runs), offer an explicit record-preserving corrected attempt for the narrow invalid pinned Grade 2 lesson, and identify embedded games, launch errors and discarded/menu surfaces accurately in reports. Current-date eligibility prevents repair of an inactive historical lesson into a different current lesson. All-grade ordinary writing/reading entry and repeated use are verified. All **93 retained writing target entries across 20 weeks** have guides; all 20 Kindergarten target entries have recording files. Wider supporting meanings/Pinyin gaps remain W4.
+
+**Verification:** 1,227 units; type/lint/format and unchanged production performance budgets; 33 local W0 regression cases on `d1268e5`, 12 final W1 cases, and **34 final hosted cases on `47ac451`** (22 W0 + 12 W1). An initial hosted test clicked the old iframe during its expected refresh; waiting for the old repair button to disappear resolved the driver race without changing the application or removing an assertion. Primary source/automated review only; no new independent-agent review or physical-device acceptance is claimed.
+
+**Email confirmed SENT**, metadata readback `1a16a22f0b2ab5fc`. Ready for an **8–12 minute physical-iPad check** of real sound/Pencil, both orientations, Writing/Reading entry and reopening, Report/return and ordinary Writing resume. The email includes the optional [same-site Grade 2 correction example](https://weekly-dictation-staging--w1-curriculum-oct23-v1-f2pjajxg.web.app/family-beta-preview.html?grade=grade2&example=curriculum-repair), which uses a separate synthetic learner without resetting normal preview work.
+
+This is browser-only synthetic progress with retained regular teacher-source curriculum, not cloud/cross-device saving, offline installation or automatic source refresh. Working-prototype acceptance and independent integration/authenticated compatibility/backend/recovery/protected-release gates remain before canonical activation. The frozen [5th grade Dojo presentation](https://5thgradedojo.meghangames.com/) `1a9db3e` remains the Monday eight-word presentation website; do not substitute the regular-curriculum Grade 5 W1 link. Its 183 files/1,098 headers, the older Grade 5 preview, W0 Prototype 2, all 17 prior hosting-channel releases/expiries and canonical `9d06a02` are verified unchanged.
+
+Implementation/evidence: branch `codex/w1-curriculum-entry` in the managed worktree; [W1 record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w1-curriculum-entry.md). Later test/documentation commits do not change the served application source. Primary checkout's unrelated work is preserved. Older handoffs below are historical.
+
 ## Current handoff — long-session writing repaired in Prototype 2, October 23
 
 The requested repair removes the pre-existing **500-assessment writing cutoff** while preserving every answer, score and teaching/acquisition position. Large validated Grade 2 workspaces use a lossless compact format; ordinary saves retain their format. Existing byte-capacity, owner, stale-writer and failed-save safeguards remain. Kindergarten/Grade 5 native writing receive the assessment-bound repair without changing their policies. UI, timers, curriculum and the approved correction sequence are unchanged by this repair.

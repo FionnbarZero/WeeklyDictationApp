@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { expect, test } from '@playwright/test'
 import { prepareAcquisitionProgress } from '../../src/application/acquisitionPersistence.ts'
 import { retainGrade2Editions } from '../../src/curriculum/grade2Revisions.ts'
 import { APP_STATE_KEY, createInitialState } from '../../src/domain.ts'
-import { hydrateLocalStateFromReadOnlySource } from '../../src/localHydration.ts'
 import { captureScreenContext } from '../../src/familyBeta/problemReports.ts'
+import { hydrateLocalStateFromReadOnlySource } from '../../src/localHydration.ts'
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.clock.setFixedTime(new Date('2026-10-23T19:00:00Z'))
@@ -47,7 +47,11 @@ test('label-only correction keeps all original records and ordinary Writing open
     id: `${corrected.id}-${i + 1}`,
     text,
   }))
-  const old = { ...corrected, words, vocabulary: { ...corrected.vocabulary!, tier1: words } }
+  const old = {
+    ...corrected,
+    words,
+    vocabulary: { ...corrected.vocabulary!, tier1: words },
+  }
   const prepared = prepareAcquisitionProgress(
     createInitialState([old, ...incoming.filter((d) => d.id !== old.id)]),
     'preview-1',
@@ -65,12 +69,18 @@ test('label-only correction keeps all original records and ordinary Writing open
       localStorage.setItem('w1-seeded', 'true')
       localStorage.setItem('w1-unrelated-record', 'preserve')
     },
-    { state: JSON.stringify(state), key: `family-beta-activity:preview-1:${APP_STATE_KEY}` },
+    {
+      state: JSON.stringify(state),
+      key: `family-beta-activity:preview-1:${APP_STATE_KEY}`,
+    },
   )
   await page.goto('/family-beta-preview.html?grade=grade2')
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
-  await page.screenshot({ path: test.info().outputPath('corrected-lesson-notice.png'), fullPage: true })
+  await page.screenshot({
+    path: test.info().outputPath('corrected-lesson-notice.png'),
+    fullPage: true,
+  })
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
   await expect(frame.getByRole('alert')).toBeVisible()
@@ -80,6 +90,8 @@ test('label-only correction keeps all original records and ordinary Writing open
   expect(failedLaunch.activity).not.toContain('Learning hub')
   const oldEnvelope = state.acquisitionProgressEnvelopes![0]
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
+  // Wait for the iframe reload, not an Enter the Dojo button still in its old DOM.
+  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
@@ -192,8 +204,12 @@ test('built-in repair example is playable, resumes on reload and leaves the norm
   expect(
     (await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).boundingBox())!.height,
   ).toBeGreaterThanOrEqual(44)
-  await page.screenshot({ path: test.info().outputPath('built-in-repair-example.png'), fullPage: true })
+  await page.screenshot({
+    path: test.info().outputPath('built-in-repair-example.png'),
+    fullPage: true,
+  })
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
+  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
