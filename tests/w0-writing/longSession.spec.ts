@@ -1,13 +1,13 @@
 import { expect, type Page, test } from '@playwright/test'
-import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
-import { practiceWorkspaceKey, practiceWorkspaceStorage } from '../../src/familyBeta/practiceWorkspaceStorage.ts'
+import { buildAcquisitionCheckpoint } from '../../src/acquisition/persistence/reducer.ts'
 import {
   acquisitionPersistenceContext,
   applyAcquisitionCheckpointToAppState,
 } from '../../src/application/acquisitionPersistence.ts'
-import { buildAcquisitionCheckpoint } from '../../src/acquisition/persistence/reducer.ts'
 import * as pilot from '../../src/application/writingAcquisition/pilot.ts'
 import type { AppState } from '../../src/domain.ts'
+import { practiceWorkspaceKey, practiceWorkspaceStorage } from '../../src/familyBeta/practiceWorkspaceStorage.ts'
+import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
 
 const child = 'preview-1'
 const key = practiceWorkspaceKey(child)
@@ -125,5 +125,14 @@ test('long Grade 2 writing crosses 500, reloads and continues without losing sco
   expect((await read(page)).records[key]).toBe(after.records[key])
   await frame.getByRole('button', { name: 'Exit game', exact: true }).click()
   frame = await open(page)
-  expect((await read(page)).records[key]).toBe(after.records[key])
+  const reopened = await read(page)
+  // Opening another visit legitimately adds a warmup visit/skip receipt. All
+  // writing progress, answer history, scores and other saved facts must persist.
+  const { warmupVisitsV1, warmupTransitionReceiptsV1, ...restoredFacts } = reopened.state
+  const { warmupVisitsV1: oldVisits, warmupTransitionReceiptsV1: oldReceipts, ...savedFacts } = after.state
+  expect(restoredFacts).toEqual(savedFacts)
+  expect(warmupVisitsV1).toHaveLength((oldVisits?.length ?? 0) + 1)
+  expect(warmupTransitionReceiptsV1).toHaveLength((oldReceipts?.length ?? 0) + 1)
+  expect(warmupVisitsV1!.slice(0, -1)).toEqual(oldVisits)
+  expect(warmupTransitionReceiptsV1!.slice(0, -1)).toEqual(oldReceipts)
 })

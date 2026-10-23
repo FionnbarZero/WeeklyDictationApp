@@ -1,5 +1,19 @@
 # Weekly Dictation status
 
+## Current handoff — long-session writing repaired in Prototype 2, October 23
+
+The requested repair removes the pre-existing **500-assessment writing cutoff** while preserving every answer, score and teaching/acquisition position. Large validated Grade 2 workspaces use a lossless compact format; ordinary saves retain their format. Existing byte-capacity, owner, stale-writer and failed-save safeguards remain. Kindergarten/Grade 5 native writing receive the assessment-bound repair without changing their policies. UI, timers, curriculum and the approved correction sequence are unchanged by this repair.
+
+**W0 integrated writing / Prototype 2 · application `711c389`** is deployed and verified at one isolated test site:
+[Kindergarten](https://weekly-dictation-staging--w0-writing-oct23-v2-4bym37zx.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w0-writing-oct23-v2-4bym37zx.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--w0-writing-oct23-v2-4bym37zx.web.app/family-beta-preview.html?grade=grade5).
+Expires **October 30, 2026, 11:01 a.m. Pacific**. Provider version `9422a689cfb65e8f`; tree `93338b6d62b476ad3ce8b5cc1e5a1c7abff1efac63fb306410d9354a638d1496`. All 187 public files / 1,122 headers match.
+
+**Verified:** 1,215 unit tests; type/lint/format/production-size checks; **33 final local browser cases** (30 existing + three corrected long-session checks) and **22 hosted desktop/portrait cases**. The initial browser comparison wrongly treated the expected new warmup visit/skip receipt on reopening as a defect; decoded diffs and the corrected assertions preserve all prior facts. The actual predecessor refuses the compact record without overwriting it. Synthetic sync-adapter transfer is verified; authenticated cloud acceptance is not implied. Primary source/automated review only—no new independent-agent review is claimed.
+
+**Email confirmed SENT**, metadata readback `1a169f0cac57a05c`, with all three links and an **8–12 minute physical-iPad checklist**: real sound/Pencil, both orientations, Grade 2 copy/memory recovery, ordinary Writing resume, Report/return. The 500-answer boundary is already automated; the owner need not repeat it manually. Browser-only synthetic progress, retained regular teacher-source curriculum, no cloud/cross-device/offline installation. Working-prototype approval and independent integration/authenticated compatibility/backend/recovery/protected release gates remain before canonical activation; this is not full W0 completion.
+
+Frozen [5th grade Dojo](https://5thgradedojo.meghangames.com/) `1a9db3e` remains unchanged for Monday October 26. Its 183 public files, older Grade 5 preview `97c559d`, W0 Prototype 1 `5aca1dd`, all 16 earlier channel releases/expiries, and canonical `9d06a02` were verified unchanged. Earlier Prototype 1 links below do **not** contain this repair. [Repair details and evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/grade2-writing-integration.md#w0-long-session-repair--october-23-2026).
+
 ## Current handoff — W0 correction prototype verified and emailed; presentation frozen, October 23
 
 The owner resumed integrated-app work and requested W0 completion with automatic review and emailed links for all grades. **GPT-6 Astra · Extra High is confirmed for this stage.** The standalone **5th grade Dojo / `1a9db3e`** at https://5thgradedojo.meghangames.com/ is frozen for Monday October 26. A fresh normal-HTTPS check passes all 183 public files / 1,098 headers; the earlier local DNS issue is no longer reproduced. Its Worker, homepage entry, records and the older Grade 5 preview are not changed.

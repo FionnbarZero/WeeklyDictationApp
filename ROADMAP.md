@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept repaired W0 Prototype 2, October 23
+
+Owner-requested long-session repair is delivered as **`711c389` / W0 integrated writing Prototype 2**, with all-grade verified links, October 30 11:01 a.m. Pacific expiry and confirmed owner-email receipt in STATUS. The 500-assessment cutoff is removed without pruning answers; lossless long-workspace storage retains byte limits and old-client/stale-writer protection. Teaching policies, appearance and timers remain unchanged. Verification passes 1,215 units, 33 final local browser cases and 22 hosted cases, with exact-package and predecessor refusal checks. The frozen Grade 5 presentation, previous previews and canonical app are unchanged.
+
+**Next: bounded physical-iPad working-prototype acceptance** of this one combined test app, not more detached prototypes. Use the emailed grade entrances and Report a problem; do not ask the owner to enter 500 answers. This repair is **preview-only**, not authenticated canonical W0 completion. Preserve the remaining independent integration review, real authenticated compatibility/offline/cross-device/recovery and protected release gates. Synthetic adapter transfer does not close those gates. W1 target editing and broader content/reliability reports remain separate.
+
+Continue the confirmed **GPT-6 Astra · Extra High** stage for any persistence fixes; bounded publication uses **GPT-6.1 Sol · High**, routine documentation **GPT-6 Luna · Medium**. No model switch or new independent-agent review is claimed. The Prototype 1 handoff below is historical for this repair.
+
 ## Current priority — W0 correction and all-grade verification, October 23
 
 The owner resumed integrated-app work, confirmed **GPT-6 Astra · Extra High**, and requested W0 with automatic review and emailed links for all grades. Preserve the standalone **5th grade Dojo / `1a9db3e`** unchanged for Monday October 26; do not redeploy that Worker, alter its homepage entry, move/reset records or overwrite its older Grade 5 preview.
