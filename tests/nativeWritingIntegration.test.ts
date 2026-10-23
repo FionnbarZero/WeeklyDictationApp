@@ -95,6 +95,51 @@ for (const grade of ['Kindergarten', 'Grade 5'] as const) {
     while (teachingPosition(store.current.writing!)) store.completeTeachingStep(command(store))
   }
 
+  test(`${grade} native: long writing keeps all 501 assessments, retries lost readback and resumes the exact trial`, () => {
+    const storage = memory()
+    const store = openAcquisitionStore(storage, context, options)
+    teach(store)
+    while (store.current.reviewedTrials.length < 500) store.answer(false, 'skip_timer')
+    while (store.current.envelope.flow.prompt!.kind === 'show-copy') store.answer(false, 'skip_timer')
+    const oldHistory = JSON.stringify(store.current.reviewedTrials)
+    const stale = openAcquisitionStore(storage, context, options)
+    const set = storage.setItem,
+      get = storage.getItem
+    let fail = false
+    storage.setItem = (key, raw) => {
+      set(key, raw)
+      fail = true
+    }
+    storage.getItem = (key) => {
+      if (fail) {
+        fail = false
+        throw new Error('lost acknowledgement')
+      }
+      return get(key)
+    }
+    assert.throws(() => store.answer(true, 'skip_timer'), /lost acknowledgement/)
+    const written = get(store.key)!
+    storage.setItem = set
+    store.answer(true, 'skip_timer')
+    assert.equal(get(store.key), written)
+    assert.equal(store.current.reviewedTrials.length, 501)
+    assert.equal(JSON.stringify(store.current.reviewedTrials.slice(0, 500)), oldHistory)
+    assert.equal(store.current.writing!.assessments.length, 501)
+    assert.throws(() => stale.answer(true, 'skip_timer'), /another tab/)
+    const reopened = openAcquisitionStore(storage, context, options)
+    assert.equal(JSON.stringify(reopened.current), JSON.stringify(store.current))
+    const invalid = JSON.parse(written)
+    invalid.writing.assessments = Array.from(
+      { length: invalid.envelope.revision + 1 },
+      () => invalid.writing.assessments[0],
+    )
+    assert.throws(() => nativeWritingPayload(JSON.stringify(invalid), context.identity.childId))
+    reopened.finishSession()
+    assert.equal(reopened.current.assessments.length, 0)
+    assert.equal(reopened.current.reviewedTrials.length, 501)
+    nativeWritingPayload(get(store.key)!, context.identity.childId)
+  })
+
   test(`${grade} native: atomic teacher gates every new word without changing native scoring`, () => {
     const storage = memory(),
       store = openAcquisitionStore(storage, context, options)

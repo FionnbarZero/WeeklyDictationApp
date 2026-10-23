@@ -131,7 +131,10 @@ export function validateWritingProgress(value: unknown, owner: string): asserts 
       p.updatedAt < p.createdAt ||
       !Array.isArray(p.completedTeachingSteps) ||
       !Array.isArray(p.assessments) ||
-      p.assessments.length > 500 ||
+      // One acquisition transition can add at most one assessment. Bound the
+      // mirror by actual progress, not a lifetime answer quota. Storage adapters
+      // retain their byte limits; no history is truncated to make room.
+      p.assessments.length > p.acquisition?.revision - p.initialAcquisitionRevision ||
       !Number.isInteger(p.firstTeacherTargetIndex) ||
       p.firstTeacherTargetIndex < 0 ||
       Object.keys(p).some(

@@ -4,6 +4,7 @@ import { type AppState, isAppState } from '../domain.ts'
 import { partitionActivityCheckpoints } from './workspaceActivityPartition.ts'
 import { partitionWorkspaceState, WORKSPACE_CHECKPOINT_FIELDS, WORKSPACE_STATE_FIELDS } from './workspacePartition.ts'
 import { validateWritingActivity, writingPayload } from './writingCheckpoint.ts'
+import { packWritingWorkspace, unpackWritingWorkspace } from './writingWorkspaceCodec.ts'
 
 type Store = Pick<Storage, 'length' | 'key' | 'getItem' | 'setItem'>
 type Workspace = { schema: 1; childId: string; records: Record<string, string> }
@@ -24,10 +25,21 @@ const failure =
  * queue or an adaptive projection's child states) grow without limit while the
  * outer state still appears valid.
  */
-const bounded = (value: unknown): boolean => {
+const bounded = (value: unknown, path = ''): boolean => {
   if (value === null || typeof value !== 'object') return true
-  if (Array.isArray(value)) return value.length <= MAX_WORKSPACE_RECORDS && value.every(bounded)
-  return Object.values(value).every(bounded)
+  if (Array.isArray(value)) {
+    // Reviewed history grows with legitimate practice. Keep every entry and
+    // enforce the existing byte budget instead of a lifetime 500-answer quota.
+    // All other collections (curriculum, queues, pending work, etc.) stay bounded.
+    const history =
+      /^(results|distractorTargetObservations|acquisitionTransitionReceipts|writingAcquisitionProgress\.\d+\.assessments)$/.test(
+        path,
+      )
+    return (
+      (history || value.length <= MAX_WORKSPACE_RECORDS) && value.every((entry, i) => bounded(entry, `${path}.${i}`))
+    )
+  }
+  return Object.entries(value).every(([key, entry]) => bounded(entry, path ? `${path}.${key}` : key))
 }
 
 type PartitionRecord = { schema: 1 | 2; childId: string; values: Record<string, unknown> }
@@ -82,6 +94,7 @@ function exposedRecordKeys(records: Record<string, string>) {
 
 function partitionRecord(raw: string, childId: string, schema = 1): Record<string, unknown> {
   try {
+    if (new TextEncoder().encode(raw).byteLength > 700_000) throw new Error(failure)
     const value = JSON.parse(raw) as PartitionRecord
     if (
       !value ||
@@ -226,7 +239,17 @@ function stateRecords(records: Record<string, string>, childId: string, raw: str
 }
 
 function parse(raw: string, childId: string): Workspace {
-  const value = JSON.parse(raw) as Workspace
+  let value = JSON.parse(raw)
+  if (value?.schema === 2) {
+    if (
+      new TextEncoder().encode(raw).byteLength > 700_000 ||
+      value.childId !== childId ||
+      value.codec !== 'writing-lzw-utf8-v1' ||
+      Object.keys(value).some((key) => !['schema', 'childId', 'codec', 'payload'].includes(key))
+    )
+      throw new Error(failure)
+    value = JSON.parse(unpackWritingWorkspace(value.payload))
+  }
   if (
     !value ||
     value.schema !== 1 ||
@@ -241,6 +264,28 @@ function parse(raw: string, childId: string): Workspace {
   )
     throw new Error(failure)
   return value
+}
+
+function encodeWorkspace(value: Workspace) {
+  const raw = JSON.stringify(value)
+  if (new TextEncoder().encode(raw).byteLength <= 700_000) return raw
+  // Opt in only for a validated combined writing checkpoint. Older readers
+  // reject schema 2 rather than replacing its history with an empty fallback.
+  const writing = Object.entries(value.records).some(
+    ([key, payload]) =>
+      isActivityKey(key) && Array.isArray(activityRecord(payload, value.childId, key).writingAcquisitionProgress),
+  )
+  const encoded = writing
+    ? JSON.stringify({
+        schema: 2,
+        childId: value.childId,
+        codec: 'writing-lzw-utf8-v1',
+        payload: packWritingWorkspace(raw),
+      })
+    : raw
+  if (new TextEncoder().encode(encoded).byteLength > 700_000)
+    throw new Error('Saved practice exceeds its safe syncing limit. Keep this page and the original device records.')
+  return encoded
 }
 
 export type PracticeWorkspaceSyncAdapter = {
@@ -292,7 +337,7 @@ export function practiceWorkspaceSyncAdapter(storage: Store, childId: string): P
       records[name] = payload
     },
     commit: () => {
-      const next = JSON.stringify({ ...value, records })
+      const next = encodeWorkspace({ ...value, records })
       if (next === initial) return
       if (storage.getItem(key) !== initial) throw new Error(failure)
       storage.setItem(key, next)
@@ -319,9 +364,7 @@ export function practiceWorkspaceStorage(storage: Store, childId: string): Stora
       throw new Error(
         'Saved practice contains too many records for safe syncing. Existing device records are preserved.',
       )
-    const raw = JSON.stringify(value)
-    if (new TextEncoder().encode(raw).byteLength > 700_000)
-      throw new Error('Saved practice exceeds its safe syncing limit. Keep this page and the original device records.')
+    const raw = encodeWorkspace(value)
     storage.setItem(key, raw)
     if (storage.getItem(key) !== raw) throw new Error(failure)
   }

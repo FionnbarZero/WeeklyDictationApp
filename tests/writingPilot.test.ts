@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { writeFileSync } from 'node:fs'
 import test from 'node:test'
 import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
 import { acquisitionPersistenceContext } from '../src/application/acquisitionPersistence.ts'
@@ -134,6 +135,80 @@ function memory() {
     },
   }
 }
+
+test('long writing preserves every result through the real atomic workspace beyond 500 assessments', async () => {
+  const correctionPilot = {
+    ...pilot,
+    prepareContext: (state: AppState, context: Parameters<typeof pilot.prepareContext>[1]) =>
+      pilot.prepareContext(state, context, true),
+  }
+  const opened = await startPractice({ ...launchInput(), writingPilot: correctionPilot })
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  let state = opened.state
+  let session = primaryStartState(opened.session)
+  while (teachingPosition(state.writingAcquisitionProgress![0])) {
+    state = pilot.completeStep(
+      state,
+      session,
+      teachingPosition(state.writingAcquisitionProgress![0])!.step,
+      date.toISOString(),
+    )
+  }
+  const disk = memory()
+  const storage = practiceWorkspaceStorage(disk, session.childId)
+  const key = 'weekly-dictation-state-v2'
+  storage.setItem(key, JSON.stringify(state))
+  while (state.writingAcquisitionProgress![0].assessments.length < 501) {
+    const result = recordPracticeAnswer({
+      state,
+      session: { ...session, stage: 'review', acquisition: revealAcquisitionPrompt(session.acquisition!) },
+      correct: false,
+      occurredAt: date,
+      persistence,
+      writingPilot: correctionPilot,
+    })
+    if (result.status !== 'writing-ready') throw new Error(result.status === 'error' ? result.message : result.status)
+    // Exercise real checkpoints throughout the run and every transition at the
+    // boundary; avoid making the full suite compress 1,000 nearly equal copies.
+    if (
+      result.state.writingAcquisitionProgress![0].assessments.length >= 498 ||
+      result.state.writingAcquisitionProgress![0].acquisition.revision % 200 === 0
+    )
+      storage.setItem(key, JSON.stringify(result.state))
+    state = result.state
+    session = result.session
+  }
+  assert.equal(state.results.length, 501)
+  assert.equal(state.writingAcquisitionProgress![0].assessments.length, 501)
+  const bytes = disk.getItem(practiceWorkspaceKey(session.childId))!
+  if (process.env.LONG_WRITING_EVIDENCE) writeFileSync(process.env.LONG_WRITING_EVIDENCE, bytes)
+  assert.equal(JSON.parse(bytes).codec, 'writing-lzw-utf8-v1')
+  assert.ok(new TextEncoder().encode(bytes).length <= 700_000)
+  const restored = JSON.parse(practiceWorkspaceStorage(disk, session.childId).getItem(key)!) as AppState
+  assert.deepEqual(restored, JSON.parse(JSON.stringify(state)))
+  const resumed = await startPractice({ ...launchInput(restored), writingPilot: correctionPilot })
+  if (resumed.status !== 'started') throw new Error('Resume failed')
+  assert.equal(
+    JSON.stringify(resumed.state.writingAcquisitionProgress),
+    JSON.stringify(state.writingAcquisitionProgress),
+  )
+  assert.deepEqual(resumed.state.results, state.results)
+  const receiverDisk = memory()
+  practiceWorkspaceStorage(receiverDisk, session.childId)
+  const sender = practiceWorkspaceSyncAdapter(disk, session.childId)!
+  const receiver = practiceWorkspaceSyncAdapter(receiverDisk, session.childId)!
+  for (const name of sender.keys()) receiver.stage(name, sender.read(name)!)
+  receiver.commit()
+  assert.equal(practiceWorkspaceStorage(receiverDisk, session.childId).getItem(key), JSON.stringify(restored))
+  const beforeCorruption = disk.getItem(practiceWorkspaceKey(session.childId))!
+  disk.setItem(
+    practiceWorkspaceKey(session.childId),
+    JSON.stringify({ schema: 2, childId: session.childId, codec: 'writing-lzw-utf8-v1', payload: '!' }),
+  )
+  assert.throws(() => practiceWorkspaceStorage(disk, session.childId))
+  assert.equal(JSON.parse(disk.getItem(practiceWorkspaceKey(session.childId))!).payload, '!')
+  disk.setItem(practiceWorkspaceKey(session.childId), beforeCorruption)
+})
 
 test('actual launch inserts teaching after optional Warmup, and disabled build cannot bypass a saved pilot', async () => {
   const opened = await launch()

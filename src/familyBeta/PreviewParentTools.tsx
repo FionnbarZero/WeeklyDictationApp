@@ -24,7 +24,7 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
                   : standaloneGamesRetired
                     ? 'Streamlined Dojo'
                     : 'Compact parent toolbar'}{' '}
-            · {grade5Standalone ? 'Standalone 1' : 'Prototype 1'} ·{' '}
+            · {grade5Standalone ? 'Standalone 1' : writingCorrectionPreview ? 'Prototype 2' : 'Prototype 1'} ·{' '}
             {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only. Progress saves in this
             browser; no account, cloud sync or offline installation.
           </p>

@@ -38,7 +38,7 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = w0Writing
-  ? 'W0 integrated writing / Prototype 1'
+  ? 'W0 integrated writing / Prototype 2'
   : standalone
     ? '5th grade Dojo / Standalone 1'
     : presentation
@@ -191,6 +191,8 @@ writeFileSync(
             grades: ['Kindergarten', 'Grade 2', 'Grade 5'],
             writingCorrection:
               'New Grade 2 writing attempts: copy once, memory once, repeat until correct. Other grades and existing pinned lessons retain their rules.',
+            longWriting:
+              'No 500-assessment cutoff. Lossless long-history storage; existing byte, owner and stale-writer safeguards retained.',
           }
         : {}),
       ...(standalone
