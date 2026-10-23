@@ -58,6 +58,10 @@ async function launch(page: Page, grade: (typeof grades)[number], writing = true
   await expect(page.locator('.beta-parent-tools > summary')).toBeVisible()
   if (referenceWeek) await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', grade.week)
   const frame = page.frameLocator('iframe:visible')
+  if (grade.slug === 'grade2')
+    await expect(frame.locator('.curriculum-source-status')).toHaveText('Loaded 7 weekly datasets.', {
+      timeout: 12_000,
+    })
   await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
   await expect(frame.getByRole('button', { name: 'Stroke Order Slay', exact: true })).toHaveCount(0)
   await expect(frame.getByRole('button', { name: 'Whispering Scrolls', exact: true })).toHaveCount(0)
