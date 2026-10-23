@@ -65,6 +65,8 @@ const initialProfiles: BetaProfile[] = BETA_GRADES.map((grade, i) => ({
 }))
 const presentationGrades = grade5PresentationPreview ? (['Grade 5'] as const) : BETA_GRADES
 const message = (error: unknown) => (error instanceof Error ? error.message : 'The operation could not be completed.')
+const repairExample = import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true' && !firebaseConfigReady && new URLSearchParams(location.search).get('example') === 'curriculum-repair'
+let repairProfile: BetaProfile | null = null
 const workspaceOwner = createFamilyWorkspaceOwner(localStorage)
 ;(window as FamilyWorkspaceWindow).familyWorkspaceOwner = workspaceOwner
 
@@ -83,13 +85,14 @@ function FamilyPreview() {
       ? []
       : (() => {
           try {
-            return JSON.parse(localStorage.getItem('beta-preview-profiles') || 'null') || initialProfiles
+            const saved: BetaProfile[] = JSON.parse(localStorage.getItem('beta-preview-profiles') || 'null') || initialProfiles
+            return repairProfile && !saved.some(p => p.id === repairProfile!.id) ? [...saved, repairProfile] : saved
           } catch {
-            return initialProfiles
+            return repairProfile ? [...initialProfiles, repairProfile] : initialProfiles
           }
         })(),
   )
-  const [selectedId, setSelectedId] = useState(initialProfiles.find((p) => p.grade === initialGrade)!.id)
+  const [selectedId, setSelectedId] = useState(repairProfile?.id || initialProfiles.find((p) => p.grade === initialGrade)!.id)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>('activities')
   const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>(
@@ -1298,6 +1301,17 @@ function FamilyPreview() {
   )
 }
 
+async function renderPreview() {
+  if (repairExample) {
+    try {
+      const example = await import('./w1RepairExample.ts')
+      await example.prepareRepairExample(localStorage)
+      repairProfile = example.repairExampleProfile
+    } catch (error) {
+      createRoot(document.getElementById('beta-root')!).render(<><p role="alert" data-report-activity="Repair example unavailable">{message(error)} All existing records were preserved.</p><ProblemReporter /></>)
+      return
+    }
+  }
 createRoot(document.getElementById('beta-root')!).render(
   <>
     <AppErrorBoundary>
@@ -1306,3 +1320,5 @@ createRoot(document.getElementById('beta-root')!).render(
     <ProblemReporter />
   </>,
 )
+}
+void renderPreview()

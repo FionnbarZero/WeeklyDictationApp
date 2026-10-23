@@ -22,4 +22,6 @@ Primary source/automated review only; no new independent-agent review is claimed
 
 ## Verification before publication
 
+The same test site includes an optional Grade 2 entrance `?grade=grade2&example=curriculum-repair`. It creates only the separate synthetic `w1-label-example` learner, using the real importer/reducer and validated retained source. It never reseeds or resets existing work and refuses a changed source fixture. Normal grade entrances retain their original learners. This makes the historical repair button directly testable on an iPad without importing/resetting records. It is gated off outside the isolated W1 build and whenever Firebase accounts are configured.
+
 Initial full suite: **1,225 unit tests passed**. Focused W1 browser suite: **10/10 Chromium/WebKit cases passed**, including persisted problem-report metadata. Type/lint/format and build/performance checks pass; the production limit remains 550,000 initial JavaScript bytes and 60,000 CSS bytes. Final packaged regressions, publication verification and email receipt are appended below when complete; local passing tests alone do not establish any hosted change.

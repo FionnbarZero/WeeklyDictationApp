@@ -168,3 +168,35 @@ test('diagnostics prefer visible launch errors and never scrape inputs or page t
   expect(context.phase).toBe('activity-error')
   expect(JSON.stringify(context)).not.toContain('PRIVATE')
 })
+
+test('built-in repair example is playable, resumes on reload and leaves the normal test learner untouched', async ({
+  page,
+}) => {
+  await page.goto('/family-beta-preview.html?grade=grade2')
+  const frame = page.frameLocator('iframe:visible')
+  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  const before = await page.evaluate(() =>
+    Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('family-beta-activity:preview-1:'))),
+  )
+  await page.goto('/family-beta-preview.html?grade=grade2&example=curriculum-repair')
+  await expect(
+    frame.getByText('This is a synthetic saved-lesson example. Your normal test learner is unchanged.'),
+  ).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('built-in-repair-example.png'), fullPage: true })
+  await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
+  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+  const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
+  const skip = frame.getByRole('button', { name: 'Skip Warmup', exact: true })
+  await expect(skip.or(teacher)).toBeVisible()
+  if (await skip.isVisible()) await skip.click()
+  await expect(teacher.getByRole('heading', { name: '走', exact: true })).toBeVisible()
+  await page.reload()
+  await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+  await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toHaveCount(0)
+  const after = await page.evaluate(() =>
+    Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('family-beta-activity:preview-1:'))),
+  )
+  expect(after).toEqual(before)
+})

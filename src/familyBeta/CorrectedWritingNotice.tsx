@@ -31,6 +31,9 @@ export default function CorrectedWritingNotice({
       {proposals.map((p) => (
         <div key={p.envelope.id}>
           <strong>A corrected Writing lesson is ready · {p.old.dateRange}</strong>
+          {childId === 'w1-label-example' && (
+            <p>This is a synthetic saved-lesson example. Your normal test learner is unchanged.</p>
+          )}
           <p>
             The old lesson included “stroke order” as a word. Start a separate corrected attempt with{' '}
             {p.replacement.words.map((w) => w.text).join('、')}. Your previous work and scores will stay saved.
