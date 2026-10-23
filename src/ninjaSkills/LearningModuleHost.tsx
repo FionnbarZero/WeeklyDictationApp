@@ -62,6 +62,7 @@ export function LearningModuleHost({
         data-report-activity={pack.title}
         data-report-phase="game"
         data-report-game={pack.moduleId}
+        data-report-module={pack.moduleId}
       >
         <Suspense
           fallback={

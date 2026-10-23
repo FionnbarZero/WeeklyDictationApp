@@ -75,6 +75,8 @@ const PracticeView = lazy(() =>
 )
 const Grade2StrokeOrderExperience = lazy(() => import('./learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx'))
 const Grade2WritingPractice = lazy(() => import('./writingAcquisition/Grade2WritingPractice.tsx'))
+const CorrectedWritingNotice = import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+  ? lazy(() => import('./familyBeta/CorrectedWritingNotice.tsx')) : null
 const HistoryView = lazy(() => import('./progress/HistoryView.tsx'))
 const LocalBackupTools = lazy(() =>
   import('./backup/LocalBackupTools.tsx').then((module) => ({ default: module.LocalBackupTools })),
@@ -530,7 +532,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         setGrade2SourceDatasets(source.datasets)
         setGrade2CurriculumTools(curriculum)
         setLessonRetirement(retirement)
-        setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets automatically from Google Slides.`)
+        setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets.`)
       })
       .catch((error) => {
         if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
@@ -1372,6 +1374,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         </div>
       </header>
       <main className="main-content">
+        {CorrectedWritingNotice && familyPreview && view === 'home' && !requestedWritingLesson && grade2SourceDatasets && selectedChild?.grade === 'Grade 2' && (
+          <Suspense fallback={null}><CorrectedWritingNotice state={state} incoming={grade2SourceDatasets} childId={selectedChild.id} /></Suspense>
+        )}
         {curriculumSourceMessage && (
           <p className="curriculum-source-status" role="status">
             {curriculumSourceMessage}

@@ -750,6 +750,8 @@ function FamilyPreview() {
   }
 
   async function discardSlot(slot: FamilyActivitySlot) {
+    document.documentElement.setAttribute('data-report-module', slot.game?.pack.moduleId || slot.resumeChannel || 'activities')
+    document.documentElement.setAttribute('data-report-phase', 'discard-attempt')
     if (!confirmActivityDiscard()) return
     try {
       const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
@@ -857,7 +859,7 @@ function FamilyPreview() {
           </div>
         )}
         {!compactParentPreview && activityError && (
-          <div className="error-banner" role="alert">
+          <div className="error-banner" role="alert" data-report-activity="Activity could not open or close" data-report-phase="activity-error">
             {activityError}
           </div>
         )}
@@ -956,12 +958,12 @@ function FamilyPreview() {
         </div>
       )}
       {compactParentPreview && activityError && (
-        <div className="error-banner" role="alert">
+        <div className="error-banner" role="alert" data-report-activity="Activity could not open or close" data-report-phase="activity-error">
           {activityError}
         </div>
       )}
       {compactParentPreview && curriculumError && (
-        <div className="error-banner" role="alert">
+        <div className="error-banner" role="alert" data-report-activity="Curriculum unavailable" data-report-phase="curriculum-error">
           {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
         </div>
       )}
@@ -1012,7 +1014,7 @@ function FamilyPreview() {
         slots.some(
           (slot) => slot.workspace === workspace && slot.kind === (tab === 'games' ? 'game' : 'activities'),
         ) && (
-          <section className="beta-panel">
+          <section className="beta-panel" data-report-activity="Paused activities">
             <h2>Your paused work</h2>
             <p>
               Your work stays here during this visit. After a reload, reviewed saved practice resumes; temporary writing

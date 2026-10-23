@@ -22,7 +22,7 @@ export type ProblemReport = {
 export function captureScreenContext(doc: Document): ReportContext {
   const context: ReportContext = { route: doc.location.pathname, origin: doc.location.origin }
   const workspace = doc.querySelector('[data-report-grade]')
-  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision']) {
+  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision', 'section', 'module']) {
     const value = workspace?.getAttribute(`data-report-${key}`)
     if (value) context[key] = value.slice(0, 300)
   }
@@ -42,14 +42,24 @@ export function captureScreenContext(doc: Document): ReportContext {
   } catch {
     context.activity = 'Activity details unavailable'
   }
+  const visible = (element: Element) => element.getClientRects().length && !element.closest('[hidden]')
   const modal = doc.querySelector<HTMLDialogElement>('dialog[open][data-report-activity]')
+  const outerErrors = [...doc.querySelectorAll('[role="alert"][data-report-activity]')].filter(visible)
+  const outerError = outerErrors[outerErrors.length - 1]
   const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(
-    (element) => element.getClientRects().length && !element.closest('[hidden]'),
+    visible,
   )
-  const marker = modal || markers[markers.length - 1]
-  for (const key of ['activity', 'phase', 'target', 'position', 'audio', 'game']) {
-    const value = marker?.getAttribute(`data-report-${key}`)
-    if (value) context[key] = value.slice(0, 300)
+  const marker = modal || outerError || markers[markers.length - 1]
+  // The innermost game shell often supplies just a title. Inherit explicit
+  // diagnostics from its ancestors rather than losing the host module/phase.
+  const ancestors: Element[] = []
+  for (let element: Element | null = marker || null; element; element = element.parentElement) ancestors.unshift(element)
+  if (marker?.ownerDocument !== surface) ancestors.unshift(surface.documentElement)
+  for (const element of ancestors) {
+    for (const key of ['activity', 'phase', 'target', 'position', 'audio', 'game', 'module', 'section']) {
+      const value = element.getAttribute(`data-report-${key}`)
+      if (value) context[key] = value.slice(0, 300)
+    }
   }
   if (!marker && frame) {
     context.activity ||= 'Activity loading or unavailable'

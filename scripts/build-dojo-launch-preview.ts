@@ -12,7 +12,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const w0Writing = process.argv.includes('--w0-writing')
+const w1Curriculum = process.argv.includes('--w1-curriculum')
+const w0Writing = w1Curriculum || process.argv.includes('--w0-writing')
 const standalone = process.argv.includes('--grade5-standalone')
 if (w0Writing && (standalone || process.argv.includes('--grade5-presentation')))
   throw new Error('W0 must use its separate all-grade package. The Grade 5 presentation website is frozen.')
@@ -23,37 +24,41 @@ const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs'
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  w0Writing
-    ? 'w0-writing-preview-dist'
-    : standalone
-      ? 'grade5-standalone-dist'
-      : presentation
-        ? 'grade5-presentation-preview-dist'
-        : grade5Repairs
-          ? 'grade5-repair-preview-dist'
-          : regressions
-            ? 'regression-preview-dist'
-            : 'dojo-launch-preview-dist',
+  w1Curriculum
+    ? 'w1-curriculum-preview-dist'
+    : w0Writing
+      ? 'w0-writing-preview-dist'
+      : standalone
+        ? 'grade5-standalone-dist'
+        : presentation
+          ? 'grade5-presentation-preview-dist'
+          : grade5Repairs
+            ? 'grade5-repair-preview-dist'
+            : regressions
+              ? 'regression-preview-dist'
+              : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = w0Writing
-  ? 'W0 integrated writing / Prototype 2'
-  : standalone
-    ? '5th grade Dojo / Standalone 1'
-    : presentation
-      ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-      : retireStandalone
-        ? 'Streamlined Dojo / Prototype 1'
-        : compactParents
-          ? 'Compact parent toolbar / Prototype 1'
-          : grade5Repairs
-            ? 'Grade 5 regression repairs / Prototype 2'
-            : regressions
-              ? 'October 20 regression repairs / Prototype 3'
-              : octoberResources
-                ? 'Kindergarten October 19 resources / Prototype 1'
-                : 'Writing reliability / Prototype 2'
+const prototype = w1Curriculum
+  ? 'W1 curriculum and activity entry / Prototype 1'
+  : w0Writing
+    ? 'W0 integrated writing / Prototype 2'
+    : standalone
+      ? '5th grade Dojo / Standalone 1'
+      : presentation
+        ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+        : retireStandalone
+          ? 'Streamlined Dojo / Prototype 1'
+          : compactParents
+            ? 'Compact parent toolbar / Prototype 1'
+            : grade5Repairs
+              ? 'Grade 5 regression repairs / Prototype 2'
+              : regressions
+                ? 'October 20 regression repairs / Prototype 3'
+                : octoberResources
+                  ? 'Kindergarten October 19 resources / Prototype 1'
+                  : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -96,6 +101,7 @@ execFileSync(
       VITE_GRADE5_PRESENTATION_PREVIEW: String(presentation),
       VITE_GRADE5_STANDALONE: String(standalone),
       VITE_WRITING_CORRECTION_PREVIEW: String(w0Writing),
+      VITE_W1_CURRICULUM_PREVIEW: String(w1Curriculum),
     },
   },
 )
@@ -157,7 +163,10 @@ const entry = resolve(out, 'family-beta-preview.html')
 if (w0Writing)
   writeFileSync(
     entry,
-    readFileSync(entry, 'utf8').replace(/<title>[^<]*<\/title>/, '<title>W0 integrated writing</title>'),
+    readFileSync(entry, 'utf8').replace(
+      /<title>[^<]*<\/title>/,
+      `<title>${w1Curriculum ? 'Ninja Dojo · W1 integrated test' : 'W0 integrated writing'}</title>`,
+    ),
   )
 if (presentation)
   writeFileSync(
@@ -186,6 +195,12 @@ writeFileSync(
     {
       schema: 1,
       prototype,
+      ...(w1Curriculum
+        ? {
+            curriculumEntry:
+              'Explicit label-only corrected attempt preserves old work; inherited game/section report context; retained-source resource inventory. Parent target editor is separate W0c.',
+          }
+        : {}),
       ...(w0Writing
         ? {
             grades: ['Kindergarten', 'Grade 2', 'Grade 5'],

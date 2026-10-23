@@ -1,0 +1,25 @@
+# W1 curriculum and activity entry — October 23, 2026
+
+## Scope and status
+
+The owner requested W1 without routine approval prompts. This follows the detailed W1 curriculum/entry checklist in the primary roadmap, not the recent shorthand that incorrectly grouped parent target editing into W1. The parent target editor remains separately approved W0c prototype work. The standalone Grade 5 presentation and canonical family app remain frozen/unchanged by this work.
+
+Implementation is in the existing managed worktree on `codex/w1-curriculum-entry`, based on `911ba28` and W0 application `711c389`. This is one combined **W1 curriculum and activity entry / Prototype 1**, carrying W0's latest correction and long-session repairs. It is synthetic browser-only testing, not authenticated cloud integration or canonical release. Working-interaction acceptance and the existing independent integration, authenticated compatibility/recovery and protected-release gates remain.
+
+## W1 checklist
+
+- **Instruction labels:** preserve exact source vocabulary/order/tiers; filter only the known “stroke order” resource heading, including a heading split across Slides text runs. Unknown English labels, including STROKE alone, remain visible to validation rather than being guessed away. The October 13–16 Grade 2 cohort remains 走、最、哪里、家、住.
+- **Invalid pinned lessons:** an explicit “Use corrected lesson · keep old work” action is offered only for an unfinished Grade 2 lesson whose sole target difference is removal of the known resource label. The same-week replacement must be canonical and have all guides. Re-read current saved state, verify owner/identity and exact envelope/source equality, then add one immutable retirement marker. Never rewrite/delete previous checkpoints, responses, scores or reports; ordinary Writing starts the corrected edition. Unrelated teacher edits and valid pinned lessons do not use this repair.
+- **Activity entry:** preserve the existing source-aligned Kindergarten Writing characters / High-frequency words fixes. Re-run ordinary all-grade writing/reading entry, repeated exit/re-entry, scheduled activation and report pause against the combined artifact. Reading is independent of writing-resource availability. No timer, scoring, correction or mastery policy changes belong to W1.
+- **Resources:** executable inventory `scripts/audit-writing-resources.ts` records the exact retained source hashes, every week/word, guide availability, Kindergarten recorded-audio availability, pinyin/meaning gaps and current-date selection. Unit checks require every retained writing word's guide and every Kindergarten recording file. Missing supporting language remains separately visible W4 content work, not a reason to substitute or silently omit teacher words. Mandarin speech fallback is not evidence of audible physical-iPad playback.
+- **Reports:** inherit explicit module/section/phase attributes through nested game shells; prefer visible launch errors over the underlying game; label paused/discard surfaces. Navigation clears stale launch context. Save real reports in browser tests, verify actual game/build attribution and Report pause/resume. Only whitelisted diagnostic attributes are collected, never input values, page text, handwriting or recordings.
+
+## Safeguards and review
+
+The corrected-attempt interaction is lazy and enabled only by `VITE_W1_CURRICULUM_PREVIEW`. Default production does not expose it. The immutable retirement mechanism and existing storage bounds are unchanged. A stale writer, wrong owner/source, missing guide, failed write or unconfirmed readback cannot erase original work. Tests exercise those refusals and confirm original record bytes are unchanged by the correction. A browser fixture seeds the historical invalid checkpoint through the real reducer, then exercises the visible correction action and ordinary Writing route in Chromium and WebKit.
+
+Primary source/automated review only; no new independent-agent review is claimed. The architecture boundary test explicitly includes the narrow repair helper; no broad allowlist weakening or budget increase. The first browser fixture used the source-neutral projection rather than Grade 2's actual legacy projection; corrected the fixture to use the same importer as App. A Memory Lanterns assertion was corrected to its catalog ID `memory-flip`. Neither test-driver correction changed teaching behavior or removed an assertion.
+
+## Verification before publication
+
+Initial full suite: **1,225 unit tests passed**. Focused W1 browser suite: **10/10 Chromium/WebKit cases passed**, including persisted problem-report metadata. Type/lint/format and build/performance checks pass; the production limit remains 550,000 initial JavaScript bytes and 60,000 CSS bytes. Final packaged regressions, publication verification and email receipt are appended below when complete; local passing tests alone do not establish any hosted change.

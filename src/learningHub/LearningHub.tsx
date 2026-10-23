@@ -75,7 +75,15 @@ function ActivityCard<Launch>({
           type="button"
           disabled={action.kind === 'disabled'}
           title={action.kind === 'disabled' ? action.reason : undefined}
-          onClick={() => action.kind === 'launch' && onLaunch(action.launch, launchContext)}
+          onClick={() => {
+            if (action.kind !== 'launch') return
+            const root = document.documentElement
+            root.dataset.reportSection = launchContext.sectionId
+            root.dataset.reportModule = activity.id
+            root.dataset.reportActivity = activity.title
+            root.dataset.reportPhase = 'activity-launch'
+            onLaunch(action.launch, launchContext)
+          }}
         >
           {action.label}
         </button>
@@ -128,6 +136,8 @@ function SectionDetail<Launch>({
     <section
       className={`learning-hub-detail learning-hub-theme-${section.theme}`}
       data-report-activity={`Learning hub: ${section.id}`}
+      data-report-section={section.id}
+      data-report-phase="activity-menu"
     >
       <button className="learning-hub-back" type="button" onClick={onBack}>
         ← Back to all challenges
@@ -274,6 +284,13 @@ export function LearningHub<Launch>({
     setSection(id)
   }
   const selected = model.sections.find((section) => section.id === selectedSectionId)
+
+  useEffect(() => {
+    const root = document.documentElement
+    for (const key of ['activity', 'module', 'phase']) root.removeAttribute(`data-report-${key}`)
+    if (selectedSectionId) root.setAttribute('data-report-section', selectedSectionId)
+    else root.removeAttribute('data-report-section')
+  }, [selectedSectionId])
 
   useEffect(() => {
     if (selectedSectionId && !model.sections.some((section) => section.id === selectedSectionId)) {

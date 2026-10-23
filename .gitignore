@@ -53,4 +53,6 @@ grade5-presentation-preview-dist/
 grade5-standalone-dist/
 w0-writing-preview-dist/
 w0-writing-test-results/
+w1-curriculum-preview-dist/
+w1-curriculum-test-results/
 .wrangler/
