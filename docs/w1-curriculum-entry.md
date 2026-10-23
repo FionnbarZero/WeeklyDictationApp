@@ -1,5 +1,21 @@
 # W1 curriculum and activity entry — October 23, 2026
 
+## Open Chrome incident — bounded teacher recovery prototype
+
+The owner reports that repeated mistakes while tracing numbered strokes in Chrome make the entire activity and controls disappear. They cannot provide a screenshot. The inspected Codex in-app tab was healthy on `2a00878`; it was not the failing Chrome tab. Its build, error and underlying failure remain unverified. Do not mark this incident repaired or accepted merely because synthetic checks pass.
+
+The ordinary repeated-error path passes on retained Prototype 2 in Chromium, iPad-sized WebKit and installed Chrome 155.0.8059.85 (isolated headless profile, mocked audio). The test covers 30 rejected strokes, Clear/Undo, repeated independent comparisons, Report/return, Exit/reload/resume and acquisition entry. This is not the owner's profile, extensions, graphics context or physical audio/Pencil.
+
+Prototype 3 adds a narrow **Grade 2 / W1-only recovery boundary** around the existing stroke teacher. Caught descendant render failures, script-event errors and unhandled promise rejections show **Try this step again** and **Return to Dojo**. Retry remounts from the parent's last confirmed teaching position, clears unfinished ink and does not write/reset scores, checkpoints or reports. Listeners exist only while the teacher is mounted. Report pause blocks both recovery controls. Fixed diagnostic codes `ST-RENDER`, `ST-EVENT` and `ST-PROMISE` flow through the existing report whitelist; no raw exception, handwriting or input content is added. Normal teacher UI/rules/timers, acquisition, other grades and default production are unchanged.
+
+The failure test injects exceptions only from the browser test driver, not from shipped code. It fails on the retained predecessor because no recovery UI appears, then passes in desktop Chromium and iPad-sized WebKit for all three fault types, repeated retry/exit/reopen, step-two preservation, exact saved-record bytes, reporting, pause and listener cleanup. These injected faults verify the safeguard; they do **not** reproduce or identify the owner's original failure. Browser-process/GPU crashes and failures outside this mounted teacher are not covered. Evidence starts at `/tmp/ninja-w1-teacher-recovery.KY41W5`; predecessor and original tracing checks remain in `/tmp/ninja-w1-blank-screen.RDoyZX`.
+
+Primary source/automated review only; no separate-agent review or physical-device acceptance. Publication and final regression receipts are recorded below only after completion. Do not ask the owner to reset browser data or resubmit an unavailable screenshot. Keep the frozen Grade 5 presentation and canonical website unchanged.
+
+The first expanded local suite passed 17/18. Its iPad repeated-mistake driver waited until after the rejected stroke's existing **700 ms** lifetime before clicking Undo; with no accepted ink, that button is correctly disabled. The healthy teacher/error snapshot and failure trace are retained. The driver now controls browser time, explicitly asserts Undo becomes disabled after rejection expiry, and separately exercises Undo while the rejected stroke still exists. No application behavior, assertion or timeout was weakened to pass this check.
+
+The initial controlled-clock driver also left time paused during reload, which held the app at its normal “Checking browser progress” startup gate. It now resumes real time before Exit/reload and acquisition handoff, and controls time only inside the active tracing exercise. That driver failure is separately retained in `controlled-stroke-clock`; it was not a reproduced white-screen defect or a reason to alter the saving gate.
+
 ## Audit follow-up — split saved heading repair, Prototype 2
 
 The owner's follow-up audit found a **real missed W1 path in Prototype 1 (`47ac451`)**: its old pinned-lesson repair recognized a joined `strokeorder` target, but not the adjacent `STROKE` / `ORDER` targets produced by the predecessor when the heading crossed Slides text runs. The published v1 build reproduced the missing correction button and blocked Writing launch in both Chromium and iPad-sized WebKit. Original saved records stayed intact. Prior broad “W1 complete” wording did not establish that case and is superseded by this finding/repair record; the older receipts below remain historical evidence.

@@ -11,7 +11,14 @@ export default defineConfig({
   reporter: 'line',
   use: { baseURL, actionTimeout: 12_000, trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1366, height: 900 } } },
+    {
+      name: 'desktop',
+      use: {
+        browserName: 'chromium',
+        channel: process.env.W1_INSTALLED_CHROME === '1' ? 'chrome' : undefined,
+        viewport: { width: 1366, height: 900 },
+      },
+    },
     { name: 'ipad', use: { browserName: 'webkit', viewport: { width: 768, height: 1024 } } },
   ],
   webServer: process.env.W1_BASE_URL
