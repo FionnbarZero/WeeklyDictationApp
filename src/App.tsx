@@ -1375,7 +1375,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       </header>
       <main className="main-content">
         {CorrectedWritingNotice && familyPreview && view === 'home' && !requestedWritingLesson && grade2SourceDatasets && selectedChild?.grade === 'Grade 2' && (
-          <Suspense fallback={null}><CorrectedWritingNotice state={state} incoming={grade2SourceDatasets} childId={selectedChild.id} /></Suspense>
+          <Suspense fallback={null}><CorrectedWritingNotice state={state} incoming={grade2SourceDatasets} childId={selectedChild.id} dateKey={currentDateKey} /></Suspense>
         )}
         {curriculumSourceMessage && (
           <p className="curriculum-source-status" role="status">

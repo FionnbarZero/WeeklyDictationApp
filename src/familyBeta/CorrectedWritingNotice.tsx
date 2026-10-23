@@ -6,16 +6,23 @@ export default function CorrectedWritingNotice({
   state,
   incoming,
   childId,
+  dateKey,
 }: {
   state: AppState
   incoming: Dataset[]
   childId: string
+  dateKey: string
 }) {
   const [error, setError] = useState('')
+  // Ordinary Writing opens the active scheduled week, not a historical week.
+  const activeSource = incoming
+    .filter((d) => d.startDate <= dateKey)
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))
+    .slice(0, 1)
   let proposals: ReturnType<typeof correctedWritingAttempts> = []
   let unavailable = ''
   try {
-    proposals = correctedWritingAttempts(state, incoming, childId, localStorage)
+    proposals = correctedWritingAttempts(state, activeSource, childId, localStorage)
   } catch {
     unavailable = 'The corrected lesson is not ready. All saved work is preserved; please report this problem.'
   }
@@ -44,7 +51,7 @@ export default function CorrectedWritingNotice({
             type="button"
             onClick={() => {
               try {
-                startCorrectedWritingAttempt(localStorage, state, incoming, childId, p.envelope.id)
+                startCorrectedWritingAttempt(localStorage, state, activeSource, childId, p.envelope.id)
                 window.location.reload()
               } catch (e) {
                 setError(
