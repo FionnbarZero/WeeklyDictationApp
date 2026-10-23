@@ -71,6 +71,13 @@ test('label-only correction keeps all original records and ordinary Writing open
   const frame = page.frameLocator('iframe:visible')
   await expect(frame.getByRole('button', { name: 'Use corrected lesson · keep old work' })).toBeVisible()
   await page.screenshot({ path: test.info().outputPath('corrected-lesson-notice.png'), fullPage: true })
+  await frame.getByRole('button', { name: /Enter the Dojo/ }).click()
+  await frame.getByRole('button', { name: 'Learn to Write', exact: true }).click()
+  await expect(frame.getByRole('alert')).toBeVisible()
+  const failedLaunch = await page.evaluate(`(${captureScreenContext.toString()})(document)`)
+  expect(failedLaunch.module).toMatch(/writing/)
+  expect(failedLaunch.phase).toBe('launch-alert')
+  expect(failedLaunch.activity).not.toContain('Learning hub')
   const oldEnvelope = state.acquisitionProgressEnvelopes![0]
   await frame.getByRole('button', { name: 'Use corrected lesson · keep old work' }).click()
   await expect(frame.getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()

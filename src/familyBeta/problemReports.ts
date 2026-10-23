@@ -44,10 +44,12 @@ export function captureScreenContext(doc: Document): ReportContext {
   }
   const visible = (element: Element) => element.getClientRects().length && !element.closest('[hidden]')
   const modal = doc.querySelector<HTMLDialogElement>('dialog[open][data-report-activity]')
-  const outerErrors = [...doc.querySelectorAll('[role="alert"][data-report-activity]')].filter(visible)
+  const outerErrors = [...doc.querySelectorAll('[role="alert"]')].filter(visible)
   const outerError = outerErrors[outerErrors.length - 1]
+  const activityAlerts = [...surface.querySelectorAll('[role="alert"]')].filter(visible)
+  const alert = outerError || activityAlerts[activityAlerts.length - 1]
   const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(visible)
-  const marker = modal || outerError || markers[markers.length - 1]
+  const marker = modal || alert || markers[markers.length - 1]
   // The innermost game shell often supplies just a title. Inherit explicit
   // diagnostics from its ancestors rather than losing the host module/phase.
   const ancestors: Element[] = []
@@ -59,6 +61,12 @@ export function captureScreenContext(doc: Document): ReportContext {
       const value = element.getAttribute(`data-report-${key}`)
       if (value) context[key] = value.slice(0, 300)
     }
+  }
+  if (marker === alert && alert) {
+    context.alert = 'visible'
+    context.activity ||= 'Activity needs attention'
+    context.phase ||= 'activity-alert'
+    if (context.phase === 'activity-launch') context.phase = 'launch-alert'
   }
   // Some menus stay mounted but hidden while a game runs. Once visible again,
   // their explicit menu phase must not inherit the previous game's details.
