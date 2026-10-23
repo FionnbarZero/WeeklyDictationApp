@@ -1,5 +1,15 @@
 # Weekly Dictation roadmap
 
+## Current blocker — original Chrome tracing disappearance remains open, October 23
+
+The owner cannot supply a screenshot; stop requesting it. **Prototype 4 / `d6ee258`** is now published, exactly verified and emailed at the same W1 links in STATUS. The W1-only Grade 2 recovery controls preserve confirmed teaching steps and report fixed error codes. A separate early Writing click while source helpers load is reproduced and now receives clear loading/retry feedback without saving or starting a lesson.
+
+All 1,246 units, 20 final local focused cases and **43 final hosted cases** pass. The original whole-activity disappearance during tracing is **not reproduced or established as fixed**. The healthy inspected Codex tab is not the failing Chrome tab; installed headless Chrome and simulated failures do not substitute for that device/profile. Keep this incident open.
+
+**Next:** one bounded 3–5 minute affected-Chrome / iPad check using the verified current links and existing problem-report mechanism. No screenshot or browser-data reset is needed. If the recovery screen appears, its report code and confirmed step can guide the next focused diagnosis. Working-prototype approval and existing independent integration, authenticated offline/cross-device/recovery and protected-release gates still precede canonical activation; do not call all W0/W1 work complete.
+
+Frozen `5th grade Dojo / 1a9db3e` remains unchanged for Monday October 26. Confirmed routing remains **GPT-6 Astra · Extra High** for repair/review, **GPT-6.1 Sol · High** for bounded publication and **GPT-6 Luna · Medium** for routine status documentation. No model switch or separate-agent review is claimed. Parent target editing stays W0c; wider supporting content stays W4.
+
 ## Current priority — W1 audit finding closed in Prototype 2; live gates remain, October 23
 
 The owner-authorized repair for separate **STROKE / ORDER** targets is published at the **same combined W1 test links** as **`2a00878` / Prototype 2**. Exact URLs, October 30 12:58 p.m. Pacific expiry, hosted identity and confirmed SENT email receipt are in STATUS. The earlier `47ac451` broad completion claim missed this historical saved-state variant; preserve that audit failure rather than reclassifying it as a pass. The new exact-pair comparison still requires a validated same-week replacement and preserves all history.
