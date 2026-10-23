@@ -3,6 +3,9 @@ import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
 
 test('corrected Grade 2 teacher survives repeated mistakes, retry, report and reopening', async ({ page }) => {
+  // This complete five-step journey includes 30 errors, four comparisons and
+  // controlled timer checks. Keep each action's 12-second limit unchanged.
+  test.setTimeout(180_000)
   await page.clock.install({ time: new Date('2026-10-23T19:00:00Z') })
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
