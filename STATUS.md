@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Current work — W0 correction prototype; presentation frozen, October 23
+
+The owner resumed integrated-app work and requested W0 completion with automatic review and emailed links for all grades. **GPT-6 Astra · Extra High is confirmed for this stage.** The standalone **5th grade Dojo / `1a9db3e`** at https://5thgradedojo.meghangames.com/ is frozen for Monday October 26. A fresh normal-HTTPS check passes all 183 public files / 1,098 headers; the earlier local DNS issue is no longer reproduced. Its Worker, homepage entry, records and the older Grade 5 preview are not changed.
+
+The core all-character teacher/native-grade integration is already delivered. This W0 slice implements the separately approved **Grade 2 whole-word correction: copy once → memory once; repeat until correct**, with no correction distractor or three-error restart. Existing pinned lessons and Kindergarten/Grade 5/reading policies remain unchanged. New saves carry an explicit engine-v2 capability so older engine-v1 readers refuse them rather than reinterpret the rule. No saved data migration or reset.
+
+Implementation is in the existing managed worktree on `codex/w0-writing-correction`, not the dirty primary checkout. Current main `5727d74` is already included. **1,208 units and production type/build/performance/lint checks pass**; final frozen-package browser checks/publication/email are still pending. Primary-agent source review and automated regression review are being performed; no new independent-agent review is claimed. The new flag is enabled only for a separate all-grade browser-only prototype. Canonical `9d06a02` is unchanged. Working-prototype acceptance and authenticated compatibility/backend/release gates still precede canonical activation; parent target editing remains W1.
+
 ## Current handoff — 5th grade Dojo standalone publication, October 21
 
 **[5th grade Dojo](https://5thgradedojo.meghangames.com/) · Standalone 1 · application `1a9db3e`** is published separately and added as the eighth card on [MeghanGames](https://meghangames.com/). No scheduled preview expiry. This is the approved Grade 5 eight-word/browser-only edition, not the authenticated three-grade canonical app. Existing seven homepage cards, all fourteen existing links and nine non-HTML assets are preserved. Canonical `9d06a02` and Firebase preview `97c559d` remain unchanged; Kindergarten and Grade 2 stay paused.

@@ -21,6 +21,8 @@ export type DistractorTrialPoolType = 'familiar' | 'earned'
 export type AcquisitionCorrectionPolicy = {
   readonly assessmentMode: 'scored' | 'feedback-only'
   readonly finalExpandedFailure: 'complete-after-correction' | 'retry-target-after-correction'
+  /** Absent for older pinned lessons, which retain their three-error restart. */
+  readonly repeatUntilCorrect?: boolean
 }
 
 export type AcquisitionTimerConfig = {

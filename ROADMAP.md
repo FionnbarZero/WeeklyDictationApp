@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — W0 correction and all-grade verification, October 23
+
+The owner resumed integrated-app work, confirmed **GPT-6 Astra · Extra High**, and requested W0 with automatic review and emailed links for all grades. Preserve the standalone **5th grade Dojo / `1a9db3e`** unchanged for Monday October 26; do not redeploy that Worker, alter its homepage entry, move/reset records or overwrite its older Grade 5 preview.
+
+Core five-step all-character teaching and native-grade writing are already delivered. Complete the approved **Grade 2 copy-once → memory-once correction**, repeating the pair until correct without extra correction distractors or repeated-error reintroduction. Apply only to new Grade 2 writing attempts; preserve existing pinned policies and native Kindergarten/Grade 5/reading rules. Verify repeated failures, correct recovery, next-word teaching, ordinary resume and all-grade regressions. Kindergarten extra-trial diagnosis must compare against its native policy, not adopt Grade 2's sequence.
+
+Current implementation has 1,208 passing units and passing type/build/performance/lint gates; final package/browser/publication evidence belongs in STATUS. Deliver one isolated all-grade website with verified grade links and automatic owner email. **Do not call prototype delivery canonical W0 completion:** the working-interaction approval, independent integration review, authenticated offline/cross-device/recovery and protected release gates remain. W1 parent target editing and unrelated W2–W6 changes are not folded into this slice. Bounded publication recommendation remains **GPT-6.1 Sol · High**; routine documentation **GPT-6 Luna · Medium**. No model switch is claimed. Earlier “other grades paused” handoffs are superseded only for this approved W0 scope.
+
 ## Current priority — test the published 5th grade Dojo, October 21
 
 The owner authorized separate publication and naming, confirming **GPT-6.1 Sol · High**. **Standalone 1 / `1a9db3e`** is published at **https://5thgradedojo.meghangames.com/** and linked from MeghanGames. It retains the approved eight-word lesson, integrated writing and current menus. No scheduled expiry. Existing canonical/preview releases and other grades are unchanged.

@@ -14,6 +14,7 @@ import { kindergartenAcquisitionStrategy } from '../../acquisition/strategies/ki
 import { schoolYearToken } from '../../curriculum/identity.ts'
 import type { Word } from '../../domain/contracts.ts'
 import { writingRefinementStrategy } from '../../writingAcquisition/refinementStrategy.ts'
+import { COPY_MEMORY_WRITING_POLICY, writingCorrectionStrategy } from '../../writingAcquisition/correctionStrategy.ts'
 import {
   TRACE_INDEPENDENT_PREVIEW_POLICY,
   validateWritingLesson,
@@ -59,9 +60,10 @@ export function writingContext(
   const grade = writingPolicyGrade(lesson.policy)
   if (lesson.dataset.grade !== grade) throw new Error(fail)
   const module = envelope?.activityModule || 'mandarin-tier1-writing'
-  const allowedModule = grade === 'Grade 2'
-    ? /^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/
-    : /^(?:mandarin-tier1-writing|writing-dojo)(?::restart-[a-f0-9]{16})?$/
+  const allowedModule =
+    grade === 'Grade 2'
+      ? /^mandarin-tier1-writing(?::restart-[a-f0-9]{16})?$/
+      : /^(?:mandarin-tier1-writing|writing-dojo)(?::restart-[a-f0-9]{16})?$/
   if (!allowedModule.test(module)) throw new Error(fail)
   return {
     identity: {
@@ -82,7 +84,9 @@ export function writingContext(
           ? grade5AcquisitionStrategy
           : lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY
             ? writingRefinementStrategy
-            : grade2AcquisitionStrategy,
+            : lesson.policy === COPY_MEMORY_WRITING_POLICY
+              ? writingCorrectionStrategy
+              : grade2AcquisitionStrategy,
   }
 }
 

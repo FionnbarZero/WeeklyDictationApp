@@ -51,4 +51,6 @@ grade5-repair-preview-dist/
 grade5-shared-target-repair-dist/
 grade5-presentation-preview-dist/
 grade5-standalone-dist/
+w0-writing-preview-dist/
+w0-writing-test-results/
 .wrangler/

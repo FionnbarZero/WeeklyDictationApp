@@ -87,27 +87,30 @@ function promptKindMatchesToken(kind: AcquisitionPromptKind, token: AcquisitionS
 }
 
 function validateContext<TTarget extends AcquisitionTarget>(context: AcquisitionPersistenceContext<TTarget>, errors: string[]) {
-  for (const [key, value] of Object.entries(context.identity)) if (!isNonEmptyString(value)) errors.push(`Persistence context ${key} is invalid.`)
-  if (!/^\d{4}-\d{2}$/.test(context.identity.schoolYear)) errors.push('Persistence context schoolYear must be a normalized school-year key.')
-  if (!['tier-1', 'tier-2', 'tier-3'].includes(context.identity.tier)) errors.push('Persistence context tier is invalid.')
-  if (context.targetSet.id !== context.identity.datasetId) errors.push('Persistence context target set does not match its dataset identity.')
+  const contextError = (message: string) => errors.push(`Persistence context ${message}`)
+  for (const [key, value] of Object.entries(context.identity)) if (!isNonEmptyString(value)) contextError(`${key} is invalid.`)
+  if (!/^\d{4}-\d{2}$/.test(context.identity.schoolYear)) contextError('schoolYear must be a normalized school-year key.')
+  if (!['tier-1', 'tier-2', 'tier-3'].includes(context.identity.tier)) contextError('tier is invalid.')
+  if (context.targetSet.id !== context.identity.datasetId) contextError('target set does not match its dataset identity.')
   if (!isRecord(context.lifecycleStage)
     || (context.lifecycleStage.kind !== 'acquisition'
-      && (context.lifecycleStage.kind !== 'test-review' || !isPositiveInteger(context.lifecycleStage.cycle)))) errors.push('Persistence context lifecycle stage is invalid.')
-  if (!isNonEmptyString(context.applicationVersion)) errors.push('Persistence context applicationVersion is invalid.')
-  if (!isNonEmptyString(context.strategy.id) || !isPositiveInteger(context.strategy.version)) errors.push('Persistence context strategy identity is invalid.')
+      && (context.lifecycleStage.kind !== 'test-review' || !isPositiveInteger(context.lifecycleStage.cycle)))) contextError('lifecycle stage is invalid.')
+  if (!isNonEmptyString(context.applicationVersion)) contextError('applicationVersion is invalid.')
+  if (!isNonEmptyString(context.strategy.id) || !isPositiveInteger(context.strategy.version)) contextError('strategy identity is invalid.')
   if (context.strategy.correctionPolicy
     && (context.strategy.correctionPolicy.assessmentMode !== 'scored'
-      && context.strategy.correctionPolicy.assessmentMode !== 'feedback-only')) errors.push('Persistence context Correction assessment mode is invalid.')
+      && context.strategy.correctionPolicy.assessmentMode !== 'feedback-only')) contextError('Correction assessment mode is invalid.')
   if (context.strategy.correctionPolicy
     && (context.strategy.correctionPolicy.finalExpandedFailure !== 'complete-after-correction'
-      && context.strategy.correctionPolicy.finalExpandedFailure !== 'retry-target-after-correction')) errors.push('Persistence context final Expanded failure behavior is invalid.')
+      && context.strategy.correctionPolicy.finalExpandedFailure !== 'retry-target-after-correction')) contextError('final Expanded failure behavior is invalid.')
+  const repeat = context.strategy.correctionPolicy?.repeatUntilCorrect
+  if (repeat !== undefined && typeof repeat !== 'boolean') contextError('repeated-error behavior is invalid.')
   const targetIds = new Set<string>()
   for (const target of context.targetSet.targets) {
-    if (!isNonEmptyString(target.id) || targetIds.has(target.id)) errors.push(`Persistence context target identity is invalid or repeated: ${target.id || '(missing)'}.`)
+    if (!isNonEmptyString(target.id) || targetIds.has(target.id)) contextError(`target identity is invalid or repeated: ${target.id || '(missing)'}.`)
     targetIds.add(target.id)
-    if (target.datasetId !== context.targetSet.id) errors.push(`Persistence context target ${target.id} belongs to another dataset.`)
-    if (target.tier !== undefined && target.tier !== context.identity.tier) errors.push(`Persistence context target ${target.id} belongs to another tier.`)
+    if (target.datasetId !== context.targetSet.id) contextError(`target ${target.id} belongs to another dataset.`)
+    if (target.tier !== undefined && target.tier !== context.identity.tier) contextError(`target ${target.id} belongs to another tier.`)
   }
   const familiarIds = new Set<string>()
   for (const target of context.strategy.familiarDtTargets) {

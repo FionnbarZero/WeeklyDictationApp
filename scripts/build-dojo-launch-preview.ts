@@ -12,41 +12,48 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
+const w0Writing = process.argv.includes('--w0-writing')
 const standalone = process.argv.includes('--grade5-standalone')
+if (w0Writing && (standalone || process.argv.includes('--grade5-presentation')))
+  throw new Error('W0 must use its separate all-grade package. The Grade 5 presentation website is frozen.')
 const presentation = standalone || process.argv.includes('--grade5-presentation')
-const retireStandalone = presentation || process.argv.includes('--retire-standalone-games')
+const retireStandalone = w0Writing || presentation || process.argv.includes('--retire-standalone-games')
 const compactParents = retireStandalone || process.argv.includes('--compact-parent-controls')
 const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs')
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  standalone
-    ? 'grade5-standalone-dist'
-    : presentation
-      ? 'grade5-presentation-preview-dist'
-      : grade5Repairs
-        ? 'grade5-repair-preview-dist'
-        : regressions
-          ? 'regression-preview-dist'
-          : 'dojo-launch-preview-dist',
+  w0Writing
+    ? 'w0-writing-preview-dist'
+    : standalone
+      ? 'grade5-standalone-dist'
+      : presentation
+        ? 'grade5-presentation-preview-dist'
+        : grade5Repairs
+          ? 'grade5-repair-preview-dist'
+          : regressions
+            ? 'regression-preview-dist'
+            : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = standalone
-  ? '5th grade Dojo / Standalone 1'
-  : presentation
-    ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-    : retireStandalone
-      ? 'Streamlined Dojo / Prototype 1'
-      : compactParents
-        ? 'Compact parent toolbar / Prototype 1'
-        : grade5Repairs
-          ? 'Grade 5 regression repairs / Prototype 2'
-          : regressions
-            ? 'October 20 regression repairs / Prototype 3'
-            : octoberResources
-              ? 'Kindergarten October 19 resources / Prototype 1'
-              : 'Writing reliability / Prototype 2'
+const prototype = w0Writing
+  ? 'W0 integrated writing / Prototype 1'
+  : standalone
+    ? '5th grade Dojo / Standalone 1'
+    : presentation
+      ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+      : retireStandalone
+        ? 'Streamlined Dojo / Prototype 1'
+        : compactParents
+          ? 'Compact parent toolbar / Prototype 1'
+          : grade5Repairs
+            ? 'Grade 5 regression repairs / Prototype 2'
+            : regressions
+              ? 'October 20 regression repairs / Prototype 3'
+              : octoberResources
+                ? 'Kindergarten October 19 resources / Prototype 1'
+                : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -88,6 +95,7 @@ execFileSync(
       VITE_RETIRE_STANDALONE_GAMES: String(retireStandalone),
       VITE_GRADE5_PRESENTATION_PREVIEW: String(presentation),
       VITE_GRADE5_STANDALONE: String(standalone),
+      VITE_WRITING_CORRECTION_PREVIEW: String(w0Writing),
     },
   },
 )
@@ -146,6 +154,11 @@ for (const [slug] of grades) {
   )
 }
 const entry = resolve(out, 'family-beta-preview.html')
+if (w0Writing)
+  writeFileSync(
+    entry,
+    readFileSync(entry, 'utf8').replace(/<title>[^<]*<\/title>/, '<title>W0 integrated writing</title>'),
+  )
 if (presentation)
   writeFileSync(
     entry,
@@ -173,6 +186,13 @@ writeFileSync(
     {
       schema: 1,
       prototype,
+      ...(w0Writing
+        ? {
+            grades: ['Kindergarten', 'Grade 2', 'Grade 5'],
+            writingCorrection:
+              'New Grade 2 writing attempts: copy once, memory once, repeat until correct. Other grades and existing pinned lessons retain their rules.',
+          }
+        : {}),
       ...(standalone
         ? {
             name: '5th grade Dojo',
