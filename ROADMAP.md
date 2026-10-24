@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — check the repaired combined preview, October 24
+
+The owner-authorized follow-up repairs are complete in **isolated Prototype 2 / application `7b33d7b`**. Saved Shuriken timer/restart failures now offer safe recovery, and Context Gap Dash honors an early explicit replay without automatic narration overriding it. All 60 local game/recovery cases, 18 focused hosted cases and 1,253 units pass; exact public files/headers match. The all-grade links and 3–5 minute iPad checklist were emailed with confirmed SENT receipt `1a16cc9b01eacd6e`. See STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md) for exact version, expiry and retained evidence.
+
+**Next:** the owner's single end-of-batch device check on the combined preview. No routine approval/model question is pending. The older W1 site is not this build. Preserve frozen standalone Grade 5 `1a9db3e`, canonical `9d06a02`, completed records and approved policies; all other 18 hosting releases/expiries are unchanged. Working-prototype acceptance and existing independent integration/authenticated compatibility/recovery/protected-release gates still precede canonical activation.
+
+The two findings below are closed by this scoped repair, not by a claim that all historical W work is finished. Parent target editing, new shuffle/mastery/data policies, automatic source refresh and authenticated/offline/cross-device release acceptance remain open. The stage continues under the recorded Astra · Extra High confirmation; model routing for later stages remains in this roadmap, with no claimed model switch or separate-agent review.
+
 ## Follow-up audit — close the two remaining recovery/audio findings
 
 Audit of published `eb1c052` found saved Shuriken timer/restart errors bypass the new reopening state, and Context Gap Dash's scheduled automatic reading can cancel an early slow replay. Both have controlled Chromium/WebKit reproductions; records remain preserved. Repair these narrow W2/W4 gaps before the next acceptance handoff, retaining the existing confirmed Astra · Extra High stage and no routine approval questions. [Audit evidence and exact scope](./docs/w-roadmap-combined-repairs.md#follow-up-audit-of-the-published-repair-build). This audit made no application or hosting change. Frozen standalone Grade 5 and canonical remain unchanged. The earlier ready-for-owner-check priority is superseded; broader unfinished editor/policy/cloud work remains explicitly open.

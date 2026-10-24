@@ -1,5 +1,21 @@
 # Weekly Dictation status
 
+## Current handoff — audit findings repaired and verified, October 24
+
+**W-roadmap combined repairs / Prototype 2 · application `7b33d7b74d95839237181be1b04c09e8881f2172`** is published on the same isolated combined test website:
+[Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5).
+Expires **October 31, 2026 at 12:20 a.m. Pacific**. Provider version `1c4918e82cb8ad95`; tree `71528211263e438e317e0132a7e26a3889d1262fb66a0e3e2e44426ddc532c24`. All **192 public files / 1,152 headers** match the retained package.
+
+The two follow-up audit defects below are repaired: saved Shuriken timer/restart errors now enter the same guarded recovery state as answer failures, and explicit Context Gap Dash replay cancels/supersedes pending automatic narration for that prompt. Confirmed turns remain preserved; ordinary session-only game policy, writing, curriculum and record formats are unchanged. New recovery/audio behavior remains preview-gated.
+
+**Verified:** all **60 local package browser cases**, **18 focused hosted browser cases**, and **1,253 unit tests** pass. Type/lint/format/build and unchanged size limits pass. All eight new regressions fail on the predecessor for the intended reasons. The previous audit's 12 hosted native writing/reading passes are carried forward with a scoped source-diff proof, not claimed as a fresh run on this revision. Failed runs and negative controls remain retained. Source/automated review only; physical sound/Pencil and authenticated acceptance are not inferred.
+
+**Email confirmed SENT**, metadata readback `1a16cc9b01eacd6e`, to the confirmed owner address. Ready for a **3–5 minute iPad check**: immediate and repeated Hear slowly in Context Gap Dash, normal replay, next-prompt narration, Report/return, Exit and both orientations. Optional Parent controls → Saved-game recovery example → Shuriken checks pair → Exit → Resume. Record feedback with Report a problem; no browser reset needed. The older W1 website still serves a different build.
+
+Frozen **5th grade Dojo `1a9db3e`** (183 files / 1,098 headers), canonical `9d06a02`, and all **18 other hosting-channel releases/expiries** are verified unchanged. Keep the frozen eight-word website for Monday. This preview has browser-only test progress and retained curriculum; parent target editing, new shuffle/mastery policies, automatic source refresh, authenticated/offline/cross-device acceptance and canonical integration remain unfinished.
+
+Source and evidence: [combined repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md), managed branch `codex/w2-recovery`; retained package/evidence `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-7b33d7b/`. Later documentation-only commits do not alter the served application. The earlier audit hold and handoffs below are historical and superseded by this verified repair.
+
 ## Follow-up audit — two remaining defects in the combined W preview
 
 The requested source/hosted audit of unchanged `eb1c052` confirms two P2 defects: saved Shuriken timer conflicts lack the new Reopen recovery action (Retry and Exit → Resume remain stuck), and Context Gap Dash's pending automatic narration can override an early “Hear slowly” tap. Both reproduce in Chromium and WebKit; the conflict probe preserves the newer checkpoint. See [the audit record](./docs/w-roadmap-combined-repairs.md#follow-up-audit-of-the-published-repair-build). Hold the next acceptance handoff until these are repaired and verified. No app edit or publication occurred. Frozen Grade 5 `1a9db3e`, canonical `9d06a02` and the combined package identity are reverified. Earlier ready-for-check wording is superseded by these findings.
