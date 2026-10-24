@@ -1,7 +1,8 @@
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+test.beforeEach(async ({ context }) => {
+  // Competing-window cases must use the same controlled audio in both pages.
+  await context.addInitScript(() => {
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
@@ -152,12 +153,24 @@ test('live second window is blocked; closing the first releases ownership withou
   await expect(first.locator('.is-matched')).toHaveCount(2)
   const saved = await storage(page)
   const other = await context.newPage()
+  await other.bringToFront()
   const second = await launch(other, 'grade5', true)
   await expect(second.getByRole('alert')).toContainText('open in another window')
   expect(await storage(other)).toEqual(saved)
   await second.getByRole('button', { name: 'Retry opening saved game' }).click()
   await expect(second.getByRole('alert')).toContainText('open in another window')
   await page.close()
+  await other.bringToFront()
+  // WebKit's page-close acknowledgement can precede native lock cleanup.
+  // Observe release without stealing or modifying the lock or saved records.
+  await expect
+    .poll(async () =>
+      other.evaluate(
+        async () =>
+          (await navigator.locks.query()).held!.filter((lock) => lock.name!.startsWith('ninja-game-view-v1:')).length,
+      ),
+    )
+    .toBe(0)
   await second.getByRole('button', { name: 'Retry opening saved game' }).click()
   await expect(second.locator('.is-matched')).toHaveCount(2)
   await pair(second)

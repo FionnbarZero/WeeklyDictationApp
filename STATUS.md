@@ -1,5 +1,23 @@
 # Weekly Dictation status
 
+## Current handoff — combined W repair preview verified and emailed, October 23
+
+**W-roadmap combined repairs / Prototype 1 · application `eb1c05282be5909d6e996808aaf30b6047d6b9b9`** is ready for the owner's single end-of-batch device check:
+[Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5).
+This is one isolated test app, not canonical activation. Expires **October 30, 2026, 8:44 p.m. Pacific**. Hosting version `c4d20b86893c50f3`; tree `622fae4cd9e3cc987d5bc85818fdf61e25b293edb1727d4797b12a5bb51aee35`. All **192 public files / 1,152 headers** match.
+
+Carries W0/W1 forward and adds saved-game ownership/retry/discard safeguards, short-screen sentence layouts, animation/focus-scroll containment, half-speed sentence replay, and direct mastered-word games under existing grade/tier/result policies. Ordinary game play retains its approved session-only policy; Parent controls exposes the same-site saved-game recovery example. Writing continues its existing confirmed-step resume behavior.
+
+**Verification:** 1,253 units; type/lint/format/build and unchanged size limits; 52 hosted game/recovery scenarios now have passing coverage. The first final matrix was 50/52, followed by corrected-harness **9/9 repeated WebKit and 3/3 Chromium** targeted passes, not a falsely claimed clean 52-case rerun. The 12 hosted writing/reading passes and unit evidence on `6ca0d76` are retained with a mechanical proof that only game CSS, its test and documentation changed before `eb1c052`. Local long-history reopening and normal-animation retries pass. Failed runs and negative controls are retained. Source/automated review only; no new independent-agent or physical-device acceptance is claimed.
+
+**Email confirmed SENT**, metadata readback `1a16c0ea181f80e1`, to the confirmed owner address. The email includes an **8–12 minute iPad checklist**: actual sound/Pencil, one teaching-step exit/reopen, Lanterns/report/return, slower sentence audio, repeated Sushi mistakes, both orientations and optional same-site two-window recovery. Record feedback with Report a problem. A prior cold second-window click miss has no independently established application root cause; controlled repeat checks pass and its trace is preserved.
+
+**Still unfinished:** separate parent target editing, new shuffle/mastery/data-policy decisions, authenticated/offline/cross-device release acceptance, automatic source refresh and canonical integration. This preview has browser-only test progress and a retained curriculum snapshot. Missing validated game content remains explicitly unavailable. These limits are not counted as completed W work.
+
+Frozen **5th grade Dojo `1a9db3e`** (183 files / 1,098 headers), canonical `9d06a02` and all **18 prior hosting releases/expiries** are verified unchanged. Keep the frozen eight-word site for Monday's presentation. The interim `6ca0d76` package was superseded on this same test URL before email.
+
+Source: managed `codex/w2-recovery` worktree. [Repair and audit record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md). Retained final package/evidence: `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-eb1c052/`. Later test/documentation commits do not change the served application. All earlier handoffs below are historical where they conflict with this one.
+
 ## Current work — combined W repair batch, no interim owner review
 
 The owner expanded W2 to finish the W fixes and check one combined app at the end. Continue the already confirmed Astra · Extra High stage without routine approval/model questions. Local repairs and verification are recorded in [the combined repair record](./docs/w-roadmap-combined-repairs.md). The old W1 website does not contain these changes. No new publication/email or canonical release is claimed yet. Frozen standalone Grade 5 `1a9db3e` remains protected. Earlier requests for interim W1/W2 owner checks are superseded by the single final handoff.

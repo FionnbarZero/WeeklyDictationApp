@@ -1,5 +1,15 @@
 # Weekly Dictation roadmap
 
+## Current priority — one combined W preview ready for final owner check, October 23
+
+The owner requested all W repairs without interim approvals. The confirmed **GPT-6 Astra · Extra High** stage produced combined isolated preview **`eb1c052` / Prototype 1**, now byte/header verified and emailed. Exact all-grade links, expiry, successful-send receipt and the qualified regression counts are at the top of STATUS. Source and evidence are in [the combined repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md), managed branch `codex/w2-recovery`.
+
+**Next:** one end-of-batch physical-iPad check of this combined app, using the emailed checklist and Report a problem. No further routine model/approval question is pending. Preserve the frozen standalone Grade 5 presentation `1a9db3e`, canonical `9d06a02`, prior preview records and the approved teaching/result policies. Do not send the older W1 website as the combined repair build.
+
+W0/W1 are carried forward; W2 recovery, W3 responsive/animated layouts, W4 slower replay and W5 direct mastered arcade are implemented in the candidate. W6 automated coverage is recorded with failed/negative runs retained; it is not a claim of physical-device or authenticated release acceptance. Parent target editing and unresolved new shuffle/mastery/data policies remain unfinished. Existing policies are preserved rather than silently deleting work or changing mastery. Working-prototype, independent integration, authenticated compatibility/recovery and protected canonical-release gates remain.
+
+Model routing remains Astra · Extra High for behavior/persistence work, Sol · High for bounded release execution and Luna · Medium for documentation. No model switch or new separate-agent review is claimed. Earlier interim review prompts below are superseded by this single final handoff.
+
 ## Current priority — finish the combined W batch, then one final check
 
 The owner authorizes completion without interim approvals. Retain the confirmed Astra · Extra High assignment. Finish W2 recovery, carry forward W0/W1, verify W3 controls/navigation, add W4 slower sentence replay and safe failure feedback, and provide W5 direct mastered-word games with existing grade/tier/round/result policies. Complete W6 automated/exact-package verification before one all-grade test handoff and the standing email. [Scope, retained decisions and evidence](./docs/w-roadmap-combined-repairs.md). Do not claim missing parent target editing, a new shuffle/mastery policy, physical acceptance or authenticated release gates as complete. The frozen standalone Grade 5 website is excluded. Earlier interim smoke-test/approval prompts are superseded.

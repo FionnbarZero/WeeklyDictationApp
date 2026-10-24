@@ -53,9 +53,18 @@ for (const game of ['Context Gap Dash', 'Sushi Scramble'])
     })
     await slow.click()
     await expect(frame.getByRole('alert')).toHaveCount(0)
-    const spoken = await page.evaluate(() => (window as Window & { spoken: { text: string; rate: number }[] }).spoken)
-    expect(spoken.at(-1)!.rate).toBe(0.5)
-    expect(spoken.at(-1)!.text).toBe(spoken.at(-2)!.text)
+    const slowSentences = () =>
+      page.evaluate(() =>
+        (window as Window & { spoken: { text: string; rate: number }[] }).spoken.filter(
+          (utterance) => utterance.text.trim() && utterance.rate === 0.5,
+        ),
+      )
+    // Safari may insert an empty, silent unlock utterance between the two taps.
+    // Compare the requested slow sentences, retaining both the count and text.
+    // Clearing the retry message happens before the asynchronous speech starts.
+    await expect.poll(slowSentences).toHaveLength(2)
+    const spoken = await slowSentences()
+    expect(spoken[1].text).toBe(spoken[0].text)
     await expect(heading).toHaveText(prompt!)
     expect(
       await page.evaluate(() =>
