@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — W2 blocked play and recovery, October 23
+
+The owner reports the latest W1 interaction is now working and asks to move to W2. Stop requesting a screenshot or another check of the same incident. Retain its unconfirmed root cause and diagnostic evidence without treating it as the active blocker; this feedback does not establish authenticated/offline/cross-device acceptance or canonical W0/W1 completion.
+
+Start with the reported Lanterns first-pair freeze, then cover report pause, failed-turn retry, reload/resume and a complete round. Inspect active versus abandoned ownership and Exit → Discard → return, including a game frame that failed to open. Preserve every completed result, reviewed checkpoint and unrelated activity; no automatic restart-policy or matching-game data-policy change is authorized. Carry the approved W0/W1 interactions forward into one combined isolated candidate, leaving the frozen standalone Grade 5 site unchanged.
+
+The owner confirmed **GPT-6 Astra · Extra High** for W2 implementation/review. Reproduction and isolated implementation may proceed without another routine model prompt. Smoke testing is premature until the W2 working prototype and relevant regression checks are ready. Follow the existing prototype approval, independent integration review and protected release gates; the prior W1 site does not contain W2 repairs.
+
 ## Current blocker — original Chrome tracing disappearance remains open, October 23
 
 The owner cannot supply a screenshot; stop requesting it. **Prototype 4 / `d6ee258`** is now published, exactly verified and emailed at the same W1 links in STATUS. The W1-only Grade 2 recovery controls preserve confirmed teaching steps and report fixed error codes. A separate early Writing click while source helpers load is reproduced and now receives clear loading/retry feedback without saving or starting a lesson.

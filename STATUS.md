@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Current handoff — owner reports W1 working; W2 preparation started, October 23
+
+The owner reports that the latest writing preview is “actually OK now” and requests W2. Record this as positive feedback on the reported interaction in W1 Prototype 4 (`d6ee258`), not proof of the original Chrome disappearance's cause or acceptance of all devices/cloud-saving paths. The incident's evidence and recovery safeguards remain retained; it no longer blocks the owner's requested W2 work. Earlier requests below to repeat that same owner check are superseded.
+
+W2 covers Memory Lanterns stopping after the first pair, abandoned-window/competing-window recovery, save-failure retry and Exit → Discard → return. The owner confirmed **GPT-6 Astra · Extra High** for this stage. Implementation/reproduction may proceed; no W2 publication is complete. A W2 smoke test is premature until a working isolated prototype is reviewed and verified. Preserve reviewed checkpoints, completed results, unrelated activities and existing restart policies. The working-prototype approval and protected integration/release gates remain.
+
+The existing W1 build/links below are unchanged. Keep standalone **5th grade Dojo / `1a9db3e`** frozen for Monday October 26; do not deploy W2 there or reset family records.
+
 ## Current handoff — W1 recovery and launch feedback, original Chrome incident still open, October 23
 
 **W1 curriculum and activity entry / Prototype 4 · application `d6ee258c4d8363e3cd4de63d8972adf243df27c0`** is verified on the **same combined isolated test website**:
