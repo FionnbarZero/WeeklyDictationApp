@@ -9,6 +9,7 @@ let reportId = 0
 function installDocumentBoundary() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return
   if (regressionPreview) document.documentElement.dataset.regressionPreview = 'true'
+  if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') document.documentElement.dataset.wRoadmapPreview = 'true'
   let owner: Element | null = null
   try {
     if (window.parent !== window && window.parent.document.body.dataset.familyContext === 'family')

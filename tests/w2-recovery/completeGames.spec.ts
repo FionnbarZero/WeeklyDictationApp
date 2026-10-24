@@ -54,6 +54,8 @@ for (const [slug, grade] of [
     test(`${grade}: ${pack.title} completes its actual earlier target set and returns`, async ({ page }, info) => {
       const errors: string[] = []
       page.on('pageerror', (e) => errors.push(e.message))
+      if (!info.project.use.hasTouch && ['sentence-scramble', 'context-gap-dash'].includes(pack.moduleId))
+        await page.setViewportSize({ width: 983, height: 638 })
       await page.goto(`/family-beta-preview.html?grade=${slug}`)
       const f = page.frameLocator('iframe:visible')
       await f.getByRole('button', { name: /Practice.*Ninja Skills/ }).click()
@@ -74,6 +76,8 @@ for (const [slug, grade] of [
           await expect(f.locator('.lg-round-label')).toHaveText(`Sentence ${i + 1} of ${pack.rounds.length}`)
           for (const [pos, id] of round.correctTokenIds.entries()) {
             const token = round.tokens.find((t) => t.id === id)!
+            await expect(f.locator('.lg-sushi-bar')).toBeInViewport({ ratio: 1 })
+            await expect(f.locator('.lg-sushi-plate')).toBeInViewport({ ratio: 1 })
             await f
               .locator('.lg-sushi-bar')
               .getByRole('button', { name: `Place ${token.label} in sentence position ${pos + 1}`, exact: true })

@@ -78,6 +78,14 @@ for (const game of ['Context Gap Dash', 'Sushi Scramble'])
       await expect(slow).toBeInViewport()
       await expect(frame.getByRole('button', { name: 'Exit learning module', exact: true })).toBeInViewport()
       await expect(page.getByRole('button', { name: 'Report a problem', exact: true })).toBeInViewport()
+      const playArea = frame.locator(game === 'Sushi Scramble' ? '.lg-sushi-bar' : '.lg-dash-stage-wrap')
+      await expect(playArea).toBeInViewport({ ratio: 1 })
+      if (game === 'Sushi Scramble') {
+        await expect(frame.locator('.lg-sushi-plate')).toBeInViewport({ ratio: 1 })
+        await expect(frame.getByRole('button', { name: 'Clear plate', exact: true })).toBeInViewport({ ratio: 1 })
+      } else if (test.info().project.use.hasTouch) {
+        await expect(frame.locator('.lg-mobile-gate-choices')).toBeInViewport({ ratio: 1 })
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await page.screenshot({ path: test.info().outputPath(`sentence-${width}.png`), fullPage: true })
     }

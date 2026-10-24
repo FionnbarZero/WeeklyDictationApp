@@ -68,6 +68,10 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
       const miss = faces.findIndex((value) => value !== faces[0])
       await cards.first().click()
       await cards.nth(miss).click()
+      await expect(frame.locator('.lg-memory-card.is-visible')).toHaveCount(0)
+      // Pause a single revealed card, so the mismatch animation cannot finish
+      // before the report dialog opens on a busy browser.
+      await cards.first().click()
       await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
       await expect(page.getByRole('button', { name: 'Close and return', exact: true })).toBeVisible()
       await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
@@ -75,8 +79,10 @@ for (const grade of ['kindergarten', 'grade2', 'grade5']) {
       await cards
         .nth(miss + 1 < faces.length ? miss + 1 : 0)
         .evaluate((el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true })))
-      await expect(frame.locator('.lg-memory-card.is-visible')).toHaveCount(2)
+      await expect(frame.locator('.lg-memory-card.is-visible')).toHaveCount(1)
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+      await cards.nth(miss).click()
+      await expect(frame.locator('.lg-memory-card.is-visible')).toHaveCount(0)
       await expect(cards.first()).toBeEnabled()
       for (let count = 0; count < new Set(faces).size; count++) {
         await pair(frame)
