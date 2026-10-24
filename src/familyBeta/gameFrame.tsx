@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AppErrorBoundary } from '../AppErrorBoundary.tsx'
-import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
+import { activityClock, pauseToFamilyHub } from '../activity/activityLifecycle.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import { LearningModuleHost } from '../ninjaSkills/LearningModuleHost.tsx'
@@ -12,6 +12,7 @@ import { SavedLearningGame } from './SavedLearningGame.tsx'
 import '../styles.css'
 import '../regressionPreview/styles.css'
 import { regressionPreview } from '../regressionPreview/policy.ts'
+import { savedGameRecoveryExample } from './gameRecoveryPreview.ts'
 
 function readGame() {
   if (!familyPreview || !previewProfile()) return null
@@ -34,14 +35,18 @@ function FamilyGame() {
   useEffect(() => () => stopActiveAudio(), [])
   if (!game) return <p role="alert">Open this game from your family’s Ninja Skills page.</p>
   const exit = () => {
+    if (savedGameRecoveryExample && activityClock.paused) return
     stopActiveAudio()
-    if (regressionPreview) parent.postMessage({ type: 'family-beta-game-exited' }, location.origin)
+    if (savedGameRecoveryExample) {
+      activityClock.setPaused('navigation', true)
+      parent.postMessage({ type: 'family-beta-activity-paused' }, location.origin)
+    } else if (regressionPreview) parent.postMessage({ type: 'family-beta-game-exited' }, location.origin)
     else pauseToFamilyHub()
   }
   return (
     <div data-report-activity={game.pack.title} data-report-phase="game">
       {error && <p role="alert">{error}</p>}
-      {!regressionPreview &&
+      {(!regressionPreview || savedGameRecoveryExample) &&
       (game.pack.moduleId === 'memory-flip' ||
         game.pack.moduleId === 'sentence-scramble' ||
         game.pack.moduleId === 'context-gap-dash' ||

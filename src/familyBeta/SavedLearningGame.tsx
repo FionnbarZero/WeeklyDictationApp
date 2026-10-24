@@ -8,6 +8,8 @@ import { saveGameAggregate } from './gameResultBridge.ts'
 import type { BetaResult } from './model.ts'
 import { assertResultCopiesMatch, PENDING_KEY, RESULT_KEY, readResultLedger } from './resultLedger.ts'
 import '../ninjaSkills/surface.css'
+import { activityClock } from '../activity/activityLifecycle.ts'
+import { gameRecoveryPreview, savedGameRecoveryExample } from './gameRecoveryPreview.ts'
 
 const MemoryFlip = lazy(() =>
   import('../learningModules/memory-lanterns/Game.tsx').then((module) => ({ default: module.MemoryFlip })),
@@ -53,12 +55,27 @@ export function SavedLearningGame({
   const [loaded, setLoaded] = useState<{ session: GameSession; owner: FamilyGameOwner } | null>(null)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
+  const [turnFailed, setTurnFailed] = useState(false)
   useEffect(() => {
     let cancelled = false
     let installed: GameSession | undefined
+    let releaseView: (() => void) | undefined
     void (async () => {
       const owner = (window.parent as FamilyGameWindow).familyGameOwner?.(window)
       if (!owner) throw new Error('Open this game from the family page.')
+      if (gameRecoveryPreview) {
+        const { acquireGameView } = await import('./gameRecovery.ts')
+        releaseView = await acquireGameView(owner.familyId, {
+          childId: owner.profile.id,
+          grade: owner.profile.grade,
+          week: owner.week,
+          gameId: pack.moduleId,
+        })
+        if (cancelled) {
+          releaseView()
+          return
+        }
+      }
       const store = createLockedGameProgressStore(localStorage, owner.familyId, () => !cancelled && owner.stillOwner())
       const session = await openGameSession({
         store,
@@ -79,10 +96,12 @@ export function SavedLearningGame({
       ;(window as FamilyGameWindow).familyGameSession = session
       setLoaded({ session, owner })
     })().catch((e) => {
+      releaseView?.()
       if (!cancelled) setError(e instanceof Error ? e.message : 'Saved game could not be opened.')
     })
     return () => {
       cancelled = true
+      releaseView?.()
       if ((window as FamilyGameWindow).familyGameSession === installed)
         delete (window as FamilyGameWindow).familyGameSession
     }
@@ -94,11 +113,21 @@ export function SavedLearningGame({
         {error && (
           <button
             onClick={() => {
+              if (gameRecoveryPreview && activityClock.paused) return
               setError('')
               setRetry((value) => value + 1)
             }}
           >
             Retry opening saved game
+          </button>
+        )}
+        {gameRecoveryPreview && (
+          <button
+            onClick={() => {
+              if (!activityClock.paused) onExit()
+            }}
+          >
+            Return to games
           </button>
         )}
       </section>
@@ -116,11 +145,19 @@ export function SavedLearningGame({
       correct: initial.prompts.reduce((sum, p) => sum + p.correct, 0),
     },
     onAttempt: async (attempt: Parameters<GameSession['review']>[0]) => {
-      await session.review(attempt)
+      try {
+        await session.review(attempt)
+        if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(false)
+      } catch (error) {
+        if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(true)
+        throw error
+      }
     },
     onComplete: () => {
       void browserGameWriteLock(`ninja-game-storage-v1:${owner.familyId}`, () => {
         if (!owner.stillOwner()) throw new Error('The family account changed. Saved work was preserved.')
+        if (gameRecoveryPreview && (window as FamilyGameWindow).familyGameSession !== session)
+          throw new Error('The game was reopened. Its saved work is preserved.')
         return saveGameAggregate(
           localStorage,
           completeGameCheckpoint(session.checkpoint(), session.checkpoint().reviewedAt!),
@@ -128,19 +165,44 @@ export function SavedLearningGame({
       })
         .then((result) => {
           parent.postMessage({ type: 'family-beta-result-ready' }, location.origin)
+          if (gameRecoveryPreview && (window as FamilyGameWindow).familyGameSession !== session) return
           onComplete(result)
         })
-        .catch((e) =>
+        .catch((e) => {
+          if (gameRecoveryPreview && (window as FamilyGameWindow).familyGameSession !== session) return
           setError(
             `This game result could not be saved. ${e instanceof Error ? e.message : ''} Keep the game open and retry completion.`,
-          ),
-        )
+          )
+        })
     },
   }
   return (
     <div className="ninja-game-surface">
-      <p>Reviewed turns save on this device and sync with the parent’s family account when connected.</p>
+      <p>
+        {savedGameRecoveryExample
+          ? 'Reviewed turns save in this browser for this test learner.'
+          : 'Reviewed turns save on this device and sync with the parent’s family account when connected.'}
+      </p>
       {error && <p role="alert">{error}</p>}
+      {gameRecoveryPreview && turnFailed && (
+        <div role="status">
+          <p>
+            Retry saving below. If another window has changed this game, reopen its saved turns. Only an unconfirmed
+            turn may need repeating.
+          </p>
+          <button
+            onClick={() => {
+              if (activityClock.paused) return
+              setLoaded(null)
+              setError('')
+              setTurnFailed(false)
+              setRetry((value) => value + 1)
+            }}
+          >
+            Reopen saved turns
+          </button>
+        </div>
+      )}
       <Suspense fallback={<p role="status">Opening saved game…</p>}>
         {initial.pack.moduleId === 'memory-flip' ? (
           <MemoryFlip {...shared} pairs={initial.pack.pairs} />

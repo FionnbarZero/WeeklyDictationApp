@@ -141,7 +141,17 @@ export default defineConfig(({ command, mode }) => {
           mode === 'family-sync'
             ? {
                 codeSplitting: {
-                  groups: [{ name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 }],
+                  groups: [
+                    { name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 },
+                    // Pure labels/model helpers otherwise form several tiny
+                    // files. Keep exact cache rules and all lazy activity entry
+                    // points; do not loosen the host's rule limit or CSP.
+                    {
+                      name: 'shared-activity-models',
+                      test: /src[\\/](?:releaseMetadata|accessibility[\\/]useDialogFocus|learningHub[\\/](?:activityNames|standaloneGameRetirement)|grade5PresentationPreview[\\/]sourceIdentity|tier2[\\/]pathway|learningModules[\\/][^\\/]+[\\/]runtime[\\/]model)\.ts$/,
+                      minShareCount: 2,
+                    },
+                  ],
                 },
               }
             : undefined,

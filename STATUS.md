@@ -1,5 +1,9 @@
 # Weekly Dictation status
 
+## Current work — combined W repair batch, no interim owner review
+
+The owner expanded W2 to finish the W fixes and check one combined app at the end. Continue the already confirmed Astra · Extra High stage without routine approval/model questions. Local repairs and verification are recorded in [the combined repair record](./docs/w-roadmap-combined-repairs.md). The old W1 website does not contain these changes. No new publication/email or canonical release is claimed yet. Frozen standalone Grade 5 `1a9db3e` remains protected. Earlier requests for interim W1/W2 owner checks are superseded by the single final handoff.
+
 ## Current handoff — owner reports W1 working; W2 preparation started, October 23
 
 The owner reports that the latest writing preview is “actually OK now” and requests W2. Record this as positive feedback on the reported interaction in W1 Prototype 4 (`d6ee258`), not proof of the original Chrome disappearance's cause or acceptance of all devices/cloud-saving paths. The incident's evidence and recovery safeguards remain retained; it no longer blocks the owner's requested W2 work. Earlier requests below to repeat that same owner check are superseded.

@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Current priority — finish the combined W batch, then one final check
+
+The owner authorizes completion without interim approvals. Retain the confirmed Astra · Extra High assignment. Finish W2 recovery, carry forward W0/W1, verify W3 controls/navigation, add W4 slower sentence replay and safe failure feedback, and provide W5 direct mastered-word games with existing grade/tier/round/result policies. Complete W6 automated/exact-package verification before one all-grade test handoff and the standing email. [Scope, retained decisions and evidence](./docs/w-roadmap-combined-repairs.md). Do not claim missing parent target editing, a new shuffle/mastery policy, physical acceptance or authenticated release gates as complete. The frozen standalone Grade 5 website is excluded. Earlier interim smoke-test/approval prompts are superseded.
+
 ## Current priority — W2 blocked play and recovery, October 23
 
 The owner reports the latest W1 interaction is now working and asks to move to W2. Stop requesting a screenshot or another check of the same incident. Retain its unconfirmed root cause and diagnostic evidence without treating it as the active blocker; this feedback does not establish authenticated/offline/cross-device acceptance or canonical W0/W1 completion.

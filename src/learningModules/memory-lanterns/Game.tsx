@@ -68,6 +68,7 @@ export function MemoryFlip({
   }, [complete])
 
   function flip(cardId: string) {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
     if (pending.current || twoFlipped || flippedIds.includes(cardId)) return
     const card = deck.find((candidate) => candidate.id === cardId)
     if (!card || matchedPairIds.includes(card.pairId)) return
@@ -112,6 +113,7 @@ export function MemoryFlip({
   }
 
   async function saveTurn() {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
     const attempt = pending.current
     if (!attempt || saving.current) return
     saving.current = true

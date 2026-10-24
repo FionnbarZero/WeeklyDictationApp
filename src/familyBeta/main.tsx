@@ -48,6 +48,7 @@ import { retiredStandaloneExperience, standaloneGamesRetired } from '../learning
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
 import { regressionPreview } from '../regressionPreview/policy.ts'
 import { PreviewParentTools } from './PreviewParentTools.tsx'
+import { gameRecoveryPreview, savedGameRecoveryExample } from './gameRecoveryPreview.ts'
 
 const ParentTools = compactParentPreview ? PreviewParentTools : Fragment
 
@@ -100,7 +101,9 @@ function FamilyPreview() {
     repairProfile?.id || initialProfiles.find((p) => p.grade === initialGrade)!.id,
   )
   const [familyId, setFamilyId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>('activities')
+  const [tab, setTab] = useState<'activities' | 'games' | 'progress' | 'parent'>(
+    savedGameRecoveryExample ? 'games' : 'activities',
+  )
   const [curricula, setCurricula] = useState<Partial<Record<BetaGrade, Awaited<ReturnType<typeof fetchCurriculum>>>>>(
     {},
   )
@@ -635,7 +638,11 @@ function FamilyPreview() {
   // pack: the label and launch week otherwise reintroduce the old lesson scope.
   // Leave the underlying checkpoints intact for older clients/recovery.
   const savedByModule =
-    !regressionPreview && savedGames.owner === savedOwner && !savedGames.warning && completedGames && child
+    (!regressionPreview || savedGameRecoveryExample) &&
+    savedGames.owner === savedOwner &&
+    !savedGames.warning &&
+    completedGames &&
+    child
       ? resumableGameCheckpoints(savedGames.checkpoints, completedGames, child.id, child.grade)
       : new Map<string, GameCheckpoint>()
   const capabilities = reinforcementGames(
@@ -686,7 +693,26 @@ function FamilyPreview() {
       teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
       kind,
       src: kind === 'game' ? 'family-game.html?family-preview=1' : frameUrl,
-      ...(gamePack ? { game: { attemptId: id, pack: gamePack } } : {}),
+      ...(gamePack
+        ? {
+            game: {
+              attemptId: id,
+              pack: gamePack,
+              ...(gameRecoveryPreview
+                ? {
+                    recoveryCheckpoint:
+                      savedGames.checkpoints.find(
+                        (value) =>
+                          value.scope.childId === child.id &&
+                          value.scope.grade === child.grade &&
+                          value.scope.week === launchWeek &&
+                          value.scope.gameId === gamePack.moduleId,
+                      ) || null,
+                  }
+                : {}),
+            },
+          }
+        : {}),
     }
     setSlots((current) => [...current, slot])
     if (savedWeek) setWeek(savedWeek)
@@ -759,6 +785,7 @@ function FamilyPreview() {
   }
 
   async function discardSlot(slot: FamilyActivitySlot) {
+    if (gameRecoveryPreview && activityClock.paused) return
     document.documentElement.setAttribute(
       'data-report-module',
       slot.game?.pack.moduleId || slot.resumeChannel || 'activities',
@@ -773,14 +800,39 @@ function FamilyPreview() {
         const value = frame?.contentDocument?.documentElement.getAttribute(`data-report-${key}`)
         if (value) document.documentElement.setAttribute(`data-report-${key}`, value)
       }
-      if (
+      const gameSession = (frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession
+      if (gameRecoveryPreview && (!regressionPreview || savedGameRecoveryExample) && slot.game && !gameSession) {
+        const { discardUnopenedGame } = await import('./gameRecovery.ts')
+        const gameScope = {
+          childId: slot.profile.id,
+          grade: slot.profile.grade,
+          week: slot.week,
+          gameId: slot.game.pack.moduleId,
+        }
+        const ownerScope = scopeRef.current
+        // Never discard a newer run that appeared after this frame was opened.
+        const expected = slot.game.recoveryCheckpoint || null
+        await discardUnopenedGame({
+          storage: localStorage,
+          familyId: familyId || 'device-preview',
+          scope: gameScope,
+          expected,
+          stillOwner: () =>
+            scopeRef.current === ownerScope &&
+            slotsRef.current.some((item) => item.id === slot.id) &&
+            profilesRef.current.some(
+              (item) => item.id === slot.profile.id && item.grade === slot.profile.grade && item.active,
+            ),
+          now: () => new Date().toISOString(),
+        })
+      } else if (
         ['memory-flip', 'sentence-scramble', 'context-gap-dash', 'speed-match', 'target-blast'].includes(
           slot.game?.pack.moduleId || '',
         ) &&
-        !(frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession
+        !gameSession
       )
         throw new Error('Wait for the saved game to open before discarding it.')
-      await (frame?.contentWindow as FamilyGameWindow | null)?.familyGameSession?.discard()
+      await gameSession?.discard()
       if (slot.savedLesson) discardSavedLesson(localStorage, slot.profile, slot.savedLesson)
       const removed = slots.filter(
         (item) =>
@@ -865,6 +917,14 @@ function FamilyPreview() {
             <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
           )}
         </header>
+        {savedGameRecoveryExample && (
+          <p role="note">
+            W2 saved-game recovery example · test learners only. Ordinary games keep their existing play rules.
+          </p>
+        )}
+        {gameRecoveryPreview && !savedGameRecoveryExample && (
+          <a href={`?grade=${gradeSlugs[currentGrade]}&example=game-recovery`}>Saved-game recovery example</a>
+        )}
         {!regressionPreview && (
           <div className="beta-status" role="status">
             {status}
@@ -890,7 +950,7 @@ function FamilyPreview() {
             {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
           </div>
         )}
-        {!regressionPreview && (
+        {(!regressionPreview || savedGameRecoveryExample) && (
           <nav className="beta-tabs" aria-label="Family preview navigation">
             {(['activities', 'games', 'progress'] as const).map((t) => (
               <button

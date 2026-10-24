@@ -98,7 +98,7 @@ const gameCheckpoints = (page: Page) =>
 async function launch(page: Page, grade: string, section: RegExp, activity: string) {
   await page.goto(`/family-beta-preview.html?grade=${grade}`)
   await expect(page.getByRole('note', { includeHidden: true })).toContainText(
-    /October 20 regression repairs \/ Prototype 3|Grade 5 regression repairs \/ Prototype 2|Compact parent toolbar · Prototype 1/,
+    /October 20 regression repairs \/ Prototype 3|Grade 5 regression repairs \/ Prototype 2|Compact parent toolbar · Prototype 1|W-roadmap combined repairs · Prototype 1/,
   )
   const frame = frameOf(page)
   await frame.getByRole('button', { name: section }).click()

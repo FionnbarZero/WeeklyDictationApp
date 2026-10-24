@@ -12,7 +12,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const w1Curriculum = process.argv.includes('--w1-curriculum')
+const w2Recovery = process.argv.includes('--w2-recovery')
+const w1Curriculum = w2Recovery || process.argv.includes('--w1-curriculum')
 const w0Writing = w1Curriculum || process.argv.includes('--w0-writing')
 const standalone = process.argv.includes('--grade5-standalone')
 if (w0Writing && (standalone || process.argv.includes('--grade5-presentation')))
@@ -24,41 +25,45 @@ const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs'
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  w1Curriculum
-    ? 'w1-curriculum-preview-dist'
-    : w0Writing
-      ? 'w0-writing-preview-dist'
-      : standalone
-        ? 'grade5-standalone-dist'
-        : presentation
-          ? 'grade5-presentation-preview-dist'
-          : grade5Repairs
-            ? 'grade5-repair-preview-dist'
-            : regressions
-              ? 'regression-preview-dist'
-              : 'dojo-launch-preview-dist',
+  w2Recovery
+    ? 'w2-recovery-preview-dist'
+    : w1Curriculum
+      ? 'w1-curriculum-preview-dist'
+      : w0Writing
+        ? 'w0-writing-preview-dist'
+        : standalone
+          ? 'grade5-standalone-dist'
+          : presentation
+            ? 'grade5-presentation-preview-dist'
+            : grade5Repairs
+              ? 'grade5-repair-preview-dist'
+              : regressions
+                ? 'regression-preview-dist'
+                : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = w1Curriculum
-  ? 'W1 curriculum and activity entry / Prototype 4'
-  : w0Writing
-    ? 'W0 integrated writing / Prototype 2'
-    : standalone
-      ? '5th grade Dojo / Standalone 1'
-      : presentation
-        ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-        : retireStandalone
-          ? 'Streamlined Dojo / Prototype 1'
-          : compactParents
-            ? 'Compact parent toolbar / Prototype 1'
-            : grade5Repairs
-              ? 'Grade 5 regression repairs / Prototype 2'
-              : regressions
-                ? 'October 20 regression repairs / Prototype 3'
-                : octoberResources
-                  ? 'Kindergarten October 19 resources / Prototype 1'
-                  : 'Writing reliability / Prototype 2'
+const prototype = w2Recovery
+  ? 'W-roadmap combined repairs / Prototype 1'
+  : w1Curriculum
+    ? 'W1 curriculum and activity entry / Prototype 4'
+    : w0Writing
+      ? 'W0 integrated writing / Prototype 2'
+      : standalone
+        ? '5th grade Dojo / Standalone 1'
+        : presentation
+          ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+          : retireStandalone
+            ? 'Streamlined Dojo / Prototype 1'
+            : compactParents
+              ? 'Compact parent toolbar / Prototype 1'
+              : grade5Repairs
+                ? 'Grade 5 regression repairs / Prototype 2'
+                : regressions
+                  ? 'October 20 regression repairs / Prototype 3'
+                  : octoberResources
+                    ? 'Kindergarten October 19 resources / Prototype 1'
+                    : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -102,6 +107,7 @@ execFileSync(
       VITE_GRADE5_STANDALONE: String(standalone),
       VITE_WRITING_CORRECTION_PREVIEW: String(w0Writing),
       VITE_W1_CURRICULUM_PREVIEW: String(w1Curriculum),
+      VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
     },
   },
 )
@@ -165,7 +171,7 @@ if (w0Writing)
     entry,
     readFileSync(entry, 'utf8').replace(
       /<title>[^<]*<\/title>/,
-      `<title>${w1Curriculum ? 'Ninja Dojo · W1 integrated test' : 'W0 integrated writing'}</title>`,
+      `<title>${w2Recovery ? 'Ninja Dojo · Combined repairs test' : w1Curriculum ? 'Ninja Dojo · W1 integrated test' : 'W0 integrated writing'}</title>`,
     ),
   )
 if (presentation)
@@ -195,6 +201,17 @@ writeFileSync(
     {
       schema: 1,
       prototype,
+      ...(w2Recovery
+        ? {
+            recovery:
+              'Saved-game view ownership, failed-turn reopen and exact unfinished-run discard; ordinary games retain session-only play.',
+            audio: 'Sentence replay at a slower rate with visible retry after playback failure.',
+            masteredArcade:
+              'All grades use lifecycle-mastered pools, existing per-game bounds and completion rotation; Kindergarten and Grade 2 retain mastery activities. Game results never grant mastery.',
+            limitations:
+              'Browser-only synthetic learners. Authenticated device synchronization, parent target editing, a new shuffle policy and physical sound/handwriting acceptance are not established by this package.',
+          }
+        : {}),
       ...(w1Curriculum
         ? {
             curriculumEntry:

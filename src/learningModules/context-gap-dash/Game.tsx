@@ -744,6 +744,8 @@ export function ContextGapDash({
   const retrySaveRef = useRef<(() => void) | null>(null)
   const [saveError, setSaveError] = useState('')
   const lastChoicePreviewRef = useRef({ label: '', time: 0 })
+  const speechRequest = useRef(0)
+  const [audioError, setAudioError] = useState(false)
   const [completed, setCompleted] = useState(initialResults.length)
   const [correct, setCorrect] = useState(initialResults.filter(Boolean).length)
   const [streak, setStreak] = useState(0)
@@ -763,11 +765,17 @@ export function ContextGapDash({
   }, [playAudio])
 
   const playLearningText = useCallback((text: string, language: string, playbackRate = 1) => {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
     if (!text || !playAudioRef.current) return
+    const request = ++speechRequest.current
+    setAudioError(false)
     try {
-      void Promise.resolve(playAudioRef.current(text, language, playbackRate)).catch(() => undefined)
+      void Promise.resolve(playAudioRef.current(text, language, playbackRate)).catch(() => {
+        if (request === speechRequest.current) setAudioError(true)
+      })
     } catch {
       // Audio is enrichment; a playback failure should never stop the race.
+      if (request === speechRequest.current) setAudioError(true)
     }
   }, [])
 
@@ -865,7 +873,9 @@ export function ContextGapDash({
         <button type="button" onClick={replayContext} disabled={finished || !contextAudioText || !playAudio}>
           <Volume2 size={16} aria-hidden="true" /> Replay sentence
         </button>
+        {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={finished || !contextAudioText || !playAudio} onClick={() => playLearningText(contextAudioText, 'zh-CN', 0.5)}>Hear slowly</button>}
       </div>
+      {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioError && <p role="alert">The sound could not play. Tap Replay sentence or Hear slowly to retry.</p>}
       <div className="lg-phaser-stage-wrap lg-dash-stage-wrap">
         <div ref={hostRef} className="lg-phaser-stage" />
       </div>
