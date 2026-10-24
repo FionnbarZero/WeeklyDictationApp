@@ -1,5 +1,11 @@
 # Weekly Dictation status
 
+## Follow-up audit — two remaining defects in the combined W preview
+
+The requested source/hosted audit of unchanged `eb1c052` confirms two P2 defects: saved Shuriken timer conflicts lack the new Reopen recovery action (Retry and Exit → Resume remain stuck), and Context Gap Dash's pending automatic narration can override an early “Hear slowly” tap. Both reproduce in Chromium and WebKit; the conflict probe preserves the newer checkpoint. See [the audit record](./docs/w-roadmap-combined-repairs.md#follow-up-audit-of-the-published-repair-build). Hold the next acceptance handoff until these are repaired and verified. No app edit or publication occurred. Frozen Grade 5 `1a9db3e`, canonical `9d06a02` and the combined package identity are reverified. Earlier ready-for-check wording is superseded by these findings.
+
+Fresh exact-hosted audit: **51/52 game/recovery checks pass** (Context Gap Dash slow-retry fails), **12/12 writing/reading journeys pass**, and **7/7 focused units pass**. Both findings also have separate Chromium/WebKit reproductions. Evidence, including failures, is retained in `family-beta-artifacts/prototypes/w-combined-eb1c052/follow-up-audit/`. No physical-device or cloud acceptance is inferred.
+
 ## Current handoff — combined W repair preview verified and emailed, October 23
 
 **W-roadmap combined repairs / Prototype 1 · application `eb1c05282be5909d6e996808aaf30b6047d6b9b9`** is ready for the owner's single end-of-batch device check:

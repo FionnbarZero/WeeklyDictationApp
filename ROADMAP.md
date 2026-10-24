@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Follow-up audit — close the two remaining recovery/audio findings
+
+Audit of published `eb1c052` found saved Shuriken timer/restart errors bypass the new reopening state, and Context Gap Dash's scheduled automatic reading can cancel an early slow replay. Both have controlled Chromium/WebKit reproductions; records remain preserved. Repair these narrow W2/W4 gaps before the next acceptance handoff, retaining the existing confirmed Astra · Extra High stage and no routine approval questions. [Audit evidence and exact scope](./docs/w-roadmap-combined-repairs.md#follow-up-audit-of-the-published-repair-build). This audit made no application or hosting change. Frozen standalone Grade 5 and canonical remain unchanged. The earlier ready-for-owner-check priority is superseded; broader unfinished editor/policy/cloud work remains explicitly open.
+
 ## Current priority — one combined W preview ready for final owner check, October 23
 
 The owner requested all W repairs without interim approvals. The confirmed **GPT-6 Astra · Extra High** stage produced combined isolated preview **`eb1c052` / Prototype 1**, now byte/header verified and emailed. Exact all-grade links, expiry, successful-send receipt and the qualified regression counts are at the top of STATUS. Source and evidence are in [the combined repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md), managed branch `codex/w2-recovery`.

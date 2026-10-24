@@ -135,6 +135,18 @@ export function SavedLearningGame({
   const { session, owner } = loaded
   const initial = session.initial
   if (initial.pack.moduleId !== pack.moduleId) throw new Error('Saved game type does not match.')
+  // Answers, timer ticks and timed restarts share the same checkpoint owner.
+  // Every failed write must offer recovery, without letting an older visit
+  // clear or replace the current visit's error state.
+  async function saveChange(write: () => Promise<unknown>) {
+    try {
+      await write()
+      if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(false)
+    } catch (error) {
+      if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(true)
+      throw error
+    }
+  }
   const shared = {
     title: initial.pack.title,
     playAudio,
@@ -144,15 +156,7 @@ export function SavedLearningGame({
       attempted: initial.prompts.reduce((sum, p) => sum + p.attempted, 0),
       correct: initial.prompts.reduce((sum, p) => sum + p.correct, 0),
     },
-    onAttempt: async (attempt: Parameters<GameSession['review']>[0]) => {
-      try {
-        await session.review(attempt)
-        if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(false)
-      } catch (error) {
-        if (!gameRecoveryPreview || (window as FamilyGameWindow).familyGameSession === session) setTurnFailed(true)
-        throw error
-      }
-    },
+    onAttempt: (attempt: Parameters<GameSession['review']>[0]) => saveChange(() => session.review(attempt)),
     onComplete: () => {
       void browserGameWriteLock(`ninja-game-storage-v1:${owner.familyId}`, () => {
         if (!owner.stillOwner()) throw new Error('The family account changed. Saved work was preserved.')
@@ -224,10 +228,12 @@ export function SavedLearningGame({
             pairs={initial.pack.pairs}
             remainingMs={initial.remainingMs!}
             onTimer={async (remainingMs) => {
-              await session.timer(remainingMs)
+              if (gameRecoveryPreview) await saveChange(() => session.timer(remainingMs))
+              else await session.timer(remainingMs)
             }}
             onRestart={async () => {
-              await session.restartTimed()
+              if (gameRecoveryPreview) await saveChange(() => session.restartTimed())
+              else await session.restartTimed()
             }}
           />
         ) : null}

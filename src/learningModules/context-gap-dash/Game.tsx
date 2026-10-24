@@ -745,6 +745,8 @@ export function ContextGapDash({
   const [saveError, setSaveError] = useState('')
   const lastChoicePreviewRef = useRef({ label: '', time: 0 })
   const speechRequest = useRef(0)
+  const automaticReplayTimer = useRef<number | undefined>(undefined)
+  const explicitReplayRound = useRef<string | undefined>(undefined)
   const [audioError, setAudioError] = useState(false)
   const [completed, setCompleted] = useState(initialResults.length)
   const [correct, setCorrect] = useState(initialResults.filter(Boolean).length)
@@ -787,15 +789,35 @@ export function ContextGapDash({
     playLearningText(choiceLabel, 'zh-CN')
   }, [playLearningText])
 
-  const replayContext = useCallback(() => {
-    playLearningText(contextAudioText, 'zh-CN', 0.75)
-  }, [contextAudioText, playLearningText])
+  const replayContext = useCallback((rate = 0.75) => {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') {
+      if (activityClock.paused) return
+      // An explicit replay owns this prompt's narration. It also wins if the
+      // first effect has not installed its timer yet, or a parent rerenders.
+      explicitReplayRound.current = currentRound?.id
+      if (automaticReplayTimer.current !== undefined) {
+        activityClock.clearTimeout(automaticReplayTimer.current)
+        automaticReplayTimer.current = undefined
+      }
+    }
+    playLearningText(contextAudioText, 'zh-CN', rate)
+  }, [contextAudioText, currentRound?.id, playLearningText])
 
   useEffect(() => {
     if (!contextAudioText || !playAudio || finished) return
-    const timer = activityClock.setTimeout(() => playLearningText(contextAudioText, 'zh-CN', 0.75), 350)
-    return () => activityClock.clearTimeout(timer)
-  }, [contextAudioText, finished, playAudio, playLearningText])
+    const explicitlyRequested = () => import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true'
+      && explicitReplayRound.current === currentRound?.id
+    if (explicitlyRequested()) return
+    const timer = activityClock.setTimeout(() => {
+      if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
+      if (!explicitlyRequested()) playLearningText(contextAudioText, 'zh-CN', 0.75)
+    }, 350)
+    automaticReplayTimer.current = timer
+    return () => {
+      activityClock.clearTimeout(timer)
+      if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
+    }
+  }, [contextAudioText, currentRound?.id, finished, playAudio, playLearningText])
 
   const handleAttempt = useCallback(async (index: number, choiceId: string, wasCorrect: boolean) => {
     const round = playableRounds[index]
@@ -870,10 +892,10 @@ export function ContextGapDash({
       <div className="lg-dash-context-clue">
         <span><Volume2 size={18} aria-hidden="true" /> Chinese sentence</span>
         <strong>{currentRound?.cueText}</strong>
-        <button type="button" onClick={replayContext} disabled={finished || !contextAudioText || !playAudio}>
+        <button type="button" onClick={() => replayContext()} disabled={finished || !contextAudioText || !playAudio}>
           <Volume2 size={16} aria-hidden="true" /> Replay sentence
         </button>
-        {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={finished || !contextAudioText || !playAudio} onClick={() => playLearningText(contextAudioText, 'zh-CN', 0.5)}>Hear slowly</button>}
+        {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={finished || !contextAudioText || !playAudio} onClick={() => replayContext(0.5)}>Hear slowly</button>}
       </div>
       {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioError && <p role="alert">The sound could not play. Tap Replay sentence or Hear slowly to retry.</p>}
       <div className="lg-phaser-stage-wrap lg-dash-stage-wrap">
