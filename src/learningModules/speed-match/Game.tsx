@@ -117,6 +117,23 @@ export function SpeedMatch({
   const [timedOut, setTimedOut] = useState(remainingMs === 0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [audioFailure, setAudioFailure] = useState<SpeedMatchCard | null>(null)
+  const audioRequest = useRef(0)
+  useEffect(() => () => { audioRequest.current += 1 }, [])
+
+  function hearCard(card: SpeedMatchCard): Promise<void> {
+    if (activityClock.paused) return Promise.resolve()
+    const request = ++audioRequest.current
+    try {
+      return Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(
+        () => { if (request === audioRequest.current) setAudioFailure(null) },
+        () => { if (request === audioRequest.current) setAudioFailure(card) },
+      )
+    } catch {
+      if (request === audioRequest.current) setAudioFailure(card)
+      return Promise.resolve()
+    }
+  }
   const [correctionPairId, setCorrectionPairId] = useState<string | null>(null)
   const [correctionAnchorId, setCorrectionAnchorId] = useState<string | null>(null)
   const correctionPair = pairs.find((pair) => pair.id === correctionPairId)
@@ -346,6 +363,9 @@ export function SpeedMatch({
       progress={`${matchedPairIds.length}/${pairs.length} seals · ${timeLeft}s`}
       onExit={onExit}
     >
+      {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioFailure && <p role="alert">
+        The sound did not play. <button type="button" onClick={() => void hearCard(audioFailure)}>Hear again</button>
+      </p>}
       {!valid ? (
         <LearningGameEmpty onExit={onExit} />
       ) : complete ? (
@@ -472,6 +492,11 @@ export function SpeedMatch({
                   }
                   aria-label={`${card.accessibleLabel || card.label}. Click to hear and select.`}
                   onClick={() => {
+                    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') {
+                      if (activityClock.paused) return
+                      choose(card, hearCard(card))
+                      return
+                    }
                     let spoken: Promise<void>
                     try {
                       spoken = Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(

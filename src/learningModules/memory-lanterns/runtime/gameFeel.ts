@@ -1,4 +1,5 @@
 import { activityClock } from '../../../activity/activityLifecycle.ts'
+import { createRecordedEffects } from '../../../audio/recordedEffects.ts'
 export type GameSound =
   | 'select'
   | 'flip'
@@ -22,6 +23,7 @@ const lanternSoundUrls: Readonly<Record<LanternSound, string>> = {
 }
 const lanternAudio = new Map<LanternSound, HTMLAudioElement>()
 let activeLanternAudio: HTMLAudioElement | null = null
+let recordedEffects: ReturnType<typeof createRecordedEffects> | undefined
 activityClock.subscribe((paused) => {
   if (!paused) return
   if (audioContext) {
@@ -44,11 +46,24 @@ function getLanternAudio(sound: LanternSound) {
 }
 
 export function preloadLanternSounds() {
+  if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && typeof AudioContext !== 'undefined') {
+    recordedEffects?.dispose()
+    const effects = createRecordedEffects(lanternSoundUrls, 0.68)
+    recordedEffects = effects
+    return () => {
+      effects.dispose()
+      if (recordedEffects === effects) recordedEffects = undefined
+    }
+  }
   if (typeof Audio === 'undefined') return
   ;(Object.keys(lanternSoundUrls) as LanternSound[]).forEach((sound) => getLanternAudio(sound).load())
 }
 
 function playLanternRecording(sound: LanternSound) {
+  if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') {
+    void recordedEffects?.play(sound)
+    return
+  }
   const audio = getLanternAudio(sound)
   if (activeLanternAudio && activeLanternAudio !== audio) {
     activeLanternAudio.pause()

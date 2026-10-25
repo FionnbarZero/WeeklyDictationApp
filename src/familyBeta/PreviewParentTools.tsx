@@ -30,7 +30,7 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
                         : 'Compact parent toolbar'}{' '}
             ·{' '}
             {import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
-              ? 'Prototype 2'
+              ? 'Prototype 3'
               : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
                 ? 'Prototype 4'
                 : grade5Standalone

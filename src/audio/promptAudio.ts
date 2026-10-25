@@ -1,6 +1,7 @@
 import type { Word } from '../domain/contracts.ts'
 import { activityClock } from '../activity/activityLifecycle.ts'
 import { gesturePlaybackElement } from './gesturePlayback.ts'
+import { prepareRecordingSource, type RecordingSource } from './recordingSource.ts'
 
 export const DICTATION_AUDIO_GAP_MS = 750
 
@@ -310,15 +311,27 @@ export function playAudioPlan(
       const audio = options.createAudio ? options.createAudio() : gesturePlaybackElement() || new Audio()
       activeAudio = audio
       let settled = false
+      const loading = import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' ? new AbortController() : undefined
+      let recording: RecordingSource | undefined
       let watchdog = activityClock.setTimeout(() => fail(), 15_000)
       let playing = false
       const cleanup = () => {
+        loading?.abort()
         activityClock.clearTimeout(watchdog)
         audio.removeEventListener('playing', handlePlaying)
         audio.removeEventListener('ended', finish)
         audio.removeEventListener('error', fail)
         if (activeAudio === audio) activeAudio = null
         if (cancelActiveSegment === fail) cancelActiveSegment = undefined
+        if (recording) {
+          if (audio.src === recording.url) {
+            audio.pause()
+            audio.removeAttribute('src')
+            audio.load()
+          }
+          recording.release()
+          recording = undefined
+        }
       }
       const handlePlaying = () => {
         if (settled || playing) return
@@ -346,15 +359,26 @@ export function playAudioPlan(
       audio.addEventListener('ended', finish)
       audio.addEventListener('error', fail)
       cancelActiveSegment = fail
-      audio.src = resolveUrl(segment.storagePath)
-      audio.playbackRate = segment.rate
-      audio.preload = 'auto'
-      audio.load()
-      try {
-        void audio.play().then(handlePlaying).catch(fail)
-      } catch {
-        fail()
+      const begin = (url: string) => {
+        if (settled || cancelled) return
+        audio.src = url
+        audio.playbackRate = segment.rate
+        audio.preload = 'auto'
+        audio.load()
+        try {
+          void audio.play().then(handlePlaying).catch(fail)
+        } catch {
+          fail()
+        }
       }
+      const url = resolveUrl(segment.storagePath)
+      if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && !options.createAudio) {
+        void prepareRecordingSource(url, loading!.signal).then((source) => {
+          if (settled || cancelled) { source.release(); return }
+          recording = source
+          begin(source.url)
+        }).catch(fail)
+      } else begin(url)
     })
   }
 

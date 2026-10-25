@@ -35,15 +35,16 @@ export function MemoryFlip({
   const [confirmed, setConfirmed] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [audioError, setAudioError] = useState(false)
+  const audioRequest = useRef(0)
+  const failedWord = useRef<string | null>(null)
   const twoFlipped = flippedIds.length === 2
   const flippedCards = flippedIds.map((id) => deck.find((card) => card.id === id)).filter((card) => Boolean(card))
   const pairMatch = twoFlipped && flippedCards[0]?.pairId === flippedCards[1]?.pairId
   const valid = validGamePairs(characterPairs)
   const complete = valid && matchedPairIds.length === characterPairs.length
 
-  useEffect(() => {
-    preloadLanternSounds()
-  }, [])
+  useEffect(() => preloadLanternSounds(), [])
+  useEffect(() => () => { audioRequest.current += 1 }, [])
 
   useEffect(() => {
     if (!twoFlipped || !confirmed) return
@@ -67,8 +68,27 @@ export function MemoryFlip({
     return () => activityClock.clearTimeout(timer)
   }, [complete])
 
+  function hearWord(text: string): Promise<void> {
+    if (activityClock.paused) return Promise.resolve()
+    const request = ++audioRequest.current
+    try {
+      return Promise.resolve(playAudio?.(text, 'zh-CN')).then(
+        () => { if (request === audioRequest.current) { setAudioError(false); failedWord.current = null } },
+        () => { if (request === audioRequest.current) { setAudioError(true); failedWord.current = text } },
+      )
+    } catch {
+      if (request === audioRequest.current) { setAudioError(true); failedWord.current = text }
+      return Promise.resolve()
+    }
+  }
+
   function flip(cardId: string) {
     if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && flippedIds.includes(cardId)) {
+      const visible = deck.find((card) => card.id === cardId)
+      if (visible) void hearWord(visible.face.label)
+      return
+    }
     if (pending.current || twoFlipped || flippedIds.includes(cardId)) return
     const card = deck.find((candidate) => candidate.id === cardId)
     if (!card || matchedPairIds.includes(card.pairId)) return
@@ -77,7 +97,8 @@ export function MemoryFlip({
     setFlippedIds(next)
     // Invoke while the child's tap is still active (Safari audio permission).
     let spoken: Promise<void>
-    try {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') spoken = hearWord(card.face.label)
+    else try {
       spoken = Promise.resolve(playAudio?.(card.face.label, 'zh-CN')).then(
         () => {
           setAudioError(false)
@@ -95,7 +116,12 @@ export function MemoryFlip({
     const second = deck.find((candidate) => candidate.id === next[1])
     if (!first || !second) return
     const correct = first.pairId === second.pairId
-    void spoken.then(() => playGameSound(correct ? 'lantern-match' : 'lantern-miss'))
+    const spokenRequest = audioRequest.current
+    void spoken.then(() => {
+      if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW !== 'true' || spokenRequest === audioRequest.current) {
+        playGameSound(correct ? 'lantern-match' : 'lantern-miss')
+      }
+    })
     const pair =
       characterPairs.find((candidate) => candidate.id === first.pairId) ||
       characterPairs.find((candidate) => candidate.id === second.pairId)
@@ -165,7 +191,9 @@ export function MemoryFlip({
           </p>
           {audioError && (
             <p role="alert">
-              The word could not play. Check the browser’s sound permission, then tap another lantern to try again.
+              {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' ? <>
+                The word did not play. <button type="button" onClick={() => { if (failedWord.current) void hearWord(failedWord.current) }}>Hear again</button>
+              </> : 'The word could not play. Check the browser’s sound permission, then tap another lantern to try again.'}
             </p>
           )}
           {saveError && (
