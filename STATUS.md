@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current audit — one new audio regression and one inherited gap, October 25
+
+**Hold the next acceptance handoff.** Published Prototype 3 / `1b3e4f3` can falsely say a word played after only its silent audio-unlock clip completes. This requires initially blocked media followed by an allowed retry with a slow recording download; the native-browser probe reproduces it three times in each engine. The asynchronous recording loader introduced this gap in `e0456f9`. Shuriken also schedules feedback after Exit cancels a pending second-card word; that older defect reproduces in both current and predecessor builds. [Findings, exact causes and evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-audio-regression-audit-2026-10-25.md).
+
+Fresh audit results: **72/72 hosted game cases in one clean run**, plus **12/12 hosted all-grade writing/reading cases**. The existing tests pass but miss the two confirmed timing scenarios; they are not an all-clear. New targeted probes and predecessor comparisons are retained. Exact combined **192 files / 1,152 headers**, frozen Grade 5 **183 files / 1,098 headers**, canonical identity and the other **18 hosting releases/expiries** are reverified unchanged.
+
+This audit changed no application code, hosted build, family records or teacher data, and sent no new email. The website remains on `1b3e4f3` with its November 1, 3:24 a.m. Pacific expiry. Previous ready-for-check wording below is superseded. **Next:** repair both audio-lifetime gaps in the isolated prototype and add the missing first-retry/slow-download and Shuriken Exit-effect regression cases under the existing confirmed Astra · Extra High stage. Physical-device and authenticated/cloud acceptance remain separate; the frozen fifth-grade presentation remains excluded.
+
+Evidence is retained under `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-1b3e4f3/regression-audit-2026-10-25/`. Source/automated review only; no independent-agent or physical-speaker acceptance is claimed.
+
 ## Current handoff — Kindergarten sound repairs published, October 25
 
 **W-roadmap combined repairs / Prototype 3 · application `1b3e4f3777233ea6bf6c60fbc07c7792a8d4e817`** is verified on the same isolated combined test website: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5). Expires **November 1, 2026 at 3:24 a.m. Pacific**. Provider version `8b5bc5a813140434`; tree `4f5095a0af1b7e53c3cc1fd90eb68671ff93381d7ba2f37582a7225930a4f78f`. All **192 public files / 1,152 headers** match.

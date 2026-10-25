@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current priority — repair the two audio timing gaps, October 25
+
+The regression audit of `1b3e4f3` is **not clean** even though all **72 existing hosted game checks and 12 writing/reading checks pass**. **First:** prevent the silent gesture-unlock clip from resolving a real word that is still downloading after initially blocked sound. This new regression is reproduced six times across Chromium/WebKit. **Second:** cancel Shuriken's pending turn-feedback sound when the child exits; this inherited defect also reproduces on the predecessor. [Audit and required regression cases](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-audio-regression-audit-2026-10-25.md).
+
+Hold another owner smoke-test handoff until both fixes and their new regression cases pass on the exact isolated build. Continue under the already-confirmed Astra · Extra High repair stage without routine approval/model questions. Preserve existing teaching, timer, scoring, saving and curriculum policies; keep frozen standalone Grade 5 `1a9db3e`, canonical `9d06a02`, real records and the other previews unchanged. Prototype acceptance and the existing protected integration/release gates still apply before canonical activation. The audit itself made no application or hosting change and sent no email. Broader unfinished cloud/editor/source-refresh/policy work remains open. Earlier ready-for-check wording below is superseded.
+
 ## Current priority — device check of repaired Kindergarten sound, October 25
 
 The owner-authorized sound repairs are complete in **isolated Prototype 3 / `1b3e4f3`**. The recorded-media delivery failure and both game retry gaps are fixed, and the retry controls now use the existing large game-button style. Exact public bytes/headers and the frozen/canonical exclusions are verified. All-grade links and a 3–5 minute iPad checklist were emailed with confirmed SENT receipt **`1a172cef593e7d08`**. Read STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-sound-repair-2026-10-25.md) for qualified regression counts, retained failures, expiry and exact source.
