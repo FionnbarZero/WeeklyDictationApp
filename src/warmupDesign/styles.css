@@ -1,0 +1,143 @@
+.warmup-design button,
+.warmup-design select {
+  touch-action: manipulation;
+}
+.warmup-menu {
+  max-width: 760px;
+  margin: 36px auto;
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+.warmup-menu h1 {
+  color: #fff;
+}
+.warmup-menu p {
+  line-height: 1.6;
+}
+.warmup-menu select {
+  min-height: 48px;
+  margin-left: 12px;
+  padding: 8px;
+  font: inherit;
+}
+.warmup-menu a {
+  color: #b7d8ff;
+}
+.warmup-scope {
+  color: #b8bfd4;
+  font-size: 14px;
+}
+#slay-acquisition-root.warmup-design .slay-comparison-banner {
+  min-height: 48px;
+}
+#slay-acquisition-root.warmup-design .lg-shell {
+  min-height: 500px;
+  height: calc(100dvh - 56px);
+}
+.warmup-design .prompt-meta {
+  color: #f6f7ff;
+  font-size: 18px;
+}
+.warmup-design [role="timer"] {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 24px;
+}
+#slay-acquisition-root.warmup-design .tier1-writing-instructions > div:first-child {
+  display: flex;
+}
+#slay-acquisition-root.warmup-design .tier1-review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+.warmup-design .warmup-trace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 10px;
+}
+.warmup-trace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.warmup-trace-heading strong {
+  font-size: 22px;
+}
+.warmup-design .warmup-guide {
+  min-height: 0;
+  height: 100%;
+}
+.warmup-design .warmup-guide .lg-stroke-pad {
+  max-height: 100%;
+}
+/* WebKit resolves a percentage SVG height against the bordered square rather
+   than its content box. Keep the entire drawing surface square and unclipped. */
+#slay-acquisition-root.warmup-design .skywriting-scroll-cell svg,
+.warmup-design .lg-stroke-pad svg {
+  width: calc(100% - 2px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 1px;
+}
+.warmup-design .lg-stroke-status {
+  gap: 8px;
+}
+.warmup-design .warmup-complete {
+  align-self: center;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  padding: 32px;
+}
+.warmup-design .warmup-complete h2 {
+  font-size: 34px;
+}
+.warmup-audio {
+  position: fixed;
+  bottom: 4px;
+  left: 8px;
+  z-index: 3;
+  max-width: calc(100% - 16px);
+  font-size: 12px;
+  margin: 0;
+  padding: 3px 8px;
+  background: #11182b;
+  border-radius: 8px;
+  color: #d8dded;
+}
+.warmup-audio.is-error {
+  color: #ffdddd;
+}
+.warmup-error {
+  position: fixed;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  top: 108px;
+  padding: 12px;
+  background: #482731;
+  border: 2px solid #f09393;
+  border-radius: 10px;
+}
+@media (max-width: 599px) {
+  #slay-acquisition-root.warmup-design .lg-shell {
+    height: auto;
+    min-height: calc(100dvh - 56px);
+  }
+  .warmup-menu {
+    margin: 0 auto;
+  }
+  #slay-acquisition-root.warmup-design .practice-page {
+    min-height: 600px;
+  }
+  .warmup-design .warmup-trace {
+    min-height: 580px;
+  }
+}
