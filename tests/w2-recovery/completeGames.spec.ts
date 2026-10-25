@@ -8,6 +8,8 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-10-23T19:00:00Z'))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.addInitScript(() => {
+    const top = window.top as Window & { contentPrompts: string[] }
+    top.contentPrompts ||= []
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
@@ -17,6 +19,7 @@ test.beforeEach(async ({ page }) => {
           return []
         },
         speak(u: SpeechSynthesisUtterance) {
+          top.contentPrompts.push(u.text)
           u.onstart?.({} as SpeechSynthesisEvent)
           setTimeout(() => u.onend?.({} as SpeechSynthesisEvent), 5)
         },
@@ -65,12 +68,30 @@ for (const [slug, grade] of [
       } else if (pack.moduleId === 'dictation-streak') {
         for (const [i, round] of pack.rounds.entries()) {
           await expect(f.locator('.lg-round-label')).toHaveText(`Prompt ${i + 1} of ${pack.rounds.length}`)
-          for (const [index, step] of round.pinyinSteps!.entries()) {
+          if (i === 0) {
+            const step = round.pinyinSteps![0]
             await f.locator('input').fill(step.pinyin)
-            await f.getByRole('option', { name: Array.from(round.targetText)[index], exact: true }).click()
+            const wrong = step.candidates.find((c) => c !== Array.from(round.targetText)[0])!
+            await f.getByRole('option', { name: wrong, exact: true }).click()
+            await expect(f.getByText('Wrong character', { exact: true })).toBeVisible()
+            await expect(f.locator('input')).toBeEnabled({ timeout: 10000 })
+            await expect(f.locator('.lg-round-label')).toHaveText(`Prompt 1 of ${pack.rounds.length}`)
+            await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
+            await expect(f.locator('html')).toHaveAttribute('data-activity-paused', 'true')
+            await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+          }
+          let answer = ''
+          for (const [index, step] of round.pinyinSteps!.entries()) {
+            await f.locator('input').fill(answer + step.pinyin)
+            const character = Array.from(round.targetText)[index]
+            await f.getByRole('option', { name: character, exact: true }).click()
+            answer += character
+            await expect(f.locator('input')).toHaveValue(answer)
           }
           await f.getByRole('button', { name: 'Check characters', exact: true }).click()
         }
+        const spoken = await page.evaluate(() => (window as Window & { contentPrompts: string[] }).contentPrompts)
+        for (const round of pack.rounds) expect(spoken).toContain(round.audioText)
       } else if (pack.moduleId === 'target-blast') {
         for (const [i, round] of pack.rounds.entries()) {
           await expect(f.locator('.lg-round-label')).toHaveText(`Training strike ${i + 1} of ${pack.rounds.length}`)
