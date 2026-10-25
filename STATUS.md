@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Current audit — Prototype 6 regression results, October 25
+
+**No reproducible application regression found** in the bounded audit of unchanged **Prototype 6 / `89bc62c`**. Fresh checks pass: **1,261 units**, **26 hosted layouts**, and **20 hosted writing/reading cases**. The broad game/audio/recovery run was **89/90 initially**; the transient Sushi feedback observation is investigated, not hidden. Three unchanged repeats pass; all four related animated cases pass after removing a redundant test wait while preserving the full-viewport assertion. [Evidence, exact counts and limits](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-layout-regression-audit-2026-10-25.md).
+
+Exact **192 files / 1,152 headers**, frozen Grade 5 **183 files / 1,098 headers**, canonical identity and all **19 hosting releases/expiries** are verified unchanged. Prototype 6 still expires **November 1 at 5:20 AM Pacific**, version `eca35a83b4a7af77`. This audit changes one test and documentation only; it publishes nothing and sends no new email. The existing all-grade links and physical-iPad checklist below remain valid. Native keyboard/speaker/Pencil and authenticated/cloud acceptance remain separate.
+
+Evidence retained at `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-89bc62c/regression-audit-2026-10-25`. Source/automated review only; no separate-agent audit or model switch claimed. Passing coverage spans the recorded runs, not one clean 136-case execution.
+
 ## Current handoff — compact game layouts repaired, October 25
 
 **Prototype 6 — compact games / application `89bc62cc262cc28dc2e914c4d02775b7f9e96292`** is published on the same isolated combined website: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5). Expires **November 1, 2026 at 5:20 AM Pacific**. Hosting version `eca35a83b4a7af77`; tree `31e1633e8290d811ba8ca14174ccf73369a5ca0a4911fd865440ebaf346d977d`. Exact **192 files / 1,152 headers** are verified. Reopen the grade link to load it; no data reset is needed.

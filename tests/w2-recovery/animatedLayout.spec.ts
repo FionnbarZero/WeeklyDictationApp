@@ -75,7 +75,8 @@ for (const [slug, grade] of [
           .click()
       }
       const feedback = frame.locator(`.lg-feedback.is-${attempt < 2 ? 'incorrect' : 'correct'}`)
-      await expect(feedback).toBeVisible()
+      // Observe transient feedback in one assertion; a separate visibility wait
+      // can consume its lifetime before the viewport observer runs.
       await expect(feedback).toBeInViewport({ ratio: 1 })
       await stable()
       await page.screenshot({ path: info.outputPath(`animated-response-${attempt}.png`) })

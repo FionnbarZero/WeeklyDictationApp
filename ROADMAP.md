@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current priority — Prototype 6 audited; physical and integration gates remain
+
+The October 25 regression audit reproduces **no application regression**. **1,261 units, 26 hosted layout cases and 20 writing/reading cases pass**. The initial game run was **89/90**; its one short-lived Sushi-feedback test observation is documented, passes three unchanged repeats, and all four related cases pass after a test-only wait correction. [Qualified results and retained evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-layout-regression-audit-2026-10-25.md). No application or website change occurred.
+
+**Next:** the existing short all-grade physical-iPad check on Prototype 6 / `89bc62c`, then working-prototype acceptance and the existing integration/authenticated compatibility/recovery release gates. Frozen Grade 5 remains protected. Parent editing, source refresh, future imported content, broader voice/policy questions and authenticated/offline/cross-device acceptance remain open. No new routine approval/model question is pending; the audit follows the recorded Astra · Extra High recommendation without claiming a model switch or independent-agent review.
+
 ## Current priority — accept the compact game-layout preview, October 25
 
 The owner-requested Shuriken/Dictation layout repair is delivered in **Prototype 6 / `89bc62c`** on the same isolated combined website. Smaller headings and decoration leave the tested matching cards and Pinyin choices visible, including saved-game and guided-correction states. **26 local + 26 hosted layout cases and 12 hosted audio cases pass**; exact publication, email receipt and qualified earlier unit/recovery coverage are recorded in STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-game-layouts-2026-10-25.md).
