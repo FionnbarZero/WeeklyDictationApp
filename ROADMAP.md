@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept the completed missing-content preview, October 25
+
+The owner moved **missing game content** to first priority. That bounded content work is now delivered in **Prototype 5 / 389d2f3** on the same combined isolated website; exact links, expiry and verified email receipt are in STATUS. The catalog covers every retained Tier 1/2 target in the three active grades, with **149 grade-specific entries / 191 occurrences / 20 weeks**, enabling **53 additional lesson/game combinations**. [Inventory, validation and handoff](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-2026-10-25.md).
+
+The remaining disabled combinations are source/policy limits, not missing catalog fields: Kindergarten's two-target weeks lack a third Context Gap choice, and two Grade 2 weeks viewed alone lack Tier 2 words. Preserve the approved earlier-week resolver and all grade/tier/round rules. Do not invent or retier teacher targets to make a button active. Future unlisted imported words still need validated support.
+
+**Next:** one end-of-batch 5–8 minute physical-iPad check of the verified build, then the existing working-prototype acceptance, integration/compatibility and protected-release gates. No routine approval/model question is pending; the confirmed Astra · Extra High stage covered this work. No model switch or separate-agent review is claimed. Frozen fifth-grade presentation `1a9db3e`, canonical `9d06a02`, other previews and real-family records remain unchanged. The missing-content portion of W4 is complete in this preview, not a claim that all W4 or canonical work is complete. Parent target editing, automatic source refresh, voice replacement, unsettled policy work and authenticated/offline/cross-device acceptance remain open.
+
 ## Current priority — final iPad check of repaired audio timing, October 25
 
 Both October 25 audio findings are repaired in **isolated Prototype 4 / 0189a98**: real recordings own completion, and canceled/superseded Shuriken words cannot trigger stale feedback. **80/80 final hosted game checks**, **12/12 local writing/reading checks** and **1,256 units** pass. Retained negative controls and the initial saved-fixture font-shift failure are explained in [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/audio-timing-repair-2026-10-25.md); do not relabel the first local run as clean.
