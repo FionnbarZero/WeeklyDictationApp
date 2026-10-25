@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — device check of repaired Kindergarten sound, October 25
+
+The owner-authorized sound repairs are complete in **isolated Prototype 3 / `1b3e4f3`**. The recorded-media delivery failure and both game retry gaps are fixed, and the retry controls now use the existing large game-button style. Exact public bytes/headers and the frozen/canonical exclusions are verified. All-grade links and a 3–5 minute iPad checklist were emailed with confirmed SENT receipt **`1a172cef593e7d08`**. Read STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-sound-repair-2026-10-25.md) for qualified regression counts, retained failures, expiry and exact source.
+
+**Next:** the owner's single end-of-batch physical-iPad sound/touch check using the combined links in STATUS, not older W1. No routine approval/model question is pending. The recorded Astra · Extra High stage covered this repair; no model switch or separate-agent review is claimed. Preserve frozen standalone Grade 5 `1a9db3e`, canonical `9d06a02`, child/family records and the approved teaching/data policies.
+
+This closes the three scoped audio findings in the working prototype, not every historical W task or physical-device acceptance. Browser-only test saving, retained curriculum, missing validated game content, parent editing, automatic source refresh, unresolved policy questions and authenticated/offline/cross-device release gates retain their documented boundaries. Working-prototype acceptance, independent integration/compatibility review and protected release gates still precede canonical activation. Earlier audio audit holds below are superseded by this verified preview handoff.
+
 ## Current priority — Kindergarten audio reliability, October 24
 
 Owner feedback: the combined preview otherwise looked good, but Kindergarten has silence/intermittent silence. Read the [seven-game sound audit](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-sound-audit-2026-10-24.md) before further acceptance work. Prior all-grade ready-for-check wording does not close this issue.
