@@ -27,6 +27,10 @@ async function launch(page: Page, grade = 'grade2', saved = false) {
   await page.goto(`/family-beta-preview.html?grade=${grade}${saved ? '&example=game-recovery' : ''}`)
   const frame = page.frameLocator('iframe:visible')
   if (saved) {
+    // The outer saved-game fixture loads a web font. Wait for its first layout
+    // before targeting a card: a late font swap can move it between mouse down
+    // and mouse up in WebKit, producing no click rather than a game failure.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (process.env.W2_LEGACY_BASELINE === '1')
       await page.getByRole('button', { name: 'Ninja Skills', exact: true }).click()
     await page
