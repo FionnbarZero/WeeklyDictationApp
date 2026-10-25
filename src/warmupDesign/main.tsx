@@ -87,8 +87,10 @@ function WarmupDesign() {
       localStorage.setItem(key, raw)
       if (localStorage.getItem(key) !== raw) throw new Error('Your place could not be saved. Please try again.')
       savedRaw.current = raw
-      setState(next)
     })
+    // Publish the next controls only after the lock has been released. Otherwise
+    // a fast click can reach a new screen while its previous save is still busy.
+    setState(next)
   }
   async function begin(again = false) {
     if (activityClock.paused || saving.current) return

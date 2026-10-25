@@ -56,9 +56,12 @@
 }
 .warmup-design .warmup-trace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
+  justify-content: stretch;
   min-height: 0;
   padding: 10px;
+  animation: none;
 }
 .warmup-trace-heading {
   display: flex;
@@ -126,6 +129,34 @@
   border: 2px solid #f09393;
   border-radius: 10px;
 }
+@media (min-width: 600px) and (max-width: 899px) {
+  /* Reserve feedback space so a correction message cannot move the drawing
+     surface between pen strokes. */
+  .warmup-design .warmup-guide {
+    grid-template-rows: minmax(0, 1fr) 136px;
+  }
+  .warmup-design .warmup-guide .lg-stroke-actions {
+    display: grid;
+    height: 136px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 60px 64px;
+    align-items: stretch;
+  }
+  .warmup-design .warmup-guide .lg-stroke-status {
+    grid-column: 1 / -1;
+    margin: 0;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .warmup-design .warmup-guide .lg-stroke-tools {
+    display: flex;
+  }
+  .warmup-design .warmup-guide .lg-stroke-tools button {
+    flex: 1;
+    padding: 8px;
+  }
+}
 @media (orientation: portrait) and (min-width: 600px) {
   #slay-acquisition-root.warmup-design
     .skywriting-workspace:not(.is-review)
@@ -145,6 +176,15 @@
     .skywriting-workspace.is-review
     .skywriting-grand-scroll-grid[data-character-count="4"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #slay-acquisition-root.warmup-design .skywriting-reveal-word[data-character-count="4"] {
+    width: 2em;
+    padding: 0;
+    justify-self: center;
+    font-size: min(35cqh, 40cqw);
+    line-height: 1.2;
+    text-align: center;
+    word-break: break-all;
   }
 }
 @media (max-width: 599px) {

@@ -40,6 +40,7 @@ async function answer(page: Page, correct: boolean) {
   await expect(skip).toBeEnabled({ timeout: 20000 })
   await skip.click()
   await page.getByRole('button', { name: correct ? 'I got it right' : 'I got it wrong', exact: true }).click()
+  await expect(page.locator('.warmup-design')).not.toHaveAttribute('data-report-phase', 'compare')
 }
 async function trace(page: Page, grade: WarmupGrade, wordIndex: number, reject = false) {
   const sample = warmupSamples(grade)[wordIndex]
@@ -74,6 +75,9 @@ async function trace(page: Page, grade: WarmupGrade, wordIndex: number, reject =
     for (let i = 0; i < strokes.length; i++) {
       await draw(strokes[i])
       await expect(pad).toHaveAttribute('data-next-stroke', String(i + 1))
+      const after = (await pad.boundingBox())!
+      expect(Math.abs(after.y - b.y)).toBeLessThan(1)
+      expect(Math.abs(after.height - b.height)).toBeLessThan(1)
     }
     const next = guide.getByRole('button', {
       name: character + 1 < sample.guides.length ? 'Next character' : 'Write the whole word',
@@ -81,6 +85,9 @@ async function trace(page: Page, grade: WarmupGrade, wordIndex: number, reject =
     })
     await expect(next).toBeInViewport({ ratio: 1 })
     await next.click()
+    if (character + 1 < sample.guides.length)
+      await expect(guide).toHaveAttribute('data-character-index', String(character + 1))
+    else await expect(guide).toBeHidden()
   }
 }
 
@@ -139,6 +146,20 @@ for (const grade of warmupGrades) {
       await expect(page.getByRole('button', { name: 'Skip Timer', exact: true })).toBeEnabled({ timeout: 20000 })
       await page.getByRole('button', { name: 'Skip Timer', exact: true }).click()
       await expect(page.locator('.skywriting-reveal-word')).toHaveText(sample.word.text)
+      if ([...sample.word.text].length === 4 && page.viewportSize()!.width < page.viewportSize()!.height) {
+        const rows = await page.locator('.skywriting-reveal-word').evaluate((element) => {
+          const text = element.firstChild!
+          return [0, 1, 2, 3].map((index) => {
+            const range = document.createRange()
+            range.setStart(text, index)
+            range.setEnd(text, index + 1)
+            return range.getBoundingClientRect().y
+          })
+        })
+        expect(Math.abs(rows[0] - rows[1])).toBeLessThan(1)
+        expect(Math.abs(rows[2] - rows[3])).toBeLessThan(1)
+        expect(rows[2] - rows[0]).toBeGreaterThan(100)
+      }
       await expect(page.getByRole('button', { name: 'I got it wrong', exact: true })).toBeInViewport({ ratio: 1 })
       await expect(page.getByRole('button', { name: 'I got it right', exact: true })).toBeInViewport({ ratio: 1 })
       await page.screenshot({ path: test.info().outputPath(`${grade}-${[...sample.word.text].length}-compare.png`) })
@@ -159,6 +180,7 @@ test('Timer waits for audio; Report pauses it; failed saves preserve the first d
   expect(await timer.textContent()).toBe(before)
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
   await page.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+  await expect(page.locator('.warmup-design')).toHaveAttribute('data-report-phase', 'compare')
   await page.evaluate(() => {
     const original = Storage.prototype.setItem
     ;(window as unknown as { restoreSave: () => void }).restoreSave = () => {
@@ -174,8 +196,8 @@ test('Timer waits for audio; Report pauses it; failed saves preserve the first d
   expect((await readState(page, 'Kindergarten')).firstAnswers).toEqual([])
   await page.evaluate(() => (window as unknown as { restoreSave: () => void }).restoreSave())
   await page.getByRole('button', { name: 'I got it wrong', exact: true }).click()
-  expect((await readState(page, 'Kindergarten')).firstAnswers).toEqual([false])
   await expect(page.getByRole('region', { name: 'Warmup stroke guide' })).toBeVisible()
+  expect((await readState(page, 'Kindergarten')).firstAnswers).toEqual([false])
 })
 
 test('Grade 5: all four characters must finish before the blank whole-word retry', async ({ page }) => {

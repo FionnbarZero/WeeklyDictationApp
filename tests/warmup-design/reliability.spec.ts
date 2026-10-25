@@ -126,6 +126,7 @@ test('Another tab cannot overwrite a reviewed first answer; saved ink remains ab
   await expect(page.getByRole('button', { name: 'Skip Timer', exact: true })).toBeEnabled({ timeout: 15000 })
   await page.getByRole('button', { name: 'Skip Timer', exact: true }).click()
   await page.getByRole('button', { name: 'I got it wrong', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Warmup stroke guide' })).toBeVisible()
   const committed = await page.evaluate(() => localStorage.getItem('ninja-warmup-design-v1:grade2'))
   await other.bringToFront()
   await expect(other.getByRole('button', { name: 'Skip Timer', exact: true })).toBeEnabled({ timeout: 15000 })
