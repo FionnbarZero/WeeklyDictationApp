@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current audit — Kindergarten sound needs repair, October 24
+
+The owner reports the combined app otherwise looked good, but Kindergarten has **no sound or intermittent silence**. The audit of all seven available Kindergarten games on unchanged **Prototype 2 / `7b33d7b`** finds a shared recorded-audio delivery failure in WebKit, hidden Shuriken playback errors, and a Memory Lanterns limitation that prevents retrying the same failed revealed card. [Full audit and exact evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-sound-audit-2026-10-24.md).
+
+All 45 hosted audio files match the package and decode in both engines. WebKit rejects direct hosted media URLs; three representative files play to completion with unchanged bytes delivered as temporary Blob URLs or test-only correct byte-range responses. The server returns a complete 200 response to its two-byte range request. The older W1 `d6ee258` website has the same response and bytes. This is a strong candidate explanation, not physical-iPad root-cause confirmation.
+
+Completed evidence: 20 native browser visits, 14 controlled failure/retry visits, 23 focused unit passes, and passing cue-sequencing coverage for 14 distinct repeated-round/pair scenarios after documented driver corrections. Actual speaker output and iPad voice availability remain unverified. Earlier mocked-audio checks did not cover this transport behavior. Prior general ready-for-device-check wording is superseded for Kindergarten sound.
+
+**Next:** repair recorded delivery and the two recovery gaps in an isolated prototype under the recorded Astra · Extra High behavior/review assignment, then verify before the next device handoff. This turn made no application-code or hosting change and sent no new preview email. Frozen fifth-grade presentation, canonical app, family records and teaching/scoring rules remain outside this audit. Other unfinished editor/cloud/policy scope remains open. Evidence is retained beside `w-combined-7b33d7b` under `kindergarten-sound-audit/`.
+
 ## Current handoff — audit findings repaired and verified, October 24
 
 **W-roadmap combined repairs / Prototype 2 · application `7b33d7b74d95839237181be1b04c09e8881f2172`** is published on the same isolated combined test website:

@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — Kindergarten audio reliability, October 24
+
+Owner feedback: the combined preview otherwise looked good, but Kindergarten has silence/intermittent silence. Read the [seven-game sound audit](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-sound-audit-2026-10-24.md) before further acceptance work. Prior all-grade ready-for-check wording does not close this issue.
+
+Repair priorities: **(1)** shared recorded-sound delivery, including Lantern effects: current hosted URLs fail in WebKit while identical bytes played from Blob URLs or correct byte-range responses succeed; **(2)** visible sound failure/retry in Shuriken Match; **(3)** replay of the same failed revealed Memory Lantern without another flip or scored turn. Preserve existing voice/rate, teaching, timer, pairing, scoring, saving and Report-pause rules. Use an isolated working prototype and the existing review/release gates; the frozen fifth-grade presentation stays excluded.
+
+The audit changed no application code or hosting. The physical iPad cause is not conclusively established, and passing synthetic speech tests is not sound-output acceptance. Astra · Extra High remains the recorded behavior/review routing. Exact evidence and limitations are in STATUS and the audit record. No fresh deployment, email or request for another owner smoke test is justified by the audit alone.
+
 ## Current priority — check the repaired combined preview, October 24
 
 The owner-authorized follow-up repairs are complete in **isolated Prototype 2 / application `7b33d7b`**. Saved Shuriken timer/restart failures now offer safe recovery, and Context Gap Dash honors an early explicit replay without automatic narration overriding it. All 60 local game/recovery cases, 18 focused hosted cases and 1,253 units pass; exact public files/headers match. The all-grade links and 3–5 minute iPad checklist were emailed with confirmed SENT receipt `1a16cc9b01eacd6e`. See STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/w-roadmap-combined-repairs.md) for exact version, expiry and retained evidence.
