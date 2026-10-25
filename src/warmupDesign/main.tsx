@@ -10,6 +10,7 @@ import {
   stopPromptAudio,
 } from '../audio/promptAudio.ts'
 import { ProblemReporter } from '../familyBeta/ProblemReporter.tsx'
+import { withScrollsWrite } from '../familyBeta/scrollsCompletion.ts'
 import { createPracticeCountdown } from '../practice/countdown.ts'
 import { SelfAssessmentActions } from '../practice/SelfAssessmentActions.tsx'
 import { emptyWritingPadState, SkyWritingAcquisition, type WritingPadState } from '../skywriting/index.ts'
@@ -62,6 +63,7 @@ function WarmupDesign() {
   const attemptRef = useRef<PromptAudioAttempt>(undefined)
   const audioRequest = useRef(0)
   const savedRaw = useRef<string | null>(null)
+  const saving = useRef(false)
   const samples = useMemo(() => warmupSamples(grade), [grade])
   const lengths = samples.map((s) => [...s.word.text].length)
   const word = samples[state.index]?.word
@@ -74,19 +76,23 @@ function WarmupDesign() {
   const audioReady = audio === 'ready' && completedAudioKey === stageKey
 
   useEffect(() => activityClock.subscribe(setPaused), [])
-  function store(next: WarmupDesignState) {
+  async function store(next: WarmupDesignState) {
     // Only this explicitly isolated sample key is writable. A second tab cannot
     // silently overwrite a newer reviewed result. Never serialize handwriting.
-    if (localStorage.getItem(key) !== savedRaw.current)
-      throw new Error('This prototype changed in another tab. Exit and reopen to use its saved place.')
-    const raw = JSON.stringify({ signature, state: next })
-    localStorage.setItem(key, raw)
-    if (localStorage.getItem(key) !== raw) throw new Error('Your place could not be saved. Please try again.')
-    savedRaw.current = raw
-    setState(next)
+    await withScrollsWrite(key, () => {
+      if (activityClock.paused) throw new Error('Close the report before continuing. Your place is unchanged.')
+      if (localStorage.getItem(key) !== savedRaw.current)
+        throw new Error('This prototype changed in another tab. Exit and reopen to use its saved place.')
+      const raw = JSON.stringify({ signature, state: next })
+      localStorage.setItem(key, raw)
+      if (localStorage.getItem(key) !== raw) throw new Error('Your place could not be saved. Please try again.')
+      savedRaw.current = raw
+      setState(next)
+    })
   }
-  function begin(again = false) {
-    if (activityClock.paused) return
+  async function begin(again = false) {
+    if (activityClock.paused || saving.current) return
+    saving.current = true
     enablePreviewSpeechFromTap()
     try {
       savedRaw.current = localStorage.getItem(key)
@@ -97,36 +103,41 @@ function WarmupDesign() {
           throw new Error('This saved prototype uses a different sample set. It has been preserved.')
         next = reopenWarmupDesign(validateWarmupDesign(stored.state, lengths))
       }
-      store(next)
+      await store(next)
       setPad(emptyWritingPadState)
       setCompletedAudioKey('')
       setError('')
       setActive(true)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Your place could not be read or saved.')
+    } finally {
+      saving.current = false
     }
   }
   function exit() {
-    if (activityClock.paused) return
+    if (activityClock.paused || saving.current) return
     audioRequest.current += 1
     stopPromptAudio(attemptRef.current)
     setActive(false)
     setCompletedAudioKey('')
     setPad(emptyWritingPadState)
   }
-  function move(action: WarmupDesignAction) {
-    if (activityClock.paused) return
+  async function move(action: WarmupDesignAction) {
+    if (activityClock.paused || saving.current) return
+    saving.current = true
     try {
       const next = advanceWarmupDesign(state, action, lengths)
       if (next === state) return
       // Reject repeated clicks from a render whose result has already committed.
       const saved = savedRaw.current && JSON.parse(savedRaw.current)
       if (!saved || saved.state.revision !== state.revision) return
-      store(next)
+      await store(next)
       if (next.phase === 'memory' || next.phase === 'trace') setPad(emptyWritingPadState)
       setError('')
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Your place could not be saved. Try again.')
+    } finally {
+      saving.current = false
     }
   }
   const hear = useCallback(() => {
@@ -153,8 +164,8 @@ function WarmupDesign() {
       .catch(() => {
         if (audioRequest.current === request) setAudio('error')
       })
-    // Samples are reconstructed from the same retained source. Primitive identity
-    // prevents input/drawing rerenders from restarting narration.
+    // The memoized sample identity prevents drawing/input rerenders from
+    // restarting narration.
   }, [grade, word])
   useEffect(() => {
     if (!active || state.phase === 'complete') return
