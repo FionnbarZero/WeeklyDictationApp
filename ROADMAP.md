@@ -1,5 +1,15 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept the isolated Writing Warmup interaction, October 25
+
+The owner completed all seven design/rule choices. **Warmup prototype 1 / `9a0cce3`** implements whole-word memory and comparison, one guided tracing trial for each character after an error, whole-word retry until correct, first-attempt-only results, the approved Slay presentation and a 10-second timer starting after complete prompt audio. It covers Kindergarten, Grade 2 and Grade 5. This correction sequence is **not** the five-step acquisition teacher.
+
+The new `warmup-design-preview.html` route is published on the existing combined preview origin. **1,265 units, 36 local + 36 hosted browser cases and 12 original-app entrance checks pass**; exact hosted content and protected-site preservation are verified. Links, expiry, email SENT receipt and qualified evidence are in STATUS and [the prototype record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/warmup-design-prototype-2026-10-25.md).
+
+**Next:** one 5–8 minute physical-iPad working-interaction check, then owner approval before integrating native grade-owned Warmup schedules, mastery/persistence and required/optional entry policies. The page has sample targets and separate browser-only checkpoints; it is not normal scheduled Warmup or real mastery/cloud synchronization. Preserve existing word-selection, scheduling, acquisition and reading rules during later integration. The current combined app's original bytes remain `89bc62c`; standalone Grade 5 `1a9db3e` stays frozen.
+
+The standing autonomous W-repair authorization covers this isolated prototype and routine publication/email; no new routine model/approval question is pending. Routing remains **Astra · Extra High** for behavior/persistence and integration review, **Sol · High** for bounded publication, **Luna · Medium** for documentation. No model switch or separate-agent review is claimed. Physical audio/Pencil/keyboard, authenticated/offline/cross-device acceptance and existing integration/release gates remain. Parent editing, source refresh, future imported content and other open roadmap items are not closed by this prototype.
+
 ## Current priority — Prototype 6 audited; physical and integration gates remain
 
 The October 25 regression audit reproduces **no application regression**. **1,261 units, 26 hosted layout cases and 20 writing/reading cases pass**. The initial game run was **89/90**; its one short-lived Sushi-feedback test observation is documented, passes three unchanged repeats, and all four related cases pass after a test-only wait correction. [Qualified results and retained evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-layout-regression-audit-2026-10-25.md). No application or website change occurred.

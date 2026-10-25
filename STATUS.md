@@ -1,5 +1,19 @@
 # Weekly Dictation status
 
+## Current handoff — Writing Warmup design prototype, October 25
+
+**Warmup prototype 1 / application `9a0cce38eea05690ac7bb51ce9968d658b0e0b49`** is published as an isolated page on the existing combined test website: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/warmup-design-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/warmup-design-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/warmup-design-preview.html?grade=grade5). Expires **November 1, 2026 at 6:29 AM Pacific**. Hosting version `e28106816f1faef7`; tree `2b75e97ca8556a57bc706c971b05f6ce3e28cd79f9577952aac493973bab10c9`. Exact **196 files / 1,176 headers** verified.
+
+All seven owner choices are implemented in the isolated interaction: whole-word memory then comparison; wrong answer → one guided trial per character → whole-word retry; immediate stroke direction/order feedback; large centered Slay boxes; **10 seconds after the full prompt audio**, with Skip Timer and untimed tracing; all three grades; **only the first independent answer counts in the first-try total**. Corrections cannot convert a first wrong answer into mastery success. [Full contract, evidence and limits](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/warmup-design-prototype-2026-10-25.md).
+
+**1,265 units, 36/36 local and 36/36 hosted browser cases, and 12/12 original-app reading/writing entrance cases pass.** Final typecheck, scoped formatting/lint and isolated build pass. Failed development/negative runs are retained and accounted. Source/automated review only; no independent-agent or physical-iPad acceptance claimed.
+
+**Email verified SENT: `1a1737babe68e831`.** Ready for one **5–8 minute iPad check**: automatic/Hear audio, incorrect whole word → every character's guide → whole-word retry, reversed stroke feedback, Report/return, Exit/reopen, and both orientations. Use Report a problem. A corrected word should remain initially incorrect in the final first-try total.
+
+This page uses explicit sample words and separate browser-only test checkpoints. It does **not** activate scheduled Warmup, change family mastery/cloud records or establish offline/cross-device acceptance. The existing combined app remains **Prototype 6 / `89bc62c`**, with all **193 original packaged records (192 public) unchanged**; only four files are added. Frozen Grade 5 **`1a9db3e`** (183 files / 1,098 headers), canonical **`9d06a02`** and all **18 other hosting releases/expiries** are verified unchanged. The prior expiry below is historical; this channel now expires at the time above.
+
+Retained package/evidence: `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/warmup-design-9a0cce3/`. Next: working-interaction approval, then native grade-owned Warmup integration through the existing compatibility/review/release gates. No native engine integration is claimed.
+
 ## Current audit — Prototype 6 regression results, October 25
 
 **No reproducible application regression found** in the bounded audit of unchanged **Prototype 6 / `89bc62c`**. Fresh checks pass: **1,261 units**, **26 hosted layouts**, and **20 hosted writing/reading cases**. The broad game/audio/recovery run was **89/90 initially**; the transient Sushi feedback observation is investigated, not hidden. Three unchanged repeats pass; all four related animated cases pass after removing a redundant test wait while preserving the full-viewport assertion. [Evidence, exact counts and limits](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-layout-regression-audit-2026-10-25.md).
