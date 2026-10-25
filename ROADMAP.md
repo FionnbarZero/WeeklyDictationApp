@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept automatic curriculum update prototype, October 25
+
+The requested automatic-source repair is delivered in the isolated **Automatic curriculum updates · Prototype 1 / f36fb87** full-app path for all three grades. Exact links, November 1 expiry and verified email receipt are at the top of STATUS. It uses the existing approved teacher-source service, activates on scheduled Pacific dates, preserves open activities/reviewed writing checkpoints, and rejects invalid/stale/partial replacements while retaining valid lessons. Current newly posted K recordings and K/Grade 5 guide gaps are filled. [Full evidence and boundaries](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/automatic-curriculum-prototype-2026-10-25.md).
+
+**Next:** one 5–8 minute physical-iPad working-interaction check, then approval before native/canonical integration. **1,271 units and 39 final local + 39 final hosted browser cases pass**, with failed development/probe runs retained. Keep the frozen standalone fifth-grade presentation untouched. The ordinary combined root app and separate Warmup prototype remain byte-identical; this new path is the automatic-update candidate, not a claim that the older links gained this feature.
+
+Remaining additions: arbitrary future teacher words still need validated audio/stroke/game resources; source refresh does not automatically author missing instructional content. Parent editing, native Warmup integration, unresolved policy/voice work and authenticated/cloud/offline/cross-device release acceptance remain open. No routine approval/model question is pending. This stage used the existing autonomous repair authority, with Astra · Extra High recommended for behavior/review and Sol · High for publication; no model switch or independent-agent review is claimed.
+
 ## Current priority — accept the isolated Writing Warmup interaction, October 25
 
 The owner completed all seven design/rule choices. **Warmup prototype 1 / `9a0cce3`** implements whole-word memory and comparison, one guided tracing trial for each character after an error, whole-word retry until correct, first-attempt-only results, the approved Slay presentation and a 10-second timer starting after complete prompt audio. It covers Kindergarten, Grade 2 and Grade 5. This correction sequence is **not** the five-step acquisition teacher.

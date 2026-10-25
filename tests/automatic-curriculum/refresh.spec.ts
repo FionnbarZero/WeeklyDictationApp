@@ -356,7 +356,12 @@ test('new Kindergarten recordings play through the native browser media decoder'
   await native.goto(new URL('./family-beta-preview.html', test.info().project.use.baseURL).href)
   for (const name of ['u9a6c', 'u7eff-u8272', 'u9ec4-u8272', 'u5403']) {
     const result = await native.evaluate(async (name) => {
-      const audio = new Audio(`audio/kindergarten/automatic/${name}.wav`)
+      // Match prepareRecordingSource: Firebase's raw range behavior is not
+      // Safari-compatible, so the app fetches complete bytes into a Blob URL.
+      const response = await fetch(`audio/kindergarten/automatic/${name}.wav`)
+      if (!response.ok) throw new Error(`Recording fetch ${response.status}`)
+      const source = URL.createObjectURL(await response.blob())
+      const audio = new Audio(source)
       audio.muted = true
       const finished = new Promise<{ duration: number; error: number | null }>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('Media did not finish')), 10000)
@@ -369,8 +374,12 @@ test('new Kindergarten recordings play through the native browser media decoder'
           reject(new Error(`Media error ${audio.error?.code}`))
         }
       })
-      await audio.play()
-      return finished
+      try {
+        await audio.play()
+        return await finished
+      } finally {
+        URL.revokeObjectURL(source)
+      }
     }, name)
     expect(result.duration).toBeGreaterThan(0)
     expect(result.error).toBeNull()
