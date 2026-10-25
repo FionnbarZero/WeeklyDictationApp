@@ -51,6 +51,26 @@ async function boardFits(frame: FrameLocator) {
   ).toBeGreaterThanOrEqual(36)
 }
 
+test('mastered Shuriken keeps guided correction and every card visible', async ({ page }) => {
+  await page.goto('/family-beta-preview.html?grade=grade5')
+  const frame = page.frameLocator('iframe:visible')
+  await frame.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
+  await frame.getByRole('button', { name: 'Shuriken Match', exact: true }).click()
+  await frame.locator('body').evaluate(() => document.fonts.ready)
+  await boardFits(frame)
+  const words = frame.locator('.lg-word-seal.is-word')
+  await words.nth(0).click()
+  await words.nth(1).click()
+  await expect(frame.locator('.lg-guided-match')).toBeVisible()
+  const hint = await frame.locator('.is-correction-hint').getAttribute('aria-label')
+  expect(hint).toBeTruthy()
+  await expect(frame.locator('.lg-shuriken-board')).not.toHaveClass(/is-incorrect/)
+  await boardFits(frame)
+  await page.screenshot({ path: test.info().outputPath('guided-correction.png') })
+  await frame.getByRole('button', { name: hint!, exact: true }).click()
+  await expect(frame.locator('.lg-word-seal.is-matched')).toHaveCount(2)
+})
+
 test('saved Shuriken keeps every card visible and resumes its confirmed match', async ({ page }) => {
   await page.goto('/family-beta-preview.html?grade=grade5&example=game-recovery')
   await page.evaluate(() => document.fonts.ready)

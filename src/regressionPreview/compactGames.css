@@ -120,7 +120,9 @@ html[data-w-roadmap-preview="true"] .lg-world-speed-match .lg-shuriken-status {
   padding: 6px 10px;
 }
 html[data-w-roadmap-preview="true"] .lg-world-speed-match .lg-guided-match {
-  margin: 4px 0 8px;
+  margin: 2px 0;
+  font-size: 16px;
+  line-height: 1.2;
 }
 html[data-w-roadmap-preview="true"] .lg-world-dictation-streak :is(.lg-round-label, .lg-stat-row) {
   margin: 0 0 6px;
@@ -233,6 +235,10 @@ html[data-w-roadmap-preview="true"] .lg-world-dictation-streak .lg-pinyin-correc
   }
 }
 @media (min-width: 900px) and (max-height: 760px) {
+  html[data-w-roadmap-preview="true"] .lg-world-speed-match .lg-shuriken-stage {
+    min-height: 52px;
+    padding-block: 4px;
+  }
   html[data-w-roadmap-preview="true"] .lg-world-speed-match .lg-word-seal {
     min-height: 84px;
   }
