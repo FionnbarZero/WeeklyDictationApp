@@ -342,6 +342,7 @@ export function playAudioPlan(
       }
       const finish = () => {
         if (settled) return
+        if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && recording && !playing) return
         settled = true
         cleanup()
         resolve()
@@ -355,9 +356,6 @@ export function playAudioPlan(
         audio.load()
         reject(playbackError())
       }
-      audio.addEventListener('playing', handlePlaying)
-      audio.addEventListener('ended', finish)
-      audio.addEventListener('error', fail)
       cancelActiveSegment = fail
       const begin = (url: string) => {
         if (settled || cancelled) return
@@ -365,6 +363,12 @@ export function playAudioPlan(
         audio.playbackRate = segment.rate
         audio.preload = 'auto'
         audio.load()
+        // The shared element may finish its silent gesture primer while the
+        // recording downloads. Observe only after this source owns the player;
+        // load() first cancels the prior resource's queued media events.
+        audio.addEventListener('playing', handlePlaying)
+        audio.addEventListener('ended', finish)
+        audio.addEventListener('error', fail)
         try {
           void audio.play().then(handlePlaying).catch(fail)
         } catch {

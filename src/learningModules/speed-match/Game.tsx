@@ -19,6 +19,7 @@ type SpeedMatchCard = {
 
 type MatchFeedback = 'correct' | 'incorrect' | null
 type StrikeQuality = 'lightning' | 'clean' | 'miss' | null
+type CardAudioOutcome = { readonly request: number; readonly played: boolean } | void
 
 const MISSION_SECONDS = 60
 const LIGHTNING_SECONDS = 3
@@ -121,17 +122,17 @@ export function SpeedMatch({
   const audioRequest = useRef(0)
   useEffect(() => () => { audioRequest.current += 1 }, [])
 
-  function hearCard(card: SpeedMatchCard): Promise<void> {
-    if (activityClock.paused) return Promise.resolve()
+  function hearCard(card: SpeedMatchCard): Promise<CardAudioOutcome> {
+    if (activityClock.paused) return Promise.resolve({ request: audioRequest.current, played: false })
     const request = ++audioRequest.current
     try {
       return Promise.resolve(playAudio?.(card.audioText, card.audioLanguage)).then(
-        () => { if (request === audioRequest.current) setAudioFailure(null) },
-        () => { if (request === audioRequest.current) setAudioFailure(card) },
+        () => { if (request === audioRequest.current) setAudioFailure(null); return { request, played: true } },
+        () => { if (request === audioRequest.current) setAudioFailure(card); return { request, played: false } },
       )
     } catch {
       if (request === audioRequest.current) setAudioFailure(card)
-      return Promise.resolve()
+      return Promise.resolve({ request, played: false })
     }
   }
   const [correctionPairId, setCorrectionPairId] = useState<string | null>(null)
@@ -143,8 +144,8 @@ export function SpeedMatch({
     save: () => void | Promise<void>
     apply: () => void
   } | null>(null)
-  const queuedChoices = useRef<{ card: SpeedMatchCard; spoken: Promise<void> }[]>([])
-  const chooseRef = useRef<(card: SpeedMatchCard, spoken: Promise<void>) => void>(() => {})
+  const queuedChoices = useRef<{ card: SpeedMatchCard; spoken: Promise<CardAudioOutcome> }[]>([])
+  const chooseRef = useRef<(card: SpeedMatchCard, spoken: Promise<CardAudioOutcome>) => void>(() => {})
   const busy = useRef(false)
   const writing = useRef(false)
   const mounted = useRef(true)
@@ -275,7 +276,7 @@ export function SpeedMatch({
     )
   }
 
-  function resolve(first: SpeedMatchCard, second: SpeedMatchCard, spoken: Promise<void>) {
+  function resolve(first: SpeedMatchCard, second: SpeedMatchCard, spoken: Promise<CardAudioOutcome>) {
     const pair = pairs.find((candidate) => candidate.id === first.pairId)
     if (!pair) return
     const correct = first.pairId === second.pairId
@@ -296,7 +297,11 @@ export function SpeedMatch({
         setAttempts((current) => [...current, attempt])
         setFeedback(correct ? 'correct' : 'incorrect')
         setStrikeQuality(correct ? (lightning ? 'lightning' : 'clean') : 'miss')
-        void spoken.then(() => playGameSound(correct ? 'correct' : 'incorrect'))
+        void spoken.then((outcome) => {
+          if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' &&
+              (!outcome?.played || outcome.request !== audioRequest.current || !mounted.current)) return
+          playGameSound(correct ? 'correct' : 'incorrect')
+        })
 
         if (correct) {
           setCorrectionPairId(null)
@@ -325,7 +330,7 @@ export function SpeedMatch({
     )
   }
 
-  function choose(card: SpeedMatchCard, spoken: Promise<void>) {
+  function choose(card: SpeedMatchCard, spoken: Promise<CardAudioOutcome>) {
     if (activityClock.paused || (correctionAnchor && card.kind === correctionAnchor.kind)) return
     if (busy.current) {
       if (queuedChoices.current.length < 2 && !queuedChoices.current.some((item) => item.card.id === card.id))
@@ -361,7 +366,7 @@ export function SpeedMatch({
       title={title}
       eyebrow={eyebrow}
       progress={`${matchedPairIds.length}/${pairs.length} seals · ${timeLeft}s`}
-      onExit={onExit}
+      onExit={import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' ? () => { audioRequest.current += 1; onExit() } : onExit}
     >
       {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioFailure && <p role="alert">
         The sound did not play. <button className="lg-primary" type="button" onClick={() => void hearCard(audioFailure)}>Hear again</button>
@@ -372,7 +377,7 @@ export function SpeedMatch({
         <LearningGameComplete
           summary={summary}
           message={`${rank} rank earned with ${timeLeft} seconds remaining and a ${bestStreak}× best streak this visit.`}
-          onDone={() => onComplete(summary)}
+          onDone={() => { if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') audioRequest.current += 1; onComplete(summary) }}
         />
       ) : (
         <section className="lg-card lg-speed-card">
