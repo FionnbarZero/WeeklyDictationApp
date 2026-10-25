@@ -44,7 +44,7 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = w2Recovery
-  ? 'W-roadmap combined repairs / Prototype 4'
+  ? 'W-roadmap combined repairs / Prototype 5 — game content'
   : w1Curriculum
     ? 'W1 curriculum and activity entry / Prototype 4'
     : w0Writing
@@ -108,6 +108,7 @@ execFileSync(
       VITE_WRITING_CORRECTION_PREVIEW: String(w0Writing),
       VITE_W1_CURRICULUM_PREVIEW: String(w1Curriculum),
       VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
+      VITE_GAME_CONTENT_PREVIEW: String(w2Recovery),
     },
   },
 )

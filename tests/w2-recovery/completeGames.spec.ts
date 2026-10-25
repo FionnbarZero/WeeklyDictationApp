@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { reinforcementGames } from '../../src/familyBeta/gamePools.ts'
+import { withGameLanguage } from './contentFixtures.ts'
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-10-23T19:00:00Z'))
@@ -40,16 +41,11 @@ for (const [slug, grade] of [
   const anchor = [...source.datasets]
     .filter((d) => d.startDate <= '2026-10-23')
     .sort((a, b) => b.startDate.localeCompare(a.startDate))[0].startDate
-  const games = reinforcementGames(source.datasets, anchor, grade)
+  const games = reinforcementGames(withGameLanguage(source.datasets), anchor, grade)
   for (const { capability, datasets } of games) {
     // Lanterns has its own repeated/failure matrix; unavailable content is
     // explicitly disabled by the menu and never fabricated for this test.
-    if (
-      capability.status !== 'ready' ||
-      capability.pack.moduleId === 'memory-flip' ||
-      capability.pack.moduleId === 'dictation-streak'
-    )
-      continue
+    if (capability.status !== 'ready' || capability.pack.moduleId === 'memory-flip') continue
     const pack = capability.pack
     test(`${grade}: ${pack.title} completes its actual earlier target set and returns`, async ({ page }, info) => {
       const errors: string[] = []
@@ -65,6 +61,15 @@ for (const [slug, grade] of [
           await expect(f.locator('.lg-shuriken-board')).not.toHaveClass(/is-correct|is-incorrect/)
           for (const side of [pair.left, pair.right])
             await f.getByRole('button', { name: `${side.label}. Click to hear and select.`, exact: true }).click()
+        }
+      } else if (pack.moduleId === 'dictation-streak') {
+        for (const [i, round] of pack.rounds.entries()) {
+          await expect(f.locator('.lg-round-label')).toHaveText(`Prompt ${i + 1} of ${pack.rounds.length}`)
+          for (const [index, step] of round.pinyinSteps!.entries()) {
+            await f.locator('input').fill(step.pinyin)
+            await f.getByRole('option', { name: Array.from(round.targetText)[index], exact: true }).click()
+          }
+          await f.getByRole('button', { name: 'Check characters', exact: true }).click()
         }
       } else if (pack.moduleId === 'target-blast') {
         for (const [i, round] of pack.rounds.entries()) {

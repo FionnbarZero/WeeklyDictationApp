@@ -1,5 +1,6 @@
 import type { LearningModuleCohort } from './contracts.ts'
 import { GRADE2_DECK_ID, GRADE5_DECK_ID, KINDERGARTEN_SHEETS_ID } from '../config.ts'
+import { withPreviewGameLanguage } from './gameLanguagePreview.ts'
 
 const sourceIds: Readonly<Record<string, string>> = {
   Kindergarten: KINDERGARTEN_SHEETS_ID,
@@ -55,6 +56,8 @@ const language: Record<string, readonly (readonly [text: string, meaning: string
 }
 
 export function withSupplementalContent(cohort: LearningModuleCohort): LearningModuleCohort {
+  if ((import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_GAME_CONTENT_PREVIEW === 'true')
+    cohort = withPreviewGameLanguage(cohort)
   const sourceId = sourceIds[cohort.grade]
   if (!sourceId || !cohort.provenance.length || cohort.provenance.some((p) => p.source.sourceDocumentId !== sourceId))
     return cohort
