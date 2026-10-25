@@ -45,6 +45,7 @@ Working evidence: `/tmp/ninja-warmup-design.YORuxh`.
 - Review also connected Kindergarten's recorded audio, keyed readiness to the exact current trial so a previous prompt cannot enable the timer, and kept storage-error messages clear of Exit.
 - The next browser run passed **27/30**. Three fractional-pixel SVG clipping cases remained; a one-pixel inset fixes them without weakening viewport assertions. The following **33-case** run covers all four-character correction and natural timer completion as well.
 - Source review found that a synchronous expected-record check alone did not serialize two simultaneous tabs. The candidate now uses the same exclusive write lock as existing saved practice. A new lock-hold/duplicate-click test fails against the unlocked `e898e06` package, establishing that the test detects the missing fence. This is independent of the earlier sequential stale-tab test, which already passed.
+- After the clipping fix, the 33-case run exposed the previously unreachable four-character portrait size check: four boxes in one row were only 166.5px wide. The isolated portrait layout now uses two rows of two; the comparison also uses two columns for the child's four characters. The >180px writing-box requirement is retained. Twelve existing-app reading/writing entrance checks pass; its original 193 packaged files (192 public) are byte-identical.
 - Final local/hosted results, exact publication identity and email receipt are recorded below once verified.
 
 ## Device handoff and remaining scope

@@ -126,6 +126,27 @@
   border: 2px solid #f09393;
   border-radius: 10px;
 }
+@media (orientation: portrait) and (min-width: 600px) {
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace.is-review
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @media (max-width: 599px) {
   #slay-acquisition-root.warmup-design .lg-shell {
     height: auto;
