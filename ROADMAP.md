@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — final iPad check of repaired audio timing, October 25
+
+Both October 25 audio findings are repaired in **isolated Prototype 4 / 0189a98**: real recordings own completion, and canceled/superseded Shuriken words cannot trigger stale feedback. **80/80 final hosted game checks**, **12/12 local writing/reading checks** and **1,256 units** pass. Retained negative controls and the initial saved-fixture font-shift failure are explained in [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/audio-timing-repair-2026-10-25.md); do not relabel the first local run as clean.
+
+All-grade links were emailed with verified SENT receipt **1a172fa31fc38686**. Exact package/headers and frozen/canonical/other-channel exclusions are verified. **Next:** one owner physical-iPad sound/touch check using the current links in STATUS. The preceding audit hold is closed for these two defects. No routine model/approval question is pending; the existing Astra · Extra High stage covered repair/review, with no claimed model switch or independent-agent review.
+
+Preserve frozen standalone Grade 5 1a9db3e, canonical 9d06a02, real records and approved policies. This does not complete parent editing, automatic source refresh, unresolved policy work, authenticated/offline/cross-device acceptance or canonical activation. Working-prototype acceptance and the existing protected integration/release gates still apply.
+
 ## Current priority — repair the two audio timing gaps, October 25
 
 The regression audit of `1b3e4f3` is **not clean** even though all **72 existing hosted game checks and 12 writing/reading checks pass**. **First:** prevent the silent gesture-unlock clip from resolving a real word that is still downloading after initially blocked sound. This new regression is reproduced six times across Chromium/WebKit. **Second:** cancel Shuriken's pending turn-feedback sound when the child exits; this inherited defect also reproduces on the predecessor. [Audit and required regression cases](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/kindergarten-audio-regression-audit-2026-10-25.md).
