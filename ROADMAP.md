@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — Prototype 5 audited; physical acceptance and remaining roadmap gates
+
+The October 25 missing-content regression audit reproduces **no new functional defect**: 1,261 units, 90 hosted game cases, 12 hosted writing/reading cases, six real predecessor checkpoint resumes and four longer-word interactions pass. [Audit, exact scope and retained failed-test evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-regression-audit-2026-10-25.md). Prototype 5 / `389d2f3` and all protected websites remain unchanged; this audit adds tests/documentation only. No additional approval or deployment is pending for the audit.
+
+**Add to the UI improvement backlog:** compact the Shuriken/Dictation headings and decorative space so matching cards and Pinyin choices are easier to reach on a short screen. Existing controls are scroll-accessible and the predecessor has the same layout; do not classify this as a new content regression or silently redesign the approved UI. Any change still requires a separate working interaction under the prototype-first rule.
+
+**Next:** the existing single 5–8 minute all-grade Prototype 5 physical-iPad check, especially sound, native Pinyin keyboard, lower cards, Report/return and writing resume. Then follow the existing working-prototype acceptance, integration/compatibility and authenticated/cloud/recovery release gates. Future imported content, parent editing, automatic source refresh and unresolved policy/voice work remain open. Keep standalone Grade 5 frozen. Model routing remains in this roadmap; the audit stays in the already confirmed Astra · Extra High stage.
+
 ## Current priority — accept the completed missing-content preview, October 25
 
 The owner moved **missing game content** to first priority. That bounded content work is now delivered in **Prototype 5 / 389d2f3** on the same combined isolated website; exact links, expiry and verified email receipt are in STATUS. The catalog covers every retained Tier 1/2 target in the three active grades, with **149 grade-specific entries / 191 occurrences / 20 weeks**, enabling **53 additional lesson/game combinations**. [Inventory, validation and handoff](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-2026-10-25.md).

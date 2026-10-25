@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current audit — Prototype 5 content and regression checks, October 25
+
+**No new functional regression reproduced** in the bounded audit of unchanged **Prototype 5 / application `389d2f3`**. Fresh checks pass: **1,261 units**, **90 hosted game/recovery/audio cases**, **12 hosted writing/reading cases**, **6 actual predecessor-writing resume cases** and **4 longer-word interaction cases**. Four predecessor/current layout diagnostics are also covered after documented driver corrections. [Full findings, failed-run accounting and limitations](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-regression-audit-2026-10-25.md).
+
+**Remaining usability observation:** Shuriken cards and Dictation Pinyin choices may require vertical scrolling. All tested controls remain reachable; the same tall layout appears in the predecessor, and all 22 packaged stylesheets match exactly. Keep a compact-header/layout prototype as a follow-up improvement, not a newly introduced functional regression. No appearance or behavior change was made in this audit.
+
+The current all-grade links below still serve hosting version **a9627a620942ff3a**, tree **16c1952d760df800dc57b6759584f08bd8eb56f9d99e2fd9c99b6fc49070a096**, expiring **November 1 at 4:35 AM Pacific**. All **192 files / 1,152 headers**, frozen Grade 5 **1a9db3e**, canonical **9d06a02**, and **18 other releases/expiries** are reverified unchanged. No deployment or new email occurred. The existing 5–8 minute Prototype 5 iPad check remains appropriate; native keyboard/speaker/Pencil and authenticated/cloud acceptance are not established by automation.
+
+Evidence is retained under `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-389d2f3/regression-audit-2026-10-25/`. This is source/automated review under the confirmed Astra · Extra High stage, with no independent-agent review or model switch claimed. Catalog coverage is complete for retained Tier 1/2 targets, not future imports or all historical roadmap work.
+
 ## Current handoff — missing game content filled in the combined preview, October 25
 
 **Prototype 5 — game content / application 389d2f3d4e3a904e9c1f786b43c5b053c33c68f7** is published and exactly verified: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5). Expires **November 1, 2026 at 4:35 AM Pacific**. Hosting version **a9627a620942ff3a**; tree **16c1952d760df800dc57b6759584f08bd8eb56f9d99e2fd9c99b6fc49070a096**. All **192 files / 1,152 headers** match. Reopen the same grade link to load this version; no browser-data reset is needed.
