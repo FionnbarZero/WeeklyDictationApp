@@ -1,5 +1,15 @@
 # Weekly Dictation status
 
+## Current handoff — compact game layouts repaired, October 25
+
+**Prototype 6 — compact games / application `89bc62cc262cc28dc2e914c4d02775b7f9e96292`** is published on the same isolated combined website: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade2) · [Grade 5 — regular curriculum](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/family-beta-preview.html?grade=grade5). Expires **November 1, 2026 at 5:20 AM Pacific**. Hosting version `eca35a83b4a7af77`; tree `31e1633e8290d811ba8ca14174ccf73369a5ca0a4911fd865440ebaf346d977d`. Exact **192 files / 1,152 headers** are verified. Reopen the grade link to load it; no data reset is needed.
+
+Shuriken's headings/decorative space are smaller while its cards remain large. Dictation's input, Pinyin choices and submit stay together. Saved resume, guided correction, Report and Exit remain usable. The October 25 layout backlog item is repaired in this preview. [Scope, regression evidence and limits](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-game-layouts-2026-10-25.md).
+
+**26/26 final local + 26/26 final hosted layout checks**, **12/12 hosted audio checks**, and passing final type/lint/format/build/unchanged size gates. The initial layout candidate also passed **1,261 units** and **26 focused recovery/completion/audio cases**; only compact guided-message/ribbon CSS changed afterward. Development failures and evidence-retention limits are explicitly accounted in the report. Source/automated review only, no independent-agent or physical-device acceptance claimed.
+
+**Email verified SENT: `1a1733b16644abe1`.** Ready for one **3–5 minute iPad check** of both games, portrait/landscape, wrong-answer retry, native Pinyin keyboard, Hear and Report/return. Browser-only preview progress and all documented cloud/editor/import/policy limitations remain. Frozen Grade 5 `1a9db3e`, canonical `9d06a02`, and all **18 other hosting releases/expiries** are verified unchanged. Retained package/evidence: `/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/family-beta-artifacts/prototypes/w-combined-89bc62c`.
+
 ## Current audit — Prototype 5 content and regression checks, October 25
 
 **No new functional regression reproduced** in the bounded audit of unchanged **Prototype 5 / application `389d2f3`**. Fresh checks pass: **1,261 units**, **90 hosted game/recovery/audio cases**, **12 hosted writing/reading cases**, **6 actual predecessor-writing resume cases** and **4 longer-word interaction cases**. Four predecessor/current layout diagnostics are also covered after documented driver corrections. [Full findings, failed-run accounting and limitations](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-regression-audit-2026-10-25.md).

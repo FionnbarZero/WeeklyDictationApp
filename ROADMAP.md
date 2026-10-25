@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept the compact game-layout preview, October 25
+
+The owner-requested Shuriken/Dictation layout repair is delivered in **Prototype 6 / `89bc62c`** on the same isolated combined website. Smaller headings and decoration leave the tested matching cards and Pinyin choices visible, including saved-game and guided-correction states. **26 local + 26 hosted layout cases and 12 hosted audio cases pass**; exact publication, email receipt and qualified earlier unit/recovery coverage are recorded in STATUS and [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/compact-game-layouts-2026-10-25.md).
+
+The prior compact-header backlog item is complete in this preview. **Next:** one 3–5 minute physical-iPad check with the native keyboard and both orientations, then working-prototype acceptance and existing integration/authenticated compatibility/recovery gates. No new routine approval/model question is pending; this layout repair used the owner's standing autonomous-repair authority, with GPT-6.1 Sol · High recommended and no model switch or separate-agent review claimed.
+
+Keep the standalone fifth-grade presentation frozen. Canonical integration, authenticated/cloud/offline/cross-device acceptance, parent editing, automatic source refresh, future imported content, broader policy/voice work and other previously open roadmap items are not closed by this layout repair. Exact links and expiry are in STATUS; earlier Prototype 5 layout-follow-up wording below is superseded.
+
 ## Current priority — Prototype 5 audited; physical acceptance and remaining roadmap gates
 
 The October 25 missing-content regression audit reproduces **no new functional defect**: 1,261 units, 90 hosted game cases, 12 hosted writing/reading cases, six real predecessor checkpoint resumes and four longer-word interactions pass. [Audit, exact scope and retained failed-test evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/game-content-regression-audit-2026-10-25.md). Prototype 5 / `389d2f3` and all protected websites remain unchanged; this audit adds tests/documentation only. No additional approval or deployment is pending for the audit.
