@@ -1,7 +1,9 @@
-import manifest from './kindergarten/manifest.json' with { type: 'json' }
-import type { Word } from '../domain/contracts.ts'
 import { approvedContextTextForGradeTarget } from '../curriculum/contextCatalog.ts'
 import { kindergartenDictationContextCatalog } from '../curriculum/kindergartenDictationContextCatalog.ts'
+import type { Word } from '../domain/contracts.ts'
+import { automaticCurriculumPreview } from '../familyBeta/automaticCurriculum.ts'
+import automaticAssets from './kindergarten/automatic-manifest.json' with { type: 'json' }
+import manifest from './kindergarten/manifest.json' with { type: 'json' }
 
 type ManifestAsset = {
   storagePath: string
@@ -22,7 +24,8 @@ export function kindergartenInstructionAudio(key: keyof typeof manifest.instruct
 }
 
 export function kindergartenAudioForText(text: string): Word['audio'] {
-  const asset = assets[text]
+  const asset =
+    assets[text] || (automaticCurriculumPreview ? (automaticAssets as Record<string, ManifestAsset>)[text] : undefined)
   if (!asset) return undefined
   return {
     storagePath: asset.storagePath,
@@ -32,21 +35,25 @@ export function kindergartenAudioForText(text: string): Word['audio'] {
 }
 
 export function withKindergartenAudio<T extends Word>(word: T): T {
-  const sentence = word.sentence.trim()
-    || approvedContextTextForGradeTarget(kindergartenDictationContextCatalog, 'Kindergarten', word.text)
-    || ''
+  const sentence =
+    word.sentence.trim() ||
+    approvedContextTextForGradeTarget(kindergartenDictationContextCatalog, 'Kindergarten', word.text) ||
+    ''
   const isolated = kindergartenAudioForText(word.text)
   const context = sentence ? contexts[sentence] : undefined
-  const audio = isolated || context || word.audio
-    ? {
-        ...word.audio,
-        ...isolated,
-        ...(context ? {
-          contextStoragePath: context.storagePath,
-          contextVoice: manifest.voice.name,
-          generatedAt: manifest.generatedAt,
-        } : {}),
-      }
-    : undefined
+  const audio =
+    isolated || context || word.audio
+      ? {
+          ...word.audio,
+          ...isolated,
+          ...(context
+            ? {
+                contextStoragePath: context.storagePath,
+                contextVoice: manifest.voice.name,
+                generatedAt: manifest.generatedAt,
+              }
+            : {}),
+        }
+      : undefined
   return { ...word, sentence, ...(audio ? { audio } : {}) }
 }

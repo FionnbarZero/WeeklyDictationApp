@@ -12,7 +12,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const w2Recovery = process.argv.includes('--w2-recovery')
+const automaticCurriculum = process.argv.includes('--automatic-curriculum')
+const w2Recovery = automaticCurriculum || process.argv.includes('--w2-recovery')
 const w1Curriculum = w2Recovery || process.argv.includes('--w1-curriculum')
 const w0Writing = w1Curriculum || process.argv.includes('--w0-writing')
 const standalone = process.argv.includes('--grade5-standalone')
@@ -25,45 +26,49 @@ const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs'
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  w2Recovery
-    ? 'w2-recovery-preview-dist'
-    : w1Curriculum
-      ? 'w1-curriculum-preview-dist'
-      : w0Writing
-        ? 'w0-writing-preview-dist'
-        : standalone
-          ? 'grade5-standalone-dist'
-          : presentation
-            ? 'grade5-presentation-preview-dist'
-            : grade5Repairs
-              ? 'grade5-repair-preview-dist'
-              : regressions
-                ? 'regression-preview-dist'
-                : 'dojo-launch-preview-dist',
+  automaticCurriculum
+    ? 'automatic-curriculum-preview-dist'
+    : w2Recovery
+      ? 'w2-recovery-preview-dist'
+      : w1Curriculum
+        ? 'w1-curriculum-preview-dist'
+        : w0Writing
+          ? 'w0-writing-preview-dist'
+          : standalone
+            ? 'grade5-standalone-dist'
+            : presentation
+              ? 'grade5-presentation-preview-dist'
+              : grade5Repairs
+                ? 'grade5-repair-preview-dist'
+                : regressions
+                  ? 'regression-preview-dist'
+                  : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = w2Recovery
-  ? 'W-roadmap combined repairs / Prototype 6 — compact games'
-  : w1Curriculum
-    ? 'W1 curriculum and activity entry / Prototype 4'
-    : w0Writing
-      ? 'W0 integrated writing / Prototype 2'
-      : standalone
-        ? '5th grade Dojo / Standalone 1'
-        : presentation
-          ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-          : retireStandalone
-            ? 'Streamlined Dojo / Prototype 1'
-            : compactParents
-              ? 'Compact parent toolbar / Prototype 1'
-              : grade5Repairs
-                ? 'Grade 5 regression repairs / Prototype 2'
-                : regressions
-                  ? 'October 20 regression repairs / Prototype 3'
-                  : octoberResources
-                    ? 'Kindergarten October 19 resources / Prototype 1'
-                    : 'Writing reliability / Prototype 2'
+const prototype = automaticCurriculum
+  ? 'Automatic curriculum updates / Prototype 1'
+  : w2Recovery
+    ? 'W-roadmap combined repairs / Prototype 6 — compact games'
+    : w1Curriculum
+      ? 'W1 curriculum and activity entry / Prototype 4'
+      : w0Writing
+        ? 'W0 integrated writing / Prototype 2'
+        : standalone
+          ? '5th grade Dojo / Standalone 1'
+          : presentation
+            ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+            : retireStandalone
+              ? 'Streamlined Dojo / Prototype 1'
+              : compactParents
+                ? 'Compact parent toolbar / Prototype 1'
+                : grade5Repairs
+                  ? 'Grade 5 regression repairs / Prototype 2'
+                  : regressions
+                    ? 'October 20 regression repairs / Prototype 3'
+                    : octoberResources
+                      ? 'Kindergarten October 19 resources / Prototype 1'
+                      : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -83,7 +88,15 @@ for (const [slug, grade] of grades) {
 }
 execFileSync(
   process.execPath,
-  [resolve(root, 'node_modules/vite/bin/vite.js'), 'build', '--mode', 'writing-pilot', '--outDir', out],
+  [
+    resolve(root, 'node_modules/vite/bin/vite.js'),
+    'build',
+    '--mode',
+    'writing-pilot',
+    '--outDir',
+    out,
+    ...(automaticCurriculum ? ['--base', './'] : []),
+  ],
   {
     cwd: root,
     stdio: 'inherit',
@@ -109,6 +122,7 @@ execFileSync(
       VITE_W1_CURRICULUM_PREVIEW: String(w1Curriculum),
       VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
       VITE_GAME_CONTENT_PREVIEW: String(w2Recovery),
+      VITE_AUTOMATIC_CURRICULUM_PREVIEW: String(automaticCurriculum),
     },
   },
 )
@@ -125,6 +139,7 @@ if (grade5Repairs && !presentation) {
       'writing-pilot',
       '--outDir',
       shared,
+      ...(automaticCurriculum ? ['--base', './'] : []),
     ],
     {
       cwd: root,
@@ -240,7 +255,20 @@ writeFileSync(
         : {}),
       ...(octoberResources ? { resourceLessonStartDate: '2026-10-19' } : {}),
       sourceRevision: revision,
-      curriculumSnapshotDate: '2026-10-16',
+      ...(automaticCurriculum
+        ? { curriculumSourceMode: 'automatic-teacher-service', bundledFixturesUnused: true }
+        : { curriculumSnapshotDate: '2026-10-16' }),
+      ...(automaticCurriculum
+        ? {
+            automaticCurriculum: {
+              endpoint: 'https://weekly-dictation-curriculum-am3afdy42a-uc.a.run.app/curriculum/beta',
+              activation:
+                'Scheduled start date; apply refreshed sources only at idle menus. Open activities retain their source.',
+              isolation:
+                'Separate automatic-curriculum preview learners/cache; existing combined app and Warmup page unchanged.',
+            },
+          }
+        : {}),
       targetActivation: 'scheduled-start-date',
       persistence: 'Synthetic browser-only progress. No family account, cloud sync or offline app-shell installation.',
       fileTreeSha256: fileTreeSha256(files),

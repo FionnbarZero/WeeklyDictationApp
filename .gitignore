@@ -60,3 +60,5 @@ w2-recovery-test-results/
 .wrangler/
 warmup-design-preview-dist/
 warmup-combined-preview-dist/
+automatic-curriculum-preview-dist/
+automatic-curriculum-combined-dist/

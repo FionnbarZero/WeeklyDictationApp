@@ -47,8 +47,15 @@ import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
 import { retiredStandaloneExperience, standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
 import { regressionPreview } from '../regressionPreview/policy.ts'
-import { PreviewParentTools } from './PreviewParentTools.tsx'
+import {
+  automaticCurriculumPreview,
+  curriculumDateKey,
+  curriculumMenuReady,
+  scheduledCurriculumWeek,
+  watchCurriculum,
+} from './automaticCurriculum.ts'
 import { gameRecoveryPreview, savedGameRecoveryExample } from './gameRecoveryPreview.ts'
+import { PreviewParentTools } from './PreviewParentTools.tsx'
 
 const ParentTools = compactParentPreview ? PreviewParentTools : Fragment
 
@@ -59,11 +66,12 @@ const routes: Record<BetaGrade, string> = {
   'Grade 5': 'grade5-learning-hub.html',
 }
 const initialProfiles: BetaProfile[] = BETA_GRADES.map((grade, i) => ({
-  id: `preview-${i}`,
+  id: `${automaticCurriculumPreview ? 'automatic-curriculum-' : ''}preview-${i}`,
   nickname: `Learner ${i + 1}`,
   grade,
   active: true,
 }))
+const profileStorageKey = automaticCurriculumPreview ? 'automatic-curriculum-preview-profiles' : 'beta-preview-profiles'
 const presentationGrades = grade5PresentationPreview ? (['Grade 5'] as const) : BETA_GRADES
 const message = (error: unknown) => (error instanceof Error ? error.message : 'The operation could not be completed.')
 const repairExample =
@@ -90,7 +98,7 @@ function FamilyPreview() {
       : (() => {
           try {
             const saved: BetaProfile[] =
-              JSON.parse(localStorage.getItem('beta-preview-profiles') || 'null') || initialProfiles
+              JSON.parse(localStorage.getItem(profileStorageKey) || 'null') || initialProfiles
             return repairProfile && !saved.some((p) => p.id === repairProfile!.id) ? [...saved, repairProfile] : saved
           } catch {
             return repairProfile ? [...initialProfiles, repairProfile] : initialProfiles
@@ -108,6 +116,11 @@ function FamilyPreview() {
     {},
   )
   const [week, setWeek] = useState('')
+  const [curriculumDate, setCurriculumDate] = useState(() =>
+    automaticCurriculumPreview ? curriculumDateKey() : localDateKey(new Date()),
+  )
+  const applyCurriculumRef = useRef<(loaded: Awaited<ReturnType<typeof fetchCurriculum>>) => void>(() => {})
+  const appliedCurriculumToken = useRef('')
   const [results, setResults] = useState<BetaResult[]>([])
   const [historyCursor, setHistoryCursor] = useState({ owner: '', token: '' })
   const [error, setError] = useState('')
@@ -150,7 +163,7 @@ function FamilyPreview() {
   const currentGrade = child?.grade || initialGrade
   const curriculum = curricula[currentGrade] || null
   const practiceReady = !firebaseConfigReady || Boolean(familyId && child && readyChildren.has(child.id))
-  const today = localDateKey(new Date())
+  const today = automaticCurriculumPreview ? curriculumDate : localDateKey(new Date())
   const available =
     curriculum?.datasets.filter((d) => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) ||
     []
@@ -167,6 +180,25 @@ function FamilyPreview() {
   childRef.current = child?.id
   const profilesRef = useRef(profiles)
   profilesRef.current = profiles
+  applyCurriculumRef.current = (loaded) => {
+    if (loaded.snapshot.grade !== currentGrade) return
+    const date = curriculumDateKey()
+    const token = `${currentGrade}:${child?.id}:${loaded.snapshot.contentSha256}:${loaded.snapshot.retrievedAt}:${date}:${week}`
+    if (appliedCurriculumToken.current === token || activityClock.paused) return
+    const frame = document.querySelector<HTMLIFrameElement>('iframe[data-family-active="true"]')
+    const slot = slotsRef.current.find((item) => item.id === frame?.dataset.familySlot)
+    if (frame && (!slot || slot.kind !== 'activities' || slot.resumeChannel || !curriculumMenuReady(frame))) return
+    const nextWeek = scheduledCurriculumWeek(loaded.datasets, date, week)
+    // Replace only a visible idle menu. Hidden/paused games and saved lessons
+    // keep their original document, source and temporary work.
+    if (slot && (slot.curriculumVersion !== loaded.snapshot.contentSha256 || slot.week !== nextWeek)) {
+      setSlots((current) => current.filter((item) => item.id !== slot.id))
+      setSelectedSlots((current) => Object.fromEntries(Object.entries(current).filter(([, id]) => id !== slot.id)))
+    }
+    appliedCurriculumToken.current = token
+    setCurriculumDate(date)
+    setCurricula((current) => ({ ...current, [currentGrade]: loaded }))
+  }
   ;(window as FamilyGameWindow).familyGameOwner = (source) => {
     const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
       (item) => item.contentWindow === source,
@@ -282,7 +314,7 @@ function FamilyPreview() {
 
   useEffect(() => {
     if (child) sessionStorage.setItem(PROFILE_KEY, JSON.stringify(child))
-    if (!firebaseConfigReady) localStorage.setItem('beta-preview-profiles', JSON.stringify(profiles))
+    if (!firebaseConfigReady) localStorage.setItem(profileStorageKey, JSON.stringify(profiles))
   }, [child, profiles])
 
   useEffect(() => {
@@ -336,6 +368,43 @@ function FamilyPreview() {
   }, [child?.id, child?.grade, familyId, practiceReady, resumeRefresh, scope])
 
   useEffect(() => {
+    if (automaticCurriculumPreview) {
+      appliedCurriculumToken.current = ''
+      const watcher = watchCurriculum({
+        load: async (signal) => {
+          const loaded = await fetchCurriculum(currentGrade, signal)
+          signal.throwIfAborted()
+          setCurriculumError(
+            'offline' in loaded
+              ? loaded.warnings[loaded.warnings.length - 1] || ''
+              : loaded.warnings.find((warning) => warning.includes('Automatic refresh')) || '',
+          )
+          return loaded
+        },
+        apply: (loaded) => {
+          applyCurriculumRef.current(loaded)
+        },
+        error: (e) => setCurriculumError(`${message(e)} Previously validated lessons and saved work are retained.`),
+      })
+      const refresh = () => void watcher.refresh()
+      const visible = () => {
+        if (!document.hidden) refresh()
+      }
+      refresh()
+      const polling = window.setInterval(refresh, 5 * 60_000)
+      const settling = window.setInterval(() => watcher.settle(), 1000)
+      window.addEventListener('online', refresh)
+      window.addEventListener('focus', visible)
+      document.addEventListener('visibilitychange', visible)
+      return () => {
+        watcher.dispose()
+        clearInterval(polling)
+        clearInterval(settling)
+        window.removeEventListener('online', refresh)
+        window.removeEventListener('focus', visible)
+        document.removeEventListener('visibilitychange', visible)
+      }
+    }
     const controller = new AbortController()
     setCurriculumError('')
     const refresh = () => {
@@ -664,7 +733,8 @@ function FamilyPreview() {
     const saved = savedByModule.get(moduleId)
     return saved ? { status: 'ready' as const, pack: saved.pack } : game.capability
   })
-  const frameUrl = `${routes[currentGrade]}?family-preview=1${week ? `&week=${encodeURIComponent(week)}` : ''}`
+  const frameWeek = automaticCurriculumPreview ? dataset?.startDate || week : week
+  const frameUrl = `${routes[currentGrade]}?family-preview=1${frameWeek ? `&week=${encodeURIComponent(frameWeek)}` : ''}`
 
   function newSlot(kind: FamilyActivitySlot['kind'], gamePack?: LearningModulePack, savedWeek?: string) {
     if (!child || !practiceReady) return
@@ -913,6 +983,23 @@ function FamilyPreview() {
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
           </button>
           <AudioCheck />
+          {automaticCurriculumPreview && (
+            <section aria-label="Automatic curriculum updates" className="beta-panel">
+              <strong>Automatic teacher updates</strong>
+              <p>
+                {curriculum
+                  ? `Teacher source checked: ${new Date(curriculum.snapshot.retrievedAt).toLocaleString()}.`
+                  : 'Checking teacher lessons…'}
+              </p>
+              <p>
+                New targets begin on their scheduled date. An open activity keeps its original lesson until you return
+                to the menu.
+              </p>
+              <button type="button" onClick={() => setCurriculumRetry((value) => value + 1)}>
+                Check for lesson updates
+              </button>
+            </section>
+          )}
           {grade5RepairPreview && !grade5PresentationPreview && child?.grade === 'Grade 5' && (
             <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
           )}

@@ -1,14 +1,15 @@
+import { GRADE2_DECK_ID, GRADE5_DECK_ID, KINDERGARTEN_SHEETS_ID } from '../config.ts'
 import { candidatesFromPresentation } from '../curriculum/adapters/googleSlides.ts'
 import { extractGrade5Presentation } from '../curriculum/adapters/grade5GoogleSlides.ts'
 import { datasetFromCanonicalCandidate } from '../curriculum/datasetProjection.ts'
 import type { CurriculumSourcePayload, WeeklyDatasetCandidate } from '../curriculum/model.ts'
-import { grade2DeckProfile } from '../slidesImporter.ts'
-import { inspectKindergartenWorkbook } from '../kindergartenSheetsImporter.ts'
-import { GRADE2_DECK_ID, GRADE5_DECK_ID, KINDERGARTEN_SHEETS_ID } from '../config.ts'
-import type { BetaGrade } from './model.ts'
+import { extractGrade5Assessment } from '../grade5PresentationPreview/assessmentSource.ts'
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import { GRADE5_ASSESSMENT_SOURCE_ID } from '../grade5PresentationPreview/sourceIdentity.ts'
-import { extractGrade5Assessment } from '../grade5PresentationPreview/assessmentSource.ts'
+import { inspectKindergartenWorkbook } from '../kindergartenSheetsImporter.ts'
+import { grade2DeckProfile } from '../slidesImporter.ts'
+import { automaticCurriculumEndpoint, automaticCurriculumPreview } from './automaticCurriculum.ts'
+import type { BetaGrade } from './model.ts'
 
 export const sourceIds: Record<BetaGrade, string> = {
   Kindergarten: KINDERGARTEN_SHEETS_ID,
@@ -31,8 +32,11 @@ export type CurriculumSnapshot = {
 }
 
 export function inspectSnapshot(snapshot: CurriculumSnapshot) {
-  const assessment = grade5PresentationPreview && snapshot.grade === 'Grade 5'
-    && snapshot.sourceId === GRADE5_ASSESSMENT_SOURCE_ID && snapshot.payload?.sourceType === 'owner-assessment'
+  const assessment =
+    grade5PresentationPreview &&
+    snapshot.grade === 'Grade 5' &&
+    snapshot.sourceId === GRADE5_ASSESSMENT_SOURCE_ID &&
+    snapshot.payload?.sourceType === 'owner-assessment'
   if (
     snapshot.schema !== 1 ||
     !sourceIds[snapshot.grade] ||
@@ -93,17 +97,28 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
   }
   signal?.throwIfAborted()
   const retained = async () =>
-    (await import('./curriculumCache.ts')).readRetainedCurriculum(localStorage, grade, signal)
+    (await import('./curriculumCache.ts')).readRetainedCurriculum(
+      localStorage,
+      grade,
+      signal,
+      automaticCurriculumPreview,
+    )
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return retained()
-  const base = env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
+  const base = automaticCurriculumPreview
+    ? automaticCurriculumEndpoint
+    : env.VITE_CURRICULUM_URL || `${env.BASE_URL || '/'}curriculum/beta`
+  const requestSignal = automaticCurriculumPreview
+    ? AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(30_000)])
+    : signal
   let response: Response
   try {
-    response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal })
+    response = await fetch(`${base}/${gradeSlugs[grade]}.json`, { cache: 'no-store', signal: requestSignal })
   } catch (error) {
     signal?.throwIfAborted()
-    if (!(error instanceof TypeError)) throw error
+    if (!(error instanceof TypeError) && !(automaticCurriculumPreview && requestSignal?.aborted)) throw error
     return retained()
   }
+  if (automaticCurriculumPreview && (response.status === 429 || response.status >= 500)) return retained()
   if (!response.ok) throw new Error(`Curriculum update failed (${response.status}).`)
   let body: string
   try {
@@ -112,13 +127,34 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
     // A network cut can occur after headers have arrived. Only transport
     // failures may use retained material; parsing/validation remain outside.
     signal?.throwIfAborted()
-    if (!(error instanceof TypeError)) throw error
+    if (!(error instanceof TypeError) && !(automaticCurriculumPreview && requestSignal?.aborted)) throw error
     return retained()
   }
-  const loaded = await validateCurriculum(body, grade)
-  signal?.throwIfAborted()
-  if (typeof localStorage !== 'undefined')
-    (await import('./curriculumCache.ts')).retainValidatedCurriculum(localStorage, loaded.snapshot)
+  let loaded: Awaited<ReturnType<typeof validateCurriculum>>
+  try {
+    loaded = await validateCurriculum(body, grade)
+    signal?.throwIfAborted()
+    if (typeof localStorage !== 'undefined') {
+      const cache = await import('./curriculumCache.ts')
+      if (automaticCurriculumPreview) await cache.retainAutomaticCurriculum(localStorage, loaded.snapshot, signal)
+      else cache.retainValidatedCurriculum(localStorage, loaded.snapshot)
+    }
+  } catch (error) {
+    signal?.throwIfAborted()
+    if (!automaticCurriculumPreview) throw error
+    // Reject the new source, but a separately revalidated prior source can still
+    // reopen saved work. Never cache rejected bytes or silently hide the failure.
+    try {
+      const previous = await retained()
+      previous.warnings.push(
+        `Automatic refresh rejected: ${error instanceof Error ? error.message : 'Invalid teacher source'}. Using the last validated teacher lesson.`,
+      )
+      return previous
+    } catch {
+      signal?.throwIfAborted()
+      throw error
+    }
+  }
   if (response.headers.get('X-Curriculum-Warning'))
     loaded.warnings.push('Automatic refresh is unavailable. The last validated teacher snapshot is being served.')
   return loaded
