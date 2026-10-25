@@ -192,7 +192,7 @@ export function MemoryFlip({
           {audioError && (
             <p role="alert">
               {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' ? <>
-                The word did not play. <button type="button" onClick={() => { if (failedWord.current) void hearWord(failedWord.current) }}>Hear again</button>
+                The word did not play. <button className="lg-primary" type="button" onClick={() => { if (failedWord.current) void hearWord(failedWord.current) }}>Hear again</button>
               </> : 'The word could not play. Check the browser’s sound permission, then tap another lantern to try again.'}
             </p>
           )}

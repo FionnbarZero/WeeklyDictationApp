@@ -364,7 +364,7 @@ export function SpeedMatch({
       onExit={onExit}
     >
       {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioFailure && <p role="alert">
-        The sound did not play. <button type="button" onClick={() => void hearCard(audioFailure)}>Hear again</button>
+        The sound did not play. <button className="lg-primary" type="button" onClick={() => void hearCard(audioFailure)}>Hear again</button>
       </p>}
       {!valid ? (
         <LearningGameEmpty onExit={onExit} />
