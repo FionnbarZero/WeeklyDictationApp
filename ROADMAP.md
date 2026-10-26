@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — owner smoke test of final audit repairs, October 26
+
+Both October 26 audit follow-ups are complete in the single isolated **Final fixes 1 / `1f9ad3f`** preview: startup readiness/recovery and supporting game content for 22 latest imported targets, including 40 new Kore clips. Native approved Warmup remains integrated. The additional pending-CSS defect caught in the unpublished candidate is fixed. Exact hosted links, expiry, verification and the confirmed all-grade email are at the top of STATUS and in [the repair record](./docs/final-audit-repairs-2026-10-26.md).
+
+**Next:** the owner's bounded physical-iPad smoke test, then remaining authenticated/offline/cross-device compatibility and main reconciliation under existing gates. Current evidence: 1,286 units; 69 Warmup; 75 curriculum; 75 independent Kore; qualified 24 content and 16 repaired-app startup cases; 25 distinct hosted checks. Preserve the documented initial failures and timed/fixture reruns rather than calling every run clean.
+
+No live update is authorized for this handoff. Keep canonical Ninja Dojo, Firebase live and the frozen standalone fifth-grade site unchanged. Continue using the single retained all-grade origin; retired preview URLs stay retired. Kindergarten's two-writing-target Context Gap remains disabled by its existing minimum. English Niamh, physical audio/Pencil/microphone, future unseen-import support and cloud/cross-device acceptance remain open. Routine model/approval questions are not pending: the previously confirmed Astra · Extra High behavior/review and Sol · High publication routing covers this bounded repair; no model switch is claimed.
+
 ## Audit follow-ups — startup readiness and newly imported game support, October 26
 
 The comprehensive audit of **ab76131** is complete. **1,284 units pass**; 365 distinct browser cases have passing executions after qualified driver corrections/reruns. Keep one product finding open: **Kindergarten/WebKit can miss the first Ninja Skills click while unstyled menu buttons become the finished layout**. One trace captures the miss; three unchanged repeats pass. No checkpoint loss or audio-pause failure was reproduced, and the cause/date of introduction is not fully established. The next bounded behavior repair should protect startup readiness and verify first clicks across grades, preserving the approved menu design.

@@ -1,5 +1,5 @@
-import { expect, type Page, test } from '@playwright/test'
 import { writeFileSync } from 'node:fs'
+import { expect, type Page, test } from '@playwright/test'
 import { koreAudioSegments } from '../../src/audio/koreVoice.ts'
 import { GAME_LANGUAGE } from '../../src/ninjaSkills/gameLanguagePreviewCatalog.ts'
 import { newlySupported, nextLessonSnapshot } from './fixtures.ts'

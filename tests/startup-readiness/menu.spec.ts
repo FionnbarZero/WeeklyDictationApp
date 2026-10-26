@@ -37,7 +37,9 @@ async function chooseDojo(page: Page) {
   // Use the first visible coordinates, without a font/stability wait or click
   // retry that could conceal the old race between pointer down and pointer up.
   const card = child(page).getByRole('button', { name: /Enter the Dojo/ })
-  await expect(card).toBeVisible()
+  // A reload first finishes the existing browser-progress restoration. Allow
+  // that work to finish, then use the very first visible card coordinates.
+  await expect(card).toBeVisible({ timeout: 15_000 })
   const box = (await card.boundingBox())!
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2
@@ -189,8 +191,7 @@ test('post-load pending styles and a second lazy stylesheet stay loading until b
     await second.wait
     await route.fulfill({ contentType: 'text/css', body: '.startup-second { color: inherit; }' })
   })
-  await page.addInitScript(() => {
-    if (window.parent === window) return
+  const injectLateStyles = () => {
     window.addEventListener(
       'load',
       () => {
@@ -211,6 +212,15 @@ test('post-load pending styles and a second lazy stylesheet stay loading until b
       },
       { once: true },
     )
+  }
+  // Install in the actual response, once per real document. Browser init scripts
+  // can also run in/reuse an iframe's initial about:blank window.
+  await page.route('**/index.html?*', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace('</head>', `<script>(${injectLateStyles.toString()})()</script></head>`),
+    })
   })
   const paint = () =>
     child(page)
