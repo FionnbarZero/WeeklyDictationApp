@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { recoverGrade2Wetland } from '../../src/familyBeta/grade2WetlandReview.ts'
 import type { CurriculumSnapshot } from '../../src/familyBeta/curriculum.ts'
 
 export const grades = [
@@ -41,4 +42,9 @@ export function futureSnapshot(slug: string) {
   value.retrievedAt = '2026-10-24T12:00:00.000Z'
   value.contentSha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
   return value
+}
+
+/** The new preview validates then recovers the one reviewed truncated Wetland slide. */
+export async function expectedSnapshotHash(value: CurriculumSnapshot) {
+  return (process.env.REPORT_REPAIRS_AUDIT === '1' ? await recoverGrade2Wetland(value) : value).contentSha256
 }

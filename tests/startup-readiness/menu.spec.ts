@@ -1,5 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
-import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
+import { buildStrokeOrderRounds } from '../../src/learningGames/strokeOrder/rounds.ts'
+import { grade2StrokeMedians } from '../../src/learningGames/strokeOrder/grade2StrokeAssets.ts'
+import { wetlandStrokeMedians } from '../../src/learningGames/strokeOrder/wetlandStrokeAssets.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
 import { grades, snapshot } from '../automatic-curriculum/fixtures.ts'
 
@@ -268,7 +270,18 @@ test('failed CSS offers repeatable recovery without clearing saved records', asy
   await page.getByRole('button', { name: 'Retry activity screen', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Retry activity screen', exact: true })).toBeVisible()
   await expect(active(page)).toHaveAttribute('data-family-slot', slot!)
-  expect(await page.evaluate(() => JSON.stringify(Object.entries(localStorage)))).toEqual(saved)
+  // The first activity bootstrap may add its workspace while CSS is failing.
+  // Every already-saved record must remain identical; unrelated new records are allowed.
+  const after = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)))
+  for (const [key, value] of JSON.parse(saved) as [string, string][]) {
+    if (key.endsWith(':lesson-workspace-v1')) {
+      const beforeWorkspace = JSON.parse(value)
+      const afterWorkspace = JSON.parse(after[key])
+      expect(afterWorkspace.schema).toEqual(beforeWorkspace.schema)
+      for (const [recordKey, record] of Object.entries(beforeWorkspace.records || {}))
+        expect(afterWorkspace.records[recordKey]).toEqual(record)
+    } else expect(after[key]).toEqual(value)
+  }
   fail = false
   await page.getByRole('button', { name: 'Retry activity screen', exact: true }).click()
   await chooseDojo(page)
@@ -327,7 +340,10 @@ test('kept-alive grades, persisted restore and failed child reload retain review
   const id = await teacher.getAttribute('data-report-target')
   const target = (await writingProgress(page)).flatMap((p) => p.lesson.targets).find((t) => t.id === id)!
   expect(target).toBeTruthy()
-  const strokes = strokeOrderGuide({ id: target.id, text: [...target.text][0] }).strokes
+  const strokes = buildStrokeOrderRounds([{ id: target.id, text: [...target.text][0] }], {
+    ...grade2StrokeMedians,
+    ...wetlandStrokeMedians,
+  }).rounds[0].strokes
   const layout = getStrokeLayout(strokes)
   const pad = teacher.locator('svg[role="application"]')
   for (const [i, stroke] of strokes.entries()) {

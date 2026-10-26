@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
-import { futureSnapshot, grades, snapshot } from './fixtures.ts'
+import { expectedSnapshotHash, futureSnapshot, grades, snapshot } from './fixtures.ts'
 
 const endpoint = '**/weekly-dictation-curriculum-*/curriculum/beta/*.json'
 const currentFrame = (page: Page) => page.locator('iframe:visible')
@@ -91,7 +91,7 @@ for (const grade of grades)
               grade.label,
             ),
           )
-          .toBe(live.contentSha256)
+          .toBe(await expectedSnapshotHash(live))
       }
       await page.waitForTimeout(1500)
       const after = await currentFrame(page).getAttribute('data-family-slot')
@@ -136,7 +136,8 @@ for (const grade of grades)
       await frame(page)
         .getByRole('button', { name: /^(Exit game|Pause and return)$/ })
         .click()
-      if (update) await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', live.contentSha256)
+      if (update)
+        await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(live))
       else await expect(currentFrame(page)).toHaveAttribute('data-family-slot', id!)
       const dojo = frame(page).getByRole('button', { name: /Enter the Dojo/ })
       const writing = frame(page).getByRole('button', { name: grade.write, exact: true })
@@ -203,7 +204,7 @@ for (const grade of grades) {
       ;(window as Window & { auditReject: boolean }).auditReject = false
       window.dispatchEvent(new Event('online'))
     })
-    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', live.contentSha256)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(live))
     await expect(currentFrame(page)).not.toHaveAttribute('data-family-slot', id!)
     await frame(page)
       .getByRole('button', { name: /Enter the Dojo/ })
@@ -260,6 +261,6 @@ for (const grade of grades) {
     await frame(page)
       .getByRole('button', { name: /^(Exit game|Pause and return)$/ })
       .click()
-    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', live.contentSha256)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(live))
   })
 }

@@ -1,8 +1,11 @@
 import { expect, type Page, test } from '@playwright/test'
 import { validateCurriculum } from '../../src/familyBeta/curriculum.ts'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
+import { grade2StrokeMedians } from '../../src/learningGames/strokeOrder/grade2StrokeAssets.ts'
+import { wetlandStrokeMedians } from '../../src/learningGames/strokeOrder/wetlandStrokeAssets.ts'
+import { buildStrokeOrderRounds } from '../../src/learningGames/strokeOrder/rounds.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
-import { futureSnapshot, grades, snapshot } from './fixtures.ts'
+import { expectedSnapshotHash, futureSnapshot, grades, snapshot } from './fixtures.ts'
 
 const endpoint = '**/weekly-dictation-curriculum-*/curriculum/beta/*.json'
 const currentFrame = (page: Page) => page.locator('iframe:visible')
@@ -87,7 +90,11 @@ async function firstStep(page: Page) {
     { text, word },
   )
   expect(character).toBeTruthy()
-  const strokes = strokeOrderGuide({ id: text!, text: character! }).strokes
+  const target = { id: text!, text: character! }
+  const strokes =
+    process.env.REPORT_REPAIRS_AUDIT === '1'
+      ? buildStrokeOrderRounds([target], { ...grade2StrokeMedians, ...wetlandStrokeMedians }).rounds[0].strokes
+      : strokeOrderGuide(target).strokes
   const layout = getStrokeLayout(strokes)
   const pad = teacher.locator('svg[role="application"]')
   for (let i = 0; i < strokes.length; i++) {
@@ -136,6 +143,7 @@ for (const grade of grades) {
   test(`${grade.slug}: automatic updates wait for the date and safe menu; reviewed writing resumes`, async ({
     page,
   }) => {
+    const currentWeek = process.env.REPORT_REPAIRS_AUDIT === '1' && grade.slug === 'grade2' ? '2026-10-19' : grade.week
     let live = snapshot(grade.slug),
       requests = 0
     const future = futureSnapshot(grade.slug)
@@ -149,7 +157,7 @@ for (const grade of grades) {
       return route.fulfill({ json: live })
     })
     await reopen(page, grade.slug)
-    await expect(currentFrame(page)).toHaveAttribute('data-family-week', grade.week)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-week', currentWeek)
     await write(page, grade)
     await firstStep(page)
     const original = await writingRecords(page),
@@ -159,13 +167,13 @@ for (const grade of grades) {
     await expect.poll(() => requests).toBe(2)
     await page.waitForTimeout(1300)
     await expect(currentFrame(page)).toHaveAttribute('data-family-slot', id!)
-    await expect(currentFrame(page)).toHaveAttribute('data-family-week', grade.week)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-week', currentWeek)
     expect(await writingRecords(page)).toEqual(original)
     await frame(page)
       .getByRole('button', { name: /^(Exit game|Pause and return)$/ })
       .click()
-    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', future.contentSha256)
-    await expect(currentFrame(page)).toHaveAttribute('data-family-week', grade.week)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(future))
+    await expect(currentFrame(page)).toHaveAttribute('data-family-week', currentWeek)
     await write(page, grade)
     await expect(frame(page).getByRole('region', { name: 'Stroke order teacher' })).toHaveAttribute('data-step', '2')
     expect(await writingRecords(page)).toEqual(original)
@@ -182,7 +190,7 @@ for (const grade of grades) {
     await expect(currentFrame(page)).toHaveAttribute('data-family-slot', resumedId!)
     await page.clock.setFixedTime(new Date('2026-10-26T19:00:00Z'))
     await page.waitForTimeout(1100)
-    await expect(currentFrame(page)).toHaveAttribute('data-family-week', grade.week)
+    await expect(currentFrame(page)).toHaveAttribute('data-family-week', currentWeek)
     await frame(page)
       .getByRole('button', { name: /^(Exit game|Pause and return)$/ })
       .click()
@@ -228,10 +236,10 @@ for (const grade of grades) {
           page.getByRole('alert').filter({ hasText: mode === 'invalid' ? 'checksum' : 'older curriculum' }),
         ).toBeVisible()
       else await expect(page.getByRole('alert').filter({ hasText: 'Previously validated' })).toHaveCount(0)
-      await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', good.contentSha256)
+      await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(good))
       if (mode !== 'good') {
         await reopen(page, grade.slug)
-        await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', good.contentSha256)
+        await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(good))
         await expect(
           page.getByRole('alert').filter({ hasText: mode === 'invalid' ? 'checksum' : 'older curriculum' }),
         ).toBeVisible()
@@ -261,7 +269,7 @@ test('Report holds a pending update; metadata-only checks do not recreate an idl
   await page.waitForTimeout(1100)
   await expect(currentFrame(page)).toHaveAttribute('data-family-slot', id!)
   await page.getByRole('button', { name: 'Close and return', exact: true }).click()
-  await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', live.contentSha256)
+  await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(live))
   await expect(currentFrame(page)).not.toHaveAttribute('data-family-slot', id!)
 })
 
@@ -302,7 +310,7 @@ test('polling and focus refresh preserve an open game until Exit', async ({ page
   await expect.poll(() => requests).toBeGreaterThanOrEqual(3)
   await expect(currentFrame(page)).toHaveAttribute('data-family-slot', id!)
   await frame(page).getByRole('button', { name: 'Exit learning module', exact: true }).click()
-  await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', live.contentSha256)
+  await expect(currentFrame(page)).toHaveAttribute('data-family-curriculum', await expectedSnapshotHash(live))
 })
 
 for (const grade of grades)
