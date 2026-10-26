@@ -3,9 +3,20 @@ import { expect, type FrameLocator, test } from '@playwright/test'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { reinforcementGames } from '../../src/familyBeta/gamePools.ts'
 import type { BetaResult } from '../../src/familyBeta/model.ts'
+import { snapshot } from '../automatic-curriculum/fixtures.ts'
 import { withGameLanguage } from '../w2-recovery/contentFixtures.ts'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
+  await context.route('**/curriculum/beta/*.json', (route) =>
+    route.fulfill({
+      json: snapshot(
+        route
+          .request()
+          .url()
+          .match(/(kindergarten|grade2|grade5)\.json/)![1],
+      ),
+    }),
+  )
   await page.clock.setFixedTime(new Date('2026-10-23T19:00:00Z'))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.addInitScript(() => {
@@ -129,13 +140,23 @@ for (const [slug, grade, childId] of [
       )!.capability
       if (capability.status !== 'ready') throw new Error('Expected a real playable cohort')
       const pack = capability.pack
-      await page.addInitScript((results) => {
-        if (!localStorage.getItem('compact-layout-seeded')) {
-          localStorage.setItem('family-beta-preview-results-v1', JSON.stringify(results))
-          localStorage.setItem('compact-layout-seeded', 'true')
-        }
-      }, results)
       await page.goto(`/family-beta-preview.html?grade=${slug}`)
+      // Automatic-curriculum builds intentionally isolate their learners. Seed
+      // the observed profile's visit history, not the older preview child's ID.
+      const profiles = await page.evaluate(() =>
+        JSON.parse(
+          localStorage.getItem('automatic-curriculum-preview-profiles') ||
+            localStorage.getItem('beta-preview-profiles') ||
+            '[]',
+        ),
+      )
+      const profile = profiles.find((p: { grade: string; id: string }) => p.grade === grade)
+      expect(profile).toBeTruthy()
+      await page.evaluate(
+        (results) => localStorage.setItem('family-beta-preview-results-v1', JSON.stringify(results)),
+        results.map((r) => ({ ...r, childId: profile.id })),
+      )
+      await page.reload()
       const frame = page.frameLocator('iframe:visible')
       await frame.getByRole('button', { name: /Practice.*Ninja Skills/ }).click()
       await frame.getByRole('button', { name: game, exact: true }).click()

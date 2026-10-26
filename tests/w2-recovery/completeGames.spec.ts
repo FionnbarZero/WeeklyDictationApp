@@ -2,9 +2,25 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { reinforcementGames } from '../../src/familyBeta/gamePools.ts'
+import { snapshot } from '../automatic-curriculum/fixtures.ts'
 import { withGameLanguage } from './contentFixtures.ts'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
+  // Keep the browser curriculum identical to the fixture used to build packs.
+  // New teacher imports are covered separately by automatic-curriculum tests.
+  await context.route('**/curriculum/beta/*.json', (route) =>
+    route.fulfill({
+      json: snapshot(
+        route
+          .request()
+          .url()
+          .match(/(kindergarten|grade2|grade5)\.json/)![1],
+      ),
+    }),
+  )
+  // This completion suite checks the spoken text through the fallback engine;
+  // native Kore playback is independently covered by kore-voice/nativeAudio.
+  await context.route('**/audio/kore/*.wav', (route) => route.abort())
   await page.clock.setSystemTime(new Date('2026-10-23T19:00:00Z'))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.addInitScript(() => {
@@ -68,6 +84,14 @@ for (const [slug, grade] of [
       } else if (pack.moduleId === 'dictation-streak') {
         for (const [i, round] of pack.rounds.entries()) {
           await expect(f.locator('.lg-round-label')).toHaveText(`Prompt ${i + 1} of ${pack.rounds.length}`)
+          // Kore uses one owned four-segment plan. Let the whole plan finish
+          // before submitting, so navigation cannot cancel its final repeats.
+          await expect
+            .poll(
+              () => page.evaluate(() => (window as Window & { contentPrompts: string[] }).contentPrompts.join('')),
+              { timeout: 15_000 },
+            )
+            .toContain(round.audioText)
           if (i === 0) {
             const step = round.pinyinSteps![0]
             await f.locator('input').fill(step.pinyin)
@@ -91,7 +115,7 @@ for (const [slug, grade] of [
           await f.getByRole('button', { name: 'Check characters', exact: true }).click()
         }
         const spoken = await page.evaluate(() => (window as Window & { contentPrompts: string[] }).contentPrompts)
-        for (const round of pack.rounds) expect(spoken).toContain(round.audioText)
+        for (const round of pack.rounds) expect(spoken.join('')).toContain(round.audioText)
       } else if (pack.moduleId === 'target-blast') {
         for (const [i, round] of pack.rounds.entries()) {
           await expect(f.locator('.lg-round-label')).toHaveText(`Training strike ${i + 1} of ${pack.rounds.length}`)

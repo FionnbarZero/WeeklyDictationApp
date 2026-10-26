@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Audit follow-ups — startup readiness and newly imported game support, October 26
+
+The comprehensive audit of **ab76131** is complete. **1,284 units pass**; 365 distinct browser cases have passing executions after qualified driver corrections/reruns. Keep one product finding open: **Kindergarten/WebKit can miss the first Ninja Skills click while unstyled menu buttons become the finished layout**. One trace captures the miss; three unchanged repeats pass. No checkpoint loss or audio-pause failure was reproduced, and the cause/date of introduction is not fully established. The next bounded behavior repair should protect startup readiness and verify first clicks across grades, preserving the approved menu design.
+
+Also reopen **game-support coverage for the newest imported cohorts**: Kindergarten October 26 (5 targets) and Grade 5 October 13 (17 targets) lack validated definitions, Pinyin choices and/or sentence tokens for Shuriken, Dictation and sentence games. Their word audio and writing guides exist. Earlier Ninja Skills cohorts still work. Kindergarten Context Gap's minimum of three Tier 1 choices is a separate policy constraint; never invent extra teacher targets to enable it. Grade 2's fetched inventory is complete. Automatic source refresh does not author this support.
+
+The audit changed tests/docs only; no repair, deployment, email or live release is implied. [Exact findings and failed-run accounting](./docs/comprehensive-regression-audit-2026-10-26.md). Continue existing **Astra · Extra High** behavior/persistence/review routing and prototype-first rules without routine model reconfirmation. Physical iPad/iMac, authenticated/cloud/offline/cross-device acceptance, main reconciliation and English Niamh remain open. The owner still excludes live publication; preserve frozen standalone Grade 5 and the single current all-grade test origin.
+
 ## Current status — approved Warmup consolidation complete in the test app, October 26
 
 The owner-approved scope is delivered as **Combined Dojo / Approved Warmup 1 / ab76131** on the single retained Kore origin for Kindergarten, Grade 2 and Grade 5. Native writing Warmup integration, removal of the separate eight-word assessment, deletion of 18 obsolete preview channels, exact hosted verification and the all-grade email are complete. **42 local + 42 hosted native Warmup checks pass.** Qualified regression results, current links, expiry and SENT receipt are at the top of STATUS and in [the integration record](./docs/native-warmup-integration-2026-10-26.md). Historical preview URLs below are retired and historical next-step suggestions are superseded where this record closes them.

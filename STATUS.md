@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Comprehensive audit — two follow-ups remain, October 26
+
+The current **ab76131** combined test app was audited without changing application code or hosting. **1,284 unit tests pass**. All **365 distinct browser cases** have passing executions after documented test-driver corrections and focused reruns, but this is **not a clean first-pass result**: one intermittent Kindergarten/WebKit menu first-click miss remains open. The retained trace shows unstyled buttons changing into finished cards during input; three unchanged retries pass. Its cause is likely startup layout movement, not a confirmed audio or saving failure, and its introduction date is unproven.
+
+A separate content inventory confirms **22 current/retained weeks, 213 Tier 1/2 target occurrences and 102 writing targets** with word recordings and writing guides, but **22 targets in the latest Kindergarten (October 26) and Grade 5 (October 13) cohorts still need supporting game language**. Earlier Ninja Skills cohorts remain playable; do not label all games broken or treat this as a Warmup regression. Kindergarten Context Gap also requires at least three Tier 1 targets, so content alone cannot enable its two-target cohort. Grade 2 has no missing support in this inventory.
+
+**Next:** bounded startup-readiness and game-content repairs, then the remaining physical-device and authenticated/offline/cross-device acceptance. Main reconciliation and English Niamh remain separate. All 1,122 hosted files / 6,732 headers, 18 retired URLs, protected canonical manifest and frozen fifth-grade manifest/182 assets were reverified. No website, real record or email changed during this audit. [Full scope, failures, evidence and limits](./docs/comprehensive-regression-audit-2026-10-26.md). Current links and expiry remain immediately below.
+
 ## Current handoff — approved Warmup consolidated; old previews retired, October 26
 
 **Combined Dojo / Approved Warmup 1 — `ab76131f538b60b143cded3d596bc061e679f50e`** is published and verified on the retained Kore test origin: [Kindergarten](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=grade5). **Test app only; expires November 2, 2026 at 9:45 AM Pacific.** Hosting version **4f187d835667da7b**, tree **9f52d114e9ae560eecd01f60d7efdc6b753d160c84a5b8c7401aa6624282f8cd**. All **1,122 public files / 6,732 headers** match the immutable package.

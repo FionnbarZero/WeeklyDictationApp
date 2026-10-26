@@ -1,6 +1,9 @@
 import { expect, type Page, test } from '@playwright/test'
 import type { WritingProgress } from '../../src/application/writingAcquisition/contracts.ts'
+import { snapshot } from '../automatic-curriculum/fixtures.ts'
 import { finishEnabledTeacher } from '../family-sync/writingTeacherDriver.ts'
+
+const automatic = process.env.W0_AUTOMATIC_CURRICULUM === '1'
 
 const grades = [
   {
@@ -8,7 +11,7 @@ const grades = [
     write: 'Writing characters',
     read: 'High-frequency words',
     policy: 'kindergarten-five-step-preview-v1',
-    week: '2026-10-12',
+    week: automatic ? '2026-10-19' : '2026-10-12',
   },
   {
     slug: 'grade2',
@@ -26,10 +29,21 @@ const grades = [
   },
 ]
 test.beforeEach(async ({ context, page, baseURL }) => {
-  await page.clock.setFixedTime(new Date('2026-10-16T19:00:00Z'))
+  await page.clock.setFixedTime(new Date(automatic ? '2026-10-23T19:00:00Z' : '2026-10-16T19:00:00Z'))
   await context.route('**/*', (route) =>
     new URL(route.request().url()).origin === new URL(baseURL!).origin ? route.continue() : route.abort(),
   )
+  if (automatic)
+    await context.route('**/curriculum/beta/*.json', (route) =>
+      route.fulfill({
+        json: snapshot(
+          route
+            .request()
+            .url()
+            .match(/(kindergarten|grade2|grade5)\.json/)![1],
+        ),
+      }),
+    )
   await context.addInitScript(() => {
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,

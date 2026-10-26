@@ -1,7 +1,7 @@
 import { expect, type FrameLocator, type Page, test } from '@playwright/test'
-import { grades, snapshot } from '../automatic-curriculum/fixtures.ts'
 import { writingCharacterGuides } from '../../src/application/writingAcquisition/lesson.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
+import { grades, snapshot } from '../automatic-curriculum/fixtures.ts'
 
 test.beforeEach(async ({ page, context }) => {
   await page.clock.setSystemTime(new Date('2026-10-23T19:00:00Z'))
@@ -155,15 +155,12 @@ for (const grade of grades) {
     if (grade.slug === 'kindergarten') {
       await expect(f.getByText(`${total} of ${total} correct on the first try.`)).toBeVisible()
       await f.getByRole('button', { name: 'Done', exact: true }).click()
-      const results = await page.evaluate(() =>
-        Object.entries(localStorage)
-          .filter(([k]) => k.startsWith('family-beta-results-v1:'))
-          .map(([, v]) => JSON.parse(v)),
-      )
-      // The completion must have an ordinary family result; exact key may be
-      // versioned, so also inspect the result copies by their activity field.
+      // Done acquires the native visit lock before committing its result.
+      // Wait for that completion, rather than reading during the queued save.
+      await expect(f.locator('.native-warmup')).toHaveCount(0)
       const stored = await page.evaluate(() =>
-        Object.values(localStorage).flatMap((v) => {
+        Object.entries(localStorage).flatMap(([key, v]) => {
+          if (!key.startsWith('family-beta-preview-results-v1:')) return []
           try {
             const x = JSON.parse(v)
             return x.activity === 'Spirit Realm · writing · warmup' ? [x] : []
@@ -172,8 +169,8 @@ for (const grade of grades) {
           }
         }),
       )
-      expect(stored.length || results.length).toBeGreaterThan(0)
-      expect(stored.every((r) => r.correct === total && r.attempted === total)).toBe(true)
+      expect(stored).toHaveLength(1)
+      expect(stored[0]).toMatchObject({ correct: total, attempted: total })
     } else await expect(f.getByRole('region', { name: 'Stroke order teacher' })).toBeVisible()
     expect(errors).toEqual([])
   })

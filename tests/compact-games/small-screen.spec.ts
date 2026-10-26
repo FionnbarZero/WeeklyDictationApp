@@ -1,7 +1,18 @@
 import { expect, test } from '@playwright/test'
+import { snapshot } from '../automatic-curriculum/fixtures.ts'
 
 for (const game of ['Shuriken Match', 'Dictation Streak']) {
-  test(`${game}: narrow screens and reduced height keep controls scroll-accessible`, async ({ page }) => {
+  test(`${game}: narrow screens and reduced height keep controls scroll-accessible`, async ({ page, context }) => {
+    await context.route('**/curriculum/beta/*.json', (route) =>
+      route.fulfill({
+        json: snapshot(
+          route
+            .request()
+            .url()
+            .match(/(kindergarten|grade2|grade5)\.json/)![1],
+        ),
+      }),
+    )
     await page.clock.setFixedTime(new Date('2026-10-23T19:00:00Z'))
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.addInitScript(() => {
