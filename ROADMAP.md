@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current handoff — report-driven scrolling repair complete in the preview, October 26
+
+The owner clarified that prior reports should drive this work. **`b36f736` / Device repairs 1** fixes the reproduced document scroll trap and missing stroke-pad wheel protection, is published on the single retained all-grade preview, and has been exactly verified and emailed. **1,286 units, 155 final-run local cases and 15 hosted cases pass** with the documented driver/skip qualifications. [The acceptance record](./docs/physical-device-acceptance-2026-10-26.md) maps earlier reports to repairs and retained boundaries; current links/expiry/SENT receipt are at the top of STATUS.
+
+Next: a bounded real-device check of scrolling/drawing, sound/recording, Report and resume, then the separate authenticated/offline/cross-device and main-reconciliation gates. Do not request duplicate reports, restore superseded teaching policies or label automated gesture/media tests as physical iPad/iMac acceptance. Existing Astra · Extra High repair and Sol · High publication routing applied without reconfirmation; no model switch or independent-agent review is claimed. Canonical and frozen Grade 5 remain excluded.
+
 ## Current priority — owner smoke test of final audit repairs, October 26
 
 Both October 26 audit follow-ups are complete in the single isolated **Final fixes 1 / `1f9ad3f`** preview: startup readiness/recovery and supporting game content for 22 latest imported targets, including 40 new Kore clips. Native approved Warmup remains integrated. The additional pending-CSS defect caught in the unpublished candidate is fixed. Exact hosted links, expiry, verification and the confirmed all-grade email are at the top of STATUS and in [the repair record](./docs/final-audit-repairs-2026-10-26.md).

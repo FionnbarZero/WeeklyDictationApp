@@ -48,6 +48,45 @@ const scrollPosition = async (page: Page, frame: FrameLocator) => ({
 })
 
 for (const grade of grades) {
+  test(`${grade.label}: touch draws inside the pad and scrolls outside it`, async ({ page, context, browserName }) => {
+    test.skip(
+      browserName !== 'chromium',
+      'Native touch-move injection is available through Chromium CDP only; not a physical iPad result.',
+    )
+    await page.goto(`./family-beta-preview.html?grade=${grade.slug}`)
+    const f = page.frameLocator('iframe:visible')
+    await f.getByRole('button', { name: /Enter the Dojo/ }).click()
+    await f.getByRole('button', { name: grade.write, exact: true }).click()
+    const teacher = f.getByRole('region', { name: 'Stroke order teacher' })
+    const warmup = f.getByRole('button', { name: 'Skip Warmup', exact: true })
+    await expect(teacher.or(warmup)).toBeVisible()
+    if (await warmup.isVisible()) await warmup.click()
+    const pad = teacher.locator('svg[role="application"]')
+    await pad.click({ trial: true })
+    const cdp = await context.newCDPSession(page)
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
+    const swipe = async (x: number, y: number, distance: number) => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x, y: y - (distance * i) / 8 }],
+        })
+        await page.waitForTimeout(20)
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    }
+    const box = (await pad.boundingBox())!
+    const before = await scrollPosition(page, f)
+    await swipe(box.x + box.width / 2, box.y + box.height / 2, 60)
+    expect(await scrollPosition(page, f)).toEqual(before)
+    // The heading may already be above the viewport after focusing a large pad.
+    // Start the swipe in the visible margin beside the pad, away from controls.
+    await swipe(box.x - 24, box.y + box.height / 2, -70)
+    await expect.poll(async () => (await scrollPosition(page, f)).inner).toBeLessThan(before.inner)
+    await cdp.detach()
+  })
+
   test(`${grade.label}: trackpad movement cannot move the paper during a stroke; outside still scrolls`, async ({
     page,
   }) => {
@@ -86,8 +125,7 @@ for (const grade of grades) {
     // The heading belongs to the surrounding document, not the drawing surface.
     // Actual wheel input must expose either end; scrollIntoView is not evidence
     // that a child can reach the clipped controls by scrolling.
-    const bounds = (await teacher.locator('.lg-stroke-roundbar').boundingBox())!
-    await page.mouse.move(bounds.x + 40, bounds.y + bounds.height / 2)
+    await page.mouse.move(box.x - 24, box.y + box.height / 2)
     await test.info().attach('scroll-containers.json', {
       body: JSON.stringify(
         await pad.evaluate((el) => {
