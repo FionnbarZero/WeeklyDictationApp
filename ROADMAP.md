@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current priority — demonstrate selected Voice D in an isolated app
+
+October 26: the owner approved Google Text-to-Speech activation and a **$1 sample limit**. The existing billed project **`weeklydictationapp`** now has the service enabled, and supported ephemeral Cloud Shell ADC access generated three verified **`cmn-CN-Wavenet-D`** recordings at the existing **0.65** rate (11 input characters). Exact evidence, sample paths, authentication attempts and limitations are recorded at the top of STATUS. Google confirmed the requested Cloud permission was already granted; no new IAM role or API key was created.
+
+**Next:** adapt offline generation to supported OAuth/ADC without putting credentials in the child app, prepare an isolated working Voice D demonstration, and verify repeated Hear/automatic reading, audio-completion timers, error/retry and tablet delivery before a device handoff. Do not mix Tingting and D under one catalog identity. Owner approval of the working interaction still precedes whole-app replacement; sample generation alone is not installation, pronunciation acceptance, physical speaker acceptance or canonical release approval. Current app audio, the frozen fifth-grade presentation, English Niamh and all hosting releases remain outside this connection-only change. Existing Astra · Extra High routing and prototype-first gates continue; no routine model reconfirmation is pending.
+
 ## Current priority — accept the Writing repair; prepare selected Mandarin D voice
 
 October 25: the owner selected **Google `cmn-CN-Wavenet-D`** and requested the Writing opening repair. **Prototype 2 / `6bc1421`** is published at the same automatic-update test links in STATUS, exactly verified and emailed (SENT `1a176d76f8dbbf2d`). The opening race is closed in this isolated preview, including failure/retry, repeat entry and Report/return. Grade 5 errors are now visible in the viewport. **1,271 units and 75 local + 75 hosted browser cases pass**; development failures remain documented in [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/writing-launch-repair-2026-10-25.md). The previous opening-race device-check hold is superseded for this repair only.
