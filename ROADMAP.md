@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — close the confirmed consolidation gaps, October 26
+
+The version audit confirms a common current **Kore preview / 173f1c7** for all grades, but **not complete integration or merge**. Native scheduled Warmup still excludes the separate approved Warmup design; Grade 5's shared eight-word assessment remains a separate linked page with its normal-flow presentation mode off. Current main is **5727d74**, canonical **9d06a02**; newer W/voice work remains on the local preview branch. Exact audit evidence and historical URL identities are at the top of STATUS.
+
+**Next integration sequence:** preserve the approved working references; connect redesigned Warmup to native grade-specific schedules/progress and Grade 5's shared assessment to normal Practice/Final Boss/Return to Dojo; verify repeated transitions and old saved work; reconcile main and complete the existing authenticated/offline/cross-device, independent review and protected release gates. The audit itself authorizes no data reset, new teaching policy, automatic retirement of old websites or change to the frozen standalone Grade 5. Continue using one current all-grade test origin while consolidation is in progress.
+
+Do not count a file being copied into a hosting package, a reachable standalone page or passing isolated tests as proof of main-flow integration. Keep English Niamh, future unseen-target recordings and remaining roadmap work explicit. Existing confirmed Astra · Extra High routing applies to behavior/persistence integration, Sol · High to bounded publication, Luna · Medium to this status audit; no model switch or additional agent review is claimed. Earlier next-step entries below are scoped historical handoffs.
+
 ## Current priority — accept all-grade Kore preview, October 26
 
 The owner's final Mandarin choice **cmn-CN-Chirp3-HD-Kore** is implemented and published in the combined isolated **Prototype 1 / 173f1c7**, with verified grade links and SENT receipt in STATUS. Offline generation now uses supported Google ADC; the 918-file current/retained corpus cost estimate is $0.07728 before free allowance, within the approved $1 bound. No separate-agent review or model switch is claimed; this completed the confirmed Astra · Extra High audio stage and existing Sol · High publication recommendation.

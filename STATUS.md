@@ -1,5 +1,22 @@
 # Weekly Dictation status
 
+## Current integration audit — latest previews match; full merge is incomplete, October 26
+
+The owner asked whether every version is merged and fully updated. **No.** Fresh read-only verification confirms that Kindergarten, Grade 2 and Grade 5 on the Kore origin all serve **173f1c7**, with **1,118 public asset files plus the exact manifest** matching the verified immutable package. The approved W0/W1/W2 lineage, sound repairs, missing game content, compact layouts and automatic-curriculum repair are ancestors of this preview. No new regression suite, application edit or publication occurred during this audit.
+
+Two interaction-integration gaps remain within that website:
+
+- **Redesigned Warmup is a separate demonstration.** Packaging copies `warmup-design-preview.html` alongside the app. It uses sample targets and its own `ninja-warmup-design-v1` checkpoint; native scheduled Warmup does not import it.
+- **Grade 5's shared eight-word assessment is a separate linked page.** `grade5-oct23-preview.html` is exposed through the Grade 5 parent-controls link. The ordinary Kore build explicitly has presentation/shared-assessment mode off, so merely copying the page does not wire its eight-word reading/writing cohort into normal Practice Your Ninja Skills and Final Boss. Do not describe the full integrated Grade 5 main flow as complete on this evidence.
+
+Remote **main remains 5727d745937e799178415087fa7868ce9afd145b** (PR #75); GitHub confirms PRs #73–75 merged. The later local `codex/w2-recovery` branch has **100 commits beyond main** through the prior documentation head 7985520, and no same-named remote branch. These counts include documentation/tests and are not a count of missing features. The inspected new repair/voice commits are not ancestors of main.
+
+Fresh hosted identities: canonical **9d06a02**, old combined root **89bc62c**, old automatic-update path **6bc1421**, newest Kore preview **173f1c7**, intentionally frozen standalone Grade 5 **1a9db3e**. Older links have not automatically acquired newer fixes. **Use the three Kore links below as the current test entry; do not claim every historical URL is current.**
+
+Next consolidation work: integrate approved Warmup and the Grade 5 shared assessment into their normal grade-owned lesson paths, reconcile with main, and complete saved-progress/authenticated/offline/cross-device compatibility plus the existing review/release gates. Keep the frozen standalone unchanged. English Niamh and automatic recordings for unseen future targets remain separate unfinished work. Do not retire old URLs, reset progress or alter records merely to consolidate versions.
+
+Audit evidence: `family-beta-artifacts/version-integration-audit-2026-10-26/audit.json`, fresh hosted manifests and GitHub metadata. Application, remote branches, website releases and family records were not changed. The prior all-grade voice handoff remains valid for its bounded preview scope; it is not evidence of complete native/canonical integration.
+
 ## Current handoff — Kore Mandarin for all grades, October 26
 
 **Kore Mandarin / Prototype 1 — `173f1c73048030501597238489a7eaeead85b3cf`** is published as one combined isolated test app: [Kindergarten](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--kore-voice-oct26-v1-pi4l5pxy.web.app/family-beta-preview.html?grade=grade5). Expires **November 2, 2026 at 8:42 AM Pacific**. Hosting version **`cfab53e88ff9115a`**, tree **`d5940059bd89358d89837f2f95c6e15fc405418dd12b00063273d164688adbec`**. Exact **1,119 public files / 6,714 headers** verified against the immutable package.
