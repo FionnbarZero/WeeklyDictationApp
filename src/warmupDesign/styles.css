@@ -133,7 +133,15 @@
   /* Reserve feedback space so a correction message cannot move the drawing
      surface between pen strokes. */
   .warmup-design .warmup-guide {
+    container-type: size;
     grid-template-rows: minmax(0, 1fr) 136px;
+  }
+  .warmup-design .warmup-guide > .lg-stroke-pad {
+    /* Keep a square inside the space above the fixed feedback/tools row.
+       A max-height alone clips the bottom of a width-sized SVG. */
+    width: min(100%, calc(100cqh - 148px));
+    height: auto;
+    max-height: none;
   }
   .warmup-design .warmup-guide .lg-stroke-actions {
     display: grid;
