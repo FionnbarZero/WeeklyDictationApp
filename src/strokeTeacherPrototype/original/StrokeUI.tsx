@@ -119,6 +119,19 @@ export function StrokePad({
     return cancelActiveStroke
   }, [cancelActiveStroke, resetKey, round.id])
 
+  useLayoutEffect(() => {
+    const pad = padElement.current
+    if (!pad || !interactive) return
+    // Trackpads emit wheel events independently of pointer/touch handling.
+    // Keep the paper still while allowing page scrolling outside this pad and
+    // browser zoom gestures. A passive React wheel listener cannot cancel it.
+    const keepPaperStill = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) event.preventDefault()
+    }
+    pad.addEventListener('wheel', keepPaperStill, { passive: false })
+    return () => pad.removeEventListener('wheel', keepPaperStill)
+  }, [interactive])
+
   function paintActiveStroke() {
     paintFrame.current = null
     if (activePointer.current !== null) activePath.current?.setAttribute('d', strokePath(activePoints.current))

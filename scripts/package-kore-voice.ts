@@ -22,7 +22,7 @@ writeFileSync(
   JSON.stringify(
     {
       schema: 1,
-      prototype: 'Combined Dojo / Final fixes 1',
+      prototype: 'Combined Dojo / Device repairs 1',
       sourceRevision: revision,
       voice: 'cmn-CN-Chirp3-HD-Kore',
       speakingRate: 0.65,

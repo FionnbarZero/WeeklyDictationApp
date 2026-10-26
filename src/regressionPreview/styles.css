@@ -1,4 +1,4 @@
-@import './compactGames.css';
+@import "./compactGames.css";
 /* Isolated prototype only. Drawing still captures touch; the surrounding page scrolls. */
 /* Keep sentence interaction controls together in the combined repair preview. */
 html[data-w-roadmap-preview="true"] :is(.lab-shell, .k-lab-shell):has(.ninja-game-surface) {
@@ -183,11 +183,14 @@ html[data-w-roadmap-preview="true"] .lg-world-context-gap-dash .lg-phaser-help {
 }
 html[data-regression-preview="true"] {
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   scroll-padding-block: 16px;
 }
 html[data-regression-preview="true"] body {
   overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  /* overflow-x creates a body scroll container even without a vertical range.
+     Containing it traps wheel/swipe input before the document can scroll. */
+  overscroll-behavior-y: auto;
 }
 html[data-regression-preview="true"] .lg-stroke-shell {
   width: calc(100% - 24px);
