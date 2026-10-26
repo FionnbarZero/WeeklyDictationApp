@@ -75,7 +75,7 @@ test('first recovered retry ignores the silent primer while the actual recording
     release = resolve
   })
   let heldRequests = 0
-  await context.route('**/audio/kindergarten/*.wav', async (route) => {
+  await context.route('**/audio/{kindergarten,kore}/*.wav', async (route) => {
     if (hold) {
       heldRequests += 1
       await held

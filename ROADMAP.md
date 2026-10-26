@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current priority — Kore Mandarin across the integrated app, October 26
+
+The owner's final Mandarin choice is **cmn-CN-Chirp3-HD-Kore**, replacing earlier A/D selection notes. Complete the isolated all-grade implementation, review, native recorded-audio and recovery regressions, then publish one combined test website and automatically email verified grade links. No routine model/approval question is pending in this confirmed Astra · Extra High audio stage; publication follows the existing Sol · High recommendation without a claimed model switch.
+
+Keep the standalone fifth-grade presentation frozen. English Niamh and physical iPad/iMac sound acceptance remain separate. The current corpus can be pre-generated within the approved $1 bound; automatic generation for future unseen teacher content is not a live service yet. Preserve safe browser fallback and report that boundary. Prototype interaction approval and existing compatibility/release gates still precede canonical activation. See STATUS and [the Kore record](./docs/kore-voice-2026-10-26.md).
+
 ## Current priority — demonstrate selected Voice D in an isolated app
 
 October 26: the owner approved Google Text-to-Speech activation and a **$1 sample limit**. The existing billed project **`weeklydictationapp`** now has the service enabled, and supported ephemeral Cloud Shell ADC access generated three verified **`cmn-CN-Wavenet-D`** recordings at the existing **0.65** rate (11 input characters). Exact evidence, sample paths, authentication attempts and limitations are recorded at the top of STATUS. Google confirmed the requested Cloud permission was already granted; no new IAM role or API key was created.

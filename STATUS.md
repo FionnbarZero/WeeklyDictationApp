@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Current work — Kore selected; isolated all-grade candidate, October 26
+
+The owner selected **Google Mandarin Kore (cmn-CN-Chirp3-HD-Kore)**, superseding WaveNet D. All **918 recordings / 2,576 characters** have been generated at **0.65**, downloaded and checked against provider SHA-256 receipts and PCM decoding. Generation estimate **$0.07728 before free allowance**, within the existing $1 cap; not a billing receipt. Supported Google ADC was refreshed in ephemeral Cloud Shell with the same previously granted scope. No API key, IAM change or client credential was created.
+
+The candidate routes writing, stroke teaching, reading, tests, mastery and games through the shared Kore catalog; the eight-word Grade 5 assessment and isolated Warmup page are included. English and child recordings are unchanged. Old per-grade rate calibrations remain unchanged outside the opt-in preview. Current/retained teaching material is covered; unrecorded future imports or failed media retain browser-speech recovery. [Implementation and limits](./docs/kore-voice-2026-10-26.md).
+
+**Not yet published.** Source/native-media/regression checks and exact hosted verification are in progress. Do not send existing links as containing Kore. Frozen standalone Grade 5, canonical and all earlier previews remain protected. Physical sound/pronunciation acceptance and English Niamh remain separate.
+
 ## Current handoff — Google Mandarin D connection verified, October 26
 
 The owner approved enabling Google Cloud Text-to-Speech and a **$1 maximum sample cost**. **`texttospeech.googleapis.com` is now Enabled in `weeklydictationapp`**, using its existing Firebase Payment billing account. No billing account was added or relinked. The staging project was not enabled for billing.

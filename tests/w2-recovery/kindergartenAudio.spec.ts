@@ -196,7 +196,7 @@ for (const interruption of ['Exit', 'Report'])
     })
     let requests = 0
     let hold = true
-    await context.route('**/audio/kindergarten/*.wav', async (route) => {
+    await context.route('**/audio/{kindergarten,kore}/*.wav', async (route) => {
       requests += 1
       if (hold) await held
       try {

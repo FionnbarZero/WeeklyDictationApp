@@ -2,6 +2,7 @@ import type { Word } from '../domain/contracts.ts'
 import { activityClock } from '../activity/activityLifecycle.ts'
 import { gesturePlaybackElement } from './gesturePlayback.ts'
 import { prepareRecordingSource, type RecordingSource } from './recordingSource.ts'
+import { koreAudioSegments } from './koreVoice.ts'
 
 export const DICTATION_AUDIO_GAP_MS = 750
 
@@ -220,7 +221,11 @@ export function playAudioPlan(
   rawSegments: readonly AudioPlanSegment[],
   options: AudioPlanOptions = {},
 ): PromptAudioAttempt {
-  const segments = rawSegments.filter((segment) => segment.text.trim())
+  const segments = rawSegments
+    .filter((segment) => segment.text.trim())
+    .flatMap((segment) =>
+      import.meta.env?.VITE_KORE_VOICE_PREVIEW === 'true' ? koreAudioSegments(segment) : [segment],
+    )
   if (segments.length === 0) return
 
   stopActiveAudio()
@@ -377,11 +382,16 @@ export function playAudioPlan(
       }
       const url = resolveUrl(segment.storagePath)
       if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && !options.createAudio) {
-        void prepareRecordingSource(url, loading!.signal).then((source) => {
-          if (settled || cancelled) { source.release(); return }
-          recording = source
-          begin(source.url)
-        }).catch(fail)
+        void prepareRecordingSource(url, loading!.signal)
+          .then((source) => {
+            if (settled || cancelled) {
+              source.release()
+              return
+            }
+            recording = source
+            begin(source.url)
+          })
+          .catch(fail)
       } else begin(url)
     })
   }

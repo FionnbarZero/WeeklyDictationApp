@@ -12,7 +12,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const automaticCurriculum = process.argv.includes('--automatic-curriculum')
+const koreVoice = process.argv.includes('--kore-voice')
+const automaticCurriculum = koreVoice || process.argv.includes('--automatic-curriculum')
 const w2Recovery = automaticCurriculum || process.argv.includes('--w2-recovery')
 const w1Curriculum = w2Recovery || process.argv.includes('--w1-curriculum')
 const w0Writing = w1Curriculum || process.argv.includes('--w0-writing')
@@ -26,49 +27,53 @@ const grade5Repairs = compactParents || process.argv.includes('--grade5-repairs'
 const regressions = grade5Repairs || process.argv.includes('--regressions-oct20')
 const out = resolve(
   root,
-  automaticCurriculum
-    ? 'automatic-curriculum-preview-dist'
-    : w2Recovery
-      ? 'w2-recovery-preview-dist'
-      : w1Curriculum
-        ? 'w1-curriculum-preview-dist'
-        : w0Writing
-          ? 'w0-writing-preview-dist'
-          : standalone
-            ? 'grade5-standalone-dist'
-            : presentation
-              ? 'grade5-presentation-preview-dist'
-              : grade5Repairs
-                ? 'grade5-repair-preview-dist'
-                : regressions
-                  ? 'regression-preview-dist'
-                  : 'dojo-launch-preview-dist',
+  koreVoice
+    ? 'kore-voice-preview-dist'
+    : automaticCurriculum
+      ? 'automatic-curriculum-preview-dist'
+      : w2Recovery
+        ? 'w2-recovery-preview-dist'
+        : w1Curriculum
+          ? 'w1-curriculum-preview-dist'
+          : w0Writing
+            ? 'w0-writing-preview-dist'
+            : standalone
+              ? 'grade5-standalone-dist'
+              : presentation
+                ? 'grade5-presentation-preview-dist'
+                : grade5Repairs
+                  ? 'grade5-repair-preview-dist'
+                  : regressions
+                    ? 'regression-preview-dist'
+                    : 'dojo-launch-preview-dist',
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = automaticCurriculum
-  ? 'Automatic curriculum updates / Prototype 2 — Writing launch repair'
-  : w2Recovery
-    ? 'W-roadmap combined repairs / Prototype 6 — compact games'
-    : w1Curriculum
-      ? 'W1 curriculum and activity entry / Prototype 4'
-      : w0Writing
-        ? 'W0 integrated writing / Prototype 2'
-        : standalone
-          ? '5th grade Dojo / Standalone 1'
-          : presentation
-            ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-            : retireStandalone
-              ? 'Streamlined Dojo / Prototype 1'
-              : compactParents
-                ? 'Compact parent toolbar / Prototype 1'
-                : grade5Repairs
-                  ? 'Grade 5 regression repairs / Prototype 2'
-                  : regressions
-                    ? 'October 20 regression repairs / Prototype 3'
-                    : octoberResources
-                      ? 'Kindergarten October 19 resources / Prototype 1'
-                      : 'Writing reliability / Prototype 2'
+const prototype = koreVoice
+  ? 'Kore Mandarin / Prototype 1'
+  : automaticCurriculum
+    ? 'Automatic curriculum updates / Prototype 2 — Writing launch repair'
+    : w2Recovery
+      ? 'W-roadmap combined repairs / Prototype 6 — compact games'
+      : w1Curriculum
+        ? 'W1 curriculum and activity entry / Prototype 4'
+        : w0Writing
+          ? 'W0 integrated writing / Prototype 2'
+          : standalone
+            ? '5th grade Dojo / Standalone 1'
+            : presentation
+              ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+              : retireStandalone
+                ? 'Streamlined Dojo / Prototype 1'
+                : compactParents
+                  ? 'Compact parent toolbar / Prototype 1'
+                  : grade5Repairs
+                    ? 'Grade 5 regression repairs / Prototype 2'
+                    : regressions
+                      ? 'October 20 regression repairs / Prototype 3'
+                      : octoberResources
+                        ? 'Kindergarten October 19 resources / Prototype 1'
+                        : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -123,6 +128,7 @@ execFileSync(
       VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
       VITE_GAME_CONTENT_PREVIEW: String(w2Recovery),
       VITE_AUTOMATIC_CURRICULUM_PREVIEW: String(automaticCurriculum),
+      VITE_KORE_VOICE_PREVIEW: String(koreVoice),
     },
   },
 )
@@ -149,6 +155,8 @@ if (grade5Repairs && !presentation) {
         VITE_GIT_REVISION: revision,
         VITE_REGRESSION_REPAIR_PREVIEW: 'true',
         VITE_GRADE5_REPAIR_PREVIEW: 'true',
+        VITE_KORE_VOICE_PREVIEW: String(koreVoice),
+        VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
       },
     },
   )
