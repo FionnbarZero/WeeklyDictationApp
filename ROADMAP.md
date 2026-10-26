@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Current priority — Grade 2 missing week, October 26
+
+Resolve the owner's October 26 testing/review word-set choice, then verify an isolated curriculum repair and resources before a smoke-test handoff. The teacher has supplied no explicit October 26 targets. A confirmed importer defect also hid October 19 Wetland; its **local, unpublished** repair passes 1,291 units and preserves every earlier valid dataset. [Findings and boundaries](./docs/grade2-current-week-2026-10-26.md). Do not silently replace the shared canonical curriculum service or relabel older words as a new teacher-authored week. Existing Astra · Extra High curriculum routing applies. The currently hosted combined preview remains b36f736; no new release or email is claimed.
+
 ## Current handoff — report-driven scrolling repair complete in the preview, October 26
 
 The owner clarified that prior reports should drive this work. **`b36f736` / Device repairs 1** fixes the reproduced document scroll trap and missing stroke-pad wheel protection, is published on the single retained all-grade preview, and has been exactly verified and emailed. **1,286 units, 155 final-run local cases and 15 hosted cases pass** with the documented driver/skip qualifications. [The acceptance record](./docs/physical-device-acceptance-2026-10-26.md) maps earlier reports to repairs and retained boundaries; current links/expiry/SENT receipt are at the top of STATUS.
