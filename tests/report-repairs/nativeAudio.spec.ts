@@ -72,9 +72,16 @@ test('Sushi replay uses slower native Kore audio', async ({ page }) => {
     .toBeGreaterThan(0)
   const before = (await sound(page)).plays.length
   await f.getByRole('button', { name: 'Hear sentence again', exact: true }).click()
-  await expect.poll(async () => (await sound(page)).plays.length).toBeGreaterThan(before)
-  await expect.poll(async () => (await sound(page)).plays.at(-1)?.end, { timeout: 30000 }).toBeTruthy()
-  expect((await sound(page)).plays.at(-1)!.rate).toBeCloseTo(0.5 / 0.65, 3)
+  // A hosted click may finish the silent gesture primer while the sentence
+  // downloads. Wait for the requested slower clip's own completion.
+  await expect
+    .poll(
+      async () =>
+        (await sound(page)).plays.slice(before).filter((play) => play.end && Math.abs(play.rate - 0.5 / 0.65) < 0.001)
+          .length,
+      { timeout: 30000 },
+    )
+    .toBeGreaterThan(0)
   expect((await sound(page)).fallback).toEqual([])
 })
 test('Context Gap speaks only the two sides, slowly, with silence for the answer', async ({ page }) => {
