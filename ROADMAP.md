@@ -1,10 +1,12 @@
 # Weekly Dictation roadmap
 
-## Current priority — Kore Mandarin across the integrated app, October 26
+## Current priority — accept all-grade Kore preview, October 26
 
-The owner's final Mandarin choice is **cmn-CN-Chirp3-HD-Kore**, replacing earlier A/D selection notes. Complete the isolated all-grade implementation, review, native recorded-audio and recovery regressions, then publish one combined test website and automatically email verified grade links. No routine model/approval question is pending in this confirmed Astra · Extra High audio stage; publication follows the existing Sol · High recommendation without a claimed model switch.
+The owner's final Mandarin choice **cmn-CN-Chirp3-HD-Kore** is implemented and published in the combined isolated **Prototype 1 / 173f1c7**, with verified grade links and SENT receipt in STATUS. Offline generation now uses supported Google ADC; the 918-file current/retained corpus cost estimate is $0.07728 before free allowance, within the approved $1 bound. No separate-agent review or model switch is claimed; this completed the confirmed Astra · Extra High audio stage and existing Sol · High publication recommendation.
 
-Keep the standalone fifth-grade presentation frozen. English Niamh and physical iPad/iMac sound acceptance remain separate. The current corpus can be pre-generated within the approved $1 bound; automatic generation for future unseen teacher content is not a live service yet. Preserve safe browser fallback and report that boundary. Prototype interaction approval and existing compatibility/release gates still precede canonical activation. See STATUS and [the Kore record](./docs/kore-voice-2026-10-26.md).
+**Next:** one physical iPad/iMac listening check, about 3–5 minutes per grade, then working-interaction acceptance and the existing compatibility/release gates before canonical activation. Normal/slow replay, Report/Exit recovery and exact hosted delivery have automated coverage. The first hosted matrix's single pre-game Grade 2 loading timeout is retained; three unchanged focused reruns pass. Full scope, failures and receipts are in [the Kore record](./docs/kore-voice-2026-10-26.md).
+
+Keep the standalone fifth-grade presentation frozen. English Niamh, native Warmup design integration and authenticated/offline/cross-device acceptance remain separate. Future unseen teacher text still requires recordings; failed/unknown recordings retain browser speech/retry. Do not claim a live synthesis service or guaranteed Kore output for unrecorded future imports. Earlier D/Tingting installation-priority notes below are historical and superseded by this Kore handoff. No routine model or approval question is pending for the completed preview work.
 
 ## Current priority — demonstrate selected Voice D in an isolated app
 
