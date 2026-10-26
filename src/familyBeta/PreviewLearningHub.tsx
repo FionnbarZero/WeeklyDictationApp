@@ -15,6 +15,7 @@ import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
 import { fetchCurriculum } from './curriculum.ts'
+import { automaticCurriculumPreview } from './automaticCurriculum.ts'
 import {
   channelWords,
   latestEarlierTargets,
@@ -484,6 +485,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         <LearningHub
           {...props}
           model={model}
+          protectPendingLaunch={automaticCurriculumPreview}
           hideUnavailable={false}
           onLaunch={(launch, context) => {
             if (launch && typeof launch === 'object' && 'previewAction' in launch) {
@@ -511,7 +513,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
                 }
                 props.onStrokeOrderWarmup(next.datasets[0], () => setActive(next))
               } else setActive(next)
-            } else props.onLaunch(launch as Launch, context)
+            } else return props.onLaunch(launch as Launch, context)
           }}
         />
       </div>

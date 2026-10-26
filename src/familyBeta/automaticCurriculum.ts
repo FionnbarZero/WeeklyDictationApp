@@ -60,7 +60,7 @@ export function curriculumMenuReady(frame: HTMLIFrameElement) {
   try {
     const doc = frame.contentDocument
     const view = frame.contentWindow
-    if (!doc || !view) return false
+    if (!doc || !view || doc.querySelector('[data-activity-launch-pending="true"]')) return false
     return [...doc.querySelectorAll('.learning-hub-section-grid, .learning-hub-detail')].some((menu) => {
       if (!menu.getClientRects().length) return false
       for (let node: Element | null = menu; node; node = node.parentElement) {

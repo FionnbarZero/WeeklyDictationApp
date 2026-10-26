@@ -47,7 +47,7 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = automaticCurriculum
-  ? 'Automatic curriculum updates / Prototype 1'
+  ? 'Automatic curriculum updates / Prototype 2 — Writing launch repair'
   : w2Recovery
     ? 'W-roadmap combined repairs / Prototype 6 — compact games'
     : w1Curriculum

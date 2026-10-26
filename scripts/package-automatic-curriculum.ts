@@ -29,7 +29,7 @@ writeFileSync(
   JSON.stringify(
     {
       schema: 1,
-      prototype: 'Automatic curriculum updates / Prototype 1',
+      prototype: 'Automatic curriculum updates / Prototype 2 — Writing launch repair',
       sourceRevision: revision,
       entry: 'automatic-curriculum/family-beta-preview.html',
       grades: ['Kindergarten', 'Grade 2', 'Grade 5'],

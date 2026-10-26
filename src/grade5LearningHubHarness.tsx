@@ -6,6 +6,7 @@ import NativeWritingPractice from './writingAcquisition/NativeWritingPractice.ts
 import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
+import { automaticCurriculumPreview } from './familyBeta/automaticCurriculum.ts'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
@@ -75,6 +76,12 @@ const practiceRootElement = requiredElement<HTMLElement>('grade5-practice-root')
 const practiceSummary = requiredElement<HTMLElement>('practice-summary')
 const hubRoot = createRoot(hubRootElement)
 const practiceRoot = createRoot(practiceRootElement)
+// The family preview hides lab details. Launch failures still need a visible,
+// accessible retry explanation, separate from routine developer status.
+if (automaticCurriculumPreview) {
+  hubRootElement.before(statusElement)
+  statusElement.hidden = true
+}
 
 let sourceExtraction: Grade5SourceExtraction | null = null
 let learningHubModel: Grade5LearningHubModel | null = null
@@ -96,6 +103,10 @@ function createElement<K extends keyof HTMLElementTagNameMap>(tag: K, className?
 function setStatus(message: string, error = false) {
   statusElement.textContent = message
   statusElement.classList.toggle('error', error)
+  if (automaticCurriculumPreview) {
+    statusElement.hidden = !error
+    statusElement.setAttribute('role', error ? 'alert' : 'status')
+  }
   if (error) labDetails.open = true
 }
 
@@ -524,15 +535,14 @@ function connectedRequest(request: Grade5ActivityLaunchRequest) {
 
 function startConnectedRequest(request: Grade5ActivityLaunchRequest, label: string) {
   if (grade5LabReadingRequestIsConnected(request)) startReadingPractice(request, label)
-  else startWritingPractice(request, label)
+  else return startWritingPractice(request, label)
 }
 
 function launchFromLearningHub(launch: Grade5HubLaunch) {
   writingLaunch++
   const connected = launch.requests.filter(connectedRequest)
   if (connected.length === 1) {
-    startConnectedRequest(connected[0], launch.label)
-    return
+    return startConnectedRequest(connected[0], launch.label)
   }
   showLaunchRequest(launch.label, launch.requests)
 }

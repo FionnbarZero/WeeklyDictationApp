@@ -80,10 +80,10 @@ export function HomeView({
   completedSummary: string | null
   currentDate: Date
   lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>
-  onStart: (target: PracticeTarget) => void
+  onStart: (target: PracticeTarget) => void | Promise<void>
   onStartStrokeOrder: (target: PracticeTarget) => void
   onStrokeOrderWarmup?: StrokeWarmupLauncher
-  onStartWarmup: () => void
+  onStartWarmup: () => void | Promise<void>
   onStartReading: (pathway: Tier2ReadingPathway) => void
   onHistory: () => void
   onProfiles: () => void
@@ -108,10 +108,10 @@ export function HomeView({
       warmupWordCount: warmupWords,
     })
     const launch = (request: Grade2LearningHubLaunch) => {
-      if (request.kind === 'writing') onStart(request.target)
+      if (request.kind === 'writing') return onStart(request.target)
       else if (request.kind === 'stroke-order') onStartStrokeOrder(request.target)
       else if (request.kind === 'reading') onStartReading(request.pathway)
-      else onStartWarmup()
+      else return onStartWarmup()
     }
     return (
       <div className="page grade2-learning-hub">
@@ -290,7 +290,7 @@ function PracticeLaneCard({
 }: {
   target: PracticeTarget
   profile: WritingPracticeProfile
-  onStart: (target: PracticeTarget) => void
+  onStart: (target: PracticeTarget) => void | Promise<void>
   resumeAcquisitionTarget?: PracticeTarget | null
 }) {
   const groupedDatasets = target.reviewDatasets || [target.dataset]
@@ -425,7 +425,7 @@ export function NoDatasetView({
   datasets: Dataset[]
   warmupWords: number
   localMode: boolean
-  onStartWarmup: () => void
+  onStartWarmup: () => void | Promise<void>
   onHistory: () => void
   onProfiles: () => void
 }) {

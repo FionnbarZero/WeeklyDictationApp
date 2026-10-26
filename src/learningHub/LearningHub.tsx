@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { regressionPreview } from '../regressionPreview/policy.ts'
 import type {
   LearningHubActivity,
@@ -15,9 +15,10 @@ const returnSections = new Map<string, string | null>()
 
 export type LearningHubProps<Launch> = {
   model: LearningHubViewModel<Launch>
-  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void | Promise<void>
   showTopbar?: boolean
   hideUnavailable?: boolean
+  protectPendingLaunch?: boolean
 }
 
 function WordGroup({ group }: { group: LearningHubWordGroup }) {
@@ -37,16 +38,18 @@ function WordGroup({ group }: { group: LearningHubWordGroup }) {
 
 function ActivityCard<Launch>({
   activity,
+  pending = false,
   index,
   theme,
   launchContext,
   onLaunch,
 }: {
   activity: LearningHubActivity<Launch>
+  pending?: boolean
   index: number
   theme: LearningHubSection<Launch>['theme']
   launchContext: LearningHubLaunchContext
-  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void | Promise<void>
 }) {
   const action = activity.action
   return (
@@ -73,7 +76,7 @@ function ActivityCard<Launch>({
         <button
           className="learning-hub-action"
           type="button"
-          disabled={action.kind === 'disabled'}
+          disabled={pending || action.kind === 'disabled'}
           title={action.kind === 'disabled' ? action.reason : undefined}
           onClick={() => {
             if (action.kind !== 'launch') return
@@ -96,11 +99,36 @@ function SectionDetail<Launch>({
   section,
   onBack,
   onLaunch,
+  protectPendingLaunch,
 }: {
   section: LearningHubSection<Launch>
   onBack: () => void
-  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void
+  protectPendingLaunch: boolean
+  onLaunch: (launch: Launch, context: LearningHubLaunchContext) => void | Promise<void>
 }) {
+  const [launchPending, setLaunchPending] = useState(false)
+  const [launchError, setLaunchError] = useState('')
+  const launching = useRef(false)
+  const launchActivity = (launch: Launch, context: LearningHubLaunchContext) => {
+    if (!protectPendingLaunch) return onLaunch(launch, context)
+    if (launching.current) return
+    launching.current = true
+    setLaunchPending(true)
+    setLaunchError('')
+    // Keep ownership in the menu's React state through the complete async
+    // launch, including saved-lesson recovery. Its release commits together
+    // with the resulting activity or error UI, never before that transition.
+    return (async () => {
+      try {
+        await onLaunch(launch, context)
+      } catch (error) {
+        setLaunchError(error instanceof Error ? error.message : 'This activity could not open. Please try again.')
+      } finally {
+        launching.current = false
+        setLaunchPending(false)
+      }
+    })()
+  }
   const defaultCohortId = section.cohorts.some((cohort) => cohort.id === section.defaultCohortId)
     ? section.defaultCohortId!
     : section.cohorts[0]?.id || ''
@@ -138,10 +166,13 @@ function SectionDetail<Launch>({
       data-report-activity={`Learning hub: ${section.id}`}
       data-report-section={section.id}
       data-report-phase="activity-menu"
+      data-activity-launch-pending={launchPending ? 'true' : undefined}
+      aria-busy={launchPending || undefined}
     >
-      <button className="learning-hub-back" type="button" onClick={onBack}>
+      <button className="learning-hub-back" type="button" onClick={onBack} disabled={launchPending}>
         ← Back to all challenges
       </button>
+      {launchError && <p role="alert">{launchError}</p>}
       <header className="learning-hub-detail-heading">
         <div>
           <p className="learning-hub-eyebrow">{section.kicker}</p>
@@ -154,7 +185,11 @@ function SectionDetail<Launch>({
       {section.cohortPickerLabel && section.cohorts.length > 0 && (
         <label className="learning-hub-cohort-picker">
           <span>{section.cohortPickerLabel}</span>
-          <select value={selectedCohort?.id || ''} onChange={(event) => setSelectedCohortId(event.target.value)}>
+          <select
+            disabled={launchPending}
+            value={selectedCohort?.id || ''}
+            onChange={(event) => setSelectedCohortId(event.target.value)}
+          >
             {section.cohorts.map((cohort) => (
               <option key={cohort.id} value={cohort.id}>
                 {cohort.label}
@@ -196,7 +231,12 @@ function SectionDetail<Launch>({
 
       <div className="learning-hub-activity-heading">
         {selectedGroup && (
-          <button className="learning-hub-back" type="button" onClick={() => setSelectedGroupId(null)}>
+          <button
+            className="learning-hub-back"
+            type="button"
+            onClick={() => setSelectedGroupId(null)}
+            disabled={launchPending}
+          >
             ← Back to {groupLabel}
           </button>
         )}
@@ -212,7 +252,8 @@ function SectionDetail<Launch>({
               index={index}
               theme={section.theme}
               launchContext={launchContext}
-              onLaunch={onLaunch}
+              pending={launchPending}
+              onLaunch={launchActivity}
             />
           ))}
           {section.activityGroups.map((group, index) => (
@@ -229,6 +270,7 @@ function SectionDetail<Launch>({
               index={ungroupedActivities.length + index}
               theme={section.theme}
               launchContext={launchContext}
+              pending={launchPending}
               onLaunch={setSelectedGroupId}
             />
           ))}
@@ -242,7 +284,8 @@ function SectionDetail<Launch>({
               index={index}
               theme={section.theme}
               launchContext={launchContext}
-              onLaunch={onLaunch}
+              pending={launchPending}
+              onLaunch={launchActivity}
             />
           ))}
         </div>
@@ -255,6 +298,7 @@ export function LearningHub<Launch>({
   model: originalModel,
   onLaunch,
   hideUnavailable = false,
+  protectPendingLaunch = false,
 }: LearningHubProps<Launch>) {
   const availableModel = hideUnavailable
     ? {
@@ -299,7 +343,14 @@ export function LearningHub<Launch>({
   }, [model.sections, selectedSectionId])
 
   if (selected) {
-    return <SectionDetail section={selected} onBack={() => setSelectedSectionId(null)} onLaunch={onLaunch} />
+    return (
+      <SectionDetail
+        section={selected}
+        onBack={() => setSelectedSectionId(null)}
+        onLaunch={onLaunch}
+        protectPendingLaunch={protectPendingLaunch}
+      />
+    )
   }
 
   return (

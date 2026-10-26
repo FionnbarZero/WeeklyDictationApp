@@ -9,7 +9,7 @@ This contract records the curriculum-owner decisions confirmed on 2026-10-03. Th
 - All four-part dictation sequences are `word → context → word → word`, with 0.75-second gaps and a constant Mandarin rate within the sequence.
 - Audio playback never changes scoring, mastery, or attempt counts.
 - Final Boss and Ninja Skills surface a failed cue with both a Retry control and teacher-help guidance. A Final Boss writing timer remains stopped until the spoken prompt starts and stops again if the remaining sequence fails.
-- Mandarin production generation must use one selected female voice. The two candidates awaiting audition are `cmn-CN-Wavenet-A` and `cmn-CN-Wavenet-D`; the current cached beta files use female `Tingting`.
+- Mandarin production generation must use one selected female voice. On October 25, 2026 the owner selected Google **`cmn-CN-Wavenet-D`** after comparing the official samples. The selection is approved; generation/provider setup and working-prototype acceptance are still pending. The current cached beta files continue to use female `Tingting`; selection alone does not install a voice.
 - English instruction production audio is planned for Amazon Polly `Niamh` (`en-IE`) with adjustable SSML speaking rate. The current Kindergarten beta caches “Let's learn a new word” with the local Irish-English `Moira` voice so the first-target announcement does not depend on browser-installed voices. Browser speech remains the failure fallback.
 
 ## Enter the Dojo

@@ -1454,7 +1454,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               completedSummary={completedSummary}
               currentDate={currentDate}
               lifecycleResolution={lifecycleResolution}
-              onStart={(target) => void startPractice(target)}
+              onStart={startPractice}
               onStartStrokeOrder={(target) => { if (!writingLaunchNeedsRetry()) setActiveExperience({ kind: 'stroke-order', target }) }}
               onStrokeOrderWarmup={(dataset, ready) => {
                 if (writingLaunchNeedsRetry()) return
@@ -1463,7 +1463,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
                 setStrokeWarmupOpen(true)
                 void startPractice({ dataset, phase: 'acquisition' }, true)
               }}
-              onStartWarmup={() => void startPractice(null)}
+              onStartWarmup={() => startPractice(null)}
               onStartReading={startReading}
               onHistory={() => setView('history')}
               onProfiles={() => setShowProfiles(true)}
@@ -1476,7 +1476,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               datasets={primaryDatasets}
               warmupWords={warmupWordCount}
               localMode={!firebaseConfigReady}
-              onStartWarmup={() => void startPractice(null)}
+              onStartWarmup={() => startPractice(null)}
               onHistory={() => setView('history')}
               onProfiles={() => setShowProfiles(true)}
             />

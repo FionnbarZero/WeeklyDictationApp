@@ -486,7 +486,7 @@ function KindergartenLearningLab() {
   function launchFromHub(launch: KindergartenHubLaunch, context: LearningHubLaunchContext) {
     writingLaunch.current++
     attemptId.current = crypto.randomUUID()
-    if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'dojo-writing') return startWriting()
     if (launch.kind === 'dojo-stroke-order') {
       if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
         setActiveActivity(launch.kind)
