@@ -1,4 +1,5 @@
 import { expect, type FrameLocator, type Page, test } from '@playwright/test'
+import { writeFileSync } from 'node:fs'
 import { inspectSnapshot } from '../../src/familyBeta/curriculum.ts'
 import { reinforcementGames } from '../../src/familyBeta/gamePools.ts'
 import type { SequenceGameRound } from '../../src/learningModules/sushi-scramble/runtime/contracts.ts'
@@ -190,12 +191,14 @@ test('grade5: new contextual sentences use only this writing cohort and permit r
   const initial = await launch(page, 'Context Gap Dash', 'context-gap-dash', grade)
   if (initial.pack.moduleId !== 'context-gap-dash') throw new Error('Wrong game')
   const frame = activity(page)
+  const transitions: { target: string; elapsedMs: number }[] = []
   for (const [index, round] of initial.pack.rounds.slice(0, 2).entries()) {
     await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(round.cueText!)
     const choiceIndex = round.choices.findIndex((choice) => choice.id === round.correctChoiceId)
     const touch = Boolean(test.info().project.use.hasTouch)
     const button = frame.locator(touch ? '.lg-mobile-gate-choices button' : '.lg-canvas-access button').nth(choiceIndex)
-    await expect(button).toBeEnabled()
+    await expect(button).toBeEnabled({ timeout: 30000 })
+    const started = Date.now()
     if (touch) await button.tap()
     else {
       // Use the real keyboard-accessible gate. A canvas is not focusable;
@@ -204,9 +207,13 @@ test('grade5: new contextual sentences use only this writing cohort and permit r
       await button.press('Enter')
     }
     await expect(frame.locator('.lg-dash-context-clue strong')).toHaveText(initial.pack.rounds[index + 1].cueText!, {
-      timeout: 10000,
+      timeout: 30000,
     })
+    transitions.push({ target: round.targetText, elapsedMs: Date.now() - started })
   }
+  const timingPath = test.info().outputPath('context-transitions.json')
+  writeFileSync(timingPath, JSON.stringify(transitions, null, 2))
+  await test.info().attach('context-transitions.json', { path: timingPath, contentType: 'application/json' })
   await reportAndExit(page)
   expect(errors).toEqual([])
 })

@@ -20,6 +20,37 @@ function nextPaint(view: Window, signal: AbortSignal) {
   })
 }
 
+function stylesheetReady(link: HTMLLinkElement, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const finish = (error?: unknown) => {
+      link.removeEventListener('load', loaded)
+      link.removeEventListener('error', failed)
+      signal.removeEventListener('abort', aborted)
+      if (error) reject(error)
+      else resolve()
+    }
+    const loaded = () => {
+      try {
+        if (!link.sheet) throw new Error('An activity stylesheet did not load.')
+        // Failed same-origin requests can leave an inaccessible sheet object.
+        void link.sheet.cssRules
+        finish()
+      } catch (error) {
+        finish(error)
+      }
+    }
+    const failed = () => finish(new Error('An activity stylesheet did not load.'))
+    const aborted = () => finish(signal.reason)
+    // Listen before checking: a lazy stylesheet may still be downloading after
+    // the document's load event, and must not be mistaken for a failed request.
+    link.addEventListener('load', loaded, { once: true })
+    link.addEventListener('error', failed, { once: true })
+    signal.addEventListener('abort', aborted, { once: true })
+    if (signal.aborted) aborted()
+    else if (link.sheet) loaded()
+  })
+}
+
 /** A loaded module can render before WebKit applies the frame's linked CSS.
  * Keep that document mounted and paused until its presentation has settled;
  * otherwise a card can move between pointer down and pointer up. */
@@ -58,25 +89,33 @@ export function ReadyActivityFrame(props: Props) {
         const document = frame.current?.contentDocument
         const view = frame.current?.contentWindow
         if (!document || !view || document.readyState !== 'complete') throw new Error('Activity document unavailable.')
-        const styles = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
-        for (const link of styles) {
-          if (!link.sheet) throw new Error('An activity stylesheet did not load.')
-          // Some engines leave a sheet object for a failed CORS request. Our
-          // styles are same-origin: an inaccessible CSSOM is a load failure.
-          void link.sheet.cssRules
+        while (!controller.signal.aborted) {
+          const styles = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
+          const urls = styles.map((link) => link.href)
+          await Promise.all(styles.map((link) => stylesheetReady(link, controller.signal)))
+          // Force style/layout before asking which fonts the rendered document needs.
+          document.body.getBoundingClientRect()
+          await document.fonts.ready
+          controller.signal.throwIfAborted()
+          await nextPaint(view, controller.signal)
+          await nextPaint(view, controller.signal)
+          controller.signal.throwIfAborted()
+          const current = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
+          // React/Vite can add lazy-module CSS while fonts or paints settle.
+          // Include those links before exposing this document to its first tap.
+          if (
+            current.length === styles.length &&
+            current.every((link, i) => link === styles[i] && link.href === urls[i])
+          )
+            break
         }
-        // Force style/layout before asking which fonts the rendered document needs.
-        document.body.getBoundingClientRect()
-        await document.fonts.ready
-        controller.signal.throwIfAborted()
-        await nextPaint(view, controller.signal)
-        await nextPaint(view, controller.signal)
         controller.signal.throwIfAborted()
         if (!disposed) setStatus('ready')
       }
       void settle()
         .catch(() => {
           if (!disposed) setStatus('error')
+          controller.abort()
         })
         .finally(() => window.clearTimeout(timeout))
     }

@@ -5,7 +5,7 @@ import { grades, snapshot } from '../automatic-curriculum/fixtures.ts'
 
 const active = (page: Page) => page.locator('iframe[data-family-active="true"]')
 const child = (page: Page) => page.frameLocator('iframe[data-family-active="true"]')
-const menuCSS = '**/assets/learningHub-*.css'
+const menuCSS = '**/assets/learningHub-*.css*'
 const curriculum = '**/curriculum/beta/*.json'
 
 function barrier() {
@@ -174,6 +174,77 @@ test('late lazy menu styles finish before the asynchronous Grade 2 menu becomes 
   }
 })
 
+test('post-load pending styles and a second lazy stylesheet stay loading until both finish', async ({ page }) => {
+  const first = barrier()
+  const second = barrier()
+  let firstRequested = 0
+  let secondRequested = 0
+  await page.route('**/startup-late-first.css', async (route) => {
+    firstRequested++
+    await first.wait
+    await route.fulfill({ contentType: 'text/css', body: '.startup-first { color: inherit; }' })
+  })
+  await page.route('**/startup-late-second.css', async (route) => {
+    secondRequested++
+    await second.wait
+    await route.fulfill({ contentType: 'text/css', body: '.startup-second { color: inherit; }' })
+  })
+  await page.addInitScript(() => {
+    if (window.parent === window) return
+    window.addEventListener(
+      'load',
+      () => {
+        const first = document.createElement('link')
+        first.rel = 'stylesheet'
+        first.href = '/startup-late-first.css'
+        first.addEventListener(
+          'load',
+          () => {
+            const second = document.createElement('link')
+            second.rel = 'stylesheet'
+            second.href = '/startup-late-second.css'
+            document.head.append(second)
+          },
+          { once: true },
+        )
+        document.head.append(first)
+      },
+      { once: true },
+    )
+  })
+  const paint = () =>
+    child(page)
+      .locator('html')
+      .evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+      )
+  try {
+    await page.goto('./family-beta-preview.html?grade=grade2', { waitUntil: 'domcontentloaded' })
+    await expect.poll(() => firstRequested).toBe(1)
+    await expect
+      .poll(() =>
+        child(page)
+          .locator('html')
+          .evaluate(() => document.readyState),
+      )
+      .toBe('complete')
+    await paint()
+    await expect(active(page)).toHaveAttribute('data-family-presentation', 'loading')
+    await expect(page.getByRole('button', { name: 'Retry activity screen', exact: true })).toHaveCount(0)
+    first.release()
+    await expect.poll(() => secondRequested).toBe(1)
+    await paint()
+    await expect(active(page)).toHaveAttribute('data-family-presentation', 'loading')
+    await expect(active(page)).toBeHidden()
+    second.release()
+    await chooseDojo(page)
+    await expect(active(page)).toHaveAttribute('data-family-presentation', 'ready')
+  } finally {
+    first.release()
+    second.release()
+  }
+})
+
 test('failed CSS offers repeatable recovery without clearing saved records', async ({ page }) => {
   let fail = true
   await page.route(menuCSS, (route) => (fail ? route.abort('failed') : route.continue()))
@@ -218,8 +289,10 @@ async function writingProgress(page: Page) {
 
 async function openWriting(page: Page) {
   const dojo = child(page).getByRole('button', { name: /Enter the Dojo/ })
+  const writing = child(page).getByRole('button', { name: 'Learn to Write', exact: true })
+  await expect(dojo.or(writing)).toBeVisible()
   if (await dojo.isVisible()) await dojo.click()
-  await child(page).getByRole('button', { name: 'Learn to Write', exact: true }).click()
+  await writing.click()
   const teacher = child(page).getByRole('region', { name: 'Stroke order teacher' })
   const skip = child(page).getByRole('button', { name: 'Skip Warmup', exact: true })
   await expect(teacher.or(skip)).toBeVisible()
@@ -282,7 +355,9 @@ test('kept-alive grades, persisted restore and failed child reload retain review
   await page.getByText('Parent controls', { exact: true }).click()
   await page.getByLabel('Child profile', { exact: true }).selectOption('automatic-curriculum-preview-0')
   await expect(active(page)).toHaveAttribute('title', 'Kindergarten activities')
+  await page.getByText('Parent controls', { exact: true }).click()
   await chooseDojo(page)
+  await page.getByText('Parent controls', { exact: true }).click()
   await page.getByLabel('Child profile', { exact: true }).selectOption('automatic-curriculum-preview-1')
   await expect(active(page)).toHaveAttribute('data-family-slot', slot!)
   expect(await active(page).evaluate((current, old) => current === old, original)).toBe(true)
@@ -290,9 +365,24 @@ test('kept-alive grades, persisted restore and failed child reload retain review
   await expect(await openWriting(page)).toHaveAttribute('data-step', '2')
   expect(await writingProgress(page)).toEqual(saved)
   let fail = true
-  await page.route(menuCSS, (route) => (fail ? route.abort('failed') : route.continue()))
+  let failedRequests = 0
+  await page.route(menuCSS, (route) => {
+    if (!fail) return route.continue()
+    failedRequests++
+    return route.abort('failed')
+  })
+  // A same-document reload can reuse the renderer's parsed stylesheet without
+  // making a request. Give only this fault-injection reload a fresh asset URL.
+  await page.route('**/index.html?*', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace(/(learningHub-[^"/]+\.css)/, '$1?startup-failure=1'),
+    })
+  })
   // Reload only the existing activity document. Its slot and saved owner stay.
   await active(page).evaluate((frame: HTMLIFrameElement) => frame.contentWindow!.location.reload())
+  await expect.poll(() => failedRequests).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: 'Retry activity screen', exact: true })).toBeVisible()
   expect(await writingProgress(page)).toEqual(saved)
   fail = false

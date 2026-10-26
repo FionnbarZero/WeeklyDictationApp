@@ -1,18 +1,30 @@
 import { expect, type Page, test } from '@playwright/test'
+import { writeFileSync } from 'node:fs'
 import { koreAudioSegments } from '../../src/audio/koreVoice.ts'
 import { GAME_LANGUAGE } from '../../src/ninjaSkills/gameLanguagePreviewCatalog.ts'
 import { newlySupported, nextLessonSnapshot } from './fixtures.ts'
 
-type Probe = { ended: string[]; speech: string[]; errors: string[]; rates: number[] }
+type Probe = {
+  ended: string[]
+  speech: string[]
+  rates: number[]
+  phase: 'playback' | 'report' | 'exit'
+  errors: { name: string; message: string; phase: string; source: string }[]
+}
 type SoundWindow = Window & { importedAudio: Probe }
 const probe = (page: Page) => page.evaluate(() => (window as SoundWindow).importedAudio)
+async function recordProbe(name: string, value: Probe) {
+  const path = test.info().outputPath(name)
+  writeFileSync(path, JSON.stringify(value, null, 2))
+  await test.info().attach(name, { path, contentType: 'application/json' })
+}
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-11-02T19:00:00Z'))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.addInitScript(() => {
     const top = window.top as SoundWindow
-    top.importedAudio ||= { ended: [], speech: [], errors: [], rates: [] }
+    top.importedAudio ||= { ended: [], speech: [], errors: [], rates: [], phase: 'playback' }
     const p = top.importedAudio
     const blobs = new WeakMap<Blob, string>()
     const urls = new Map<string, string>()
@@ -47,8 +59,9 @@ test.beforeEach(async ({ page }) => {
         })
       }
       if (urls.has(this.src)) p.rates.push(this.playbackRate)
+      const source = urls.get(this.src)
       return play.call(this).catch((error) => {
-        if (urls.has(this.src)) p.errors.push(`${error.name}: ${error.message}`)
+        if (source) p.errors.push({ name: error.name, message: error.message, phase: p.phase, source })
         throw error
       })
     }
@@ -97,17 +110,30 @@ for (const grade of newlySupported) {
           .toBeGreaterThan(before)
         expect((await probe(page)).rates.some((rate) => Math.abs(rate - 0.5 / 0.65) < 0.001)).toBe(true)
       }
+      const beforeInterruption = await probe(page)
+      await recordProbe('before-report.json', beforeInterruption)
+      expect(beforeInterruption.errors).toEqual([])
+      await page.evaluate(() => {
+        ;(window as SoundWindow).importedAudio.phase = 'report'
+      })
       await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
       await expect(frame.locator('html')).toHaveAttribute('data-activity-paused', 'true')
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
+      await recordProbe('after-report.json', await probe(page))
+      await page.evaluate(() => {
+        ;(window as SoundWindow).importedAudio.phase = 'exit'
+      })
       await frame.getByRole('button', { name: 'Exit learning module', exact: true }).click()
       expect((await probe(page)).speech).toEqual([])
-      expect((await probe(page)).errors).toEqual([])
+      const afterExit = await probe(page)
+      await recordProbe('new-kore-native-playback.json', afterExit)
+      // Report/Exit deliberately cancel any trailing dictation repeats. A
+      // rejected pending play at those boundaries is expected; failures during
+      // playback, non-cancellation errors, and fallback speech remain failures.
+      expect(
+        afterExit.errors.every((error) => error.name === 'AbortError' && ['report', 'exit'].includes(error.phase)),
+      ).toBe(true)
       expect(errors).toEqual([])
-      await test.info().attach('new-kore-native-playback.json', {
-        body: JSON.stringify(await probe(page)),
-        contentType: 'application/json',
-      })
     })
   }
 }
