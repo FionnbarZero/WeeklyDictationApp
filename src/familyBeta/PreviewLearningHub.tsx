@@ -1,7 +1,7 @@
-import { reserveMaintenanceGame } from '../reportRepairs/maintenanceRotation.ts'
 import { writingCharacterGuides } from '../application/writingAcquisition/lesson.ts'
-import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import { reserveMaintenanceGame } from '../reportRepairs/maintenanceRotation.ts'
 import { PreviewScoreRecord } from '../reportRepairs/PreviewScoreRecord.tsx'
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
 import '../reportRepairs/repairs.css'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
@@ -11,7 +11,6 @@ import { localDateKey } from '../domain.ts'
 import { grade5AssessmentGames } from '../grade5PresentationPreview/games.ts'
 import { masteredDatasetsForGrade, masteredGamesForGrade } from '../grade5PresentationPreview/masteredGames.ts'
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
-import { gameRecoveryPreview } from './gameRecoveryPreview.ts'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
@@ -19,8 +18,8 @@ import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
-import { fetchCurriculum } from './curriculum.ts'
 import { automaticCurriculumPreview } from './automaticCurriculum.ts'
+import { fetchCurriculum } from './curriculum.ts'
 import {
   channelWords,
   latestEarlierTargets,
@@ -28,6 +27,8 @@ import {
   reinforcementGames,
   sectionDatasets,
 } from './gamePools.ts'
+import { gameRecoveryPreview } from './gameRecoveryPreview.ts'
+import wetlandSource from './grade2WetlandSource.json'
 import type { BetaGrade, BetaResult } from './model.ts'
 import { ReentryPractice } from './ReentryPractice.tsx'
 import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
@@ -202,14 +203,28 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         }
       }
       if (['current-week', 'dojo', 'homework'].includes(section.id)) {
+        const book =
+          grade === 'Grade 2' &&
+          scope.length === 1 &&
+          scope[0].source?.sourceDocumentId === wetlandSource.sourceId &&
+          scope[0].source?.sourceUnitId === wetlandSource.slide.objectId
+            ? wetlandSource.book
+            : null
         if (reportRepairsPreview && !activities.some((activity) => /read.*book/i.test(activity.title)))
           activities.push({
-            id: 'read-book-coming-soon',
+            id: book ? 'read-wetland-book' : 'read-book-coming-soon',
             title: 'Read the book',
             eyebrow: 'Reading',
-            description: 'A reading adventure is coming soon.',
+            description: book ? `${book.title} — opens in a new tab.` : 'A reading adventure is coming soon.',
             icon: '📖',
-            action: { kind: 'disabled', label: 'Coming soon', reason: 'The book activity is not available yet.' },
+            action: book
+              ? {
+                  kind: 'link',
+                  label: 'Read the book',
+                  url: book.url,
+                  accessibleLabel: `Read ${book.title} (opens in a new tab)`,
+                }
+              : { kind: 'disabled', label: 'Coming soon', reason: 'The book activity is not available yet.' },
           })
         let writingReady = false
         let writingNote = 'A current Tier 1 writing cohort with validated stroke guides is needed.'
