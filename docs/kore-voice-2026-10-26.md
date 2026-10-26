@@ -19,3 +19,9 @@ Unsupported future text and failed media retain the existing browser-speech reco
 ## Verification and publication
 
 Pending the completed recordings, source checks, native-media browser matrix, game/recovery and scheduled-curriculum regressions. Exact package, hosted build, expiry, protected-site checks and email receipt will be recorded here after they pass. Browser playback/decoding is not physical speaker/pronunciation acceptance. Prototype interaction approval precedes canonical integration under the owner's standing rule.
+
+## Native-media finding and repair
+
+The first native-media matrix exposed a real inherited pace bug: the player set playbackRate before calling load(), and native load reset it to 1. Both normal and slow replay therefore played at the same rate. Apply the desired rate after load, and model that reset in FakeAudio so the existing rate assertions catch a recurrence. The first failed native traces and corrected verification are retained.
+
+The new test driver initially counted the silent gesture primer as completed speech. It now labels actual Kore response Blobs and counts only their completed playback. Reading's initial independent trial intentionally gives no model; its test now uses the existing microphone-denial/continue-without-recording comparison flow. Kindergarten Context Gap is tested against its eligible mastered pool, since the current earlier writing week has only two choices. Lily Pads uses its own Exit game label. These are test corrections, not changes to teaching rules or vocabulary. An interrupted development matrix and all original failures remain in the evidence directory; only subsequent completed runs establish final results.

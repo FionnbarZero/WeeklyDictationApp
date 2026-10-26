@@ -365,9 +365,11 @@ export function playAudioPlan(
       const begin = (url: string) => {
         if (settled || cancelled) return
         audio.src = url
-        audio.playbackRate = segment.rate
         audio.preload = 'auto'
         audio.load()
+        // load() resets playbackRate to defaultPlaybackRate in real browsers.
+        // Apply the requested pace after loading so Hear slowly stays slower.
+        audio.playbackRate = segment.rate
         // The shared element may finish its silent gesture primer while the
         // recording downloads. Observe only after this source owns the player;
         // load() first cancels the prior resource's queued media events.

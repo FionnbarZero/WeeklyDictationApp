@@ -1,7 +1,15 @@
 import { expect, type Page, test } from '@playwright/test'
 import { grades, snapshot } from '../automatic-curriculum/fixtures.ts'
 
-type Probe = { urls: string[]; ended: number; rates: number[]; speech: string[]; created: string[]; released: string[] }
+type Probe = {
+  errors: string[]
+  urls: string[]
+  ended: number
+  rates: number[]
+  speech: string[]
+  created: string[]
+  released: string[]
+}
 type SoundWindow = Window & { koreProbe: Probe }
 const probe = (page: Page) => page.evaluate(() => (window as SoundWindow).koreProbe)
 test.beforeEach(async ({ page, context }) => {
@@ -16,18 +24,31 @@ test.beforeEach(async ({ page, context }) => {
   })
   await context.addInitScript(() => {
     const top = window.top as SoundWindow
-    top.koreProbe ||= { urls: [], ended: 0, rates: [], speech: [], created: [], released: [] }
+    top.koreProbe ||= { errors: [], urls: [], ended: 0, rates: [], speech: [], created: [], released: [] }
     const p = top.koreProbe
+    const koreBlobs = new WeakSet<Blob>()
+    const koreUrls = new Set<string>()
     const fetchAudio = window.fetch.bind(window)
     window.fetch = (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       if (url.includes('/audio/') && url.endsWith('.wav')) p.urls.push(url)
-      return fetchAudio(input, init)
+      return fetchAudio(input, init).then((response) => {
+        if (url.includes('/audio/kore/')) {
+          const readBlob = response.blob.bind(response)
+          response.blob = async () => {
+            const blob = await readBlob()
+            koreBlobs.add(blob)
+            return blob
+          }
+        }
+        return response
+      })
     }
     const create = URL.createObjectURL.bind(URL),
       release = URL.revokeObjectURL.bind(URL)
     URL.createObjectURL = (blob) => {
       const url = create(blob)
+      if (koreBlobs.has(blob)) koreUrls.add(url)
       p.created.push(url)
       return url
     }
@@ -41,12 +62,15 @@ test.beforeEach(async ({ page, context }) => {
       if (!observed.has(this)) {
         observed.set(this, { src: this.src })
         this.addEventListener('ended', () => {
-          if (observed.get(this)!.src.startsWith('blob:')) p.ended++
+          if (koreUrls.has(observed.get(this)!.src)) p.ended++
         })
       }
       observed.get(this)!.src = this.src
-      if (this.src.startsWith('blob:')) p.rates.push(this.playbackRate)
-      return play.call(this)
+      if (koreUrls.has(this.src)) p.rates.push(this.playbackRate)
+      return play.call(this).catch((error) => {
+        if (koreUrls.has(this.src)) p.errors.push(`${error.name}: ${error.message}`)
+        throw error
+      })
     }
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
@@ -69,6 +93,7 @@ test.beforeEach(async ({ page, context }) => {
 })
 for (const grade of grades) {
   for (const game of [
+    ...(grade.slug === 'kindergarten' ? ['Listening Lily Pads'] : []),
     'Shuriken Match',
     'Memory Lanterns',
     'Shadow Strike Dojo',
@@ -81,7 +106,14 @@ for (const grade of grades) {
       page.on('pageerror', (e) => errors.push(e.message))
       await page.goto(`./family-beta-preview.html?grade=${grade.slug}`)
       const f = page.frameLocator('iframe:visible')
-      await f.getByRole('button', { name: /Practice.*Ninja Skills/ }).click()
+      await f
+        .getByRole('button', {
+          name:
+            grade.slug === 'kindergarten' && game === 'Context Gap Dash'
+              ? /Enter the Spirit Realm/
+              : /Practice.*Ninja Skills/,
+        })
+        .click()
       await f.getByRole('button', { name: game, exact: true }).click()
       if (game === 'Shuriken Match') await f.locator('.lg-word-seal.is-word').first().click()
       if (game === 'Memory Lanterns') await f.locator('.lg-memory-card').first().click()
@@ -101,7 +133,7 @@ for (const grade of grades) {
       await page.getByRole('button', { name: 'Report a problem', exact: true }).click()
       await expect(f.locator('html')).toHaveAttribute('data-activity-paused', 'true')
       await page.getByRole('button', { name: 'Close and return', exact: true }).click()
-      await f.getByRole('button', { name: 'Exit learning module', exact: true }).click()
+      await f.getByRole('button', { name: /^(Exit learning module|Exit game)$/, exact: true }).click()
       await expect
         .poll(async () => {
           const p = await probe(page)
@@ -113,6 +145,14 @@ for (const grade of grades) {
     })
   }
   test(`${grade.label}: reading uses Kore with existing English instructions`, async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: () => Promise.reject(new DOMException('Synthetic microphone denial', 'NotAllowedError')),
+        },
+      })
+    })
     await page.goto(`./family-beta-preview.html?grade=${grade.slug}`)
     const f = page.frameLocator('iframe:visible')
     await f.getByRole('button', { name: /Enter the Dojo/ }).click()
@@ -126,6 +166,10 @@ for (const grade of grades) {
     const exit = f.getByRole('button', { name: /^(Exit reading|Pause and return)$/ })
     await expect(skip.or(exit)).toBeVisible()
     if (await skip.isVisible()) await skip.click()
+    // Initial independent reading intentionally does not reveal the answer.
+    // Use the existing microphone-unavailable comparison path (no real recording).
+    await f.getByRole('button', { name: 'Record my reading', exact: true }).click()
+    await f.getByRole('button', { name: 'Continue without recording', exact: true }).click()
     await expect.poll(async () => (await probe(page)).ended, { timeout: 30_000 }).toBeGreaterThan(0)
     expect((await probe(page)).speech).toEqual([])
     expect((await probe(page)).urls.some((url) => url.includes('/audio/kore/'))).toBe(true)
@@ -153,3 +197,10 @@ for (const grade of grades) {
     expect((await probe(page)).speech).toEqual([])
   })
 }
+
+test.afterEach(async ({ page }) => {
+  if (!page.isClosed())
+    await test
+      .info()
+      .attach('kore-audio-probe.json', { body: JSON.stringify(await probe(page)), contentType: 'application/json' })
+})

@@ -43,6 +43,8 @@ class FakeAudio {
 
   load() {
     this.loadCount += 1
+    // Match native media loading rather than masking the pace-reset behavior.
+    this.playbackRate = 1
   }
   pause() {
     this.pauseCount += 1
