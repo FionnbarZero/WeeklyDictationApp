@@ -1,8 +1,12 @@
 # Weekly Dictation roadmap
 
-## Current priority — approved Warmup consolidation, October 26
+## Current status — approved Warmup consolidation complete in the test app, October 26
 
-Execute the owner-approved native Warmup integration for Kindergarten, Grade 2 and Grade 5 in the combined test app. Remove the separate eight-word assessment instead of integrating it. Retain the current Kore preview origin, retire obsolete preview channels after the replacement passes verification, and email all three verified grade links. Do not publish to canonical/live or change the frozen standalone fifth-grade website. Existing Astra · Extra High behavior/review and Sol · High publication routing remain confirmed; no routine approval is pending. The earlier integration-audit recommendation to incorporate the eight-word assessment is superseded by this decision.
+The owner-approved scope is delivered as **Combined Dojo / Approved Warmup 1 / ab76131** on the single retained Kore origin for Kindergarten, Grade 2 and Grade 5. Native writing Warmup integration, removal of the separate eight-word assessment, deletion of 18 obsolete preview channels, exact hosted verification and the all-grade email are complete. **42 local + 42 hosted native Warmup checks pass.** Qualified regression results, current links, expiry and SENT receipt are at the top of STATUS and in [the integration record](./docs/native-warmup-integration-2026-10-26.md). Historical preview URLs below are retired and historical next-step suggestions are superseded where this record closes them.
+
+**Next:** one bounded 3–5 minute physical-iPad check per grade of the native Warmup, then remaining authenticated/offline/cross-device compatibility and main-branch reconciliation when authorized. Browser-local correction checkpoints are not cloud synchronization. English Niamh and recordings for unseen future teacher text remain open. The owner explicitly requested **no live update**; canonical Ninja Dojo and the frozen standalone fifth-grade presentation stay unchanged. Do not restore or integrate the retired eight-word assessment based on older roadmap text.
+
+The already-confirmed Astra · Extra High behavior/review and Sol · High publication routing covered this stage; no model switch or separate-agent review is claimed. No routine approval is pending for the delivered preview. Preserve prototype parity and existing protected release gates for any later canonical integration.
 
 ## Current priority — close the confirmed consolidation gaps, October 26
 
