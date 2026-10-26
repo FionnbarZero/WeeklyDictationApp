@@ -156,7 +156,6 @@ if (grade5Repairs && !presentation) {
         VITE_REGRESSION_REPAIR_PREVIEW: 'true',
         VITE_GRADE5_REPAIR_PREVIEW: 'true',
         VITE_KORE_VOICE_PREVIEW: String(koreVoice),
-        VITE_W2_RECOVERY_PREVIEW: String(w2Recovery),
       },
     },
   )

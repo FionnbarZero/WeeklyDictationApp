@@ -307,6 +307,9 @@ export function playAudioPlan(
     activeUtterance = null
   }
 
+  const recoverRecordedMedia =
+    import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' || import.meta.env?.VITE_KORE_VOICE_PREVIEW === 'true'
+
   function cachedSegment(segment: AudioPlanSegment): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!segment.storagePath || (!options.createAudio && typeof Audio === 'undefined')) {
@@ -316,7 +319,7 @@ export function playAudioPlan(
       const audio = options.createAudio ? options.createAudio() : gesturePlaybackElement() || new Audio()
       activeAudio = audio
       let settled = false
-      const loading = import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' ? new AbortController() : undefined
+      const loading = recoverRecordedMedia ? new AbortController() : undefined
       let recording: RecordingSource | undefined
       let watchdog = activityClock.setTimeout(() => fail(), 15_000)
       let playing = false
@@ -347,7 +350,7 @@ export function playAudioPlan(
       }
       const finish = () => {
         if (settled) return
-        if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && recording && !playing) return
+        if (recoverRecordedMedia && recording && !playing) return
         settled = true
         cleanup()
         resolve()
@@ -383,7 +386,7 @@ export function playAudioPlan(
         }
       }
       const url = resolveUrl(segment.storagePath)
-      if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && !options.createAudio) {
+      if (recoverRecordedMedia && !options.createAudio) {
         void prepareRecordingSource(url, loading!.signal)
           .then((source) => {
             if (settled || cancelled) {
