@@ -181,6 +181,8 @@ for (const grade of grades) {
     ).toBeVisible()
     await expect(frame(page).locator('[data-activity-launch-pending="true"]')).toHaveCount(0)
     await expect(writing).toBeEnabled()
+    if (grade.slug === 'grade5')
+      await expect(frame(page).getByRole('alert').filter({ hasText: 'Test writing save unavailable' })).toBeInViewport()
     await page.screenshot({ path: test.info().outputPath('launch-error.png'), fullPage: true })
     await page.evaluate(() => {
       ;(window as Window & { auditReject: boolean }).auditReject = false

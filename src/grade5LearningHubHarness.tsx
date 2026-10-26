@@ -106,6 +106,7 @@ function setStatus(message: string, error = false) {
   if (automaticCurriculumPreview) {
     statusElement.hidden = !error
     statusElement.setAttribute('role', error ? 'alert' : 'status')
+    if (error) statusElement.scrollIntoView({ block: 'nearest' })
   }
   if (error) labDetails.open = true
 }
