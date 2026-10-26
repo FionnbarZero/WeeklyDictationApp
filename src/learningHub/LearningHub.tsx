@@ -75,6 +75,7 @@ function ActivityCard<Launch>({
       ) : (
         <button
           className="learning-hub-action"
+          data-reentry={activity.id === 'boss-reenter' ? 'true' : undefined}
           type="button"
           disabled={pending || action.kind === 'disabled'}
           title={action.kind === 'disabled' ? action.reason : undefined}

@@ -229,7 +229,7 @@ test('Wetland Shuriken words recover a wrong match and finish a full board', asy
   expect((await sound(page)).fallback).toEqual([])
 })
 
-test('all new Kore files decode and finish through native media', async ({ page }) => {
+test('selected new Kore files decode and finish through native media', async ({ page }) => {
   await open(page)
   const catalog = JSON.parse(readFileSync(new URL('../../src/audio/kore/catalog.json', import.meta.url), 'utf8')).assets
   const newWords = [

@@ -1,3 +1,6 @@
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import '../writingAcquisition/slayAcquisitionMockup.css'
+import '../reportRepairs/repairs.css'
 import { Headphones, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useDialogFocus } from '../accessibility/useDialogFocus.ts'
@@ -51,7 +54,7 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   onComplete,
   exitLabel = 'Exit without saving',
   sessionNote = 'No answers are scored during collection.',
-  retrySaveFailures = false,
+  retrySaveFailures = import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true',
 }: DeferredTestReviewProps<TTarget>) {
   const [phase, setPhase] = useState<'collect' | 'review'>('collect')
   const [index, setIndex] = useState(0)
@@ -267,7 +270,12 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
 
   if (phase === 'review')
     return (
-      <div className="deferred-test-review" data-report-activity={`${mode} final test`} data-report-phase="review">
+      <div
+        id={reportRepairsPreview && mode === 'writing' ? 'slay-acquisition-root' : undefined}
+        className={`deferred-test-review${reportRepairsPreview && mode === 'writing' ? ' report-final-writing' : ''}`}
+        data-report-activity={`${mode} final test`}
+        data-report-phase="review"
+      >
         {pauseButton}
         {submitError && (
           <p role="alert" className="error-banner">
@@ -295,7 +303,8 @@ export function DeferredTestReview<TTarget extends TestReviewTarget>({
   const progress = Math.round((index / targets.length) * 100)
   return (
     <div
-      className="deferred-test-review deferred-collection-review"
+      id={reportRepairsPreview && mode === 'writing' ? 'slay-acquisition-root' : undefined}
+      className={`deferred-test-review deferred-collection-review${reportRepairsPreview && mode === 'writing' ? ' report-final-writing' : ''}`}
       data-report-activity={`${mode} final test`}
       data-report-phase="collect"
       data-report-target={activeTarget?.id}

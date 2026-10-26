@@ -103,7 +103,11 @@ export function ReadingResponsePanel({
     } catch {
       if (teachingPlaybackRef.current !== playback) return
       setTeachingAudio('error')
-      setTeachingAudioError('The teaching audio could not play. You can try again or record the word now.')
+      setTeachingAudioError(
+        import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true'
+          ? 'The teaching word could not play. Tap Try audio again before recording.'
+          : 'The teaching audio could not play. You can try again or record the word now.',
+      )
     }
   }
 
@@ -221,18 +225,20 @@ export function ReadingResponsePanel({
       {teachingPrompt && teachingAudio === 'playing' && (
         <div className="recording-status" role="status">
           <Volume2 size={18} /> Listen: let’s learn how to say this word.
-          <button
-            className="record-reading-button"
-            type="button"
-            onClick={() => {
-              teachingPlaybackRef.current += 1
-              stopActiveAudio()
-              setTeachingAudio('idle')
-              void recorder.start()
-            }}
-          >
-            Stop audio and record my reading
-          </button>
+          {import.meta.env.VITE_OCT26_REPORTS_PREVIEW !== 'true' && (
+            <button
+              className="record-reading-button"
+              type="button"
+              onClick={() => {
+                teachingPlaybackRef.current += 1
+                stopActiveAudio()
+                setTeachingAudio('idle')
+                void recorder.start()
+              }}
+            >
+              Stop audio and record my reading
+            </button>
+          )}
         </div>
       )}
 
@@ -246,21 +252,25 @@ export function ReadingResponsePanel({
         </div>
       )}
 
-      {!withoutRecording && recorder.status === 'idle' && recorder.supported && teachingAudio !== 'playing' && (
-        <>
-          <p className="practice-helper">
-            {teachingPrompt ? 'Now tap Record and say the word.' : 'Tap Record, then read the word aloud.'}
-          </p>
-          <button className="record-reading-button" type="button" onClick={() => void recorder.start()}>
-            <Mic size={18} /> Record my reading
-          </button>
-          {allowSkipTimer && (
-            <button className="replay-button" type="button" onClick={continueWithoutRecording}>
-              Skip Timer
+      {!withoutRecording &&
+        recorder.status === 'idle' &&
+        recorder.supported &&
+        teachingAudio !== 'playing' &&
+        !(import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' && teachingPrompt && teachingAudio !== 'complete') && (
+          <>
+            <p className="practice-helper">
+              {teachingPrompt ? 'Now tap Record and say the word.' : 'Tap Record, then read the word aloud.'}
+            </p>
+            <button className="record-reading-button" type="button" onClick={() => void recorder.start()}>
+              <Mic size={18} /> Record my reading
             </button>
-          )}
-        </>
-      )}
+            {allowSkipTimer && (
+              <button className="replay-button" type="button" onClick={continueWithoutRecording}>
+                Skip Timer
+              </button>
+            )}
+          </>
+        )}
 
       {recorder.status === 'requesting' && (
         <div className="recording-status" role="status">
@@ -286,25 +296,27 @@ export function ReadingResponsePanel({
           </p>
         )}
 
-      {recordingUnavailable && !withoutRecording && (
-        <div className="recording-fallback" role="alert">
-          <strong>Recording is unavailable.</strong>
-          <p>
-            {recorder.error?.message || 'This browser cannot record microphone audio.'} You can try again or continue by
-            saying the word aloud.
-          </p>
-          <div className="reading-secondary-actions">
-            {recorder.supported && (
-              <button className="replay-button" type="button" onClick={() => void recorder.start()}>
-                <RotateCcw size={16} /> Try microphone again
+      {recordingUnavailable &&
+        !withoutRecording &&
+        !(import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' && teachingPrompt && teachingAudio !== 'complete') && (
+          <div className="recording-fallback" role="alert">
+            <strong>Recording is unavailable.</strong>
+            <p>
+              {recorder.error?.message || 'This browser cannot record microphone audio.'} You can try again or continue
+              by saying the word aloud.
+            </p>
+            <div className="reading-secondary-actions">
+              {recorder.supported && (
+                <button className="replay-button" type="button" onClick={() => void recorder.start()}>
+                  <RotateCcw size={16} /> Try microphone again
+                </button>
+              )}
+              <button className="replay-button" type="button" onClick={continueWithoutRecording}>
+                Continue without recording
               </button>
-            )}
-            <button className="replay-button" type="button" onClick={continueWithoutRecording}>
-              Continue without recording
-            </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {comparisonError && (
         <p className="recording-error" role="alert">

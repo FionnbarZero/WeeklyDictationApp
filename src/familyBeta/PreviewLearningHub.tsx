@@ -1,3 +1,8 @@
+import { reserveMaintenanceGame } from '../reportRepairs/maintenanceRotation.ts'
+import { writingCharacterGuides } from '../application/writingAcquisition/lesson.ts'
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import { PreviewScoreRecord } from '../reportRepairs/PreviewScoreRecord.tsx'
+import '../reportRepairs/repairs.css'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
@@ -29,6 +34,9 @@ import { familyPreview, previewProfile, previewResults, savePreviewResult } from
 import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
 import { strokeOrderLesson } from './strokeOrderSlay.ts'
 
+const FinalBossTest = lazy(() =>
+  import('../reportRepairs/FinalBossTest.tsx').then((m) => ({ default: m.FinalBossTest })),
+)
 const ModuleHost = lazy(() =>
   import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
@@ -50,7 +58,7 @@ type ExtraLaunch =
       mastered?: boolean
       boss?: boolean
     }
-  | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily'; channel: PracticeChannel; datasets: Dataset[] }
+  | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily' | 'test'; channel: PracticeChannel; datasets: Dataset[] }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
   | { previewAction: 'scrolls'; channel: 'reading'; datasets: Dataset[] }
 
@@ -167,16 +175,42 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       const spirit = section.id === 'spirit-realm' || section.id === 'review'
       const masteredArcade = (gameRecoveryPreview || (grade5PresentationPreview && grade === 'Grade 5')) && spirit
       const masteredScope = masteredArcade ? masteredDatasetsForGrade(scope, source.datasets, date, grade) : []
-      const activities: LearningHubActivity<Launch | ExtraLaunch>[] = section.activities.filter(
-        (a) =>
-          a.action.kind !== 'disabled' &&
-          !a.id.includes('reenter') &&
-          !a.id.includes('reteach') &&
-          !a.id.includes('stroke-order') &&
-          !(section.id === 'ninja-skills') &&
-          !spirit,
-      )
+      const activities: LearningHubActivity<Launch | ExtraLaunch>[] = section.activities
+        .filter(
+          (a) =>
+            (a.action.kind !== 'disabled' || (reportRepairsPreview && boss && /test/i.test(a.title))) &&
+            !a.id.includes('reenter') &&
+            !a.id.includes('reteach') &&
+            !a.id.includes('stroke-order') &&
+            !(section.id === 'ninja-skills') &&
+            !spirit,
+        )
+        .map((activity) => ({ ...activity }))
+      if (reportRepairsPreview && boss && !ninja) {
+        for (const activity of activities) {
+          if (!/test/i.test(activity.title) || activity.action.kind !== 'launch') continue
+          const channel = /reading/i.test(activity.title) ? 'reading' : 'writing'
+          // Keep the actual section cohort and channel; never manufacture missing vocabulary.
+          if (scope.some((dataset) => channelWords(dataset, channel).length)) {
+            activity.description = `Take the ${channel} test, then review the complete set.`
+            activity.action = {
+              kind: 'launch',
+              label: activity.title,
+              launch: { previewAction: 'test', channel, datasets: scope },
+            }
+          }
+        }
+      }
       if (['current-week', 'dojo', 'homework'].includes(section.id)) {
+        if (reportRepairsPreview && !activities.some((activity) => /read.*book/i.test(activity.title)))
+          activities.push({
+            id: 'read-book-coming-soon',
+            title: 'Read the book',
+            eyebrow: 'Reading',
+            description: 'A reading adventure is coming soon.',
+            icon: '📖',
+            action: { kind: 'disabled', label: 'Coming soon', reason: 'The book activity is not available yet.' },
+          })
         let writingReady = false
         let writingNote = 'A current Tier 1 writing cohort with validated stroke guides is needed.'
         if (section.available) {
@@ -221,7 +255,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
             : { kind: 'disabled', label: 'Coming soon', reason },
         })
       }
-      if (spirit && (!masteredArcade || grade !== 'Grade 5'))
+      if (spirit && !reportRepairsPreview && (!masteredArcade || grade !== 'Grade 5'))
         for (const channel of ['writing', 'reading'] as const) {
           if (!scope.some((d) => channelWords(d, channel).length)) continue
           for (const direct of [true, false]) {
@@ -389,6 +423,23 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       return {
         ...section,
         activities,
+        ...(reportRepairsPreview && boss && !ninja
+          ? {
+              description: 'Take the writing or reading test. Review your answers after finishing the whole set.',
+              showUngroupedActivities: true,
+              activityGroups: [
+                {
+                  id: 'boss-reenter',
+                  title: 'Re-enter the Dojo',
+                  description: 'Learn these words again with reading or writing.',
+                  icon: '🥋',
+                  activityIds: activities
+                    .filter((activity) => activity.id.startsWith('reenter-'))
+                    .map((activity) => activity.id),
+                },
+              ],
+            }
+          : {}),
         ...(grade5PresentationPreview && assessment && section.id === 'test-review-1'
           ? {
               showUngroupedActivities: true,
@@ -505,7 +556,21 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
                 }
               }
               setSessionId(crypto.randomUUID())
-              const next = launch as ExtraLaunch
+              let next = launch as ExtraLaunch
+              try {
+                if (reportRepairsPreview && next.previewAction === 'game' && next.mastered)
+                  next = {
+                    ...next,
+                    pack: reserveMaintenanceGame(localStorage, previewProfile()?.id || '', grade, next.pack),
+                  }
+                if (reportRepairsPreview && next.previewAction === 'reenter' && next.channel === 'writing')
+                  next.datasets
+                    .flatMap((dataset) => channelWords(dataset, 'writing'))
+                    .forEach((word) => writingCharacterGuides(word.text))
+              } catch (failure) {
+                setError(failure instanceof Error ? failure.message : 'The activity could not open.')
+                return
+              }
               if (next.previewAction === 'stroke' && grade !== 'Kindergarten') {
                 if (!props.onStrokeOrderWarmup) {
                   setError('The grade’s Warmup could not be opened. No teaching progress has changed.')
@@ -517,6 +582,12 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
           }}
         />
       </div>
+      {!active && reportRepairsPreview && <PreviewScoreRecord />}
+      {active?.previewAction === 'test' && (
+        <Suspense fallback={<p>Opening Final Boss…</p>}>
+          <FinalBossTest datasets={active.datasets} channel={active.channel} onExit={exit} />
+        </Suspense>
+      )}
       {active?.previewAction === 'game' && (
         <Suspense fallback={<p>Loading game…</p>}>
           <ModuleHost

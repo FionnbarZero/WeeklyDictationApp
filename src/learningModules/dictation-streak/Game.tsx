@@ -118,9 +118,9 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     focusAtEnd()
   }
 
-  function handleSpellingError(stepPinyin: string) {
+  function handleSpellingError(stepPinyin: string, retainedCharacters = selectedCharacters) {
     spellingErrorsRef.current += 1
-    setAnswer(selectedCharacters)
+    setAnswer(retainedCharacters)
     if (messageTimerRef.current !== undefined) activityClock.clearTimeout(messageTimerRef.current)
 
     if (spellingErrorsRef.current === 1) {
@@ -146,7 +146,7 @@ function DictationConsole({ round, playAudio, streak, onAssess }: {
     const nextPinyinInput = Array.from(nextAnswer).filter((character) => !HANZI_CHARACTER.test(character)).join('')
     const nextStep = round.pinyinSteps?.[Array.from(nextSelectedCharacters).length]
     if (nextPinyinInput && nextStep && !isPinyinPrefix(nextPinyinInput, nextStep.pinyin)) {
-      handleSpellingError(nextStep.pinyin)
+      handleSpellingError(nextStep.pinyin, nextSelectedCharacters)
     }
   }
 

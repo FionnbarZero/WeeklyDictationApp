@@ -84,3 +84,5 @@ export function activityStorage(): Storage {
   }
   return scopedActivityStorage(localStorage, `family-beta-activity:${previewProfile()?.id || 'unselected'}:`)
 }
+
+if (familyPreview && import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true') document.documentElement.classList.add('report-repairs')

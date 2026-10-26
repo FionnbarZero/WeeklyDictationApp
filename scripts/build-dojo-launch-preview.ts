@@ -51,7 +51,7 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = integratedWarmup
-  ? 'Combined Dojo / Grade 2 Wetland review 1'
+  ? 'Combined Dojo / Report repairs 2'
   : koreVoice
     ? 'Kore Mandarin / Prototype 1'
     : automaticCurriculum
@@ -118,6 +118,7 @@ execFileSync(
       VITE_GRADE2_WRITING_PILOT: 'true',
       VITE_CROSS_GRADE_WRITING_PILOT: 'true',
       VITE_RECONCILIATION_PREVIEW: 'true',
+      VITE_OCT26_REPORTS_PREVIEW: integratedWarmup ? 'true' : 'false',
       VITE_PUBLIC_PREVIEW: 'true',
       VITE_GIT_REVISION: revision,
       VITE_REGRESSION_REPAIR_PREVIEW: String(regressions),

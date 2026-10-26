@@ -104,7 +104,7 @@ test('the Grade 2 production home uses the shared Learning Hub without replacing
   ].join('\n')
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /grade2LearningHubView/)
-  assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
+  assert.match(app, /<LearningHub\s+model=\{model\}\s+onLaunch=\{launch\}\s+showTopbar=\{false\}/)
   assert.match(app, /if \(request\.kind === 'writing'\) return onStart\(request\.target\)/)
   assert.match(app, /else if \(request\.kind === 'stroke-order'\) onStartStrokeOrder\(request\.target\)/)
   assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)

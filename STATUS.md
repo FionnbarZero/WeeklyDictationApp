@@ -1,5 +1,9 @@
 # Weekly Dictation status
 
+## Current work — new report repairs on a separate preview, October 26
+
+The owner requested **new links and preservation of the last links**. The 21 unique reports are addressed by the isolated **Combined Dojo / Report repairs 2** candidate; publication is pending final native-audio/hosted verification. The previous `kore-voice-oct26-v1` link remains **b36f736 / Device repairs 1**, unchanged. The new candidate includes the approved Grade 2 October 19 Wetland words for October 26–30 review; the earlier “choice pending” entry below is superseded. **1,299 units, type/format/lint and production budgets pass; 36 revised interaction and 15 Wetland cases pass.** Full-game and audio evidence, remaining physical-device limits and failed-run accounting are in [the report crosswalk](./docs/report-repairs-2026-10-26.md). No canonical, frozen fifth-grade, live curriculum-service or family-record changes.
+
 ## Current investigation — Grade 2 current week, October 26
 
 **Local importer repair prepared; not published.** The teacher's October 26–30 slide is a testing/review week with no explicit target list; the owner's review-word choice is pending. The app also incorrectly excluded October 19's Wetland cohort because Math precedes Mandarin in native element order. Local repairs recover its five writing words and correct reading tiers, preserve all seven earlier datasets exactly, and prevent formatting from splitting 湿地. **1,291 units, type/format/lint and production size gates pass.** [Evidence, source links and remaining scope](./docs/grade2-current-week-2026-10-26.md). Shared live curriculum service, teacher source and all websites are unchanged; current preview remains **b36f736 / Device repairs 1** below. A new smoke test is premature until the review set and isolated hosted repair are ready.

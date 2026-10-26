@@ -430,7 +430,7 @@ function KindergartenLearningLab() {
     if (typeof answer === 'object') {
       if (answer.kind !== 'deferred-writing-test-review') return
       const correct = answer.completion.assessments.filter((item) => item.correct).length
-      if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })) return
+      if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })) throw new Error('Final Boss score could not be saved. Retry your final review.')
       leavePractice(`Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`)
       return
     }
@@ -700,7 +700,7 @@ function KindergartenLearningLab() {
     </details>}
     {error && <p className="k-status error" role="alert">{status}</p>}
     <LearningHub model={hubModel} onLaunch={launchFromHub} hideUnavailable={familyPreview} />
-    <NinjaRecord scores={scores} persistent={familyPreview} />
+    {!(familyPreview && import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true') && <NinjaRecord scores={scores} persistent={familyPreview} />}
     {!error && <p className="k-status" role="status" aria-live="polite">{status}</p>}
   </main>
 }

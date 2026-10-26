@@ -1,3 +1,5 @@
+import { reportRepairsPreview } from '../../reportRepairs/policy.ts'
+import { zuiOutlines } from '../../reportRepairs/zuiOutlines.ts'
 // Original EduGames drawing UI, with optional backward-chain guide visibility.
 import {
   useCallback,
@@ -217,6 +219,9 @@ export function StrokePad({
       >
         <PracticeGrid />
         <g transform={`translate(${layout.offsetX} ${layout.offsetY}) scale(${layout.scale})`}>
+          {reportRepairsPreview && round.targetText === '最' && <g transform="translate(5 86) scale(.09 -.09)" fill="#bc3541" opacity="0.25" aria-hidden="true">
+            {zuiOutlines.map((path, index) => (index < suppliedStrokeCount || (showGuide && (guideMode === 'full' || index === hintStrokeIndex))) && <path key={index} data-model-stroke={index + 1} d={path} />)}
+          </g>}
           {showGuide && (
             <g className="lg-stroke-guide" key={`${round.id}-${animationKey}`} aria-hidden="true">
               {round.strokes.map(
@@ -275,9 +280,10 @@ export function ReferencePad({ round }: { readonly round: StrokeOrderGameRound }
     <div className="lg-stroke-pad is-reference">
       <svg viewBox="0 0 100 100" role="img" aria-label={`Correct character: ${round.targetText}`}>
         <PracticeGrid />
-        <text className="lg-reference-character" x="50" y="76" textAnchor="middle">
-          {round.targetText}
-        </text>
+        {reportRepairsPreview ? <g transform={`translate(${layout.offsetX} ${layout.offsetY}) scale(${layout.scale})`} aria-label={`${round.strokes.length} model strokes`}>
+          {round.targetText === '最' ? <g transform="translate(5 86) scale(.09 -.09)" fill="#372b39">{zuiOutlines.map((path, index) => <path key={index} data-model-stroke={index + 1} d={path} />)}</g>
+            : round.strokes.map((stroke, index) => <path key={index} data-model-stroke={index + 1} d={strokePath(stroke)} fill="none" stroke="#372b39" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />)}
+        </g> : <text className="lg-reference-character" x="50" y="76" textAnchor="middle">{round.targetText}</text>}
         <g transform={`translate(${layout.offsetX} ${layout.offsetY}) scale(${layout.scale})`}>
           {round.strokes.map((stroke, index) => (
             <g className="lg-reference-marker" key={`${round.id}-reference-${index}`}>

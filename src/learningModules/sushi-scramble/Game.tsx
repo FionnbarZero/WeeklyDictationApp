@@ -211,7 +211,7 @@ export function SentenceScramble({
           <strong>{round.cueText || 'Build the Mandarin sentence you hear'}</strong>
           <small>{promptPlaying ? 'The chef is reading the full sentence…' : 'Now place the sushi words in the same order.'}</small>
         </div>
-        <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={() => readSentence()}>
+        <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={() => readSentence(import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : undefined)}>
           <Volume2 size={17} aria-hidden="true" /> Hear sentence again
         </button>
         {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={() => readSentence(0.5)}>Hear slowly</button>}

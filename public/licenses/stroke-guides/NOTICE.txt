@@ -17,3 +17,5 @@ https://github.com/chanind/hanzi-writer-data/tree/68d10a4b21150cae5e1ebbd223eed2
 
 The reduced source geometry and modification notices are available at:
 https://github.com/FionnbarZero/WeeklyDictationApp/tree/main/src/learningGames/strokeOrder
+
+The October 26 report preview also displays the twelve original outline paths for 最 from the same pinned hanzi-writer-data revision, aligned with the existing medians. The source stroke order and median coordinates are unchanged.

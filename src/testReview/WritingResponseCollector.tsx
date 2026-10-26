@@ -1,3 +1,5 @@
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import { Headphones } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Clock3, Volume2 } from 'lucide-react'
 import { createPracticeCountdown } from '../practice/countdown.ts'
@@ -57,6 +59,17 @@ export function WritingResponseCollector({
     }
   }, [timerSeconds, audioStatus])
 
+  if (reportRepairsPreview) return <div className="report-writing-collector">
+    <div className="report-writing-controls">
+      <strong>Word {position}</strong>
+      <span role="timer" aria-label={`${seconds} seconds remaining`}>{seconds}s</span>
+      <button className="writing-hear-button" aria-label="Hear" onClick={onRetryAudio}><Headphones /><span>Hear</span></button>
+      <button className="report-skip-timer" disabled={audioStatus !== 'ready'} onClick={() => collectOnce('skip_timer')}>Skip Timer</button>
+    </div>
+    {audioStatus === 'loading' && <p role="status">Listen to the word…</p>}
+    {audioStatus === 'error' && <p role="alert">{audioError || 'The word could not play.'} Tap Hear to retry.</p>}
+    <SkyWritingAcquisition word={target.text} phase="writing" traceTarget={false} presentation="grand-scroll" padState={padState} onPadStateChange={onPadStateChange} />
+  </div>
   return <div className="deferred-writing-collector">
     <div className="deferred-writing-timer"><Clock3 size={15} /> <span role="timer" aria-label={`${seconds} seconds remaining`}>00:{String(seconds).padStart(2, '0')}</span>{audioStatus === 'ready' && seconds > 0 && <><button type="button" className="timer-control" onClick={() => {
       if (paused) countdownRef.current?.resume()

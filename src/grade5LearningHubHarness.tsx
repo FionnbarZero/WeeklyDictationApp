@@ -493,6 +493,7 @@ async function startWritingPractice(request: Grade5ActivityLaunchRequest, label:
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
     if (acquisitionStore) activeDataset = { ...activeDataset, words: [...acquisitionStore.context.targetSet.targets] }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
+    if (import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' && request.activityKind === 'test-review') activeSession = primaryStartState(activeSession)
     strokeWarmupReady = ready || null
     if (ready) activeSession = { ...activeSession, primaryQueue: [] }
     if (acquisitionStore) {

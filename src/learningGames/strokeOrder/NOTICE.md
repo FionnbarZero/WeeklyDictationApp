@@ -16,3 +16,5 @@ Arphic Technology fonts.
 
 Redistribution and modification are governed by the Arphic Public License in
 `ARPHICPL.TXT`.
+
+The October 26 report preview also displays the twelve original outline paths for 最 from the same pinned hanzi-writer-data revision, aligned with the existing medians. The source stroke order and median coordinates are unchanged.

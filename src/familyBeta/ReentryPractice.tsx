@@ -1,3 +1,10 @@
+import { writingCorrectionPreview, writingCorrectionStrategy } from '../writingAcquisition/correctionStrategy.ts'
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import { SlayWritingAcquisition } from '../writingAcquisition/SlayWritingAcquisition.tsx'
+import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
+import { FIVE_STEP_SEQUENCE } from '../strokeTeacherPrototype/model.ts'
+import { writingCharacterGuides } from '../application/writingAcquisition/lesson.ts'
+import '../strokeTeacherPrototype/preview.css'
 import { useRef, useState } from 'react'
 import { startAcquisition, revealAcquisition } from '../acquisition/engine.ts'
 import { transitionAcquisition } from '../acquisition/transition.ts'
@@ -35,7 +42,9 @@ export function ReentryPractice({
     grade === 'Kindergarten'
       ? kindergartenAcquisitionStrategy
       : grade === 'Grade 2'
-        ? grade2AcquisitionStrategy
+        ? reportRepairsPreview && writingCorrectionPreview
+          ? writingCorrectionStrategy
+          : grade2AcquisitionStrategy
         : grade5AcquisitionStrategy
   const profile =
     grade === 'Kindergarten'
@@ -48,6 +57,8 @@ export function ReentryPractice({
   const [flow, setFlow] = useState(() => startAcquisition(targetSet, strategy, Math.random))
   const [totals, setTotals] = useState({ correct: 0, attempted: 0 })
   const [error, setError] = useState('')
+  const [taught, setTaught] = useState<string[]>([])
+  const [character, setCharacter] = useState(0)
   const revealMethod = useRef<'timer' | 'skip_timer'>('timer')
   const audioWord = <T extends Parameters<typeof withKindergartenAudio>[0]>(word: T) =>
     grade === 'Kindergarten' ? withKindergartenAudio(word) : word
@@ -89,9 +100,42 @@ export function ReentryPractice({
     warmupRotationCycleId: 1,
     acquisition: flow,
   }
+  const target = targetSet.targets[flow.targetIndex]
+  const WritingView = reportRepairsPreview ? SlayWritingAcquisition : PracticeView
+  if (reportRepairsPreview && channel === 'writing' && target && !taught.includes(target.id)) {
+    const guides = writingCharacterGuides(target.text)
+    return (
+      <div className="grade2-writing-pilot report-reentry">
+        <div className="st-original-stage">
+          <main className="st-original-content">
+            <StrokeTeacher
+              key={`${target.id}:${character}`}
+              grade={grade}
+              targetId={target.id}
+              word={target.text}
+              character={[...target.text][character]}
+              characterIndex={character}
+              strokes={guides[character]}
+              sequence={FIVE_STEP_SEQUENCE}
+              onExit={onExit}
+              onComplete={() => {
+                if (character + 1 < guides.length) setCharacter((value) => value + 1)
+                else {
+                  setTaught((value) => [...value, target.id])
+                  setCharacter(0)
+                }
+              }}
+            />
+          </main>
+        </div>
+      </div>
+    )
+  }
   return (
-    <>
-      <p>Reenter the Dojo · Restarting the whole {channel} set. Earlier completed scores are unchanged.</p>
+    <div className={reportRepairsPreview && channel === 'writing' ? 'grade2-writing-pilot report-reentry' : undefined}>
+      {!reportRepairsPreview && (
+        <p>Reenter the Dojo · Restarting the whole {channel} set. Earlier completed scores are unchanged.</p>
+      )}
       {error && <p role="alert">{error}</p>}
       {channel === 'reading' ? (
         <Tier2ReadingPractice
@@ -113,7 +157,7 @@ export function ReentryPractice({
           onComplete={(summary) => finish(summary.correct, summary.attempted)}
         />
       ) : (
-        <PracticeView
+        <WritingView
           session={session}
           datasets={datasets}
           onExit={onExit}
@@ -147,6 +191,6 @@ export function ReentryPractice({
           }}
         />
       )}
-    </>
+    </div>
   )
 }

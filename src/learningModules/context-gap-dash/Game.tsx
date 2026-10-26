@@ -1,3 +1,4 @@
+import { playGappedContext } from '../../reportRepairs/contextAudio.ts'
 import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Flag, Volume2 } from 'lucide-react'
@@ -789,7 +790,20 @@ export function ContextGapDash({
     playLearningText(choiceLabel, 'zh-CN')
   }, [playLearningText])
 
-  const replayContext = useCallback((rate = 0.75) => {
+  const readContext = useCallback((rate: number) => {
+    if (import.meta.env?.VITE_OCT26_REPORTS_PREVIEW !== 'true') { playLearningText(contextAudioText, 'zh-CN', rate); return }
+    if (!currentRound || !playAudioRef.current || activityClock.paused) return
+    const request = ++speechRequest.current
+    setAudioError(false)
+    void playGappedContext(currentRound, playAudioRef.current,
+      ms => new Promise<void>(resolve => activityClock.setTimeout(resolve, ms)),
+      () => speechRequest.current === request, rate).catch(() => {
+        if (speechRequest.current === request) setAudioError(true)
+      })
+  }, [currentRound, contextAudioText, playLearningText])
+  useEffect(() => () => { speechRequest.current++ }, [currentRound?.id])
+
+  const replayContext = useCallback((rate = import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : 0.75) => {
     if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') {
       if (activityClock.paused) return
       // An explicit replay owns this prompt's narration. It also wins if the
@@ -800,8 +814,8 @@ export function ContextGapDash({
         automaticReplayTimer.current = undefined
       }
     }
-    playLearningText(contextAudioText, 'zh-CN', rate)
-  }, [contextAudioText, currentRound?.id, playLearningText])
+    readContext(rate)
+  }, [contextAudioText, currentRound?.id, readContext])
 
   useEffect(() => {
     if (!contextAudioText || !playAudio || finished) return
@@ -810,14 +824,14 @@ export function ContextGapDash({
     if (explicitlyRequested()) return
     const timer = activityClock.setTimeout(() => {
       if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
-      if (!explicitlyRequested()) playLearningText(contextAudioText, 'zh-CN', 0.75)
+      if (!explicitlyRequested()) readContext(import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : 0.75)
     }, 350)
     automaticReplayTimer.current = timer
     return () => {
       activityClock.clearTimeout(timer)
       if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
     }
-  }, [contextAudioText, currentRound?.id, finished, playAudio, playLearningText])
+  }, [contextAudioText, currentRound?.id, finished, playAudio, readContext])
 
   const handleAttempt = useCallback(async (index: number, choiceId: string, wasCorrect: boolean) => {
     const round = playableRounds[index]

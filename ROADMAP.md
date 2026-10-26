@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Current priority — October 26 report repairs on new links
+
+The owner's latest instruction supersedes the single-retained-preview rule **only for this new repair prototype**: preserve `kore-voice-oct26-v1` at b36f736 and publish a separate `reports-oct26-v2` candidate after verification. Scope: the 21 unique latest reports, shared Final Boss tests/score record, compact reentry with the approved teacher and Slay acquisition, direct/rotating mastered games, sentence audio, Lantern placement and aligned 最 guides. Carry over the confirmed **October 19 Wetland set for October 26–30 Grade 2 review**, with original cohort identity. Follow [the crosswalk](./docs/report-repairs-2026-10-26.md). Existing Astra · Extra High behavior/review and Sol · High publication confirmations apply; no new routine approval is needed. Keep canonical, the frozen fifth-grade presentation and the shared curriculum service unchanged. Working-interaction acceptance and physical-device checks follow the verified isolated handoff.
+
 ## Current priority — Grade 2 missing week, October 26
 
 Resolve the owner's October 26 testing/review word-set choice, then verify an isolated curriculum repair and resources before a smoke-test handoff. The teacher has supplied no explicit October 26 targets. A confirmed importer defect also hid October 19 Wetland; its **local, unpublished** repair passes 1,291 units and preserves every earlier valid dataset. [Findings and boundaries](./docs/grade2-current-week-2026-10-26.md). Do not silently replace the shared canonical curriculum service or relabel older words as a new teacher-authored week. Existing Astra · Extra High curriculum routing applies. The currently hosted combined preview remains b36f736; no new release or email is claimed.

@@ -236,7 +236,7 @@ export function PracticeView(props: PracticeViewProps) {
       targets={session.primaryQueue}
       activityLabel="Writing Test Review"
       writingTimerSeconds={TARGET_WRITING_RESPONSE_SECONDS}
-      retrySaveFailures={props.retryTestSaveFailures}
+      retrySaveFailures={props.retryTestSaveFailures ?? (import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true')}
       onPlayReference={async (word) => { await promptAudioStarted(props.onSpeakWord(word, false)) }}
       onPlayWritingPrompt={(word) => props.onSpeakWord(word, false)}
       onDiscard={() => props.onAnswer('skip-test-review')}

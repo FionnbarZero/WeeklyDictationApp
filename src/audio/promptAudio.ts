@@ -618,13 +618,13 @@ export function playReadingTeachingSequence(word: Word, options: CachedAudioOpti
   const playbackRate = options.playbackRate ?? 1
   const playback = playAudioPlan(
     [
-      {
+      ...(import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? [] : [{
         text: options.newTargetAnnouncement || 'Read and record',
         language: 'en-GB',
         rate: options.instructionRate ?? 0.9,
         storagePath: options.newTargetAnnouncementStoragePath,
         pauseAfterMs: 0,
-      },
+      }] as const),
       ...dictationSegments(word, playbackRate, options.sentenceRate ?? playbackRate),
     ],
     options,

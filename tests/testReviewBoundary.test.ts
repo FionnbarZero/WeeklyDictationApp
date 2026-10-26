@@ -166,6 +166,7 @@ test('shared deferred review is activated through writing practice and the Kinde
     'src/kindergartenLearningLabHarness.tsx',
     'src/practice/PracticeView.tsx',
     'src/readingPractice/Tier2ReadingPractice.tsx',
+    'src/reportRepairs/FinalBossTest.tsx',
     'src/testReviewPrototype/TestReviewPrototype.tsx',
   ])
 
