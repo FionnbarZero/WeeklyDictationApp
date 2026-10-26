@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Completed side request — Grade 2 Wetland book, October 26
+
+The owner withdrew the additional Grade 2 target-routing request after confirming the newest fix already has the desired words. The remaining request, linking the book placeholder in Enter the Dojo, is delivered in **Wetland book 1 / `05aec36`** on a separate verified preview and emailed. [Exact link, expiry, evidence and bounded iPad check](./docs/grade2-wetland-book-2026-10-26.md). Both earlier preview links remain static. No cohort/teaching/saving changes or canonical promotion. Existing confirmed model routing applied. The two Grade 5 audit follow-ups below remain the next repair work; the book update does not close them.
+
 ## Current audit follow-ups — Grade 5 native tests, October 26
 
 The fresh **b3cfd1e / Report repairs 2** audit found two remaining integrated-path defects: **Grade 5 Ninja Skills Reading Test cannot retry a failed final score save**, and its desktop final review becomes only **176 pixels wide**. Both reproduce on the hosted preview. Preserve the pending result and temporary-response rules; inspect the analogous native writing route when repairing the shared retry contract. The separate all-grade Final Boss adapter passes its save-retry checks. [Exact evidence and regression accounting](./docs/report-repairs-regression-audit-2026-10-26.md).

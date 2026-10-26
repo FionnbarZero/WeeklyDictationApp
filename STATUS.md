@@ -1,5 +1,11 @@
 # Weekly Dictation status
 
+## Current handoff — Grade 2 Wetland book linked, October 26
+
+**Wetland book 1 / `05aec36`** connects Enter the Dojo → Read the book to the teacher's 《湿地》 book in a new tab. [Updated Grade 2 preview](https://weekly-dictation-staging--wetland-book-oct26-v1-2iyvw4ci.web.app/family-beta-preview.html?grade=grade2), expires **November 2 at 3:42 PM Pacific**. Separate browser-only test origin; both previous previews and protected live/frozen sites remain unchanged. Four focused units, type/style/build/budget checks and three local plus three hosted screen-size checks pass with the driver corrections recorded in [the handoff](./docs/grade2-wetland-book-2026-10-26.md). All 161 non-audio public files/966 headers match. Email confirmed SENT `1a17a98de3bc6c4b`.
+
+Ready for a one-minute iPad book-card check. No vocabulary, routing, teaching or saving change: the owner withdrew the extra target-update request after finding the newest fix already contained it. **The two Grade 5 findings immediately below remain open.**
+
 ## Current audit — two Grade 5 follow-ups remain, October 26
 
 **Report repairs 2 / b3cfd1e** has completed a fresh read-only source, hosted-file and regression audit. **Two confirmed issues remain in Grade 5 → Practice your Ninja Skills → Reading Test:** a failed final save cannot be retried, and the review shrinks to **176 pixels on a 1280-pixel desktop**. Both reproduce on the hosted preview. The failed submission remains in the pending ledger; no irreversible record loss is claimed. The older presentation-only save guards miss this integrated route; the newer shared Final Boss adapter passes its all-grade retry checks. [Audit, reproduction evidence, test coverage and failed-run accounting](./docs/report-repairs-regression-audit-2026-10-26.md).
