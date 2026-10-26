@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — accept the Writing repair; prepare selected Mandarin D voice
+
+October 25: the owner selected **Google `cmn-CN-Wavenet-D`** and requested the Writing opening repair. **Prototype 2 / `6bc1421`** is published at the same automatic-update test links in STATUS, exactly verified and emailed (SENT `1a176d76f8dbbf2d`). The opening race is closed in this isolated preview, including failure/retry, repeat entry and Report/return. Grade 5 errors are now visible in the viewport. **1,271 units and 75 local + 75 hosted browser cases pass**; development failures remain documented in [the repair record](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/writing-launch-repair-2026-10-25.md). The previous opening-race device-check hold is superseded for this repair only.
+
+**Next:** one bounded actual-iPad Writing check, then working-interaction approval before native/canonical integration. The approved voice choice is now settled: D, not another A/D audition. Supported Google TTS generation access and an isolated working voice demonstration remain pending; current Tingting audio has not been replaced. Do not claim Voice D is installed or physical audio/Pencil/microphone acceptance based on browser tests. English Niamh remains separate.
+
+Preserve the frozen fifth-grade presentation, original combined/Warmup pages and all teacher/family records. This repair changes only the automatic-update test subtree; all 18 other hosting releases/expiries are unchanged. Cloud/offline/cross-device gates and broader roadmap work remain open. Existing Astra · Extra High behavior/review routing and autonomous preview-release/email authorization continue; no new routine approval/model prompt is pending, and no model switch or independent-agent audit is claimed.
+
 ## Current priority — repair opening-time curriculum race, then Mandarin voice/device acceptance
 
 October 25 audit of automatic-update prototype **f36fb87** found a new opening-time defect: a validated refresh can replace the activity frame while Writing is still acquiring its save lock. **Nine affected cases fail across all three grades and three layouts; nine no-update controls pass.** Re-entering recovers. The existing 39 hosted cases and 1,271 units pass but miss this transition. [Exact evidence and proposed repair boundary](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/automatic-curriculum-regression-audit-2026-10-25.md).
