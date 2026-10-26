@@ -56,8 +56,10 @@ import {
 } from './automaticCurriculum.ts'
 import { gameRecoveryPreview, savedGameRecoveryExample } from './gameRecoveryPreview.ts'
 import { PreviewParentTools } from './PreviewParentTools.tsx'
+import { ReadyActivityFrame } from './ReadyActivityFrame.tsx'
 
 const ParentTools = compactParentPreview ? PreviewParentTools : Fragment
+const ActivityFrame = automaticCurriculumPreview ? ReadyActivityFrame : 'iframe'
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
 const routes: Record<BetaGrade, string> = {
@@ -1000,9 +1002,12 @@ function FamilyPreview() {
               </button>
             </section>
           )}
-          {import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW !== 'true' && grade5RepairPreview && !grade5PresentationPreview && child?.grade === 'Grade 5' && (
-            <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
-          )}
+          {import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW !== 'true' &&
+            grade5RepairPreview &&
+            !grade5PresentationPreview &&
+            child?.grade === 'Grade 5' && (
+              <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
+            )}
         </header>
         {savedGameRecoveryExample && (
           <p role="note">
@@ -1161,7 +1166,7 @@ function FamilyPreview() {
           slot.workspace === workspace &&
           (tab === 'activities' || tab === 'games')
         return (
-          <iframe
+          <ActivityFrame
             key={slot.id}
             className="beta-grade-frame"
             title={slot.game?.pack.title || `${slot.profile.grade} activities`}

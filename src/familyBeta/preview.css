@@ -335,3 +335,6 @@ body:has(.beta-workspace--compact) #problem-reporter-controls {
   min-height: 44px;
   margin-top: 8px;
 }
+.beta-frame-loading {
+  padding: 16px;
+}

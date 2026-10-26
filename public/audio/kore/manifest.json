@@ -3,9 +3,9 @@
   "voice": "cmn-CN-Chirp3-HD-Kore",
   "languageCode": "cmn-CN",
   "speakingRate": 0.65,
-  "generatedAt": "2026-10-26T16:18:39.633723+00:00",
-  "inputCharactersIncludingRetries": 2576,
-  "costUpperEstimateUsdBeforeFreeAllowance": 0.07728,
+  "generatedAt": "2026-10-26T18:47:59.258587+00:00",
+  "inputCharactersIncludingRetries": 2789,
+  "costUpperEstimateUsdBeforeFreeAllowance": 0.08367,
   "assets": [
     {
       "text": "桌子上有一层薄薄的灰尘",
@@ -314,6 +314,15 @@
       "rms": 2753.46
     },
     {
+      "text": "俱乐部",
+      "file": "09f7f58846181492707bed50.wav",
+      "sha256": "ff115b4f0aa0d9df0cb05bb5433a8294f21bc9cdecae9c4bb6a62db56ca551f3",
+      "bytes": 83532,
+      "durationSeconds": 1.7393,
+      "sampleRate": 24000,
+      "rms": 3211.81
+    },
+    {
       "text": "续",
       "file": "0a2a37d948a951baa9c2c2ad.wav",
       "sha256": "11e724e7a9d7d6262930aee6c80c0043fdb9d9e64adda82cd86b93555862a224",
@@ -350,6 +359,15 @@
       "rms": 3649.24
     },
     {
+      "text": "她在比赛中的表现很出色",
+      "file": "0b0295f186c67e779d1e91d9.wav",
+      "sha256": "6dbb2d495607da71e6e9b7d884e4bef8b2b7e3b78477f451b03ff94bf4e4f482",
+      "bytes": 210252,
+      "durationSeconds": 4.3793,
+      "sampleRate": 24000,
+      "rms": 3371.26
+    },
+    {
       "text": "小鸟住在森林里",
       "file": "0b0ff4104f71028a1a4870be.wav",
       "sha256": "87339c9141edbe957af354eae2a67b47aa895d11d47a812f3397b697cffc5230",
@@ -357,6 +375,15 @@
       "durationSeconds": 3.6433,
       "sampleRate": 24000,
       "rms": 3867.63
+    },
+    {
+      "text": "关心",
+      "file": "0b2df726920c8e7393d0033f.wav",
+      "sha256": "8c578d0412603513c04c041daa4738e503b9729041042133042bda5c5dc99464",
+      "bytes": 104268,
+      "durationSeconds": 2.1713,
+      "sampleRate": 24000,
+      "rms": 3122.64
     },
     {
       "text": "神",
@@ -899,6 +926,15 @@
       "rms": 4241.47
     },
     {
+      "text": "大雨造成了道路积水",
+      "file": "1af053e4db3fa58611a177c5.wav",
+      "sha256": "fed1b01a1cf0d7e4710db997168af668837d008c0e9fa7a1f33a12f381063835",
+      "bytes": 168780,
+      "durationSeconds": 3.5153,
+      "sampleRate": 24000,
+      "rms": 4253.38
+    },
+    {
       "text": "七",
       "file": "1b0542878c67f6cdf30e23c1.wav",
       "sha256": "01da0ee062a23d9768a4adbc086aff012bfde7dc8b8e5bb084a698ad055b8556",
@@ -987,6 +1023,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 2809.82
+    },
+    {
+      "text": "这朵花是黄色的",
+      "file": "1e0b858629cfbeb1ab47932f.wav",
+      "sha256": "29de146be84d0bd740431a512d6793a07ab5060e305f8303c0b7f6001e6e07cb",
+      "bytes": 148044,
+      "durationSeconds": 3.0833,
+      "sampleRate": 24000,
+      "rms": 4493.91
     },
     {
       "text": "通过",
@@ -1313,6 +1358,15 @@
       "rms": 4127.52
     },
     {
+      "text": "存钱",
+      "file": "2995be1e37589653368ab284.wav",
+      "sha256": "fc12872bf75b1708900e0b4cb44b418aeb41968b53bf0460791d4fa30021188e",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 2894.44
+    },
+    {
       "text": "她",
       "file": "2ab425e0c6b932cbcf03e539.wav",
       "sha256": "52eee9d8928b0bee9b4a3de6a593868987d26945612f60096abdc61a76d49f5d",
@@ -1403,6 +1457,15 @@
       "rms": 3827.08
     },
     {
+      "text": "妹妹十分喜爱画画",
+      "file": "2cde0f67530d72b3752a3440.wav",
+      "sha256": "02684d033f085e9d536fa869de22b250eb3a83a35ff5168a151b46c3ba7cdb55",
+      "bytes": 160332,
+      "durationSeconds": 3.3393,
+      "sampleRate": 24000,
+      "rms": 4201.67
+    },
+    {
       "text": "议",
       "file": "2d3cd88f425324b2c7bae4f4.wav",
       "sha256": "f7338f3561f5a3d0e271973b1c313442176b191bd141318d675e8d9aa965dc28",
@@ -1410,6 +1473,15 @@
       "durationSeconds": 0.9873,
       "sampleRate": 24000,
       "rms": 3602.38
+    },
+    {
+      "text": "发明",
+      "file": "2d9ed19123aa4e24dadbbeda.wav",
+      "sha256": "2d070877464daeb48ed58548569803008f5c4215cadc36a52a1f16eb689539ad",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 3842.56
     },
     {
       "text": "府",
@@ -1727,6 +1799,15 @@
       "rms": 3370.41
     },
     {
+      "text": "过去",
+      "file": "3774af744856e7f5a7056844.wav",
+      "sha256": "8270b10e17238734466cdd30bee368119a5ab1016806de4a23903e195efc5834",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 3238.26
+    },
+    {
       "text": "听到",
       "file": "37f79bce6bd7446052ee0424.wav",
       "sha256": "a29e0a5e3b92e23d62479ca138059ce870fb61e58b64eb8a9e57c72c88f06daa",
@@ -1887,6 +1968,15 @@
       "durationSeconds": 1.9793,
       "sampleRate": 24000,
       "rms": 2460.34
+    },
+    {
+      "text": "这条路正在修，出门有些不便",
+      "file": "3aef221c35090a45942a781e.wav",
+      "sha256": "715c77ed6c71b0fb95309be046e77f89cb3a081632fbde05378eb6b6e6b881c1",
+      "bytes": 245580,
+      "durationSeconds": 5.1153,
+      "sampleRate": 24000,
+      "rms": 4260.8
     },
     {
       "text": "笔",
@@ -2303,6 +2393,15 @@
       "rms": 3300.83
     },
     {
+      "text": "学校的名字印在书包上",
+      "file": "492f96a4d62282027997a416.wav",
+      "sha256": "bcb6eed51bb7aa1652de4bbfac15868458c55f173684656574f11a9aeddd3896",
+      "bytes": 204108,
+      "durationSeconds": 4.2513,
+      "sampleRate": 24000,
+      "rms": 4407.13
+    },
+    {
       "text": "小鱼",
       "file": "494bdb83fab6673e4692c942.wav",
       "sha256": "4a9ba9ca59c053c1923577425bf56be4f7c2a55e78d0c0b28756ff4d2f01fd53",
@@ -2328,6 +2427,15 @@
       "durationSeconds": 1.1153,
       "sampleRate": 24000,
       "rms": 3784.2
+    },
+    {
+      "text": "项",
+      "file": "49ccde43a15497914b829878.wav",
+      "sha256": "b337d6c3aeb6a1346cc69953e361b665fc5ae7cb2f11a42ce12371199dc740fe",
+      "bytes": 65868,
+      "durationSeconds": 1.3713,
+      "sampleRate": 24000,
+      "rms": 4108.72
     },
     {
       "text": "天",
@@ -2582,6 +2690,15 @@
       "rms": 3281.57
     },
     {
+      "text": "过着",
+      "file": "51bcb14ab9302f4f7bdc8832.wav",
+      "sha256": "a3cb21ab02f143c0e28bf9db4ace2a81348c17554b5baea277c24c97a6ec542d",
+      "bytes": 91980,
+      "durationSeconds": 1.9153,
+      "sampleRate": 24000,
+      "rms": 3749.72
+    },
+    {
       "text": "蓝",
       "file": "52f354ecfccbb8e6c739fc93.wav",
       "sha256": "145c1235dfa06c8a20c8b7f5c7224b3a0b9dfa5558169491b200e42a665a5ea1",
@@ -2652,6 +2769,15 @@
       "durationSeconds": 1.5473,
       "sampleRate": 24000,
       "rms": 2213.33
+    },
+    {
+      "text": "过去，这个家庭过着穷苦的生活",
+      "file": "554e186832eb3c1fab7335fe.wav",
+      "sha256": "5b92b60586478cee521a90baaffdd67195ce6c6787424720ae987e6351d0a184",
+      "bytes": 263244,
+      "durationSeconds": 5.4833,
+      "sampleRate": 24000,
+      "rms": 3632.87
     },
     {
       "text": "生长",
@@ -3131,6 +3257,15 @@
       "rms": 2963.91
     },
     {
+      "text": "妈妈去银行存钱",
+      "file": "6305603d486af93b2980dac7.wav",
+      "sha256": "baa9becd80ac4662bca179f4c8a4ca37178f592858838a7429f7dfc2d3ec74eb",
+      "bytes": 154188,
+      "durationSeconds": 3.2113,
+      "sampleRate": 24000,
+      "rms": 3876.59
+    },
+    {
       "text": "树",
       "file": "635643d28367e5e06a55b3d5.wav",
       "sha256": "a09ebbe2fafc9b0f7e61fc3de6c604c965f67b60bffb6912c873679174c97d08",
@@ -3266,6 +3401,15 @@
       "rms": 3246.48
     },
     {
+      "text": "大雨",
+      "file": "698d7788a04905077f616998.wav",
+      "sha256": "63b0d0ad561396f65dff15a7fe5341d615a3c29a6dce116467d68f66e0ba0527",
+      "bytes": 98124,
+      "durationSeconds": 2.0433,
+      "sampleRate": 24000,
+      "rms": 4772.47
+    },
+    {
       "text": "这座",
       "file": "69b4847d031d6967d0337adf.wav",
       "sha256": "74b748e4f7b5817dce80290cd4d26a5a5dee6fb0f8bfd6ba8331571e718b41c1",
@@ -3329,6 +3473,15 @@
       "rms": 2424.32
     },
     {
+      "text": "十分",
+      "file": "6ad3a876dda6f4b88d1b44ac.wav",
+      "sha256": "b10163dfd2ef19d1227b64d7007683fa8b7e490442a2ca1d565ec669b7953e40",
+      "bytes": 109644,
+      "durationSeconds": 2.2833,
+      "sampleRate": 24000,
+      "rms": 3003.16
+    },
+    {
       "text": "这朵花很美",
       "file": "6b150027d933a6a97a13b7bb.wav",
       "sha256": "c4c2264638fbb3e44d5bc471ac8ed0dcdcdfa21d100bac3ff041c4d03eb64f0b",
@@ -3345,6 +3498,15 @@
       "durationSeconds": 3.8833,
       "sampleRate": 24000,
       "rms": 3933.15
+    },
+    {
+      "text": "老师给了我一个好建议",
+      "file": "6bb1cce4888d960381c32c42.wav",
+      "sha256": "16ad8748320e0a10947a81200030851ab1c656b61dd9df2a4ef6f1a7c13a47be",
+      "bytes": 165708,
+      "durationSeconds": 3.4513,
+      "sampleRate": 24000,
+      "rms": 4133.77
     },
     {
       "text": "喜爱",
@@ -3435,6 +3597,15 @@
       "durationSeconds": 2.3473,
       "sampleRate": 24000,
       "rms": 2949.28
+    },
+    {
+      "text": "成员",
+      "file": "6e6d6ddbb7c1a453d2c1ca55.wav",
+      "sha256": "9fc27d004489ac2ecc48d7972ddf35b62f121d42c17adddec28457fc72db68e9",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 2955.72
     },
     {
       "text": "读书",
@@ -3572,6 +3743,15 @@
       "rms": 3338.79
     },
     {
+      "text": "村子",
+      "file": "74644d98b9a17026b8f9d8c3.wav",
+      "sha256": "88f8e6a7d6a16ed27187421f3c9c0e3b5a4602d4332dc50d2a8805bbe40e94bd",
+      "bytes": 101196,
+      "durationSeconds": 2.1073,
+      "sampleRate": 24000,
+      "rms": 2365.67
+    },
+    {
       "text": "博物馆",
       "file": "74846de213c1612e66d1e2a7.wav",
       "sha256": "527bdb83b6edb07fcdb3154d63cb767599955d31d7051b59af0fc9e205a0d93b",
@@ -3635,6 +3815,15 @@
       "rms": 1970.6
     },
     {
+      "text": "比赛",
+      "file": "7595b4b87e468f45cab63655.wav",
+      "sha256": "6d18416fa95a84bbcca049f75386cad2b975a384c1c1b07a39bc01a383ca1240",
+      "bytes": 71244,
+      "durationSeconds": 1.4833,
+      "sampleRate": 24000,
+      "rms": 3910.78
+    },
+    {
       "text": "语",
       "file": "759e16b81f75e6389761f9c9.wav",
       "sha256": "a2883afdb19a89ed401d78e156b0c5064032ae91b4415beea7daad67b67c4232",
@@ -3651,6 +3840,15 @@
       "durationSeconds": 1.9153,
       "sampleRate": 24000,
       "rms": 2946.45
+    },
+    {
+      "text": "美国有五十个州",
+      "file": "76c4c56e20bb10a3b89ab87d.wav",
+      "sha256": "9247e8d8e116c70a113ffc294591dbbf093186713170b7e6f75d1e310388d712",
+      "bytes": 136524,
+      "durationSeconds": 2.8433,
+      "sampleRate": 24000,
+      "rms": 4154.63
     },
     {
       "text": "走进",
@@ -3876,6 +4074,15 @@
       "durationSeconds": 2.2833,
       "sampleRate": 24000,
       "rms": 3164.24
+    },
+    {
+      "text": "五十",
+      "file": "7c848f5005f0ee8616915787.wav",
+      "sha256": "8e5cc6974fc8e90cd8bce37070ac29d8cb72b1b0fb50eea52e0456aada283b12",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 2469.87
     },
     {
       "text": "如果",
@@ -4308,6 +4515,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 3436.32
+    },
+    {
+      "text": "学校成立了一个读书俱乐部",
+      "file": "8a234a8269f0378da6b1deb5.wav",
+      "sha256": "a9d3e660f1a27213f034ee53d9ad061c61970516e36693ef51b47e8d556ac31b",
+      "bytes": 204108,
+      "durationSeconds": 4.2513,
+      "sampleRate": 24000,
+      "rms": 3812.47
     },
     {
       "text": "学",
@@ -4787,6 +5003,15 @@
       "rms": 2415.74
     },
     {
+      "text": "给了",
+      "file": "9c63efc5d6ae24b428873b35.wav",
+      "sha256": "67bdfe0261708465fd8fba5a60eff55d34343395f833ddb543e9d55e82571ef3",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 3638.28
+    },
+    {
       "text": "住着",
       "file": "9d833ee8d60e398a60ff98cf.wav",
       "sha256": "93b33e4359f0923123d4d1251d3d179008502ad30a723ab901e1094f97073013",
@@ -4886,6 +5111,15 @@
       "rms": 3673.75
     },
     {
+      "text": "请写下你的名字",
+      "file": "9f4f2685494cf3fc32a5847a.wav",
+      "sha256": "12ddf768fef0aa643239b1a2f4b7f8a022dd4789ec41a881f51d5bdfd574770e",
+      "bytes": 139596,
+      "durationSeconds": 2.9073,
+      "sampleRate": 24000,
+      "rms": 3453.94
+    },
+    {
       "text": "小鸟在树上唱歌",
       "file": "9f5e195650da1fb3646eebee.wav",
       "sha256": "21236a7b0ee89b21ae748d08272a57bc1fc00ac916a7bc1413b028a2cb120990",
@@ -4920,6 +5154,15 @@
       "durationSeconds": 1.9153,
       "sampleRate": 24000,
       "rms": 3426.92
+    },
+    {
+      "text": "马在草地上跑",
+      "file": "a08e011d1071f89c2ac324dc.wav",
+      "sha256": "4abf0419a3adcb01d2d1ed25bddbcd7f929a204a7e1d6d31bfe3f81339f6d3f0",
+      "bytes": 144972,
+      "durationSeconds": 3.0193,
+      "sampleRate": 24000,
+      "rms": 4282.28
     },
     {
       "text": "请打开窗户，让空气流通",
@@ -5073,6 +5316,24 @@
       "durationSeconds": 1.1153,
       "sampleRate": 24000,
       "rms": 3437.05
+    },
+    {
+      "text": "道路",
+      "file": "a44c7ba211320a43e426a379.wav",
+      "sha256": "823760193a7d6ea6ca3d0d38e11ba744887e1afffc16e13604628b1f4637c213",
+      "bytes": 80460,
+      "durationSeconds": 1.6753,
+      "sampleRate": 24000,
+      "rms": 4527.86
+    },
+    {
+      "text": "有些",
+      "file": "a4c04327ef6451b66ee3a0bf.wav",
+      "sha256": "b6fc45b4eedd51fcc7e54e4424b4916c1a926f85972542a41f25770166120ba3",
+      "bytes": 115788,
+      "durationSeconds": 2.4113,
+      "sampleRate": 24000,
+      "rms": 4015.4
     },
     {
       "text": "三",
@@ -5388,6 +5649,15 @@
       "durationSeconds": 2.8433,
       "sampleRate": 24000,
       "rms": 4152.25
+    },
+    {
+      "text": "以前",
+      "file": "aa98317793b49d8dbe4cd993.wav",
+      "sha256": "44485f16be45dd478bdec053f67b8f5ca65fcc780bcf82314ca5f3dc09ca476e",
+      "bytes": 109644,
+      "durationSeconds": 2.2833,
+      "sampleRate": 24000,
+      "rms": 2407.14
     },
     {
       "text": "小桥下面有一条河",
@@ -6099,6 +6369,15 @@
       "durationSeconds": 2.0433,
       "sampleRate": 24000,
       "rms": 3743.85
+    },
+    {
+      "text": "修",
+      "file": "bd5d0f6169394c03c96e1e13.wav",
+      "sha256": "f2e0db66a1ad387291a13fc44cf2768c6597c239563839450c292182686d4b24",
+      "bytes": 74316,
+      "durationSeconds": 1.5473,
+      "sampleRate": 24000,
+      "rms": 4755.41
     },
     {
       "text": "花盆",
@@ -6947,6 +7226,15 @@
       "rms": 3946.59
     },
     {
+      "text": "出色",
+      "file": "d29e0db53fbf13173c70d31c.wav",
+      "sha256": "ceadff6e768a43821fc1ab160a184b6c5904c4e659589795770dbbb6e5c4cf42",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 2876.84
+    },
+    {
       "text": "开始",
       "file": "d2bb025a2e51c410b7047333.wav",
       "sha256": "e5a49fe2d6e2fb76b399cb6653a44840a09885c4cb071bcd610ca48dad801a87",
@@ -7008,6 +7296,15 @@
       "durationSeconds": 2.2833,
       "sampleRate": 24000,
       "rms": 3517.76
+    },
+    {
+      "text": "这只狗很大",
+      "file": "d516de232941d938de698e82.wav",
+      "sha256": "119845d67e211a4dd80e0b6e69e84ce2ed76b886c10a9a7e09f4d09eed74f30e",
+      "bytes": 144972,
+      "durationSeconds": 3.0193,
+      "sampleRate": 24000,
+      "rms": 3507.21
     },
     {
       "text": "流",
@@ -7226,6 +7523,15 @@
       "rms": 3679.51
     },
     {
+      "text": "这是一项伟大的发明",
+      "file": "dc595d9594d4131a28afa6c8.wav",
+      "sha256": "22e14e0d44649034ca4cff2e5735429b95dede8540cc3b6e5b2dc5848e569271",
+      "bytes": 142668,
+      "durationSeconds": 2.9713,
+      "sampleRate": 24000,
+      "rms": 4387.78
+    },
+    {
       "text": "洒",
       "file": "dc6163e157178f9dcec1e4fd.wav",
       "sha256": "be5b75d66e17ceef79d1abe7af07f88cb56c675712b23abb79466d9f7eb8d60f",
@@ -7260,6 +7566,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 2256.01
+    },
+    {
+      "text": "胡萝卜",
+      "file": "dd1a68cb2c35fb782d5dfccb.wav",
+      "sha256": "407cc9c75119d07584864996398d7180b0b0e598005f971b686b233466b54440",
+      "bytes": 112716,
+      "durationSeconds": 2.3473,
+      "sampleRate": 24000,
+      "rms": 3975.16
     },
     {
       "text": "空气",
@@ -7350,6 +7665,15 @@
       "durationSeconds": 1.5473,
       "sampleRate": 24000,
       "rms": 4121.43
+    },
+    {
+      "text": "小兔子喜欢吃胡萝卜",
+      "file": "de96f52adb8a637909cf2302.wav",
+      "sha256": "5ef558511e1eec09967c9d4254aa974b0a4cfd106d817a087cc7b42b47ba1984",
+      "bytes": 177996,
+      "durationSeconds": 3.7073,
+      "sampleRate": 24000,
+      "rms": 3723.16
     },
     {
       "text": "水里",
@@ -7631,6 +7955,15 @@
       "rms": 4030.65
     },
     {
+      "text": "家庭成员应该互相关心",
+      "file": "e94dbdd3ce1749dc18b4bab1.wav",
+      "sha256": "7b2cd63be070b71a192e88a8568cff63e759a91dd2ea9f6a002d22204d5640c1",
+      "bytes": 181068,
+      "durationSeconds": 3.7713,
+      "sampleRate": 24000,
+      "rms": 3799.71
+    },
+    {
       "text": "家里",
       "file": "e97022d759e9ed5575ab5c20.wav",
       "sha256": "54b1667d8d5ee44b5eea4ea475192f5ce4b88bf093825c27387d44501588f1d2",
@@ -7737,6 +8070,15 @@
       "durationSeconds": 1.8513,
       "sampleRate": 24000,
       "rms": 3019.29
+    },
+    {
+      "text": "以前，这个村子很穷",
+      "file": "ed548bc2b215dcc10226a2b7.wav",
+      "sha256": "c78fa9fff06cd5391096ff2612eadf4f2f85606b0d6b5c94208dbec7ab093f5d",
+      "bytes": 210252,
+      "durationSeconds": 4.3793,
+      "sampleRate": 24000,
+      "rms": 3005.2
     },
     {
       "text": "城市",
@@ -7899,6 +8241,15 @@
       "durationSeconds": 3.3873,
       "sampleRate": 24000,
       "rms": 4438.02
+    },
+    {
+      "text": "积水",
+      "file": "f1f1fb89b5ee226e069fd0eb.wav",
+      "sha256": "b743797ed2e23c7362ebb16218ca29ce1e9fb4c88bb449b9efb761010e4f3a40",
+      "bytes": 101196,
+      "durationSeconds": 2.1073,
+      "sampleRate": 24000,
+      "rms": 3186.83
     },
     {
       "text": "雨后",
@@ -8079,6 +8430,15 @@
       "durationSeconds": 0.9393,
       "sampleRate": 24000,
       "rms": 4752.39
+    },
+    {
+      "text": "这片叶子是绿色的",
+      "file": "f936865fa8821c1097e45c8d.wav",
+      "sha256": "9e318ed6682f74a1d27113eee2fab756f319f060453ed6329a3ab5fcd5b69039",
+      "bytes": 174924,
+      "durationSeconds": 3.6433,
+      "sampleRate": 24000,
+      "rms": 3707.45
     },
     {
       "text": "重",

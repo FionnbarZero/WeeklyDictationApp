@@ -1,7 +1,7 @@
 /** Generated practice support, not teacher-authored curriculum. Original sentences;
  * dictionary pronunciation cross-check and scope are documented in docs/game-content-2026-10-25.md.
  * Only exact retained Tier 1/2 words from the allowlisted grade source can use these rows. */
-export const GAME_CONTENT_VERSION = 'practice-language-2026-10-25-v1'
+export const GAME_CONTENT_VERSION = 'practice-language-2026-10-26-v1'
 export type GameLanguageRow = readonly [
   text: string,
   meaning: string,
@@ -11,6 +11,11 @@ export type GameLanguageRow = readonly [
 ]
 export const GAME_LANGUAGE: Readonly<Record<string, readonly GameLanguageRow[]>> = {
   Kindergarten: [
+    ['大', 'big', 'dà', ['这', '只', '狗', '很', '大', '。'], ['大打答']],
+    ['马', 'horse', 'mǎ', ['马', '在', '草地', '上', '跑', '。'], ['吗马妈']],
+    ['绿色', 'green', 'lǜ sè', ['这', '片', '叶子', '是', '绿色', '的', '。'], ['绿律率', '瑟色涩']],
+    ['黄色', 'yellow', 'huáng sè', ['这', '朵', '花', '是', '黄色', '的', '。'], ['黄皇慌', '瑟色涩']],
+    ['吃', 'eat', 'chī', ['小兔子', '喜欢', '吃', '胡萝卜', '。'], ['尺吃迟']],
     ['虫', 'insect', 'chóng', ['草地', '上', '有', '一', '只', '虫', '。'], ['重虫冲']],
     ['小', 'small', 'xiǎo', ['这', '只', '猫', '很', '小', '。'], ['笑校小']],
     ['你', 'you', 'nǐ', ['你', '喜欢', '小猫', '吗', '？'], ['泥你拟']],
@@ -144,6 +149,41 @@ export const GAME_LANGUAGE: Readonly<Record<string, readonly GameLanguageRow[]>>
     ['同学', 'classmate', 'tóng xué', ['我的', '同学', '喜欢', '踢足球', '。'], ['同通桶', '雪学穴']],
   ],
   'Grade 5': [
+    ['名字', 'name', 'míng zi', ['请', '写下', '你', '的', '名字', '。'], ['明名鸣', '子字自']],
+    ['穷', 'poor', 'qióng', ['以前', '，', '这个', '村子', '很', '穷', '。'], ['穷琼穹']],
+    [
+      '穷苦',
+      'very poor',
+      'qióng kǔ',
+      ['过去', '，', '这个', '家庭', '过着', '穷苦', '的', '生活', '。'],
+      ['琼穹穷', '苦哭库'],
+    ],
+    ['家庭', 'family', 'jiā tíng', ['家庭', '成员', '应该', '互相', '关心', '。'], ['家加甲', '停庭亭']],
+    ['勇敢', 'brave', 'yǒng gǎn', ['这个', '孩子', '非常', '勇敢', '。'], ['用永勇', '感敢赶']],
+    ['喜爱', 'be fond of', 'xǐ ài', ['妹妹', '十分', '喜爱', '画画', '。'], ['洗喜戏', '爱矮艾']],
+    ['伟大', 'great', 'wěi dà', ['这', '是', '一', '项', '伟大', '的', '发明', '。'], ['伟尾位', '打答大']],
+    [
+      '表现',
+      'performance',
+      'biǎo xiàn',
+      ['她', '在', '比赛', '中', '的', '表现', '很', '出色', '。'],
+      ['标表彪', '线现先'],
+    ],
+    ['州', 'state', 'zhōu', ['美国', '有', '五十', '个', '州', '。'], ['周洲州']],
+    ['造成', 'cause', 'zào chéng', ['大雨', '造成', '了', '道路', '积水', '。'], ['造燥灶', '城成程']],
+    [
+      '不便',
+      'inconvenient',
+      'bù biàn',
+      ['这', '条', '路', '正在', '修', '，', '出门', '有些', '不便', '。'],
+      ['布不步', '边便变'],
+    ],
+    ['成立', 'set up', 'chéng lì', ['学校', '成立', '了', '一个', '读书', '俱乐部', '。'], ['城程成', '立力利']],
+    ['银行', 'bank', 'yín háng', ['妈妈', '去', '银行', '存钱', '。'], ['因银音', '行航杭']],
+    ['国家', 'country', 'guó jiā', ['中国', '是', '一个', '美丽', '的', '国家', '。'], ['国果过', '家加甲']],
+    ['方便', 'convenient', 'fāng biàn', ['坐', '公交车', '去', '图书馆', '很', '方便', '。'], ['房方放', '便边变']],
+    ['建议', 'suggestion', 'jiàn yì', ['老师', '给了', '我', '一个', '好', '建议', '。'], ['见建件', '意义议']],
+    ['印在', 'printed on', 'yìn zài', ['学校', '的', '名字', '印在', '书包', '上', '。'], ['音印因', '再在载']],
     ['盐', 'salt', 'yán', ['妈妈', '在', '汤里', '加了', '一点', '盐', '。'], ['言岩盐']],
     ['咸', 'salty', 'xián', ['这碗', '汤', '太', '咸', '了', '。'], ['先咸线']],
     ['层', 'layer', 'céng', ['桌子', '上', '有', '一', '层', '薄薄的', '灰尘', '。'], ['曾蹭层']],

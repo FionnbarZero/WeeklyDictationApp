@@ -51,7 +51,7 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = integratedWarmup
-  ? 'Combined Dojo / Approved Warmup 1'
+  ? 'Combined Dojo / Final fixes 1'
   : koreVoice
     ? 'Kore Mandarin / Prototype 1'
     : automaticCurriculum

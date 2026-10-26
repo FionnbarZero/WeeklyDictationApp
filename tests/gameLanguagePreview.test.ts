@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { inspectSnapshot } from '../src/familyBeta/curriculum.ts'
+import { inspectSnapshot, validateCurriculum } from '../src/familyBeta/curriculum.ts'
+import { reinforcementGames } from '../src/familyBeta/gamePools.ts'
 import {
   learningModuleCapabilities,
   learningModuleCapability,
@@ -13,6 +14,8 @@ import { NINJA_SKILLS_PROFILES } from '../src/ninjaSkills/profiles.ts'
 import { assertGamePack } from '../src/ninjaSkills/review.ts'
 import { startGameCheckpoint, validateGameCheckpoint } from '../src/ninjaSkills/progress.ts'
 import { dictationAudioText } from '../src/ninjaSkills/dictationContent.ts'
+import { currentSnapshot, newlySupported, nextLessonSnapshot } from './imported-game-content/fixtures.ts'
+import { withGameLanguage } from './w2-recovery/contentFixtures.ts'
 
 const modules = [
   'speed-match',
@@ -29,12 +32,12 @@ const grades = [
 ] as const
 function datasets(slug: string) {
   return inspectSnapshot(
-    JSON.parse(readFileSync(new URL(`./fixtures/dojo-launch-2026-10-16/${slug}.json`, import.meta.url), 'utf8')),
+    JSON.parse(readFileSync(new URL(`./fixtures/game-content-2026-10-26/${slug}.json`, import.meta.url), 'utf8')),
   ).datasets
 }
 
 for (const [slug, grade] of grades) {
-  test(`${grade}: every retained Tier 1/2 occurrence has exact, usable language without altering curriculum`, () => {
+  test(`${grade}: every current and retained Tier 1/2 occurrence has usable language without altering curriculum`, () => {
     const rows = GAME_LANGUAGE[grade]
     const terms = datasets(slug).flatMap((d) => learningModuleCohortFromDatasets(d.id, 'test', [d])!.terms)
     assert.deepEqual(
@@ -175,13 +178,22 @@ test('source-provided content and unknown sources/targets are preserved; product
 })
 
 test('saved packs and unused source terms never acquire the new catalog during review', () => {
-  const d = datasets('grade5')[0]
-  const c = learningModuleCohortFromDatasets(d.id, 'test', [d])!
-  for (const cap of learningModuleCapabilities(
-    { ...c, terms: c.terms.filter((t) => t.tier !== 'tier-3') },
-    NINJA_SKILLS_PROFILES['Grade 5'],
-  )) {
-    if (cap.status !== 'ready') continue
+  const d = inspectSnapshot(
+    JSON.parse(readFileSync(new URL('./fixtures/dojo-launch-2026-10-16/grade5.json', import.meta.url), 'utf8')),
+  ).datasets[0]
+  const enriched = withPreviewGameLanguage(learningModuleCohortFromDatasets(d.id, 'test', [d])!)
+  // These retained terms had identical support in the approved previous
+  // catalog. Model its stored version so upgrading cannot silently repin it.
+  const c = {
+    ...enriched,
+    terms: enriched.terms
+      .filter((t) => t.tier !== 'tier-3')
+      .map((t) => ({ ...t, supplementalVersion: 'practice-language-2026-10-25-v1' })),
+  }
+  for (const id of modules) {
+    const cap = learningModuleCapability(id, c, NINJA_SKILLS_PROFILES['Grade 5'], 0, true)
+    assert.equal(cap.status, 'ready')
+    if (cap.status !== 'ready') throw new Error('Expected all six saved games to be supported')
     const before = structuredClone(cap.pack)
     const saved = startGameCheckpoint(
       { childId: 'saved-content-test', grade: 'Grade 5', week: d.startDate, gameId: cap.pack.moduleId },
@@ -190,7 +202,10 @@ test('saved packs and unused source terms never acquire the new catalog during r
       'old-writer',
       '2026-10-24T12:00:00.000Z',
     )
-    withPreviewGameLanguage(c)
+    assert.deepEqual(withPreviewGameLanguage(c), c, 'already-pinned language must not be refreshed')
+    assert.ok(
+      enriched.terms.filter((t) => t.tier !== 'tier-3').every((t) => t.supplementalVersion === GAME_CONTENT_VERSION),
+    )
     assert.deepEqual(validateGameCheckpoint(JSON.parse(JSON.stringify(saved))).pack, before)
     assert.deepEqual(
       learningModuleCapability(cap.pack.moduleId, cap.pack.cohort, NINJA_SKILLS_PROFILES['Grade 5'], 0, true),
@@ -198,3 +213,61 @@ test('saved packs and unused source terms never acquire the new catalog during r
     )
   }
 })
+
+for (const cohort of newlySupported) {
+  test(`${cohort.grade}: newly imported targets retain their tiers and become normal earlier-target games`, async () => {
+    const original = currentSnapshot(cohort.slug)
+    const next = nextLessonSnapshot(cohort.slug)
+    const originalUnits =
+      original.payload.sourceType === 'google-sheets' ? original.payload.sheets : original.payload.slides
+    const laterUnits = next.payload.sourceType === 'google-sheets' ? next.payload.sheets : next.payload.slides
+    assert.deepEqual(
+      laterUnits!.slice(1),
+      originalUnits,
+      'test clock advancement must preserve all original source units',
+    )
+    const source = await validateCurriculum(JSON.stringify(next), cohort.grade)
+    assert.equal(source.datasets[0].startDate, '2026-11-02')
+    const current = source.datasets.find((d) => d.startDate === cohort.week)!
+    assert.deepEqual(
+      current.vocabulary!.tier1.map((w) => w.text),
+      cohort.writing,
+    )
+    assert.deepEqual(
+      current.vocabulary!.tier2.map((w) => w.text),
+      cohort.reading,
+    )
+    const games = reinforcementGames(withGameLanguage(source.datasets), '2026-11-02', cohort.grade)
+    for (const game of games) {
+      assert.deepEqual(
+        game.datasets.map((d) => d.id),
+        [current.id],
+        'never borrow unrelated words to make a game ready',
+      )
+      const moduleId = game.capability.status === 'ready' ? game.capability.pack.moduleId : game.capability.moduleId
+      if (cohort.slug === 'kindergarten' && moduleId === 'context-gap-dash') {
+        assert.equal(game.capability.status, 'unavailable')
+        if (game.capability.status === 'unavailable')
+          assert.match(game.capability.reason, /at least three distinct Tier 1/)
+      } else {
+        assert.equal(game.capability.status, 'ready')
+        if (game.capability.status === 'ready') assertGamePack(game.capability.pack)
+      }
+    }
+    const words = withPreviewGameLanguage(learningModuleCohortFromDatasets(current.id, 'new', [current])!).terms
+    for (const [text, pinyin] of cohort.slug === 'kindergarten'
+      ? [
+          ['绿色', 'lǜ sè'],
+          ['黄色', 'huáng sè'],
+          ['马', 'mǎ'],
+        ]
+      : [
+          ['名字', 'míng zi'],
+          ['穷苦', 'qióng kǔ'],
+          ['银行', 'yín háng'],
+          ['印在', 'yìn zài'],
+        ]) {
+      assert.equal(words.find((word) => word.text === text)!.pinyinText, pinyin)
+    }
+  })
+}

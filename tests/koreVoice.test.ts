@@ -28,7 +28,13 @@ test('slow replay is slower once; cached/native rate distinction is preserved', 
 for (const [grade, rows] of Object.entries(GAME_LANGUAGE)) {
   test(`${grade}: every approved game word, character, sentence and dictation sequence has Kore`, () => {
     for (const [text, , , tokens] of rows) {
-      for (const prompt of [text, ...text, tokens.join(''), dictationAudioText(text, tokens.join(''))]) {
+      for (const prompt of [
+        text,
+        ...text,
+        tokens.join(''),
+        ...tokens.filter((token) => /\p{Script=Han}/u.test(token)),
+        dictationAudioText(text, tokens.join('')),
+      ]) {
         const parts = koreAudioSegments({ ...segment(prompt), pauseAfterMs: 750 })
         assert.ok(
           parts.every((part) => part.storagePath?.startsWith('audio/kore/')),
