@@ -1,5 +1,13 @@
 # Weekly Dictation status
 
+## Current audit — automatic curriculum launch race; hold device acceptance, October 25
+
+The audit found **one reproducible regression in published automatic-update prototype `f36fb87`**: a new curriculum response can replace a still-visible menu while Writing waits for its save lock, canceling the requested launch. This reproduces in **all three grades**, in laptop Chromium and both tablet WebKit layouts. Re-entering Writing recovers; loss of reviewed child records is not established. [Finding, reproduction and evidence](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/automatic-curriculum-regression-audit-2026-10-25.md).
+
+Fresh **1,271 units and all 39 existing hosted browser cases pass**, but the new targeted probe has **nine passing controls and nine failing update cases**. Those existing tests did not cover opening-time updates. Original driver failures are retained and accounted; no all-clear is claimed. Exact **393 files / 2,358 headers**, frozen Grade 5 **183 files / 1,098 headers**, canonical identity and **all 19 releases/expiries** remain unchanged. No application edit, deployment or new email occurred.
+
+**Next:** repair launch ownership before physical-device acceptance. The owner also requested voice installation and selected **Mandarin samples first**; official A/D sample URLs are verified and recorded in the audit. Final Mandarin selection and a supported provider connection remain pending; Tingting is still installed in the app. Real iPad/iMac sound, handwriting, microphone and resume acceptance remains unverified. The prior ready-for-device-check recommendation below is superseded by this finding.
+
 ## Current handoff — automatic curriculum update prototype, October 25
 
 **Automatic curriculum updates · Prototype 1 / `f36fb8797314bcd37295d3fa40346e93a45ba1e7`** is published as a separate all-grade full-app test path: [Kindergarten](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/automatic-curriculum/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/automatic-curriculum/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--w-repairs-oct23-v1-06344oyc.web.app/automatic-curriculum/family-beta-preview.html?grade=grade5). Expires **November 1, 2026 at 3:31 PM Pacific**. Hosting version `254eaf8f1fac4882`; exact **393 files / 2,358 headers** verified.

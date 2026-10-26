@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — repair opening-time curriculum race, then Mandarin voice/device acceptance
+
+October 25 audit of automatic-update prototype **f36fb87** found a new opening-time defect: a validated refresh can replace the activity frame while Writing is still acquiring its save lock. **Nine affected cases fail across all three grades and three layouts; nine no-update controls pass.** Re-entering recovers. The existing 39 hosted cases and 1,271 units pass but miss this transition. [Exact evidence and proposed repair boundary](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/automatic-curriculum-regression-audit-2026-10-25.md).
+
+Hold working-prototype acceptance/canonical integration until launch ownership is protected and a new verified prototype is ready. Preserve teaching, scheduled dates, checkpoint formats, reports, canonical app and the frozen fifth-grade presentation. No app or hosting change was made during the audit.
+
+The owner moved **physical-device acceptance and preferred-voice installation** next, and selected **Mandarin voice samples first**. Provide the verified official Google A/D samples; do not choose a voice or claim installation without their selection. The current environment lacks the generator's configured key/voice variables; verify supported secure provider access after selection. English Niamh remains separate. Physical speaker/Pencil/microphone and real-device resume results require actual iPad/iMac feedback, not automated WebKit passes. Existing Astra · Extra High behavior/review routing and prototype-first gates continue; no new routine model approval is pending.
+
 ## Current priority — accept automatic curriculum update prototype, October 25
 
 The requested automatic-source repair is delivered in the isolated **Automatic curriculum updates · Prototype 1 / f36fb87** full-app path for all three grades. Exact links, November 1 expiry and verified email receipt are at the top of STATUS. It uses the existing approved teacher-source service, activates on scheduled Pacific dates, preserves open activities/reviewed writing checkpoints, and rejects invalid/stale/partial replacements while retaining valid lessons. Current newly posted K recordings and K/Grade 5 guide gaps are filled. [Full evidence and boundaries](/Users/meghanoreillygreen/.codex/worktrees/grade5-oct23-prototype/WeeklyDictationApp/docs/automatic-curriculum-prototype-2026-10-25.md).
