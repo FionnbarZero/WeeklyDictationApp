@@ -9,6 +9,7 @@ import { GRADE5_ASSESSMENT_SOURCE_ID } from '../grade5PresentationPreview/source
 import { inspectKindergartenWorkbook } from '../kindergartenSheetsImporter.ts'
 import { grade2DeckProfile } from '../slidesImporter.ts'
 import { automaticCurriculumEndpoint, automaticCurriculumPreview } from './automaticCurriculum.ts'
+import { grade2WetlandReviewPreview, recoverGrade2Wetland } from './grade2WetlandReview.ts'
 import type { BetaGrade } from './model.ts'
 
 export const sourceIds: Record<BetaGrade, string> = {
@@ -29,6 +30,13 @@ export type CurriculumSnapshot = {
   sourceId: string
   contentSha256: string
   payload: CurriculumSourcePayload
+  reviewedRecovery?: {
+    id: 'grade2-wetland-oct26-v1'
+    originalContentSha256: string
+    sourceSlideId: string
+    sourceModifiedAt: string
+    reviewedAt: string
+  }
 }
 
 export function inspectSnapshot(snapshot: CurriculumSnapshot) {
@@ -133,6 +141,10 @@ export async function fetchCurriculum(grade: BetaGrade, signal?: AbortSignal) {
   let loaded: Awaited<ReturnType<typeof validateCurriculum>>
   try {
     loaded = await validateCurriculum(body, grade)
+    if (grade2WetlandReviewPreview && grade === 'Grade 2') {
+      const recovered = await recoverGrade2Wetland(loaded.snapshot)
+      if (recovered !== loaded.snapshot) loaded = await validateCurriculum(JSON.stringify(recovered), grade)
+    }
     signal?.throwIfAborted()
     if (typeof localStorage !== 'undefined') {
       const cache = await import('./curriculumCache.ts')

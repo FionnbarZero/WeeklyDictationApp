@@ -55,6 +55,7 @@ import {
   watchCurriculum,
 } from './automaticCurriculum.ts'
 import { gameRecoveryPreview, savedGameRecoveryExample } from './gameRecoveryPreview.ts'
+import { grade2WetlandReviewPreview, wetlandReviewLabel } from './grade2WetlandReview.ts'
 import { PreviewParentTools } from './PreviewParentTools.tsx'
 import { ReadyActivityFrame } from './ReadyActivityFrame.tsx'
 
@@ -1079,7 +1080,11 @@ function FamilyPreview() {
                 setResumingId(null)
               }}
             >
-              <option value="">Current teacher lesson</option>
+              <option value="">
+                {grade2WetlandReviewPreview
+                  ? wetlandReviewLabel(currentGrade, available[0]?.startDate, today)
+                  : 'Current teacher lesson'}
+              </option>
               {available.map((d) => (
                 <option key={d.id} value={d.startDate}>
                   {d.dateRange}

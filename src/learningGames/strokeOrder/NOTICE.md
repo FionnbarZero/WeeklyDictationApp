@@ -10,6 +10,7 @@ revision for 土、花、走、最、哪、家、住、里. Existing guide coord
 The October 23 Grade 5 assessment prototype adds 沟、快、速、意、思 from the same pinned revision; existing guides are unchanged.
 The October 19 supplement adds 虫 from the same revision, with six validated strokes.
 The October 25 automatic-curriculum isolated prototype adds 马、名、字、穷、苦、庭、喜、伟 from that pinned revision. Existing guides remain unchanged; this supplement is enabled only in the automatic-update prototype.
+The October 26 Grade 2 Wetland review prototype adds 湿、食、还、蛋 from that same pinned revision in `wetlandStrokeAssets.ts`, enabled only for that isolated preview. Existing guides remain unchanged.
 The upstream data originated in Make Me A Hanzi and
 Arphic Technology fonts.
 

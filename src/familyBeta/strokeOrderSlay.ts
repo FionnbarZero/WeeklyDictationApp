@@ -7,12 +7,15 @@ import type { Dataset } from '../domain/contracts.ts'
 import { automaticCurriculumStrokeMedians } from '../learningGames/strokeOrder/automaticCurriculumStrokeAssets.ts'
 import { grade2StrokeMedians } from '../learningGames/strokeOrder/grade2StrokeAssets.ts'
 import { buildStrokeOrderRounds, strokeAssetIsAvailable } from '../learningGames/strokeOrder/rounds.ts'
+import { wetlandStrokeMedians } from '../learningGames/strokeOrder/wetlandStrokeAssets.ts'
 import { GAME_POLICIES } from '../ninjaSkills/policy.ts'
 import { automaticCurriculumPreview } from './automaticCurriculum.ts'
+import { grade2WetlandReviewPreview } from './grade2WetlandReview.ts'
 
 const teacherMedians = {
   ...grade2StrokeMedians,
   ...(automaticCurriculumPreview ? automaticCurriculumStrokeMedians : {}),
+  ...(grade2WetlandReviewPreview ? wetlandStrokeMedians : {}),
 }
 
 export const STROKE_ORDER_MODULE = 'stroke-order-slay'

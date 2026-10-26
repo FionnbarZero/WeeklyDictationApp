@@ -1,7 +1,7 @@
 /** Generated practice support, not teacher-authored curriculum. Original sentences;
  * dictionary pronunciation cross-check and scope are documented in docs/game-content-2026-10-25.md.
  * Only exact retained Tier 1/2 words from the allowlisted grade source can use these rows. */
-export const GAME_CONTENT_VERSION = 'practice-language-2026-10-26-v1'
+export const GAME_CONTENT_VERSION = 'practice-language-2026-10-26-wetland-v1'
 export type GameLanguageRow = readonly [
   text: string,
   meaning: string,
@@ -55,6 +55,20 @@ export const GAME_LANGUAGE: Readonly<Record<string, readonly GameLanguageRow[]>>
     ['妈妈', 'mom', 'mā ma', ['妈妈', '在', '喝', '水', '。'], ['妈马吗', '妈马吗']],
   ],
   'Grade 2': [
+    ['湿地', 'wetland', 'shī dì', ['湿地', '是', '许多', '鸟', '的', '家', '。'], ['诗湿师', '地弟第']],
+    ['还有', 'also have', 'hái yǒu', ['池塘', '里', '有', '鱼', '，', '还有', '青蛙', '。'], ['还孩海', '友有游']],
+    ['蛋', 'egg', 'dàn', ['鸟', '在', '窝', '里', '下', '蛋', '。'], ['单蛋但']],
+    ['栖息地', 'habitat', 'qī xī dì', ['池塘', '是', '青蛙', '的', '栖息地', '。'], ['七栖起', '西息希', '地弟第']],
+    ['昆虫', 'insect', 'kūn chóng', ['我', '在', '草地', '上', '发现', '一', '只', '昆虫', '。'], ['昆困捆', '重虫冲']],
+    [
+      '金蛙',
+      'golden frog',
+      'jīn wā',
+      ['这', '只', '金蛙', '的', '身体', '是', '金黄色', '的', '。'],
+      ['今金斤', '蛙娃瓦'],
+    ],
+    ['蛇', 'snake', 'shé', ['这', '条', '蛇', '在', '草丛', '里', '爬', '。'], ['舌蛇舍']],
+    ['鳄鱼', 'crocodile', 'è yú', ['鳄鱼', '有', '一', '条', '长长的', '尾巴', '。'], ['饿恶鳄', '语雨鱼']],
     ['走', 'walk', 'zǒu', ['我们', '一起', '走', '到', '学校', '。'], ['奏走邹']],
     ['最', 'most', 'zuì', ['在', '这些', '动物', '中', '，', '我', '最', '喜欢', '熊猫', '。'], ['嘴最醉']],
     ['哪里', 'where', 'nǎ lǐ', ['你', '的', '家', '在', '哪里', '？'], ['哪拿那', '理里力']],

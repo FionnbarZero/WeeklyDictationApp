@@ -10,6 +10,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup", "src/familyBeta/model.ts", "src/familyBeta/curriculum.ts", "src/familyBeta/curriculumCache.ts", "src/familyBeta/automaticCurriculum.ts", "src/familyBeta/resultRetention.ts", "src/familyBeta/resultLedger.ts", "scripts/preview-family-retention.ts", "src/grade5PresentationPreview/policy.ts", "src/grade5PresentationPreview/sourceIdentity.ts", "src/grade5PresentationPreview/assessmentSource.ts", "src/grade5PresentationPreview/assessmentData.ts"],
+  "include": ["backend", "src/acquisition", "src/curriculum", "src/domain", "src/lifecycle", "src/practice/profiles", "src/warmup", "src/familyBeta/model.ts", "src/familyBeta/curriculum.ts", "src/familyBeta/curriculumCache.ts", "src/familyBeta/automaticCurriculum.ts", "src/familyBeta/grade2WetlandReview.ts", "src/familyBeta/grade2WetlandSource.json", "src/familyBeta/resultRetention.ts", "src/familyBeta/resultLedger.ts", "scripts/preview-family-retention.ts", "src/grade5PresentationPreview/policy.ts", "src/grade5PresentationPreview/sourceIdentity.ts", "src/grade5PresentationPreview/assessmentSource.ts", "src/grade5PresentationPreview/assessmentData.ts"],
   "files": ["src/config.ts", "src/releaseMetadata.ts", "src/domain.ts", "src/application/writingAcquisition/contracts.ts", "src/kindergartenSheetsImporter.ts", "src/localHydration.ts", "src/slidesImporter.ts", "src/practice/lifecycleProjection.ts", "src/testReview/contracts.ts"]
 }

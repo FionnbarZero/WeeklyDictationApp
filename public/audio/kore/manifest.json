@@ -3,9 +3,9 @@
   "voice": "cmn-CN-Chirp3-HD-Kore",
   "languageCode": "cmn-CN",
   "speakingRate": 0.65,
-  "generatedAt": "2026-10-26T18:47:59.258587+00:00",
-  "inputCharactersIncludingRetries": 2789,
-  "costUpperEstimateUsdBeforeFreeAllowance": 0.08367,
+  "generatedAt": "2026-10-26T20:54:41.138269+00:00",
+  "inputCharactersIncludingRetries": 2910,
+  "costUpperEstimateUsdBeforeFreeAllowance": 0.08729999999999999,
   "assets": [
     {
       "text": "桌子上有一层薄薄的灰尘",
@@ -51,6 +51,15 @@
       "durationSeconds": 2.1073,
       "sampleRate": 24000,
       "rms": 3489.73
+    },
+    {
+      "text": "苇",
+      "file": "0262d9de7e83e5dd69279cb0.wav",
+      "sha256": "7a4f9a539d96694219c58a01fea4c5fba29feca841629db86815106f8a598586",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 3221.69
     },
     {
       "text": "发出",
@@ -159,6 +168,15 @@
       "durationSeconds": 1.2433,
       "sampleRate": 24000,
       "rms": 4061.03
+    },
+    {
+      "text": "陆",
+      "file": "05cccae333e8e7e696305448.wav",
+      "sha256": "38873b113383c9375cfd8105a8477a921b84b54d3656594dd2895a918ccd4639",
+      "bytes": 85836,
+      "durationSeconds": 1.7873,
+      "sampleRate": 24000,
+      "rms": 3288.5
     },
     {
       "text": "我们学习汉语",
@@ -449,6 +467,15 @@
       "rms": 3061.05
     },
     {
+      "text": "鳄鱼有一条长长的尾巴",
+      "file": "0d30033d38dcec74f6e56440.wav",
+      "sha256": "d37829b142d6ded086d6275bf983babaf6f821589116b2c45b21ffbeac9bdccd",
+      "bytes": 186444,
+      "durationSeconds": 3.8833,
+      "sampleRate": 24000,
+      "rms": 3864.64
+    },
+    {
       "text": "穿过",
       "file": "0d3bf0380d4a7843dce3c233.wav",
       "sha256": "0c4b965238aeb2bddaf098b96cc883bc9857b0da4051bda905fc1ffb9b57d844",
@@ -519,6 +546,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 3095.63
+    },
+    {
+      "text": "息",
+      "file": "0e8597a9d5c1b9c07b1f8ab5.wav",
+      "sha256": "479d7ffc7416b00ae76c122a330a97f4717ead2f77857e2f9bcc4e20e376421a",
+      "bytes": 68172,
+      "durationSeconds": 1.4193,
+      "sampleRate": 24000,
+      "rms": 2490.92
     },
     {
       "text": "红",
@@ -809,6 +845,15 @@
       "rms": 3826.13
     },
     {
+      "text": "灌木",
+      "file": "15ee824312a2a92fc49425b3.wav",
+      "sha256": "5ebeb22257f50bae39f260d017dfd7379cb20f6df037b3a9a31da19704f5547d",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 3439.91
+    },
+    {
       "text": "大家",
       "file": "16b54b7ab3b5e9841d7204dd.wav",
       "sha256": "e2fa3f8b4e126566b26a97a2565f764c8385fc22cf2cf389a41a057c3b94ca2b",
@@ -843,6 +888,15 @@
       "durationSeconds": 1.8513,
       "sampleRate": 24000,
       "rms": 3916.93
+    },
+    {
+      "text": "鳄鱼",
+      "file": "18b1ee5bd5a10c01b6cea884.wav",
+      "sha256": "2b6ca2a02a3004ea8731d316862426dd8fe2608daa0a385c0227de4ec790c36b",
+      "bytes": 77388,
+      "durationSeconds": 1.6113,
+      "sampleRate": 24000,
+      "rms": 3386.87
     },
     {
       "text": "联",
@@ -944,6 +998,15 @@
       "rms": 2569.44
     },
     {
+      "text": "池塘是青蛙的栖息地",
+      "file": "1b954fd61f8bb4690e9cf269.wav",
+      "sha256": "b33fc87a7f9b0c5e57e3c6b381a47a3d51474033f0031f7f9c034603475a38cc",
+      "bytes": 162636,
+      "durationSeconds": 3.3873,
+      "sampleRate": 24000,
+      "rms": 3683.96
+    },
+    {
       "text": "浮",
       "file": "1baf29b1a0efa56e7c5e512b.wav",
       "sha256": "7df548e4e2b19b298820b05e2a372f15acbb44c54f993a10fc9af813e72c5daa",
@@ -960,6 +1023,15 @@
       "durationSeconds": 1.9793,
       "sampleRate": 24000,
       "rms": 2882.92
+    },
+    {
+      "text": "还",
+      "file": "1bc709b8bf6c9706fa662b82.wav",
+      "sha256": "319bf698131c60c9d53d2e8f24742c557f6e3adf069e3bcc987d00ad0d8ca6c3",
+      "bytes": 83532,
+      "durationSeconds": 1.7393,
+      "sampleRate": 24000,
+      "rms": 2815.69
     },
     {
       "text": "书",
@@ -1592,6 +1664,15 @@
       "rms": 3734.9
     },
     {
+      "text": "昆",
+      "file": "30cf8c607201dbad37c26616.wav",
+      "sha256": "9c636754b85bc1f1d78e3e3ab71238a50eb58fae4419da197411b9712bb540de",
+      "bytes": 68172,
+      "durationSeconds": 1.4193,
+      "sampleRate": 24000,
+      "rms": 2238.66
+    },
+    {
       "text": "小鸟",
       "file": "31159146a4d5197c2f7c3f35.wav",
       "sha256": "40f9d42f1dd911797cc3b51573cfcbefbb02454fc208e8d1c9bf2d10edda38c8",
@@ -1770,6 +1851,15 @@
       "durationSeconds": 2.7153,
       "sampleRate": 24000,
       "rms": 3681.32
+    },
+    {
+      "text": "池塘里有鱼，还有青蛙",
+      "file": "36706f8787a9758d2ca63661.wav",
+      "sha256": "58f06e05079a4a61fc0b20057cf1e5325e309f438b488f88341f0d1a4dffd6aa",
+      "bytes": 198732,
+      "durationSeconds": 4.1393,
+      "sampleRate": 24000,
+      "rms": 4121.28
     },
     {
       "text": "文",
@@ -2015,6 +2105,15 @@
       "rms": 3269.47
     },
     {
+      "text": "金",
+      "file": "3c1e31a193cda379e8e88852.wav",
+      "sha256": "6bc153feec300c9148991ae6af595d3b631c2111df8b545c8ec2c45f34110447",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 2387.17
+    },
+    {
       "text": "老师提醒我们带水杯",
       "file": "3c264e22fc4df89aaf8289f0.wav",
       "sha256": "d3bc6509b27fdfc7f0fd75db6e0fc3f8dd9d2c93ee47335a3f5d35be6cc46df3",
@@ -2112,6 +2211,15 @@
       "durationSeconds": 2.0433,
       "sampleRate": 24000,
       "rms": 3338.89
+    },
+    {
+      "text": "鸟在窝里下蛋",
+      "file": "40ec204deb295952236dac72.wav",
+      "sha256": "b3cff042cbd267b4b58d0e90e55b586edc545b8cd634bd5e9714d235b811f03e",
+      "bytes": 121932,
+      "durationSeconds": 2.5393,
+      "sampleRate": 24000,
+      "rms": 4335.28
     },
     {
       "text": "上尚伤",
@@ -2247,6 +2355,15 @@
       "durationSeconds": 3.2113,
       "sampleRate": 24000,
       "rms": 4756.66
+    },
+    {
+      "text": "长长的",
+      "file": "4565ec07e3cc2ecc3b30f150.wav",
+      "sha256": "042d268f137856880a55519bcc95673ae3ee4c03b9de061f09a687f01a28431f",
+      "bytes": 115788,
+      "durationSeconds": 2.4113,
+      "sampleRate": 24000,
+      "rms": 4200.1
     },
     {
       "text": "妈妈",
@@ -2447,6 +2564,15 @@
       "rms": 2086.74
     },
     {
+      "text": "湿地是许多鸟的家",
+      "file": "4a3a97ddcea8974c02073268.wav",
+      "sha256": "695d5444557878a1373988741381af5f150a85cf24b95779e6d690455e4423cb",
+      "bytes": 168780,
+      "durationSeconds": 3.5153,
+      "sampleRate": 24000,
+      "rms": 3733.7
+    },
+    {
       "text": "新叶",
       "file": "4a558073a7ae825bf2aee364.wav",
       "sha256": "d8988fc69e6cb33f89103b7c6ee3ed2c52aca88de81c0a2c1b7ed5ddff59627e",
@@ -2625,6 +2751,15 @@
       "durationSeconds": 1.8513,
       "sampleRate": 24000,
       "rms": 3074.8
+    },
+    {
+      "text": "鹭",
+      "file": "5031433fb9f6125a0373cff7.wav",
+      "sha256": "71fd6965576b484c5e3371764300f5c1e607faf793a39a4875113371a3b459eb",
+      "bytes": 85836,
+      "durationSeconds": 1.7873,
+      "sampleRate": 24000,
+      "rms": 2916.62
     },
     {
       "text": "苹果",
@@ -2816,6 +2951,15 @@
       "rms": 4343.22
     },
     {
+      "text": "窝",
+      "file": "562e7c44ec35be29785b5cba.wav",
+      "sha256": "30955827e732338111af0804443511f564ff06430a2a1ac511787c98b9ff4059",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 5652.86
+    },
+    {
       "text": "设计",
       "file": "56c255e1985892c095d9740d.wav",
       "sha256": "96ac49208e921050ef7f56dd7708b2218dc27649dbd8b8d5d624e7e7eeb93b6b",
@@ -2868,6 +3012,15 @@
       "durationSeconds": 1.9153,
       "sampleRate": 24000,
       "rms": 2256.6
+    },
+    {
+      "text": "芦苇",
+      "file": "5924acc3b3cb5ec9c8ae2996.wav",
+      "sha256": "3dede2867f4d44db5f0aea701b1efd5db9856f8c58ed5aa9ed681a134c8ae60b",
+      "bytes": 80460,
+      "durationSeconds": 1.6753,
+      "sampleRate": 24000,
+      "rms": 4105.64
     },
     {
       "text": "小猴子正在爬树",
@@ -3293,6 +3446,15 @@
       "rms": 3381.76
     },
     {
+      "text": "鳄",
+      "file": "65092b992307240aa4a17ba6.wav",
+      "sha256": "264d2cbc998da419342600a4a3752b9e4ed8bf0ad4b058fab73dcdb65f414b8f",
+      "bytes": 59724,
+      "durationSeconds": 1.2433,
+      "sampleRate": 24000,
+      "rms": 3586.36
+    },
+    {
       "text": "喜欢",
       "file": "653b04330b75751f79b50318.wav",
       "sha256": "1913e1de55f8eb934f438bcec8c626a4694f5e88656b407bb8a6389ce2322d4b",
@@ -3390,6 +3552,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 4565.54
+    },
+    {
+      "text": "这条蛇在草丛里爬",
+      "file": "689e04689a16dd14be0bdea5.wav",
+      "sha256": "66cefef32aa9422838608908c7440f6b020a0ac1eee72ef772e255ba2611f552",
+      "bytes": 186444,
+      "durationSeconds": 3.8833,
+      "sampleRate": 24000,
+      "rms": 3422.51
     },
     {
       "text": "小桥",
@@ -3941,6 +4112,15 @@
       "rms": 2795.63
     },
     {
+      "text": "尾巴",
+      "file": "797d828e8c3167e910452521.wav",
+      "sha256": "b6e3e5fd79fe885c19a836e2de5365b839ff81f0767ff2ecc74392f17adfbbee",
+      "bytes": 98124,
+      "durationSeconds": 2.0433,
+      "sampleRate": 24000,
+      "rms": 3074.74
+    },
+    {
       "text": "如果明天天气好，我们就去公园",
       "file": "79f1739c18745ead94ce5716.wav",
       "sha256": "9a4e163b80177a05ea331b14fc9e108412c0ccd842008342a2c7b787e20760aa",
@@ -4292,6 +4472,15 @@
       "rms": 3243.97
     },
     {
+      "text": "灌",
+      "file": "80be0c19a430700478a132a3.wav",
+      "sha256": "8cca7fe0290b7e7dc6b48e1aec3b95549c76b0708672f322d0ee89f5409dd519",
+      "bytes": 77388,
+      "durationSeconds": 1.6113,
+      "sampleRate": 24000,
+      "rms": 4263.63
+    },
+    {
       "text": "汉",
       "file": "80fa989e688472cd956d6ac7.wav",
       "sha256": "be99e7d077a57cffd2e01cd75d1631b0fd3141a400565d8fac29dc692e7f5a4d",
@@ -4362,6 +4551,15 @@
       "durationSeconds": 2.9713,
       "sampleRate": 24000,
       "rms": 3694.48
+    },
+    {
+      "text": "还有",
+      "file": "83eec76b39115f38105176c0.wav",
+      "sha256": "3543b1774bc3fd48dad825aebb879aa48465751cceda2c7cba8c878cbc48ca91",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 3328.31
     },
     {
       "text": "样",
@@ -4461,6 +4659,15 @@
       "durationSeconds": 1.3713,
       "sampleRate": 24000,
       "rms": 3505.33
+    },
+    {
+      "text": "湿",
+      "file": "87e68032fdb83ef093ca3fcc.wav",
+      "sha256": "fe0e5d407a0e2a6679765e0ec9919ca3f125d4f21b72c5f9c011ba506a3c0903",
+      "bytes": 68172,
+      "durationSeconds": 1.4193,
+      "sampleRate": 24000,
+      "rms": 2931.97
     },
     {
       "text": "大象快速地跑向前方",
@@ -4634,6 +4841,15 @@
       "rms": 3527.1
     },
     {
+      "text": "陆地",
+      "file": "8eb257608c1aae35436924c3.wav",
+      "sha256": "fd06829d79c06e16a6f4395e0cdce723525bcb8c57e5ce78f5446ff63a7d294c",
+      "bytes": 74316,
+      "durationSeconds": 1.5473,
+      "sampleRate": 24000,
+      "rms": 2605.54
+    },
+    {
       "text": "已经",
       "file": "8ee12e2310d9f00010cf0881.wav",
       "sha256": "cc94911b78be925004862031e174644bec286570625de4c800e40463f59f481b",
@@ -4749,6 +4965,15 @@
       "durationSeconds": 2.4753,
       "sampleRate": 24000,
       "rms": 2919.65
+    },
+    {
+      "text": "木",
+      "file": "9213ab05890bafa22324bd62.wav",
+      "sha256": "49351beb055dccf54ac4a6e0b53de9c45b90d822bf20b0a2f90ff71cd5b681f6",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 2637.41
     },
     {
       "text": "这位",
@@ -4920,6 +5145,15 @@
       "durationSeconds": 1.8513,
       "sampleRate": 24000,
       "rms": 2561.47
+    },
+    {
+      "text": "芦",
+      "file": "99054b8b0bdde6bf41a66cca.wav",
+      "sha256": "fd808a07c7f0f155b217c1786639023ccec8191b3811a141e14c539b7006def1",
+      "bytes": 68172,
+      "durationSeconds": 1.4193,
+      "sampleRate": 24000,
+      "rms": 3619.48
     },
     {
       "text": "哺乳动物",
@@ -5208,6 +5442,15 @@
       "durationSeconds": 2.1073,
       "sampleRate": 24000,
       "rms": 2843.83
+    },
+    {
+      "text": "白鹭",
+      "file": "a175ab76714588b1b1c3db1d.wav",
+      "sha256": "2d07032f9d415254956c451e24b029ed93fa93357ac8fe506ead508bd8cb89cf",
+      "bytes": 98124,
+      "durationSeconds": 2.0433,
+      "sampleRate": 24000,
+      "rms": 3334.06
     },
     {
       "text": "石头",
@@ -6506,6 +6749,15 @@
       "rms": 3658.19
     },
     {
+      "text": "湿地",
+      "file": "c06063869722a3de0bd3f5f5.wav",
+      "sha256": "5985c205f548132685abb529c69366aca58530fd6d944895bd542f2042680852",
+      "bytes": 71244,
+      "durationSeconds": 1.4833,
+      "sampleRate": 24000,
+      "rms": 2877.83
+    },
+    {
       "text": "印",
       "file": "c08406395b2b1f633c6c3200.wav",
       "sha256": "72ac2f135a688157fa265093f17805b7587a98352a64462c4744a628ee50e8e0",
@@ -6639,6 +6891,15 @@
       "durationSeconds": 1.5473,
       "sampleRate": 24000,
       "rms": 2955.88
+    },
+    {
+      "text": "草丛",
+      "file": "c5cb64500a40081d23bf33f7.wav",
+      "sha256": "5147c66af89e1b445f64846ecc934c60432e1012a619810bd46dd486d181501b",
+      "bytes": 109644,
+      "durationSeconds": 2.2833,
+      "sampleRate": 24000,
+      "rms": 3701.21
     },
     {
       "text": "城成程",
@@ -7127,6 +7388,15 @@
       "rms": 3499.33
     },
     {
+      "text": "金蛙",
+      "file": "cf893512ce2224cb713ccc56.wav",
+      "sha256": "72646fb7f10281b958c24988b2a048afc23814dc70c37b913f0ec7aac7f642d5",
+      "bytes": 115788,
+      "durationSeconds": 2.4113,
+      "sampleRate": 24000,
+      "rms": 4315.61
+    },
+    {
       "text": "像",
       "file": "cf8cedd58b7a3fe1dd1e36ee.wav",
       "sha256": "e6b705e7e3cb590f64d1a15b787e9ac54c927afd10572cea3bbdbcc96b63ffcf",
@@ -7388,6 +7658,15 @@
       "rms": 3299.67
     },
     {
+      "text": "昆虫",
+      "file": "d6df729b16c3df974233b077.wav",
+      "sha256": "3ad9d33817278013572831dbbb485a0bcba435865c48260001e63d3252de9581",
+      "bytes": 101196,
+      "durationSeconds": 2.1073,
+      "sampleRate": 24000,
+      "rms": 3020.44
+    },
+    {
       "text": "哺",
       "file": "d74d0829a5b89a6841dcb940.wav",
       "sha256": "a8ce8d6fd7d3f983b9d606c3d2d3621727e913eeded184eb56733d713c71d4b7",
@@ -7512,6 +7791,15 @@
       "durationSeconds": 1.6753,
       "sampleRate": 24000,
       "rms": 2606.76
+    },
+    {
+      "text": "栖",
+      "file": "dc3696183275625a1e68d172.wav",
+      "sha256": "c0f36ff94ea9094b6ca7219554d771fb94906a19c98be7cdbd6fc4617b85d29a",
+      "bytes": 62796,
+      "durationSeconds": 1.3073,
+      "sampleRate": 24000,
+      "rms": 3079.09
     },
     {
       "text": "故事里有一扇神奇的门",
@@ -7820,6 +8108,15 @@
       "rms": 3024.94
     },
     {
+      "text": "这只金蛙的身体是金黄色的",
+      "file": "e31bd2cfccaa2c1d719c994c.wav",
+      "sha256": "d6b43fe859cce4710a0613179a76a7c40e27fa64c4ab4560d19ff2845ce47077",
+      "bytes": 221772,
+      "durationSeconds": 4.6193,
+      "sampleRate": 24000,
+      "rms": 3697.46
+    },
+    {
       "text": "妈",
       "file": "e331d617554b0f37ab1c85e7.wav",
       "sha256": "1e3426e70d2f02a1fb349ec7923f6dc830cb3f20d43f5c82756d590de562bf24",
@@ -7854,6 +8151,15 @@
       "durationSeconds": 2.3473,
       "sampleRate": 24000,
       "rms": 3291.93
+    },
+    {
+      "text": "蛇",
+      "file": "e49587b1da36007f0f2ac9b5.wav",
+      "sha256": "20614c46d10539965cbc8cb40ebef5eb127169cbd42720c32a4517a651cd5f42",
+      "bytes": 106572,
+      "durationSeconds": 2.2193,
+      "sampleRate": 24000,
+      "rms": 2341.97
     },
     {
       "text": "我有五支笔",
@@ -7917,6 +8223,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 2470.83
+    },
+    {
+      "text": "金黄色",
+      "file": "e76212ce1cce9fb19c729c9a.wav",
+      "sha256": "6ed7152bc3a9f7f3cf6755bdc3fc8dcbf85c275ac066eb336043e46fe66f2105",
+      "bytes": 118860,
+      "durationSeconds": 2.4753,
+      "sampleRate": 24000,
+      "rms": 3113.29
     },
     {
       "text": "升起",
@@ -7989,6 +8304,15 @@
       "durationSeconds": 2.2193,
       "sampleRate": 24000,
       "rms": 2711.68
+    },
+    {
+      "text": "栖息地",
+      "file": "ea8df6bc069cbbe1b60dd0e1.wav",
+      "sha256": "76acb8375a90ea947fcb02963aab19ec6aee53b842ffdffe99552c5c9dac6927",
+      "bytes": 88908,
+      "durationSeconds": 1.8513,
+      "sampleRate": 24000,
+      "rms": 3100.54
     },
     {
       "text": "今天是美好的一天",
@@ -8088,6 +8412,15 @@
       "durationSeconds": 2.0433,
       "sampleRate": 24000,
       "rms": 2114.93
+    },
+    {
+      "text": "蛋",
+      "file": "edebdbaab63d7f389bb72e2c.wav",
+      "sha256": "adcb856850b16ff7af98161bdad4061e9f0469c156f12e563fa5abb7a686245f",
+      "bytes": 74316,
+      "durationSeconds": 1.5473,
+      "sampleRate": 24000,
+      "rms": 2893.37
     },
     {
       "text": "每天",
@@ -8358,6 +8691,15 @@
       "durationSeconds": 2.9713,
       "sampleRate": 24000,
       "rms": 3588.99
+    },
+    {
+      "text": "我在草地上发现一只昆虫",
+      "file": "f4794e9766d57b4b4053bbac.wav",
+      "sha256": "504b6467cdab792f66e657cf4c3ea44af974c34b155abd83fc45e4452fe28747",
+      "bytes": 195660,
+      "durationSeconds": 4.0753,
+      "sampleRate": 24000,
+      "rms": 3515.63
     },
     {
       "text": "环",
