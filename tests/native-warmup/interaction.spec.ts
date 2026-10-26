@@ -204,3 +204,26 @@ for (const grade of grades) {
     expect((await trial(page, f)).state.firstAnswers).toEqual([false])
   })
 }
+
+test('Grade 2 Spirit Realm uses the same approved correction with native mastery facts', async ({ page }) => {
+  await page.goto('./family-beta-preview.html?grade=grade2')
+  const f = page.frameLocator('iframe:visible')
+  await f.getByRole('button', { name: /Enter the Spirit Realm/ }).click()
+  await f.getByRole('button', { name: 'Writing mastery warmup', exact: true }).click()
+  await compare(f)
+  await f.getByRole('button', { name: 'I got it wrong', exact: true }).click()
+  await expect(f.locator('.native-warmup')).toHaveAttribute('data-report-phase', 'trace')
+  const original = await trial(page, f)
+  await trace(page, f, original.word)
+  await compare(f)
+  await f.getByRole('button', { name: 'I got it right', exact: true }).click()
+  await expect(f.locator('.native-warmup')).toHaveAttribute('data-report-position', '2')
+  const mastery = await page.evaluate(() =>
+    Object.entries(localStorage)
+      .filter(([k]) => k.startsWith('family-beta-mastery-v1:') && k.endsWith(':Grade 2:writing'))
+      .map(([, v]) => JSON.parse(v)),
+  )
+  expect(mastery).toHaveLength(1)
+  expect(mastery[0].applied).toHaveLength(1)
+  expect(mastery[0].states.some((s: { bucket: string }) => s.bucket === 'needs-attention')).toBe(true)
+})

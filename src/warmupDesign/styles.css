@@ -203,6 +203,16 @@
   }
 }
 /* Native activities already have an outer report toolbar. */
+.app-shell:has(.native-warmup) > .topbar,
+.main-content:has(.native-warmup) > .curriculum-source-status {
+  display: none;
+}
+.app-shell:has(.native-warmup) > .main-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
 #slay-acquisition-root.warmup-design.native-warmup {
   min-height: 0;
 }
