@@ -110,8 +110,7 @@ export default function NativeWritingPractice({ store, ...props }: PracticeViewP
           // Warmup/test controls keep their native paths; only acquisition writes
           // share the same completion lock as the guided teacher.
           if (props.session.segment !== 'primary') {
-            props.onAnswer(answer)
-            return
+            return props.onAnswer(answer)
           }
           void transact(() => props.onAnswer(answer), answer === 'done').catch(() => undefined)
         }}

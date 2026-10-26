@@ -67,6 +67,8 @@ export async function startPractice(input: {
   target: PracticeTarget | null
   /** Offer the same Warmup for a separately owned primary activity, without opening ordinary Acquisition. */
   externalPrimary?: boolean
+  /** Approved native Warmup uses the durable visit order and reviewed responses. */
+  guidedWarmup?: boolean
   primaryDatasets: Dataset[]
   lifecycleResolution: DatasetLifecycleResolution
   sessionId: string
@@ -338,21 +340,22 @@ export async function startPractice(input: {
     preparedAcquisitionProgress:
       preparedAcquisition?.status === 'ready' ? preparedAcquisition.envelope.flow : undefined,
   })
-  const resumedAnswers = input.externalPrimary
-    ? warmupVisit.queue.flatMap((entry, position) => {
-        const attempt = state.warmupAttemptsV1?.find(
-          (item) =>
-            item.visitId === warmupVisit.id &&
-            item.childId === input.child.id &&
-            item.queueEntryId === entry.id &&
-            item.wordId === entry.prompt.wordId,
-        )
-        return attempt
-          ? [{ word: warmupWords[position], correct: attempt.correct, revealMethod: attempt.revealMethod }]
-          : []
-      })
-    : []
-  if (input.externalPrimary && resumedAnswers.length !== warmupVisit.attemptedCount) {
+  const resumedAnswers =
+    input.externalPrimary || input.guidedWarmup
+      ? warmupVisit.queue.flatMap((entry, position) => {
+          const attempt = state.warmupAttemptsV1?.find(
+            (item) =>
+              item.visitId === warmupVisit.id &&
+              item.childId === input.child.id &&
+              item.queueEntryId === entry.id &&
+              item.wordId === entry.prompt.wordId,
+          )
+          return attempt
+            ? [{ word: warmupWords[position], correct: attempt.correct, revealMethod: attempt.revealMethod }]
+            : []
+        })
+      : []
+  if ((input.externalPrimary || input.guidedWarmup) && resumedAnswers.length !== warmupVisit.attemptedCount) {
     return {
       status: 'blocked',
       message: 'The saved Warmup responses could not be verified. Existing progress is preserved.',
@@ -375,6 +378,7 @@ export async function startPractice(input: {
           }
         : {}),
       ...(preparedAcquisition?.status === 'ready' ? { acquisitionProgressionId: preparedAcquisition.envelope.id } : {}),
+      ...(input.guidedWarmup ? { queue: warmupWords, warmupAnswers: resumedAnswers } : {}),
       adaptiveWarmupVisitId: warmupVisit.id,
       warmupResumePosition: warmupVisit.nextPosition,
       index: warmupVisit.nextPosition,

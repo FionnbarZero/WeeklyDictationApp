@@ -687,6 +687,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
           child: selectedChild,
           target,
           externalPrimary,
+          ...(import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? { guidedWarmup: true } : {}),
           primaryDatasets,
           lifecycleResolution,
           sessionId: id,
@@ -776,7 +777,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const result = leavePracticeOperation({
       state,
-      session: current,
+      session: import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && current?.segment === 'warmup' && !auth.user ? null : current,
       occurredAt: now(),
       persistence: practiceTransitionPersistence,
       cloudSession: cloud,
@@ -1100,6 +1101,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const answer = (correct: PracticeAnswer) => {
+    const guided = import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && typeof correct === 'object' && correct.kind === 'guided-warmup-answer' ? correct : null
+    if (guided) {
+      if (!session || session.segment !== 'warmup' || session.id !== guided.sessionId || session.index !== guided.position || session.queue[session.index]?.id !== guided.wordId)
+        throw new Error('This Warmup answer is no longer current. Reopen the activity to continue.')
+      correct = guided.correct
+    }
     if (!acquisitionIsActive(session)) return
     if ((writingBusy.current || writingCommit.current?.pending) && typeof correct !== 'boolean') {
       setCloudError('Please retry the unsaved writing answer before finishing. Keep this page open.')
@@ -1125,7 +1132,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       void finishAcquisitionForToday()
       return
     }
-    const current = session
+    const current = guided && session ? { ...session, stage: 'review' as const } : session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const cloudEnabled = Boolean(auth.user && cloudScope)
     const recordAnswer = () => recordPracticeAnswerOperation({
@@ -1179,6 +1186,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (result.status === 'ignored' || result.status === 'writing-ready') return
     if (result.status === 'error') {
       setCloudError(result.message)
+      if (guided) throw new Error(result.message)
       return
     }
     if (result.state) setState(result.state)

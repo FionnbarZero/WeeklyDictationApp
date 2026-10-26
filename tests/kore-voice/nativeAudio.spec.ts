@@ -175,7 +175,7 @@ for (const grade of grades) {
     expect((await probe(page)).urls.some((url) => url.includes('/audio/kore/'))).toBe(true)
     await exit.click()
   })
-  test(`${grade.label}: guided writing and isolated Warmup use Kore`, async ({ page }) => {
+  test(`${grade.label}: guided writing uses Kore`, async ({ page }) => {
     await page.goto(`./family-beta-preview.html?grade=${grade.slug}`)
     const f = page.frameLocator('iframe:visible')
     await f.getByRole('button', { name: /Enter the Dojo/ }).click()
@@ -188,13 +188,7 @@ for (const grade of grades) {
     await expect.poll(async () => (await probe(page)).ended, { timeout: 30_000 }).toBeGreaterThan(0)
     expect((await probe(page)).speech).toEqual([])
     expect((await probe(page)).urls.some((url) => url.includes('/audio/kore/'))).toBe(true)
-    await page.goto(`./warmup-design-preview.html?grade=${grade.slug}`)
-    await page.getByRole('button', { name: 'Start or resume Warmup', exact: true }).click()
-    // A user gesture is required before auto-audio in a newly opened WebKit page.
-    const hear = page.getByRole('button', { name: /Hear/ }).first()
-    await hear.click()
-    await expect.poll(async () => (await probe(page)).ended, { timeout: 30_000 }).toBeGreaterThan(0)
-    expect((await probe(page)).speech).toEqual([])
+
   })
 }
 

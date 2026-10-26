@@ -12,7 +12,8 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
-const koreVoice = process.argv.includes('--kore-voice')
+const integratedWarmup = process.argv.includes('--integrated-warmup')
+const koreVoice = integratedWarmup || process.argv.includes('--kore-voice')
 const automaticCurriculum = koreVoice || process.argv.includes('--automatic-curriculum')
 const w2Recovery = automaticCurriculum || process.argv.includes('--w2-recovery')
 const w1Curriculum = w2Recovery || process.argv.includes('--w1-curriculum')
@@ -49,31 +50,33 @@ const out = resolve(
 )
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
-const prototype = koreVoice
-  ? 'Kore Mandarin / Prototype 1'
-  : automaticCurriculum
-    ? 'Automatic curriculum updates / Prototype 2 — Writing launch repair'
-    : w2Recovery
-      ? 'W-roadmap combined repairs / Prototype 6 — compact games'
-      : w1Curriculum
-        ? 'W1 curriculum and activity entry / Prototype 4'
-        : w0Writing
-          ? 'W0 integrated writing / Prototype 2'
-          : standalone
-            ? '5th grade Dojo / Standalone 1'
-            : presentation
-              ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
-              : retireStandalone
-                ? 'Streamlined Dojo / Prototype 1'
-                : compactParents
-                  ? 'Compact parent toolbar / Prototype 1'
-                  : grade5Repairs
-                    ? 'Grade 5 regression repairs / Prototype 2'
-                    : regressions
-                      ? 'October 20 regression repairs / Prototype 3'
-                      : octoberResources
-                        ? 'Kindergarten October 19 resources / Prototype 1'
-                        : 'Writing reliability / Prototype 2'
+const prototype = integratedWarmup
+  ? 'Combined Dojo / Approved Warmup 1'
+  : koreVoice
+    ? 'Kore Mandarin / Prototype 1'
+    : automaticCurriculum
+      ? 'Automatic curriculum updates / Prototype 2 — Writing launch repair'
+      : w2Recovery
+        ? 'W-roadmap combined repairs / Prototype 6 — compact games'
+        : w1Curriculum
+          ? 'W1 curriculum and activity entry / Prototype 4'
+          : w0Writing
+            ? 'W0 integrated writing / Prototype 2'
+            : standalone
+              ? '5th grade Dojo / Standalone 1'
+              : presentation
+                ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+                : retireStandalone
+                  ? 'Streamlined Dojo / Prototype 1'
+                  : compactParents
+                    ? 'Compact parent toolbar / Prototype 1'
+                    : grade5Repairs
+                      ? 'Grade 5 regression repairs / Prototype 2'
+                      : regressions
+                        ? 'October 20 regression repairs / Prototype 3'
+                        : octoberResources
+                          ? 'Kindergarten October 19 resources / Prototype 1'
+                          : 'Writing reliability / Prototype 2'
 const description = regressions
   ? 'Reading, writing, games, audio and Exit repairs'
   : octoberResources
@@ -129,10 +132,11 @@ execFileSync(
       VITE_GAME_CONTENT_PREVIEW: String(w2Recovery),
       VITE_AUTOMATIC_CURRICULUM_PREVIEW: String(automaticCurriculum),
       VITE_KORE_VOICE_PREVIEW: String(koreVoice),
+      VITE_INTEGRATED_WARMUP_PREVIEW: String(integratedWarmup),
     },
   },
 )
-if (grade5Repairs && !presentation) {
+if (grade5Repairs && !presentation && !integratedWarmup) {
   const shared = resolve(root, 'grade5-shared-target-repair-dist')
   execFileSync(
     process.execPath,

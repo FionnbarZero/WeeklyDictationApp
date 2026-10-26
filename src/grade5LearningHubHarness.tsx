@@ -1,3 +1,7 @@
+import { activityStorage, previewProfile } from './familyBeta/runtime.ts'
+import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
+import { activityClock } from './activity/activityLifecycle.ts'
+import { answerNativeWarmup, nativeVisitWords, newNativeWarmupVisit, readNativeWarmupVisit, writeNativeWarmup, type NativeWarmupVisit } from './warmupDesign/nativeVisit.ts'
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
 import { familyAcquisitionStore, familyWritingStore } from './familyBeta/acquisitionRuntime.ts'
@@ -183,6 +187,45 @@ function renderAssessmentSummary() {
   practiceSummary.innerHTML = `<strong>Lab observations:</strong> Test Review ${correct}/${activeSession.primaryAnswers.length} correct · Warmup ${activeSession.warmupAnswers.length}/${activeSession.warmupQueue.length} reviewed. Nothing from this lab run is saved.`
 }
 
+let nativeWarmup: NativeWarmupVisit | null = null
+let nativeWarmupRaw: string | null = null
+let nativeWarmupKey = ''
+let nativeWarmupOwner: string | undefined
+
+async function saveGuidedWarmup(answer: Extract<PracticeAnswer, { kind: 'guided-warmup-answer' }>) {
+  const current = activeSession
+  if (!current || current.segment !== 'warmup' || current.id !== answer.sessionId || current.index !== answer.position || current.queue[current.index]?.id !== answer.wordId)
+    throw new Error('This Warmup answer is no longer current. Reopen the activity.')
+  if (!nativeWarmup) throw new Error('Warmup’s saved visit is unavailable. Reopen the activity.')
+  const nextVisit = await withScrollsWrite(nativeWarmupKey, () => {
+    if (activeSession !== current || activityClock.paused || previewProfile()?.id !== nativeWarmupOwner)
+      throw new Error('Warmup changed while saving. Reopen the activity to continue.')
+    let next = answerNativeWarmup(nativeWarmup!, current.index, answer.correct)
+    if (next.answers.length === next.words.length) next = { ...next, closed: true }
+    nativeWarmupRaw = writeNativeWarmup(activityStorage(), nativeWarmupKey, nativeWarmupRaw, next)
+    return next
+  })
+  nativeWarmup = nextVisit
+  const answers = [...current.warmupAnswers, { word: current.queue[current.index], correct: answer.correct, revealMethod: 'timer' as const }]
+  activeSession = nextVisit.closed ? primaryStartState({ ...current, warmupAnswers: answers })
+    : { ...current, warmupAnswers: answers, index: nextVisit.answers.length, stage: 'interstitial' }
+  renderPracticeView()
+}
+
+async function closeGuidedWarmup() {
+  const current = activeSession
+  if (!current || !nativeWarmup) throw new Error('Warmup is not ready. Reopen the activity.')
+  await withScrollsWrite(nativeWarmupKey, () => {
+    if (activeSession !== current || activityClock.paused || previewProfile()?.id !== nativeWarmupOwner)
+      throw new Error('Warmup changed. Reopen the activity to continue.')
+    const next = { ...nativeWarmup!, closed: true }
+    nativeWarmupRaw = writeNativeWarmup(activityStorage(), nativeWarmupKey, nativeWarmupRaw, next)
+    nativeWarmup = next
+  })
+  activeSession = primaryStartState(current)
+  renderPracticeView()
+}
+
 function initialPracticeSession(
   request: Grade5ActivityLaunchRequest,
   dataset: Dataset,
@@ -222,7 +265,7 @@ function primaryStartState(session: PracticeSession): PracticeSession {
 function beginWarmup() {
   if (!activeSession || activeSession.stage !== 'warmup-intro') return
   activeSession = activeSession.queue.length > 0
-    ? { ...activeSession, stage: 'interstitial', index: 0 }
+    ? { ...activeSession, stage: 'interstitial', index: import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? activeSession.warmupAnswers.length : 0 }
     : primaryStartState(activeSession)
   renderPracticeView()
 }
@@ -357,6 +400,12 @@ function answerCurrentPrompt(correct: boolean) {
 }
 
 function handlePracticeAnswer(answer: PracticeAnswer) {
+  if (import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true') {
+    if (typeof answer === 'object' && answer.kind === 'guided-warmup-answer') return saveGuidedWarmup(answer)
+    if ((answer === 'skip-warmup' || answer === 'continue-primary') && activeSession?.segment === 'warmup') {
+      return closeGuidedWarmup().catch(error => { practiceSummary.textContent = error instanceof Error ? error.message : 'Warmup could not save.' })
+    }
+  }
   if (typeof answer === 'object') {
     if (!activeSession || answer.kind !== 'deferred-writing-test-review') return
     const primaryAnswers = writingSessionAnswers(answer.completion)
@@ -450,6 +499,30 @@ async function startWritingPractice(request: Grade5ActivityLaunchRequest, label:
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }
       if (acquisitionStore.current.envelope.revision > 0 || (acquisitionStore.current.writing?.revision || 0) > 0)
         activeSession = primaryStartState(activeSession)
+    }
+    nativeWarmup = null
+    if (import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && familyPreview && activeSession.segment === 'warmup' && warmup.words.length) {
+      const current = activeSession
+      nativeWarmupOwner = previewProfile()?.id
+      // Scope to the native lesson and activity; current selection is used only
+      // for a fresh visit. Unfinished visits retain their original word order.
+      nativeWarmupKey = `native-writing-warmup-visit-v1:grade5:${current.primaryPhase}:${activeDataset.id}:${activeDataset.words.map(w => `${w.id}:${w.text}`).join('|')}`
+      const pool = [...activeDatasets.flatMap(d => d.words), ...warmup.words]
+      const saved = await withScrollsWrite(nativeWarmupKey, () => {
+        if (writingLaunch !== launch || previewProfile()?.id !== nativeWarmupOwner) throw new Error('Writing launch changed.')
+        const storage = activityStorage()
+        nativeWarmupRaw = storage.getItem(nativeWarmupKey)
+        let visit = readNativeWarmupVisit(nativeWarmupRaw, pool)
+        if (!visit || (visit.closed && current.primaryPhase === 'test-review')) visit = newNativeWarmupVisit(warmup.words, crypto.randomUUID())
+        nativeWarmupRaw = writeNativeWarmup(storage, nativeWarmupKey, nativeWarmupRaw, visit)
+        return visit
+      })
+      if (writingLaunch !== launch) return
+      nativeWarmup = saved
+      const words = nativeVisitWords(saved, pool)
+      const warmupAnswers = saved.answers.map((correct, index) => ({ word: words[index], correct, revealMethod: 'timer' as const }))
+      activeSession = { ...current, adaptiveWarmupVisitId: saved.id, queue: words, warmupQueue: words, warmupAnswers, index: saved.answers.length }
+      if (saved.closed) activeSession = primaryStartState(activeSession)
     }
     currentRevealMethod = 'timer'
     requestPanel.hidden = true

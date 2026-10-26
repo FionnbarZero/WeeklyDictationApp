@@ -1,5 +1,9 @@
 # Weekly Dictation status
 
+## Approved Warmup integration — preparation, October 26
+
+The owner approved the redesigned Warmup and explicitly requested removal of the separate Grade 5 eight-word assessment and obsolete preview links. These instructions supersede the previous assessment-integration proposal below. The combined preview integration is under verification; no new hosted release or channel deletion has occurred yet. Preserve canonical Ninja Dojo and the frozen standalone fifth-grade site. See [the integration record](./docs/native-warmup-integration-2026-10-26.md).
+
 ## Current integration audit — latest previews match; full merge is incomplete, October 26
 
 The owner asked whether every version is merged and fully updated. **No.** Fresh read-only verification confirms that Kindergarten, Grade 2 and Grade 5 on the Kore origin all serve **173f1c7**, with **1,118 public asset files plus the exact manifest** matching the verified immutable package. The approved W0/W1/W2 lineage, sound repairs, missing game content, compact layouts and automatic-curriculum repair are ancestors of this preview. No new regression suite, application edit or publication occurred during this audit.

@@ -211,6 +211,67 @@ test('external Warmup keeps the durable queue order and restores only genuine re
   assert.equal(missing.status, 'blocked')
 })
 
+test('native guided Warmup keeps the durable queue order and restores only genuine reviewed answers', async () => {
+  const mastered: Dataset = {
+    ...dataset,
+    id: 'mastered',
+    words: ['天', '月', '日'].map((text, index) => ({
+      ...dataset.words[0],
+      text,
+      id: `mastered-${index}`,
+      datasetId: 'mastered',
+    })),
+  }
+  const state = { ...stateWithDataset(), datasets: [mastered, dataset] }
+  const request = {
+    child: { id: 'maya', grade: 'Grade 2', schoolYear: '2026–2027' },
+    target,
+    guidedWarmup: true,
+    primaryDatasets: state.datasets,
+    lifecycleResolution: {
+      ...resolveDatasetLifecycles([], startedAt),
+      mastered: [mastered],
+      lifecycleByDatasetId: { mastered: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+    },
+    sessionId: 'stroke',
+    startedAt,
+    persistence: startPersistence(false),
+  }
+  const opened = await startPractice({ ...request, state })
+  assert.equal(opened.status, 'started')
+  if (opened.status !== 'started') return
+  const visit = opened.state.warmupVisitsV1!.at(-1)!
+  assert.deepEqual(
+    opened.session.queue.map((word) => word.id),
+    visit.queue.map((entry) => entry.prompt.wordId),
+  )
+  const answered = recordPracticeAnswer({
+    state: opened.state,
+    session: { ...opened.session, stage: 'review' },
+    correct: false,
+    occurredAt: startedAt,
+    persistence: startPersistence(false),
+  })
+  assert.equal(answered.status, 'advanced')
+  if (answered.status !== 'advanced' || !answered.state) return
+  const resumed = await startPractice({ ...request, state: answered.state, sessionId: 'reopened' })
+  assert.equal(resumed.status, 'started')
+  if (resumed.status !== 'started') return
+  assert.equal(resumed.session.adaptiveWarmupVisitId, opened.session.adaptiveWarmupVisitId)
+  assert.deepEqual(resumed.session.queue, opened.session.queue)
+  assert.equal(resumed.session.index, 1)
+  assert.deepEqual(resumed.session.warmupAnswers, [
+    { word: opened.session.queue[0], correct: false, revealMethod: 'timer' },
+  ])
+  assert.deepEqual(resumed.state.warmupAttemptsV1, answered.state.warmupAttemptsV1)
+  const missing = await startPractice({
+    ...request,
+    state: { ...answered.state, warmupAttemptsV1: [] },
+    sessionId: 'invalid',
+  })
+  assert.equal(missing.status, 'blocked')
+})
+
 test('external writing Warmup refuses to open when the initial queue cannot be saved', async () => {
   const result = await startPractice({
     state: stateWithDataset(),

@@ -1,5 +1,9 @@
 # Weekly Dictation roadmap
 
+## Current priority — approved Warmup consolidation, October 26
+
+Execute the owner-approved native Warmup integration for Kindergarten, Grade 2 and Grade 5 in the combined test app. Remove the separate eight-word assessment instead of integrating it. Retain the current Kore preview origin, retire obsolete preview channels after the replacement passes verification, and email all three verified grade links. Do not publish to canonical/live or change the frozen standalone fifth-grade website. Existing Astra · Extra High behavior/review and Sol · High publication routing remain confirmed; no routine approval is pending. The earlier integration-audit recommendation to incorporate the eight-word assessment is superseded by this decision.
+
 ## Current priority — close the confirmed consolidation gaps, October 26
 
 The version audit confirms a common current **Kore preview / 173f1c7** for all grades, but **not complete integration or merge**. Native scheduled Warmup still excludes the separate approved Warmup design; Grade 5's shared eight-word assessment remains a separate linked page with its normal-flow presentation mode off. Current main is **5727d74**, canonical **9d06a02**; newer W/voice work remains on the local preview branch. Exact audit evidence and historical URL identities are at the top of STATUS.

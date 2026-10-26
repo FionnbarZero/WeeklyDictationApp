@@ -144,3 +144,31 @@ test('writing ink is half-width while tracing guides retain their original width
   assert.match(strokes, /\.so-student-ink path \{[^}]*stroke-width: 2\.4;/)
   assert.match(strokes, /stroke-width: 6\.5;/)
 })
+
+test('resumed native Warmup records a pinned eligible target once even if the new selection differs', () => {
+  const storage = memoryStorage()
+  const source = datasets('kindergarten')
+  const mastered = source.filter((d) => d.startDate < '2026-10-05')
+  const original = prepareMastery(
+    readMasteryRecord(storage, 'child', 'Kindergarten', 'writing'),
+    source,
+    mastered,
+    '2026-10-05',
+    () => 0.5,
+  )
+  const target = original.words[0]
+  const resumed = {
+    ...original,
+    selection: {
+      ...original.selection,
+      entries: original.selection.entries.filter((e) => !e.occurrenceIds.includes(target.id)),
+    },
+  }
+  persistMasteryAssessment(storage, resumed, target.id, false, 'pinned:0', true)
+  persistMasteryAssessment(storage, resumed, target.id, false, 'pinned:0', true)
+  const record = readMasteryRecord(storage, 'child', 'Kindergarten', 'writing')
+  assert.deepEqual(record.applied, ['pinned:0'])
+  const term = original.terms.find((t) => t.occurrences.some((o) => o.wordId === target.id))!
+  assert.equal(record.states.find((s) => s.masteryTermId === term.id)!.bucket, 'needs-attention')
+  assert.throws(() => persistMasteryAssessment(storage, resumed, 'outside-queue', true, 'bad', true))
+})

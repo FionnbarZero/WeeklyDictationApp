@@ -1000,7 +1000,7 @@ function FamilyPreview() {
               </button>
             </section>
           )}
-          {grade5RepairPreview && !grade5PresentationPreview && child?.grade === 'Grade 5' && (
+          {import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW !== 'true' && grade5RepairPreview && !grade5PresentationPreview && child?.grade === 'Grade 5' && (
             <a href="/grade5-oct23-preview.html">October 23 shared-word practice and tests</a>
           )}
         </header>

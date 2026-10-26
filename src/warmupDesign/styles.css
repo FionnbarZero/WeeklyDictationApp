@@ -202,3 +202,15 @@
     min-height: 580px;
   }
 }
+/* Native activities already have an outer report toolbar. */
+#slay-acquisition-root.warmup-design.native-warmup {
+  min-height: 0;
+}
+#slay-acquisition-root.warmup-design.native-warmup .lg-shell {
+  height: calc(100dvh - 80px);
+  margin: 0 auto;
+}
+.warmup-continue {
+  position: relative;
+  margin: 4px 12px;
+}
