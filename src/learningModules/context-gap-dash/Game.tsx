@@ -854,6 +854,9 @@ export function ContextGapDash({
     const game = new Phaser.Game({
       type: Phaser.AUTO, width: GAME_WIDTH, height: GAME_HEIGHT, parent: hostRef.current,
       backgroundColor: '#081923', transparent: false, render: { antialias: true, roundPixels: true },
+      // Narration and effects already own their audio. Phaser's unused context
+      // can resume after Exit closes it, especially after Report returns focus.
+      audio: { noAudio: import.meta.env?.VITE_KORE_VOICE_PREVIEW === 'true' },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: [scene],
     })
     const pauseScene = (paused: boolean) => {
