@@ -11,7 +11,7 @@ test('an already confirmed test family can reopen its exact shell offline withou
     browserName !== 'chromium',
     'This driver validates service-worker caches in Chromium; iPad installation is a separate physical check.',
   )
-  test.setTimeout(180000)
+  test.setTimeout(450000)
   await installFamilyFixtures(page, new Map(), 'ninja-device-fixture@example.invalid')
   let offline = false
   await context.route('**/firestore.googleapis.com/**', (route) =>
@@ -21,9 +21,29 @@ test('an already confirmed test family can reopen its exact shell offline withou
   await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible({
     timeout: 30000,
   })
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready
-  })
+  const progress = setInterval(async () => {
+    if (page.isClosed()) return
+    const value = await page
+      .evaluate(async () => ({
+        cacheFiles: (
+          await Promise.all((await caches.keys()).map(async (key) => (await (await caches.open(key)).keys()).length))
+        ).reduce((a, b) => a + b, 0),
+        state:
+          (await navigator.serviceWorker.getRegistration())?.installing?.state ||
+          (await navigator.serviceWorker.getRegistration())?.active?.state ||
+          'not-registered',
+        notice: document.documentElement.dataset.offlineShell,
+      }))
+      .catch(() => null)
+    console.log('Offline preparation', JSON.stringify(value))
+  }, 20000)
+  try {
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready
+    })
+  } finally {
+    clearInterval(progress)
+  }
   await page.reload()
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true)
   await expect(page.frameLocator('iframe:visible').getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()

@@ -31,13 +31,12 @@ async function fixtures(page: Page, documents: SyntheticFamilyDocuments) {
   })
 }
 
-async function launch(page: Page, grade: (typeof grades)[number]) {
-  await page.goto(`/family-beta-preview.html?grade=${grade.slug}`)
+async function launch(page: Page, grade: (typeof grades)[number], navigate = true) {
+  if (navigate) await page.goto(`/family-beta-preview.html?grade=${grade.slug}`)
   const frame = page.frameLocator('iframe:visible')
   const enter = frame.getByRole('button', { name: /Enter the Dojo/ })
   await expect(enter.or(frame.getByRole('button', { name: grade.button, exact: true }))).toBeVisible()
   if (await enter.isVisible()) await enter.click()
-  await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', grade.week)
   await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', grade.week)
   await frame.getByRole('button', { name: grade.button, exact: true }).click()
   const teacher = frame.getByRole('region', { name: 'Stroke order teacher' })
@@ -95,8 +94,10 @@ for (const grade of grades)
     await advance(page, grade.character)
     await expect.poll(() => remoteRevision(documents, grade.child), { timeout: 30_000 }).toBe(1)
     await page.frameLocator('iframe:visible').getByRole('button', { name: 'Exit game', exact: true }).click()
-    await expect(frame(page).getByRole('button', { name: grade.button, exact: true })).toBeVisible({ timeout: 30000 })
-    await expect(await launch(page, grade)).toHaveAttribute('data-step', '2')
+    await expect(
+      page.frameLocator('iframe:visible').getByRole('button', { name: grade.button, exact: true }),
+    ).toBeVisible({ timeout: 30000 })
+    await expect(await launch(page, grade, false)).toHaveAttribute('data-step', '2')
     const otherContext = await browser.newContext()
     try {
       const other = await otherContext.newPage()

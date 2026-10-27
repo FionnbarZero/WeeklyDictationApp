@@ -1,5 +1,13 @@
 # Weekly Dictation roadmap
 
+## Current priority — physical acceptance of the authenticated device prototype, October 27
+
+The owner moved physical-device acceptance and cross-device syncing next. A separate **8ca51a1 / Device and syncing 1** preview is published and verified for all grades; exact links, expiry and qualified test evidence are at the top of STATUS and in [the acceptance record](./docs/device-sync-acceptance-2026-10-27.md). It connects the latest approved app to the existing family service with test-account-only access, confirms setup before learner creation, and repairs both retained Grade 5 native save-retry paths plus review width. **1,305 units, 42 distinct local + 42 distinct hosted browser cases with passing executions, four explicit skips; seven hosted real-service acceptance checks pass.** Keep the documented initial offline-install timeout and test-driver corrections visible; this is not a uniformly clean first-pass run.
+
+**Next:** one bounded owner iPad/iMac check of actual sound/recording, handwriting/scrolling, keyboard/rotation, Report and sequential same-learner continuation. Physical results are pending; browser tests cannot supply them. Use a separate test parent on both devices, create each learner once, and wait for sync confirmation before closing the first tab. Unfinished ink/recordings and unsubmitted test reviews remain temporary; ordinary session-only game rounds are not promised transfer.
+
+Working-prototype approval is still required before general integration. Existing Astra · Extra High persistence/review and Sol · High bounded-publication routing applies; no model switch or separate-agent review is claimed. Preserve all prior previews, the canonical app, frozen standalone Grade 5, real-family histories and unchanged auth/rules. Canonical asset-rule/package reconciliation, protected release gates, English Niamh and unseen future-import content remain separate.
+
 ## Latest audit — retained Grade 5 repair boundary remains, October 26
 
 Fresh audit of the combined **b36e898** preview: **1,303 unit passes, 228 local browser passes, 30 hosted current-review passes**; **two native Grade 5 save-retry failures** reproduce locally and hosted, with the same 176 px desktop review defect. Three unsupported WebKit gesture cases are explicitly skipped. New manual-review source-refresh/checkpoint tests pass; no further regression was reproduced within scope. [Exact analysis, suite counts and caveats](./docs/combined-regression-audit-2026-10-26.md).

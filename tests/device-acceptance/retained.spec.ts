@@ -166,3 +166,64 @@ test('retained Grade 5 review fits and retries a failed local save before syncin
     timeout: 30000,
   })
 })
+
+test('retained Grade 5 writing review keeps ink through failed save and commits the retry once', async ({
+  page,
+  context,
+}) => {
+  await context.addInitScript(() => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key, value) {
+      const top = window.top as Window & { failedWritingSave?: boolean }
+      if (key.startsWith('family-beta-preview-results-v1:') && !top.failedWritingSave) {
+        top.failedWritingSave = true
+        throw new DOMException('Synthetic full', 'QuotaExceededError')
+      }
+      return original.call(this, key, value)
+    }
+  })
+  const f = await open(page, 'grade5', /Practice.*Ninja Skills/)
+  await f.getByRole('button', { name: 'Writing Test', exact: true }).click()
+  await expect(f.locator('.report-writing-collector')).toBeVisible()
+  const pad = f.locator('.skywriting-pad').first(),
+    b = (await pad.boundingBox())!
+  await page.mouse.move(b.x + b.width * 0.3, b.y + b.height * 0.3)
+  await page.mouse.down()
+  await page.mouse.move(b.x + b.width * 0.6, b.y + b.height * 0.6)
+  await page.mouse.up()
+  let count = 0
+  while (await f.locator('.report-writing-collector').count()) {
+    await f.getByRole('button', { name: 'Skip Timer', exact: true }).click()
+    count++
+    expect(count).toBeLessThan(80)
+  }
+  const rows = f.locator('.deferred-review-row')
+  await expect(rows).toHaveCount(count)
+  for (let i = 0; i < count; i++) await rows.nth(i).getByRole('button', { name: 'Yes', exact: true }).click()
+  await f.getByRole('button', { name: 'Submit final review', exact: true }).click()
+  await expect(f.getByRole('alert')).toContainText('Your result could not be saved')
+  await expect(rows.first().locator('.skywriting-stroke')).toHaveCount(1)
+  await f.getByRole('button', { name: 'Submit final review', exact: true }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => Object.keys(localStorage).filter((k) => k.startsWith('family-beta-preview-results-v1:')).length,
+      ),
+    )
+    .toBe(1)
+  const saved = await page.evaluate(() =>
+    Object.entries(localStorage)
+      .filter(([k]) => k.startsWith('family-beta-preview-results-v1:'))
+      .map(([, v]) => JSON.parse(v)),
+  )
+  expect(saved[0].correct).toBe(count)
+  expect(saved[0].attempted).toBe(count)
+  await page.reload()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => Object.keys(localStorage).filter((k) => k.startsWith('family-beta-preview-results-v1:')).length,
+      ),
+    )
+    .toBe(1)
+})

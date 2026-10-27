@@ -5,7 +5,11 @@ import { createHash, randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { chromium, expect, type Page } from '@playwright/test'
-import { strokeOrderGuide } from '../src/familyBeta/strokeOrderSlay.ts'
+import { unpackWritingWorkspace } from '../src/familyBeta/writingWorkspaceCodec.ts'
+import { automaticCurriculumStrokeMedians } from '../src/learningGames/strokeOrder/automaticCurriculumStrokeAssets.ts'
+import { grade2StrokeMedians } from '../src/learningGames/strokeOrder/grade2StrokeAssets.ts'
+import { buildStrokeOrderRounds } from '../src/learningGames/strokeOrder/rounds.ts'
+import { wetlandStrokeMedians } from '../src/learningGames/strokeOrder/wetlandStrokeAssets.ts'
 import { getStrokeLayout } from '../src/strokeTeacherPrototype/original/strokeLayout.ts'
 import { cleanSyntheticWritingFamily, syntheticWritingScope } from './syntheticWritingScope.ts'
 
@@ -94,6 +98,10 @@ const record = (cleanupComplete = false, deletedDocuments = 0) =>
 const browser = await chromium.launch()
 let currentPage: Page | undefined
 const f = (page: Page) => page.frameLocator('iframe:visible')
+const acquisition = (page: Page) =>
+  f(page)
+    .getByRole('button', { name: 'Skip Timer', exact: true })
+    .or(f(page).getByRole('button', { name: 'I got it right', exact: true }))
 async function newPage() {
   const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, serviceWorkers: 'block' })
   await context.addInitScript(() => {
@@ -158,7 +166,8 @@ async function panel(page: Page, open: boolean) {
 }
 async function returnToMenu(page: Page) {
   const teacher = f(page).getByRole('region', { name: 'Stroke order teacher' })
-  if (await teacher.isVisible()) await f(page).getByRole('button', { name: 'Exit game', exact: true }).click()
+  if ((await teacher.isVisible()) || (await acquisition(page).isVisible()))
+    await f(page).getByRole('button', { name: 'Exit game', exact: true }).click()
   const reading = f(page).getByRole('button', { name: 'Exit reading', exact: true })
   if (await reading.isVisible()) await reading.click()
   const back = f(page).getByRole('button', { name: /Back to all challenges/ })
@@ -193,7 +202,7 @@ async function confirmed(page: Page) {
   await panel(page, false)
   if (writing) await openWriting(page, grade!)
 }
-async function openWriting(page: Page, grade: string) {
+async function openWriting(page: Page, grade: string, allowAcquisition = false) {
   await f(page)
     .getByRole('button', { name: /Enter the Dojo/ })
     .click()
@@ -202,12 +211,14 @@ async function openWriting(page: Page, grade: string) {
     .click()
   const teacher = f(page).getByRole('region', { name: 'Stroke order teacher' }),
     warmup = f(page).getByRole('button', { name: 'Skip Warmup', exact: true })
-  await expect(teacher.or(warmup)).toBeVisible()
+  await expect(allowAcquisition ? teacher.or(warmup).or(acquisition(page)) : teacher.or(warmup)).toBeVisible()
   if (await warmup.isVisible()) await warmup.click()
-  await expect(teacher).toBeVisible()
+  if (!allowAcquisition) await expect(teacher).toBeVisible()
+  else await expect(teacher.or(acquisition(page))).toBeVisible()
   return teacher
 }
 async function advance(page: Page) {
+  currentPage = page
   const teacher = f(page).getByRole('region', { name: 'Stroke order teacher' })
   const id = await teacher.getAttribute('data-report-target'),
     index = Number(await teacher.getAttribute('data-character-index')),
@@ -233,7 +244,11 @@ async function advance(page: Page) {
     }
     throw new Error('Test writing target unavailable')
   }, id)
-  const strokes = strokeOrderGuide({ id: id!, text: [...word][index] }).strokes,
+  const strokes = buildStrokeOrderRounds([{ id: id!, text: [...word][index] }], {
+      ...grade2StrokeMedians,
+      ...automaticCurriculumStrokeMedians,
+      ...wetlandStrokeMedians,
+    }).rounds[0].strokes,
     layout = getStrokeLayout(strokes),
     pad = teacher.locator('svg[role="application"]')
   await pad.scrollIntoViewIfNeeded()
@@ -250,8 +265,37 @@ async function advance(page: Page) {
     await page.mouse.up()
     await expect(pad).toHaveAttribute('data-next-stroke', String(i + 1))
   }
-  await f(page).getByRole('button', { name: 'Next step', exact: true }).click()
-  await expect(teacher).toHaveAttribute('data-step', String(step + 1))
+  await f(page)
+    .getByRole('button', { name: step === 5 ? 'Compare' : 'Next step', exact: true })
+    .click()
+  if (step === 5) {
+    await f(page).getByRole('button', { name: 'I slayed it', exact: true }).click()
+    await expect
+      .poll(() =>
+        f(page)
+          .locator('body')
+          .evaluate(
+            (root, position) => {
+              const next = root.querySelector<HTMLElement>('[aria-label="Stroke order teacher"]')
+              if (!next) return Boolean(root.querySelector('.practice-page'))
+              return (
+                next.dataset.reportTarget !== position.id ||
+                Number(next.dataset.characterIndex) !== position.index ||
+                Number(next.dataset.step) !== 5
+              )
+            },
+            { id, index },
+          ),
+      )
+      .toBe(true)
+      .catch(async (error) => {
+        writeFileSync(receipt.replace('.json', '-transition.txt'), await f(page).locator('body').innerText(), {
+          mode: 0o600,
+        })
+        await page.screenshot({ path: receipt.replace('.json', '-transition.png') })
+        throw error
+      })
+  } else await expect(teacher).toHaveAttribute('data-step', String(step + 1))
 }
 try {
   const first = await newPage()
@@ -312,6 +356,71 @@ try {
     try {
       await login(third.page, slug, grade)
       await expect(await openWriting(third.page, grade)).toHaveAttribute('data-step', '4')
+      if (process.env.DEVICE_CLOUD_ACQUISITION === '1') {
+        let trials = 0
+        while (await f(third.page).getByRole('region', { name: 'Stroke order teacher' }).isVisible()) {
+          await advance(third.page)
+          assert.ok(++trials < 21)
+        }
+        await expect(acquisition(third.page)).toBeVisible()
+        const skip = f(third.page).getByRole('button', { name: 'Skip Timer', exact: true }),
+          right = f(third.page).getByRole('button', { name: 'I got it right', exact: true })
+        await expect(skip.or(right)).toBeVisible()
+        if (await skip.isVisible()) await skip.click()
+        await right.click()
+        const checkpoint = async (page: Page) => {
+          const child = await page.getByLabel('Child profile').inputValue()
+          const raws = await page.evaluate(
+            (child) =>
+              Object.entries(localStorage)
+                .filter(
+                  ([key]) =>
+                    key.startsWith(`family-beta-activity:${child}:`) || key.startsWith('family-beta-acquisition-v1:'),
+                )
+                .map(([, raw]) => raw),
+            child,
+          )
+          for (const raw of raws) {
+            let record
+            try {
+              record = JSON.parse(raw)
+            } catch {
+              continue
+            }
+            if (record?.codec === 'writing-lzw-utf8-v1') record = JSON.parse(unpackWritingWorkspace(record.payload))
+            const list = [record?.writing]
+            for (const nested of Object.values(record?.records || {})) {
+              try {
+                list.push(...(JSON.parse(nested as string).values?.writingAcquisitionProgress || []))
+              } catch {}
+            }
+            const progress = list.find((p) => p?.acquisition?.childId === child && p?.acquisition?.revision > 0)
+            if (progress)
+              return {
+                revision: progress.acquisition.revision,
+                flow: progress.acquisition.flow,
+                lesson: progress.lesson.fingerprint,
+              }
+          }
+          return null
+        }
+        await expect.poll(async () => (await checkpoint(third.page))?.revision).toBe(1)
+        const saved = await checkpoint(third.page)
+        await confirmed(third.page)
+        const fourth = await newPage()
+        try {
+          await login(fourth.page, slug, grade)
+          await openWriting(fourth.page, grade, true)
+          await expect(acquisition(fourth.page)).toBeVisible()
+          assert.deepEqual(await checkpoint(fourth.page), saved)
+        } finally {
+          await fourth.context.close()
+        }
+        checks.push(
+          `PASS: ${grade} complete whole-word teaching and first acquisition answer recover on another device`,
+        )
+        record()
+      }
     } finally {
       await third.context.close()
     }

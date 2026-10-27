@@ -54,11 +54,17 @@ export async function installFamilyFixtures(
   documents: SyntheticFamilyDocuments = new Map(),
   testEmail = 'synthetic@example.invalid',
 ) {
+  const fixtureOrigin = process.env.FAMILY_FIXTURE_ORIGIN || 'http://127.0.0.1:5193'
+  if (
+    fixtureOrigin !== 'http://127.0.0.1:5193' &&
+    !/^https:\/\/weekly-dictation-staging--device-sync-oct27-v1-[a-z0-9]+\.web\.app$/.test(fixtureOrigin)
+  )
+    throw new Error('Unsupported synthetic fixture origin.')
   // This is the production-configured artifact. All external requests are
   // intercepted: synthetic account/storage fixtures never reach production.
   await page.context().route('**/*', async (route) => {
     const url = new URL(route.request().url())
-    if (url.origin === 'http://127.0.0.1:5193') return route.continue()
+    if (url.origin === fixtureOrigin) return route.continue()
     const curriculum = url.pathname.match(/\/curriculum\/beta\/(kindergarten|grade2|grade5)\.json$/)
     if (curriculum)
       return route.fulfill({
