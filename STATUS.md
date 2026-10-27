@@ -1,5 +1,11 @@
 # Weekly Dictation status
 
+## Current handoff — Maxton and Aaron Grade 5 copies, October 27
+
+**[Maxton grade 5](https://maxtongrade5.meghangames.com/)** and **[Aaron grade 5](https://aarongrade5.meghangames.com/)** are published permanent standalone copies of the owner's selected **b36e898 / 50-word reading review**, with writing disabled. Both have additive cards on [MeghanGames](https://meghangames.com/). Naming/publication recipe **e00d90a**, edition **Personal Grade 5 reading review 1**, no scheduled hosting expiry. These copies preserve the selected browser-only engine; they do not replace or inherit the newer authenticated device/sync prototype below.
+
+**18 local + 18 hosted interaction checks; three local + six hosted native-audio checks pass.** All 1,420 public files / 8,520 headers per copy match; all original homepage cards and supporting assets remain unchanged. Original preview, canonical, frozen presentation and device/sync preview remain unchanged. Browser progress is separate per named origin/device; no cloud sync or migration. Ready for a **3–5 minute iPad check per copy**. [Exact versions, evidence, source limits and checklist](./docs/personal-grade5-2026-10-27.md). **Email confirmed SENT `1a17f52366e948a3`.**
+
 ## Current handoff — authenticated device/sync prototype, October 27
 
 **Combined Dojo / Device and syncing 1 / `8ca51a13bb1782478bbbc3b2d45edd74a1dfbfb8`** is published on a **new isolated test-account website**: [Kindergarten](https://weekly-dictation-staging--device-sync-oct27-v1-mx4bf4m6.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--device-sync-oct27-v1-mx4bf4m6.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--device-sync-oct27-v1-mx4bf4m6.web.app/family-beta-preview.html?grade=grade5). **Expires November 10 at 12:44 PM Pacific.** Hosting **049e9a31086e78e6**; all **1,409 public files / 8,454 headers** match. Previous links, canonical, Firebase live and frozen standalone Grade 5 remain unchanged; no auth-domain/rule changes or real-family migration.

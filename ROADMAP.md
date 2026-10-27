@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Delivered side publication — named Grade 5 copies, October 27
+
+The owner-requested **Maxton grade 5** and **Aaron grade 5** copies are delivered on permanent separate MeghanGames subdomains with additive homepage cards. They intentionally preserve the selected **b36e898 50-word reading review**, writing disabled and browser-only saving. They are not upgrades to, or replacements for, canonical Ninja Dojo, the frozen presentation or the authenticated device/sync prototype. [Verified publication and handoff](./docs/personal-grade5-2026-10-27.md); SENT receipt and exact links are in STATUS. Existing confirmed Sol · High publication routing applied; no additional approval or model switch is claimed.
+
+The integrated-app execution queue below remains unchanged. Real-device acceptance and owner approval of the newer authenticated prototype remain separate; do not treat two static named copies as cloud-sync completion.
+
 ## Current priority — physical acceptance of the authenticated device prototype, October 27
 
 The owner moved physical-device acceptance and cross-device syncing next. A separate **8ca51a1 / Device and syncing 1** preview is published and verified for all grades; exact links, expiry and qualified test evidence are at the top of STATUS and in [the acceptance record](./docs/device-sync-acceptance-2026-10-27.md). It connects the latest approved app to the existing family service with test-account-only access, confirms setup before learner creation, and repairs both retained Grade 5 native save-retry paths plus review width. **1,305 units, 42 distinct local + 42 distinct hosted browser cases with passing executions, four explicit skips; seven hosted real-service acceptance checks pass.** Keep the documented initial offline-install timeout and test-driver corrections visible; this is not a uniformly clean first-pass run.
