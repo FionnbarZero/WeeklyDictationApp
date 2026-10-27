@@ -6,6 +6,7 @@ import type { CurriculumSourcePayload, WeeklyDatasetCandidate } from '../curricu
 import { extractGrade5Assessment } from '../grade5PresentationPreview/assessmentSource.ts'
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import { GRADE5_ASSESSMENT_SOURCE_ID } from '../grade5PresentationPreview/sourceIdentity.ts'
+import { grade5ReadingReviewPreview, grade5ReadingReviewSource } from '../grade5RecognitionReview/source.ts'
 import { inspectKindergartenWorkbook } from '../kindergartenSheetsImporter.ts'
 import { grade2DeckProfile } from '../slidesImporter.ts'
 import { automaticCurriculumEndpoint, automaticCurriculumPreview } from './automaticCurriculum.ts'
@@ -79,7 +80,15 @@ export function inspectSnapshot(snapshot: CurriculumSnapshot) {
   if (!valid.length) throw new Error('The source has no valid lessons. The previous curriculum is retained.')
   const malformed = candidates.filter((c) => c.status === 'malformed')
   if (malformed.length) warnings.push(`${malformed.length} empty or incomplete source weeks are excluded.`)
-  return { candidates, datasets: valid.map((c) => datasetFromCanonicalCandidate(c)), warnings }
+  const datasets = valid.map((c) => datasetFromCanonicalCandidate(c))
+  if (grade5ReadingReviewPreview && snapshot.grade === 'Grade 5' && p.sourceType === 'google-slides') {
+    const review = grade5ReadingReviewSource()
+    if (datasets.some((dataset) => dataset.id === review.dataset.id))
+      throw new Error('The review identity conflicts with a teacher lesson.')
+    candidates = [...candidates, review.candidate]
+    datasets.push(review.dataset)
+  }
+  return { candidates, datasets, warnings }
 }
 
 export async function validateCurriculum(raw: string, grade: BetaGrade) {

@@ -43,6 +43,11 @@ import { createFamilyWorkspaceOwner, type FamilyWorkspaceWindow } from './worksp
 import '../styles.css'
 import './preview.css'
 import { grade5PresentationPreview, grade5Standalone } from '../grade5PresentationPreview/policy.ts'
+import {
+  grade5ReadingReviewPreview,
+  isGrade5ReadingReview,
+  preferredReadingReviewWeek,
+} from '../grade5RecognitionReview/source.ts'
 import { grade5RepairPreview } from '../grade5RepairPreview/policy.ts'
 import { retiredStandaloneExperience, standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { compactParentPreview } from '../regressionPreview/compactParentPolicy.ts'
@@ -170,6 +175,8 @@ function FamilyPreview() {
   const available =
     curriculum?.datasets.filter((d) => d.startDate <= today).sort((a, b) => b.startDate.localeCompare(a.startDate)) ||
     []
+  const reviewWeek = preferredReadingReviewWeek(available, today, week)
+  if (reviewWeek) available.sort((a, b) => Number(isGrade5ReadingReview(b)) - Number(isGrade5ReadingReview(a)))
   const dataset = available.find((d) => d.startDate === week) || available[0]
   const resumeSlot =
     tab === 'activities' ? slots.find((slot) => slot.id === resumingId && slot.profile.id === child?.id) : undefined
@@ -191,7 +198,8 @@ function FamilyPreview() {
     const frame = document.querySelector<HTMLIFrameElement>('iframe[data-family-active="true"]')
     const slot = slotsRef.current.find((item) => item.id === frame?.dataset.familySlot)
     if (frame && (!slot || slot.kind !== 'activities' || slot.resumeChannel || !curriculumMenuReady(frame))) return
-    const nextWeek = scheduledCurriculumWeek(loaded.datasets, date, week)
+    const nextWeek =
+      preferredReadingReviewWeek(loaded.datasets, date, week) || scheduledCurriculumWeek(loaded.datasets, date, week)
     // Replace only a visible idle menu. Hidden/paused games and saved lessons
     // keep their original document, source and temporary work.
     if (slot && (slot.curriculumVersion !== loaded.snapshot.contentSha256 || slot.week !== nextWeek)) {
@@ -1081,9 +1089,11 @@ function FamilyPreview() {
               }}
             >
               <option value="">
-                {grade2WetlandReviewPreview
-                  ? wetlandReviewLabel(currentGrade, available[0]?.startDate, today)
-                  : 'Current teacher lesson'}
+                {grade5ReadingReviewPreview && currentGrade === 'Grade 5' && isGrade5ReadingReview(dataset!)
+                  ? 'Cumulative reading review · November 2–6 test'
+                  : grade2WetlandReviewPreview
+                    ? wetlandReviewLabel(currentGrade, available[0]?.startDate, today)
+                    : 'Current teacher lesson'}
               </option>
               {available.map((d) => (
                 <option key={d.id} value={d.startDate}>

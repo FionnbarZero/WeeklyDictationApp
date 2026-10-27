@@ -13,6 +13,9 @@ import { artifactFileRecords, fileTreeSha256 } from './familyBetaRelease.ts'
 // Build only a separate, local-profile prototype. No publisher or cloud account.
 const root = resolve(import.meta.dirname, '..')
 const integratedWarmup = process.argv.includes('--integrated-warmup')
+const readingRecognition = process.argv.includes('--grade5-reading-review')
+if (readingRecognition && !integratedWarmup)
+  throw new Error('The reading review requires the isolated combined preview.')
 const koreVoice = integratedWarmup || process.argv.includes('--kore-voice')
 const automaticCurriculum = koreVoice || process.argv.includes('--automatic-curriculum')
 const w2Recovery = automaticCurriculum || process.argv.includes('--w2-recovery')
@@ -51,7 +54,9 @@ const out = resolve(
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const octoberResources = process.argv.includes('--kindergarten-oct19')
 const prototype = integratedWarmup
-  ? 'Combined Dojo / Wetland book 1'
+  ? readingRecognition
+    ? 'Combined Dojo / Grade 5 recognition review 1'
+    : 'Combined Dojo / Wetland book 1'
   : koreVoice
     ? 'Kore Mandarin / Prototype 1'
     : automaticCurriculum
@@ -135,6 +140,7 @@ execFileSync(
       VITE_KORE_VOICE_PREVIEW: String(koreVoice),
       VITE_INTEGRATED_WARMUP_PREVIEW: String(integratedWarmup),
       VITE_GRADE2_WETLAND_REVIEW_PREVIEW: String(integratedWarmup),
+      GRADE5_READING_REVIEW_PREVIEW: String(readingRecognition),
     },
   },
 )

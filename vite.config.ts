@@ -91,7 +91,12 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
-    define: mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {},
+    define: {
+      ...(mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {}),
+      __GRADE5_READING_REVIEW_PREVIEW__: String(
+        mode === 'writing-pilot' && process.env.GRADE5_READING_REVIEW_PREVIEW === 'true',
+      ),
+    },
     publicDir: isolatedWritingPreview ? false : 'public',
     base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [

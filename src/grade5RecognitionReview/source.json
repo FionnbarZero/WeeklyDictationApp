@@ -1,0 +1,310 @@
+{
+  "documentId": "1TFZKSM5B8zJsO470_acttS1OrnHftpoS",
+  "documentSha256": "b930ab1d5c59a720cab844b5de6db9bfc4698bfc9b3dc0099c53c4ce92fc0eb6",
+  "title": "11/2–6 Chinese vocab recognition test to Review",
+  "studyStart": "2026-10-26",
+  "assessmentStart": "2026-11-02",
+  "assessmentEnd": "2026-11-06",
+  "targets": [
+    {
+      "text": "需要",
+      "pinyin": "xū yào",
+      "meaning": "to need",
+      "page": 1
+    },
+    {
+      "text": "部分",
+      "pinyin": "bù fen",
+      "meaning": "part",
+      "page": 1
+    },
+    {
+      "text": "重要",
+      "pinyin": "zhòng yào",
+      "meaning": "important",
+      "page": 1
+    },
+    {
+      "text": "开始",
+      "pinyin": "kāi shǐ",
+      "meaning": "to begin; to start",
+      "page": 1
+    },
+    {
+      "text": "各种各样",
+      "pinyin": "gè zhǒng gè yàng",
+      "meaning": "all kinds of",
+      "page": 1
+    },
+    {
+      "text": "海洋",
+      "pinyin": "hǎi yáng",
+      "meaning": "ocean",
+      "page": 1
+    },
+    {
+      "text": "阳光",
+      "pinyin": "yáng guāng",
+      "meaning": "sunlight",
+      "page": 1
+    },
+    {
+      "text": "鲨鱼",
+      "pinyin": "shā yú",
+      "meaning": "shark",
+      "page": 1
+    },
+    {
+      "text": "天敌",
+      "pinyin": "tiān dí",
+      "meaning": "natural enemy; predator",
+      "page": 1
+    },
+    {
+      "text": "生存",
+      "pinyin": "shēng cún",
+      "meaning": "to survive",
+      "page": 1
+    },
+    {
+      "text": "怎样",
+      "pinyin": "zěn yàng",
+      "meaning": "how",
+      "page": 1
+    },
+    {
+      "text": "吸收",
+      "pinyin": "xī shōu",
+      "meaning": "to absorb",
+      "page": 1
+    },
+    {
+      "text": "通过",
+      "pinyin": "tōng guò",
+      "meaning": "through; by means of",
+      "page": 1
+    },
+    {
+      "text": "像",
+      "pinyin": "xiàng",
+      "meaning": "to be like; to resemble",
+      "page": 1
+    },
+    {
+      "text": "如果",
+      "pinyin": "rú guǒ",
+      "meaning": "if",
+      "page": 1
+    },
+    {
+      "text": "空气",
+      "pinyin": "kōng qì",
+      "meaning": "air",
+      "page": 2
+    },
+    {
+      "text": "根",
+      "pinyin": "gēn",
+      "meaning": "root",
+      "page": 2
+    },
+    {
+      "text": "帮助",
+      "pinyin": "bāng zhù",
+      "meaning": "to help",
+      "page": 2
+    },
+    {
+      "text": "植物",
+      "pinyin": "zhí wù",
+      "meaning": "plant",
+      "page": 2
+    },
+    {
+      "text": "食物",
+      "pinyin": "shí wù",
+      "meaning": "food",
+      "page": 2
+    },
+    {
+      "text": "得到",
+      "pinyin": "dé dào",
+      "meaning": "to get; to obtain",
+      "page": 2
+    },
+    {
+      "text": "关",
+      "pinyin": "guān",
+      "meaning": "to close; to turn off",
+      "page": 2
+    },
+    {
+      "text": "打开",
+      "pinyin": "dǎ kāi",
+      "meaning": "to open; to turn on",
+      "page": 2
+    },
+    {
+      "text": "或者",
+      "pinyin": "huò zhě",
+      "meaning": "or",
+      "page": 2
+    },
+    {
+      "text": "了解",
+      "pinyin": "liǎo jiě",
+      "meaning": "to understand; to learn about",
+      "page": 2
+    },
+    {
+      "text": "完",
+      "pinyin": "wán",
+      "meaning": "to finish",
+      "page": 2
+    },
+    {
+      "text": "兴奋的",
+      "pinyin": "xīng fèn de",
+      "meaning": "excited",
+      "page": 2
+    },
+    {
+      "text": "告诉",
+      "pinyin": "gào su",
+      "meaning": "to tell",
+      "page": 2
+    },
+    {
+      "text": "提醒",
+      "pinyin": "tí xǐng",
+      "meaning": "to remind",
+      "page": 2
+    },
+    {
+      "text": "沟通",
+      "pinyin": "gōu tōng",
+      "meaning": "to communicate",
+      "page": 2
+    },
+    {
+      "text": "快速地",
+      "pinyin": "kuài sù de",
+      "meaning": "quickly",
+      "page": 2
+    },
+    {
+      "text": "有意思",
+      "pinyin": "yǒu yì si",
+      "meaning": "interesting",
+      "page": 2
+    },
+    {
+      "text": "年长的",
+      "pinyin": "nián zhǎng de",
+      "meaning": "older; elder",
+      "page": 3
+    },
+    {
+      "text": "并且",
+      "pinyin": "bìng qiě",
+      "meaning": "and; moreover",
+      "page": 3
+    },
+    {
+      "text": "表达",
+      "pinyin": "biǎo dá",
+      "meaning": "to express",
+      "page": 3
+    },
+    {
+      "text": "碰",
+      "pinyin": "pèng",
+      "meaning": "to touch; to bump into",
+      "page": 3
+    },
+    {
+      "text": "盐",
+      "pinyin": "yán",
+      "meaning": "salt",
+      "page": 3
+    },
+    {
+      "text": "咸",
+      "pinyin": "xián",
+      "meaning": "salty",
+      "page": 3
+    },
+    {
+      "text": "层",
+      "pinyin": "céng",
+      "meaning": "layer",
+      "page": 3
+    },
+    {
+      "text": "用处",
+      "pinyin": "yòng chu",
+      "meaning": "use; purpose",
+      "page": 3
+    },
+    {
+      "text": "神奇的",
+      "pinyin": "shén qí de",
+      "meaning": "amazing; magical",
+      "page": 3
+    },
+    {
+      "text": "河流",
+      "pinyin": "hé liú",
+      "meaning": "river",
+      "page": 3
+    },
+    {
+      "text": "躺",
+      "pinyin": "tǎng",
+      "meaning": "to lie down",
+      "page": 3
+    },
+    {
+      "text": "留",
+      "pinyin": "liú",
+      "meaning": "to stay; to remain",
+      "page": 3
+    },
+    {
+      "text": "不断地",
+      "pinyin": "bú duàn de",
+      "meaning": "continuously",
+      "page": 3
+    },
+    {
+      "text": "美味的",
+      "pinyin": "měi wèi de",
+      "meaning": "delicious",
+      "page": 3
+    },
+    {
+      "text": "刷牙",
+      "pinyin": "shuā yá",
+      "meaning": "to brush one's teeth",
+      "page": 3
+    },
+    {
+      "text": "洒",
+      "pinyin": "sǎ",
+      "meaning": "to sprinkle",
+      "page": 3
+    },
+    {
+      "text": "沉",
+      "pinyin": "chén",
+      "meaning": "to sink",
+      "page": 3
+    },
+    {
+      "text": "浮",
+      "pinyin": "fú",
+      "meaning": "to float",
+      "page": 3
+    }
+  ]
+}

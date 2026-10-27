@@ -1,32 +1,40 @@
-import { writingCorrectionPreview, writingCorrectionStrategy } from '../writingAcquisition/correctionStrategy.ts'
-import { reportRepairsPreview } from '../reportRepairs/policy.ts'
-import { SlayWritingAcquisition } from '../writingAcquisition/SlayWritingAcquisition.tsx'
-import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
-import { FIVE_STEP_SEQUENCE } from '../strokeTeacherPrototype/model.ts'
 import { writingCharacterGuides } from '../application/writingAcquisition/lesson.ts'
+import { reportRepairsPreview } from '../reportRepairs/policy.ts'
+import { FIVE_STEP_SEQUENCE } from '../strokeTeacherPrototype/model.ts'
+import { StrokeTeacher } from '../strokeTeacherPrototype/StrokeTeacher.tsx'
+import { writingCorrectionPreview, writingCorrectionStrategy } from '../writingAcquisition/correctionStrategy.ts'
+import { SlayWritingAcquisition } from '../writingAcquisition/SlayWritingAcquisition.tsx'
 import '../strokeTeacherPrototype/preview.css'
 import { useRef, useState } from 'react'
-import { startAcquisition, revealAcquisition } from '../acquisition/engine.ts'
-import { transitionAcquisition } from '../acquisition/transition.ts'
-import { kindergartenAcquisitionStrategy } from '../acquisition/strategies/kindergarten.ts'
+import { revealAcquisition, startAcquisition } from '../acquisition/engine.ts'
 import { grade2AcquisitionStrategy } from '../acquisition/strategies/grade2.ts'
 import { grade5AcquisitionStrategy } from '../acquisition/strategies/grade5.ts'
-import { PracticeView } from '../practice/PracticeView.tsx'
-import { Tier2ReadingPractice } from '../readingPractice/Tier2ReadingPractice.tsx'
-import { kindergartenTier2ReadingProfile } from '../tier2/profiles/kindergarten.ts'
-import { grade2Tier2ReadingProfile } from '../tier2/profiles/grade2.ts'
-import { grade5Tier2ReadingProfile } from '../tier2/profiles/grade5.ts'
+import { kindergartenAcquisitionStrategy } from '../acquisition/strategies/kindergarten.ts'
+import { transitionAcquisition } from '../acquisition/transition.ts'
+import { withKindergartenAudio } from '../audio/kindergartenAudio.ts'
 import {
   playCachedWordAudio,
   playCachedWordAudioOnce,
   playReadingTeachingSequence,
   stopActiveAudio,
 } from '../audio/promptAudio.ts'
-import { withKindergartenAudio } from '../audio/kindergartenAudio.ts'
 import type { Dataset, PracticeSession } from '../domain.ts'
+import { PracticeView } from '../practice/PracticeView.tsx'
+import { Tier2ReadingPractice } from '../readingPractice/Tier2ReadingPractice.tsx'
 import type { Tier2ReadingTarget } from '../tier2/contracts.ts'
-import { previewProfile, savePreviewResult } from './runtime.ts'
+import { grade2Tier2ReadingProfile } from '../tier2/profiles/grade2.ts'
+import { grade5Tier2ReadingProfile } from '../tier2/profiles/grade5.ts'
+import { kindergartenTier2ReadingProfile } from '../tier2/profiles/kindergarten.ts'
 import { channelWords, type PracticeChannel } from './gamePools.ts'
+import { previewProfile, savePreviewResult } from './runtime.ts'
+
+export function readingProfileFor(grade: string) {
+  return grade === 'Kindergarten'
+    ? kindergartenTier2ReadingProfile
+    : grade === 'Grade 2'
+      ? grade2Tier2ReadingProfile
+      : grade5Tier2ReadingProfile
+}
 
 export function ReentryPractice({
   datasets,
@@ -46,12 +54,7 @@ export function ReentryPractice({
           ? writingCorrectionStrategy
           : grade2AcquisitionStrategy
         : grade5AcquisitionStrategy
-  const profile =
-    grade === 'Kindergarten'
-      ? kindergartenTier2ReadingProfile
-      : grade === 'Grade 2'
-        ? grade2Tier2ReadingProfile
-        : grade5Tier2ReadingProfile
+  const profile = readingProfileFor(grade)
   const targetSet = useRef({ id: datasets[0].id, targets: datasets.flatMap((d) => channelWords(d, channel)) }).current
   const sessionId = useRef(crypto.randomUUID()).current
   const [flow, setFlow] = useState(() => startAcquisition(targetSet, strategy, Math.random))

@@ -11,6 +11,8 @@ import { localDateKey } from '../domain.ts'
 import { grade5AssessmentGames } from '../grade5PresentationPreview/games.ts'
 import { masteredDatasetsForGrade, masteredGamesForGrade } from '../grade5PresentationPreview/masteredGames.ts'
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
+import { recognitionReviewSection } from '../grade5RecognitionReview/menus.ts'
+import { grade5ReadingReviewPreview, isGrade5ReadingReview } from '../grade5RecognitionReview/source.ts'
 import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
@@ -30,7 +32,7 @@ import {
 import { gameRecoveryPreview } from './gameRecoveryPreview.ts'
 import wetlandSource from './grade2WetlandSource.json'
 import type { BetaGrade, BetaResult } from './model.ts'
-import { ReentryPractice } from './ReentryPractice.tsx'
+import { ReentryPractice, readingProfileFor } from './ReentryPractice.tsx'
 import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
 import { SpiritRealmPractice } from './SpiritRealmPractice.tsx'
 import { strokeOrderLesson } from './strokeOrderSlay.ts'
@@ -38,6 +40,13 @@ import { strokeOrderLesson } from './strokeOrderSlay.ts'
 const FinalBossTest = lazy(() =>
   import('../reportRepairs/FinalBossTest.tsx').then((m) => ({ default: m.FinalBossTest })),
 )
+const RecognitionReadingPractice = grade5ReadingReviewPreview
+  ? lazy(() =>
+      import('../grade5RecognitionReview/ReadingPractice.tsx').then((module) => ({
+        default: module.RecognitionReadingPractice,
+      })),
+    )
+  : null
 const ModuleHost = lazy(() =>
   import('./FamilyLearningModuleHost.tsx').then((m) => ({ default: m.FamilyLearningModuleHost })),
 )
@@ -50,7 +59,7 @@ const StrokeOrderSlay = lazy(() =>
 const ListeningLilyPads = lazy(() =>
   import('../kindergartenLab/games.tsx').then((m) => ({ default: m.ListeningLilyPads })),
 )
-type ExtraLaunch =
+export type ExtraLaunch =
   | {
       previewAction: 'game'
       pack: LearningModulePack
@@ -59,7 +68,11 @@ type ExtraLaunch =
       mastered?: boolean
       boss?: boolean
     }
-  | { previewAction: 'reenter' | 'stroke' | 'sky' | 'lily' | 'test'; channel: PracticeChannel; datasets: Dataset[] }
+  | {
+      previewAction: 'reenter' | 'stroke' | 'sky' | 'lily' | 'test' | 'recognition-reading'
+      channel: PracticeChannel
+      datasets: Dataset[]
+    }
   | { previewAction: 'spirit'; channel: PracticeChannel; datasets: Dataset[]; direct: boolean }
   | { previewAction: 'scrolls'; channel: 'reading'; datasets: Dataset[] }
 
@@ -165,6 +178,9 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
     ...props.model,
     sections: props.model.sections.map((section) => {
       if (!source) return section
+      const review = grade5ReadingReviewPreview && grade === 'Grade 5' && source.datasets.find(isGrade5ReadingReview)
+      if (review && date === review.startDate && ['homework', 'test-review-1', 'test-review-2'].includes(section.id))
+        return recognitionReviewSection(section, review, completedGames, previewProfile()?.id || '')
       const scope = sectionDatasets(section, source.datasets, source.candidates, date)
       const assessment =
         grade5PresentationPreview &&
@@ -175,7 +191,16 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       const boss = section.id === 'final-boss' || section.id.startsWith('test-review-')
       const spirit = section.id === 'spirit-realm' || section.id === 'review'
       const masteredArcade = (gameRecoveryPreview || (grade5PresentationPreview && grade === 'Grade 5')) && spirit
-      const masteredScope = masteredArcade ? masteredDatasetsForGrade(scope, source.datasets, date, grade) : []
+      const masteredScope = masteredArcade
+        ? masteredDatasetsForGrade(
+            scope,
+            grade5ReadingReviewPreview
+              ? source.datasets.filter((dataset) => !isGrade5ReadingReview(dataset))
+              : source.datasets,
+            date,
+            grade,
+          )
+        : []
       const activities: LearningHubActivity<Launch | ExtraLaunch>[] = section.activities
         .filter(
           (a) =>
@@ -598,6 +623,15 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
         />
       </div>
       {!active && reportRepairsPreview && <PreviewScoreRecord />}
+      {RecognitionReadingPractice && active?.previewAction === 'recognition-reading' && (
+        <Suspense fallback={<p>Opening reading review…</p>}>
+          <RecognitionReadingPractice
+            dataset={active.datasets[0]}
+            profile={readingProfileFor('Grade 5')}
+            onExit={exit}
+          />
+        </Suspense>
+      )}
       {active?.previewAction === 'test' && (
         <Suspense fallback={<p>Opening Final Boss…</p>}>
           <FinalBossTest datasets={active.datasets} channel={active.channel} onExit={exit} />
