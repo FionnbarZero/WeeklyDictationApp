@@ -95,7 +95,7 @@ const browser = await chromium.launch()
 let currentPage: Page | undefined
 const f = (page: Page) => page.frameLocator('iframe:visible')
 async function newPage() {
-  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } })
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, serviceWorkers: 'block' })
   await context.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () {
       this.dispatchEvent(new Event('playing'))
@@ -156,7 +156,14 @@ async function panel(page: Page, open: boolean) {
   await summary.waitFor()
   if ((await summary.evaluate((el) => (el.parentElement as HTMLDetailsElement).open)) !== open) await summary.click()
 }
+async function returnToMenu(page: Page) {
+  const teacher = f(page).getByRole('region', { name: 'Stroke order teacher' })
+  if (await teacher.isVisible()) await f(page).getByRole('button', { name: 'Exit game', exact: true }).click()
+  const reading = f(page).getByRole('button', { name: 'Exit reading', exact: true })
+  if (await reading.isVisible()) await reading.click()
+}
 async function choose(page: Page, grade: string) {
+  await returnToMenu(page)
   await panel(page, true)
   await page.getByLabel('Child profile').selectOption({ label: `Device test ${grade} · ${grade}` })
   const back = page.getByRole('button', { name: 'Back to activities', exact: true })
@@ -172,6 +179,9 @@ async function login(page: Page, slug: string, grade: string) {
   await choose(page, grade)
 }
 async function confirmed(page: Page) {
+  const writing = await f(page).getByRole('region', { name: 'Stroke order teacher' }).isVisible()
+  const grade = await page.locator('.beta-workspace').getAttribute('data-report-grade')
+  await returnToMenu(page)
   await panel(page, true)
   await page.getByRole('button', { name: 'Check syncing', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Device and syncing check' }).getByRole('status')).toContainText(
@@ -179,6 +189,7 @@ async function confirmed(page: Page) {
     { timeout: 60000 },
   )
   await panel(page, false)
+  if (writing) await openWriting(page, grade!)
 }
 async function openWriting(page: Page, grade: string) {
   await f(page)
@@ -266,7 +277,9 @@ try {
     await first.page.getByLabel('Child’s name', { exact: true }).fill(`Device test ${grade}`)
     await first.page.getByRole('combobox', { name: 'Grade', exact: true }).selectOption(grade)
     await first.page.getByRole('button', { name: 'Add child', exact: true }).click()
-    await expect(first.page.getByText(`Device test ${grade}`, { exact: true })).toBeVisible()
+    await expect(
+      first.page.getByRole('combobox', { name: `Grade for Device test ${grade}`, exact: true }),
+    ).toBeVisible()
   }
   checks.push('PASS: real parent authentication and three disposable learner profiles')
   record()

@@ -171,7 +171,9 @@ export async function installFamilyFixtures(
       localStorage.setItem(
         'weekly-dictation-auth-v1',
         JSON.stringify({
-          idToken: 'synthetic-intercepted-token',
+          idToken: email.startsWith('ninja-')
+            ? `synthetic.${btoa(JSON.stringify({ sub: 'synthetic-parent', email, aud: 'weeklydictationapp', iss: 'https://securetoken.google.com/weeklydictationapp' }))}.intercepted-only`
+            : 'synthetic-intercepted-token',
           expiresAt: Date.now() + 3600_000,
           user: { uid: 'synthetic-parent', email },
         }),

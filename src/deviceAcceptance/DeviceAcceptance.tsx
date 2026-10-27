@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { AuthScreen } from '../auth/AuthScreen.tsx'
 import { firebaseConfigReady } from '../config.ts'
 import { type AuthState, signOut, subscribeAuth } from '../firebaseClient.ts'
-import { isDeviceTestAccount } from './policy.ts'
+import { isDeviceTestAccount, isDeviceTestIdentity } from './policy.ts'
 
 /** Never mount the family reader for a real parent in this test-only website. */
 export function DeviceAcceptance({ children }: { children: ReactNode }) {
@@ -10,8 +10,15 @@ export function DeviceAcceptance({ children }: { children: ReactNode }) {
   useEffect(() => subscribeAuth(setAuth), [])
   if (!firebaseConfigReady) return <p role="alert">This device test requires its configured family connection.</p>
   if (auth.status === 'loading') return <p role="status">Checking test account…</p>
+  let testIdentity = false
+  try {
+    const stored = JSON.parse(localStorage.getItem('weekly-dictation-auth-v1') || 'null')
+    testIdentity = Boolean(auth.user && isDeviceTestIdentity(stored?.idToken || '', auth.user))
+  } catch {
+    /* Invalid browser identity cannot mount a family reader. */
+  }
   if (auth.user)
-    return isDeviceTestAccount(auth.user.email) ? (
+    return testIdentity ? (
       children
     ) : (
       <section className="beta-panel">
