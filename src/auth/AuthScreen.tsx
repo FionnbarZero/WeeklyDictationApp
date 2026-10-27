@@ -1,9 +1,9 @@
 import { Sparkles } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
 import { accountSignupEnabled } from '../config.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signUp } from '../firebaseClient.ts'
 
-export function AuthScreen() {
+export function AuthScreen({ validateEmail }: { validateEmail?: (email: string) => string | null } = {}) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'reset'>('sign-in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -23,6 +23,8 @@ export function AuthScreen() {
     setError(null)
     setMessage(null)
     try {
+      const invalidEmail = validateEmail?.(email)
+      if (invalidEmail) throw new Error(invalidEmail)
       if (mode === 'reset') {
         await sendPasswordResetEmail(email)
         setMessage('Password reset instructions sent if the account exists.')

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { AppErrorBoundary } from '../AppErrorBoundary.tsx'
 import { activityClock, confirmActivityDiscard } from '../activity/activityLifecycle.ts'
 import { DEFAULT_SCHOOL_YEAR, firebaseConfigReady } from '../config.ts'
+import { deviceAcceptancePreview } from '../deviceAcceptance/policy.ts'
 import { localDateKey } from '../domain.ts'
 import { type AuthState, signIn, signOut, subscribeAuth } from '../firebaseClient.ts'
 import { createChild, ensureParentFamily, listChildren, updateChild } from '../firestoreClient.ts'
@@ -68,6 +69,12 @@ const ParentTools = compactParentPreview ? PreviewParentTools : Fragment
 const ActivityFrame = automaticCurriculumPreview ? ReadyActivityFrame : 'iframe'
 
 const AuthScreen = lazy(() => import('../auth/AuthScreen.tsx').then((m) => ({ default: m.AuthScreen })))
+const DeviceAcceptance = deviceAcceptancePreview
+  ? lazy(() => import('../deviceAcceptance/DeviceAcceptance.tsx').then((m) => ({ default: m.DeviceAcceptance })))
+  : Fragment
+const DeviceSyncCheck = deviceAcceptancePreview
+  ? lazy(() => import('../deviceAcceptance/DeviceAcceptance.tsx').then((m) => ({ default: m.DeviceSyncCheck })))
+  : Fragment
 const routes: Record<BetaGrade, string> = {
   Kindergarten: 'kindergarten-learning-lab.html',
   'Grade 2': 'index.html',
@@ -994,6 +1001,11 @@ function FamilyPreview() {
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
           </button>
           <AudioCheck />
+          {deviceAcceptancePreview && (
+            <Suspense fallback={<p>Loading device check…</p>}>
+              <DeviceSyncCheck status={status} refresh={() => void refreshProgress()} />
+            </Suspense>
+          )}
           {automaticCurriculumPreview && (
             <section aria-label="Automatic curriculum updates" className="beta-panel">
               <strong>Automatic teacher updates</strong>
@@ -1513,7 +1525,15 @@ async function renderPreview() {
   createRoot(document.getElementById('beta-root')!).render(
     <>
       <AppErrorBoundary>
-        <FamilyPreview />
+        {deviceAcceptancePreview ? (
+          <Suspense fallback={<p>Loading device test…</p>}>
+            <DeviceAcceptance>
+              <FamilyPreview />
+            </DeviceAcceptance>
+          </Suspense>
+        ) : (
+          <FamilyPreview />
+        )}
       </AppErrorBoundary>
       <ProblemReporter />
     </>,

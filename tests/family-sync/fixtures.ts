@@ -49,7 +49,11 @@ export type SyntheticFamilyDocuments = Map<
   { name: string; fields: Record<string, unknown>; updateTime?: string }
 >
 
-export async function installFamilyFixtures(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
+export async function installFamilyFixtures(
+  page: Page,
+  documents: SyntheticFamilyDocuments = new Map(),
+  testEmail = 'synthetic@example.invalid',
+) {
   // This is the production-configured artifact. All external requests are
   // intercepted: synthetic account/storage fixtures never reach production.
   await page.context().route('**/*', async (route) => {
@@ -162,14 +166,14 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
     if (documents.has(name)) return respond(documents.get(name))
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
   })
-  await page.addInitScript(() => {
+  await page.addInitScript((email) => {
     if (!sessionStorage.getItem('synthetic-auth-initialized'))
       localStorage.setItem(
         'weekly-dictation-auth-v1',
         JSON.stringify({
           idToken: 'synthetic-intercepted-token',
           expiresAt: Date.now() + 3600_000,
-          user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
+          user: { uid: 'synthetic-parent', email },
         }),
       )
     sessionStorage.setItem('synthetic-auth-initialized', 'true')
@@ -197,5 +201,5 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
         },
       },
     })
-  })
+  }, testEmail)
 }

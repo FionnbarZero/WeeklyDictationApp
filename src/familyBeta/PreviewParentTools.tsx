@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react'
+import { deviceAcceptancePreview } from '../deviceAcceptance/policy.ts'
 import { grade5PresentationPreview, grade5Standalone } from '../grade5PresentationPreview/policy.ts'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { writingCorrectionPreview } from '../writingAcquisition/correctionStrategy.ts'
@@ -43,8 +44,10 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
                     : writingCorrectionPreview
                       ? 'Prototype 2'
                       : 'Prototype 1'}{' '}
-            · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only. Progress saves in this
-            browser; no account, cloud sync or offline installation.
+            · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only.{' '}
+            {deviceAcceptancePreview
+              ? 'Use the same test parent account and learner on both devices. Recordings remain temporary.'
+              : 'Progress saves in this browser; no account, cloud sync or offline installation.'}
           </p>
           {children}
           <div id="compact-parent-report-controls" />

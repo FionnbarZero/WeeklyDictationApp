@@ -1,3 +1,4 @@
+import { deviceAcceptancePreview } from './deviceAcceptance/policy.ts'
 import { activityStorage, previewProfile } from './familyBeta/runtime.ts'
 import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
 import { activityClock } from './activity/activityLifecycle.ts'
@@ -324,7 +325,7 @@ function recordWritingResult(correct: number, attempted: number) {
     if (activeSession.primaryPhase === 'acquisition' && acquisitionStore)
       activeSession = { ...activeSession, id: acquisitionStore.prepareResult().sessionId }
     const saved = savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
-    if (grade5PresentationPreview && attempted > 0 && !saved) throw new Error('The writing result could not be saved.')
+    if ((grade5PresentationPreview || deviceAcceptancePreview) && attempted > 0 && !saved) throw new Error('The writing result could not be saved.')
     return true
   } catch {
     window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
@@ -412,7 +413,7 @@ function handlePracticeAnswer(answer: PracticeAnswer) {
     activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
     const correct = primaryAnswers.filter((item) => item.correct).length
     if (!recordWritingResult(correct, primaryAnswers.length)) {
-      if (grade5PresentationPreview) throw new Error('The writing result could not be saved. Please retry.')
+      if (grade5PresentationPreview || deviceAcceptancePreview) throw new Error('The writing result could not be saved. Please retry.')
       return
     }
     leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
@@ -463,7 +464,7 @@ function renderPracticeView() {
       onSpeakWord={speakWord}
       onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
-      retryTestSaveFailures={grade5PresentationPreview}
+      retryTestSaveFailures={grade5PresentationPreview || deviceAcceptancePreview}
     />,
   )
 }
@@ -550,11 +551,11 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     const finishReading = (correct: number, attempted: number, savedSessionId?: string) => {
       try {
         const saved = savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted })
-        if (grade5PresentationPreview && attempted > 0 && !saved) throw new Error('The reading result could not be saved. Please retry.')
+        if ((grade5PresentationPreview || deviceAcceptancePreview) && attempted > 0 && !saved) throw new Error('The reading result could not be saved. Please retry.')
       }
       catch (error) {
         window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
-        if (grade5PresentationPreview) throw error
+        if (grade5PresentationPreview || deviceAcceptancePreview) throw error
         return
       }
       leavePractice(`Reading complete: ${correct}/${attempted}. ${familyPreview ? 'See family progress for saving status.' : 'This lab result was not saved.'}`)
@@ -575,7 +576,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       practiceRoot.render(<DeferredTestReview
         key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
         mode="reading"
-        retrySaveFailures={grade5PresentationPreview}
+        retrySaveFailures={grade5PresentationPreview || deviceAcceptancePreview}
         targets={targets}
         activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
         onPlayReference={speakReadingReference}
