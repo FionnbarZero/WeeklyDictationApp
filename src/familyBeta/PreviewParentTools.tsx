@@ -17,33 +17,37 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
         <summary>Parent controls</summary>
         <div className="beta-parent-tools-panel">
           <p className="beta-preview-details" role="note">
-            {automaticCurriculumPreview
-              ? 'Automatic curriculum updates'
-              : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
-                ? 'W-roadmap combined repairs'
-                : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
-                  ? 'W1 curriculum and activity entry'
-                  : writingCorrectionPreview
-                    ? 'W0 integrated writing'
-                    : grade5Standalone
-                      ? '5th grade Dojo'
-                      : grade5PresentationPreview
-                        ? '10/19 – Fifth Grade Ninja Dojo'
-                        : standaloneGamesRetired
-                          ? 'Streamlined Dojo'
-                          : 'Compact parent toolbar'}{' '}
-            ·{' '}
-            {automaticCurriculumPreview
-              ? 'Prototype 1'
-              : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
-                ? 'Prototype 6 — compact games'
-                : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
-                  ? 'Prototype 4'
-                  : grade5Standalone
-                    ? 'Standalone 1'
+            {deviceAcceptancePreview
+              ? 'Mandarin Ninja Academy'
+              : automaticCurriculumPreview
+                ? 'Automatic curriculum updates'
+                : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
+                  ? 'W-roadmap combined repairs'
+                  : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+                    ? 'W1 curriculum and activity entry'
                     : writingCorrectionPreview
-                      ? 'Prototype 2'
-                      : 'Prototype 1'}{' '}
+                      ? 'W0 integrated writing'
+                      : grade5Standalone
+                        ? '5th grade Dojo'
+                        : grade5PresentationPreview
+                          ? '10/19 – Fifth Grade Mandarin Ninja Academy'
+                          : standaloneGamesRetired
+                            ? 'Streamlined Dojo'
+                            : 'Compact parent toolbar'}{' '}
+            ·{' '}
+            {deviceAcceptancePreview
+              ? 'Integrated fixes 1'
+              : automaticCurriculumPreview
+                ? 'Prototype 1'
+                : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
+                  ? 'Prototype 6 — compact games'
+                  : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+                    ? 'Prototype 4'
+                    : grade5Standalone
+                      ? 'Standalone 1'
+                      : writingCorrectionPreview
+                        ? 'Prototype 2'
+                        : 'Prototype 1'}{' '}
             · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only.{' '}
             {deviceAcceptancePreview
               ? 'Use the same test parent account and learner on both devices. Recordings remain temporary.'

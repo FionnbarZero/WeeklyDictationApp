@@ -23,7 +23,7 @@ if ('serviceWorker' in navigator && window.parent === window) {
   status('Preparing this browser for offline reopening…');
   navigator.serviceWorker.register('./family-offline-sw.js', { updateViaCache: 'none' }).then(registration => {
     const check = () => {
-      if (registration.waiting) status('An app update is ready. Close all Ninja Dojo tabs, then reopen to use it. Saved lessons are preserved.');
+      if (registration.waiting) status('An app update is ready. Close all Mandarin Ninja Academy tabs, then reopen to use it. Saved lessons are preserved.');
       else if (registration.active) status('Offline app ready. Previously synced children can reopen saved lessons here; some voices still require internet.');
     };
     const watch = () => {
@@ -106,7 +106,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cached = await (await caches.open(cacheName)).match(new URL(file.path, scope));
     // Never substitute another build when this version's cache is unavailable.
-    return cached || new Response('Offline app files are missing. Reconnect and close all Ninja Dojo tabs before reopening.', { status: 503 });
+    return cached || new Response('Offline app files are missing. Reconnect and close all Mandarin Ninja Academy tabs before reopening.', { status: 503 });
   })());
 });
 `,

@@ -142,7 +142,7 @@ test('one Grade 5 entry exposes all eight shared words in all three paths with c
   }
   await page.getByText('Parent controls', { exact: true }).click()
   await expect(page.getByRole('note')).toContainText(
-    process.env.GRADE5_PRESENTATION_NAME || '10/19 – Fifth Grade Ninja Dojo',
+    process.env.GRADE5_PRESENTATION_NAME || '10/19 – Fifth Grade Mandarin Ninja Academy',
   )
   if (process.env.GRADE5_PRESENTATION_REVISION)
     await expect(page.getByRole('note')).toContainText(process.env.GRADE5_PRESENTATION_REVISION.slice(0, 7))

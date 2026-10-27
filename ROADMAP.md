@@ -1,5 +1,10 @@
 # Weekly Dictation roadmap
 
+## In progress — integrated Mandarin Ninja Academy test links, October 27
+
+Owner requested all recent fixes and explicitly chose **new test links**. Isolated candidate builds on `de35d98`/the latest Device and syncing lineage, adds the approved name, and preserves test-account-only access. This carries approved native Warmup, Kore, current curriculum/content/report/layout/recovery repairs, Wetland book/review, Grade 5 50-word reading-only review and latest save/sync repairs into one version. Existing previews, canonical, frozen/named Grade 5 sites and real-family records remain outside publication scope. No main merge or canonical release is claimed. Hosted smoke testing is premature until exact package checks and served identity pass. See [scope and evidence](./docs/integrated-academy-preview-2026-10-27.md).
+
+
 ## Delivered side publication — named Grade 5 copies, October 27
 
 The owner-requested **Maxton grade 5** and **Aaron grade 5** copies are delivered on permanent separate MeghanGames subdomains with additive homepage cards. They intentionally preserve the selected **b36e898 50-word reading review**, writing disabled and browser-only saving. They are not upgrades to, or replacements for, canonical Ninja Dojo, the frozen presentation or the authenticated device/sync prototype. [Verified publication and handoff](./docs/personal-grade5-2026-10-27.md); SENT receipt and exact links are in STATUS. Existing confirmed Sol · High publication routing applied; no additional approval or model switch is claimed.

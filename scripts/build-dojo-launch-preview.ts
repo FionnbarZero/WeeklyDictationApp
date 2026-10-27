@@ -70,7 +70,7 @@ const prototype = integratedWarmup
             : standalone
               ? '5th grade Dojo / Standalone 1'
               : presentation
-                ? '10/19 – Fifth Grade Ninja Dojo / Integrated Preview 3'
+                ? '10/19 – Fifth Grade Mandarin Ninja Academy / Integrated Preview 3'
                 : retireStandalone
                   ? 'Streamlined Dojo / Prototype 1'
                   : compactParents
@@ -206,7 +206,7 @@ if (w0Writing)
     entry,
     readFileSync(entry, 'utf8').replace(
       /<title>[^<]*<\/title>/,
-      `<title>${w2Recovery ? 'Ninja Dojo · Combined repairs test' : w1Curriculum ? 'Ninja Dojo · W1 integrated test' : 'W0 integrated writing'}</title>`,
+      `<title>${w2Recovery ? 'Mandarin Ninja Academy · Combined repairs test' : w1Curriculum ? 'Mandarin Ninja Academy · W1 integrated test' : 'W0 integrated writing'}</title>`,
     ),
   )
 if (presentation)
@@ -214,7 +214,7 @@ if (presentation)
     entry,
     readFileSync(entry, 'utf8').replace(
       /<title>[^<]*<\/title>/,
-      `<title>${standalone ? '5th grade Dojo' : '10/19 – Fifth Grade Ninja Dojo'}</title>`,
+      `<title>${standalone ? '5th grade Dojo' : '10/19 – Fifth Grade Mandarin Ninja Academy'}</title>`,
     ),
   )
 if (!compactParents)

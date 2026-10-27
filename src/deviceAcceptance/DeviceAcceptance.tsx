@@ -30,7 +30,8 @@ export function DeviceAcceptance({ children }: { children: ReactNode }) {
   return (
     <>
       <section className="beta-panel" aria-label="Device test setup">
-        <h1>Device and syncing test</h1>
+        <h1>Mandarin Ninja Academy</h1>
+        <p>Integrated fixes 1 · Device and syncing test</p>
         <p>Use a separate test account on both devices. Do not enter real children’s names.</p>
         <p>
           Choose a test email such as <code>ninja-device-yourtestname@example.invalid</code> and your own password. Use

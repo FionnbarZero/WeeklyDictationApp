@@ -3,7 +3,7 @@ import { TARGETS } from '../grade5PresentationPreview/assessmentData.ts'
 import type { LearningModulePair, LearningModuleSequenceRound } from '../ninjaSkills/contracts.ts'
 import type { Tier2ReadingPathway, Tier2ReadingTarget } from '../tier2/contracts.ts'
 
-export const PROTOTYPE_TITLE = '10/19 – Fifth Grade Ninja Dojo'
+export const PROTOTYPE_TITLE = '10/19 – Fifth Grade Mandarin Ninja Academy'
 export const ASSESSMENT_ID = 'grade5-oct23-2026-page2-v1'
 export const PROTOTYPE_OWNER = 'synthetic-grade5-oct23-owner'
 export const WRITING_KEY = `ninja-grade5-oct23-prototype-v1:${PROTOTYPE_OWNER}:writing`

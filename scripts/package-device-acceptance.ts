@@ -71,7 +71,7 @@ writeFileSync(
   JSON.stringify(
     {
       schema: 1,
-      prototype: 'Combined Dojo / Device and syncing 1',
+      prototype: 'Mandarin Ninja Academy / Integrated fixes 1',
       sourceRevision: revision,
       firebaseProject: family.firebaseProject,
       entry: 'family-beta-preview.html',

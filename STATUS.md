@@ -1,5 +1,10 @@
 # Weekly Dictation status
 
+## In progress — integrated Mandarin Ninja Academy test links, October 27
+
+Owner requested all recent fixes and explicitly chose **new test links**. Isolated candidate builds on `de35d98`/the latest Device and syncing lineage, adds the approved name, and preserves test-account-only access. This carries approved native Warmup, Kore, current curriculum/content/report/layout/recovery repairs, Wetland book/review, Grade 5 50-word reading-only review and latest save/sync repairs into one version. Existing previews, canonical, frozen/named Grade 5 sites and real-family records remain outside publication scope. No main merge or canonical release is claimed. Hosted smoke testing is premature until exact package checks and served identity pass. See [scope and evidence](./docs/integrated-academy-preview-2026-10-27.md).
+
+
 ## Current handoff — Maxton and Aaron Grade 5 copies, October 27
 
 **[Maxton grade 5](https://maxtongrade5.meghangames.com/)** and **[Aaron grade 5](https://aarongrade5.meghangames.com/)** are published permanent standalone copies of the owner's selected **b36e898 / 50-word reading review**, with writing disabled. Both have additive cards on [MeghanGames](https://meghangames.com/). Naming/publication recipe **e00d90a**, edition **Personal Grade 5 reading review 1**, no scheduled hosting expiry. These copies preserve the selected browser-only engine; they do not replace or inherit the newer authenticated device/sync prototype below.

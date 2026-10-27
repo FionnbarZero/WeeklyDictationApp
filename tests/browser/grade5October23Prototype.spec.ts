@@ -54,7 +54,7 @@ function card(page: Page, label: string) {
 }
 
 test('both menus expose the same eight targets and verified prototype identity', async ({ page }, info) => {
-  await expect(page.getByRole('heading', { name: '10/19 – Fifth Grade Ninja Dojo', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '10/19 – Fifth Grade Mandarin Ninja Academy', exact: true })).toBeVisible()
   await expect(page.locator('.oct23-targets')).toHaveText(TARGETS.map((t) => t.text).join(' · '))
   for (const section of sections)
     await expect(page.getByRole('region', { name: section }).getByRole('button')).toHaveCount(6)

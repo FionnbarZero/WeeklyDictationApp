@@ -88,7 +88,7 @@ for (const key of [
     assert.equal(window.__dojoRollbackPreserve, true)
     ready!()
     assert.match(document.body.innerHTML, /Your saved work is preserved/)
-    assert.match(document.body.innerHTML, /close all Ninja Dojo tabs/)
+    assert.match(document.body.innerHTML, /close all Mandarin Ninja Academy tabs/)
     assert.equal(values.size, 2)
   })
 }

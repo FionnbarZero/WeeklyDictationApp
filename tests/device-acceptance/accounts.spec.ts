@@ -21,7 +21,7 @@ test('normal parent email is rejected before sign-in or signup requests', async 
     return route.abort()
   })
   await page.goto('/family-beta-preview.html?grade=grade2')
-  await expect(page.getByRole('heading', { name: 'Device and syncing test' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mandarin Ninja Academy' })).toBeVisible()
   await page.getByLabel('Email', { exact: true }).fill('parent@example.com')
   await page.getByLabel('Password', { exact: true }).fill('unused-test-value')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()

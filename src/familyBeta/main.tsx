@@ -971,7 +971,7 @@ function FamilyPreview() {
                 ? grade5RepairPreview
                   ? 'Grade 5 repair prototype'
                   : 'Grade 2 writing pilot · Unpublished'
-                : 'Ninja Dojo · Family beta'}
+                : 'Mandarin Ninja Academy · Family beta'}
           </strong>
           <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
           <label>
@@ -1369,7 +1369,7 @@ function FamilyPreview() {
                     )
                     const link = document.createElement('a')
                     link.href = url
-                    link.download = `ninja-dojo-device-records-${data.createdAt.slice(0, 10)}.json`
+                    link.download = `mandarin-ninja-academy-device-records-${data.createdAt.slice(0, 10)}.json`
                     link.click()
                     setTimeout(() => URL.revokeObjectURL(url), 60_000)
                   } catch (error) {

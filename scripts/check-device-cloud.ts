@@ -17,7 +17,9 @@ assert.equal(process.env.DEVICE_CLOUD_ACCEPTANCE, '1', 'Explicit synthetic cloud
 const base = process.env.DEVICE_CLOUD_ORIGIN || 'http://127.0.0.1:5193'
 assert.ok(
   base === 'http://127.0.0.1:5193' ||
-    /^https:\/\/weekly-dictation-staging--device-sync-oct27-v1-[a-z0-9]+\.web\.app$/.test(base),
+    /^https:\/\/weekly-dictation-staging--(?:device-sync-oct27-v1|academy-integrated-oct27-v1)-[a-z0-9]+\.web\.app$/.test(
+      base,
+    ),
 )
 const revision = process.env.DEVICE_CLOUD_REVISION,
   tree = process.env.DEVICE_CLOUD_TREE
