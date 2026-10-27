@@ -43,6 +43,7 @@ export type LearningHubSection<Launch> = {
   cohortPickerLabel?: string
   defaultCohortId?: string
   cohortSummaryLabel?: string
+  wordGroupsLayout?: 'single-column'
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]
   showUngroupedActivities?: boolean

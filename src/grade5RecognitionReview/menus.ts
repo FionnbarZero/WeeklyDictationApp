@@ -118,6 +118,7 @@ export function recognitionReviewSection<Launch>(
     cohortPickerLabel: undefined,
     defaultCohortId: undefined,
     cohortSummaryLabel: 'Cumulative reading list',
+    wordGroupsLayout: 'single-column',
     cohorts: [
       {
         id: dataset.id,

@@ -192,8 +192,15 @@ test('Kindergarten and Grade 2 retain their ordinary Dojo writing and reading', 
     await page.goto(`/family-beta-preview.html?grade=${grade}`)
     const f = frame(page)
     await f.getByRole('button', { name: /Enter the Dojo/ }).click({ timeout: 30000 })
-    await expect(f.getByRole('button', { name: 'Learn to Write', exact: true })).toBeEnabled()
-    await expect(f.getByRole('button', { name: 'Read the Words', exact: true })).toBeEnabled()
+    await expect(
+      f.getByRole('button', { name: grade === 'kindergarten' ? 'Writing characters' : 'Learn to Write', exact: true }),
+    ).toBeEnabled()
+    await expect(
+      f.getByRole('button', {
+        name: grade === 'kindergarten' ? 'High-frequency words' : 'Read the Words',
+        exact: true,
+      }),
+    ).toBeEnabled()
     expect(await page.locator('iframe:visible').getAttribute('data-family-week')).not.toBe('2026-11-02')
     await expect(f.getByText('50 reading · Writing coming soon', { exact: true })).toHaveCount(0)
   }

@@ -211,7 +211,12 @@ function SectionDetail<Launch>({
                 </div>
                 <span>{cohort.countLabel}</span>
               </div>
-              <div className="learning-hub-word-groups">
+              <div
+                className="learning-hub-word-groups"
+                style={
+                  section.wordGroupsLayout === 'single-column' ? { gridTemplateColumns: 'minmax(0, 1fr)' } : undefined
+                }
+              >
                 {cohort.groups.map((group) => (
                   <WordGroup key={group.label} group={group} />
                 ))}
