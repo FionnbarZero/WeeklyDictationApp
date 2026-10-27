@@ -145,7 +145,7 @@ test('retained Grade 5 review fits and retries a failed local save before syncin
       completed: count,
       reviewRows: await rows.count(),
       body: await f.locator('body').innerText(),
-      reviewWidth: (await f.locator('.deferred-review-row').first().boundingBox())?.width,
+      reviewWidth: (await rows.count()) ? (await rows.first().boundingBox())?.width : null,
       saved: await page.evaluate(() =>
         Object.keys(localStorage).filter((k) => k.startsWith('family-beta-preview-results-v1:')),
       ),

@@ -36,7 +36,9 @@ test('all 50 reading answers reach the second device exactly once after an inter
   await f(page)
     .getByRole('button', { name: /Final Boss/ })
     .click({ timeout: 30000 })
+  await f(page).getByRole('button', { name: 'Boss Test', exact: true }).click()
   await f(page).getByRole('button', { name: 'Reading Test', exact: true }).click()
+  await expect(f(page).locator('.deferred-reading-collector')).toBeVisible()
   let count = 0
   while (await f(page).locator('.deferred-reading-collector').count()) {
     await f(page).getByRole('button', { name: 'Record my reading', exact: true }).click()

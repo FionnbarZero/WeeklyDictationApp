@@ -997,7 +997,10 @@ function FamilyPreview() {
           {regressionPreview && tab !== 'activities' && (
             <button onClick={() => setTab('activities')}>Back to activities</button>
           )}
-          <button onClick={() => setTab('parent')}>
+          <button
+            disabled={deviceAcceptancePreview && firebaseConfigReady && !familyId}
+            onClick={() => setTab('parent')}
+          >
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
           </button>
           <AudioCheck />
@@ -1422,6 +1425,8 @@ function FamilyPreview() {
                   if (!name.trim()) return
                   setBusy(true)
                   try {
+                    if (deviceAcceptancePreview && firebaseConfigReady && !familyId)
+                      throw new Error('Wait for the family connection before adding a test learner.')
                     const p = familyId
                       ? await createChild(familyId, { nickname: name.trim(), grade, schoolYear: DEFAULT_SCHOOL_YEAR })
                       : { id: crypto.randomUUID(), nickname: name.trim(), grade, active: true }

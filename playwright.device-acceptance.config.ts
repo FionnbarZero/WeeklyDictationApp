@@ -9,6 +9,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.DEVICE_URL || 'http://127.0.0.1:5193',
     trace: 'retain-on-failure',
+    actionTimeout: 30000,
     serviceWorkers: 'block',
   },
   projects: [

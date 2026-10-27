@@ -31,3 +31,20 @@ test('normal parent email is rejected before sign-in or signup requests', async 
   await expect(page.getByRole('alert')).toContainText('Use a separate ninja-device-')
   expect(authenticationRequests).toBe(0)
 })
+
+test('profile setup waits for the private family connection', async ({ page }) => {
+  await installFamilyFixtures(page, new Map(), 'ninja-device-fixture@example.invalid')
+  let release!: () => void
+  const connected = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/firestore.googleapis.com/**/documents:batchGet', async (route) => {
+    await connected
+    return route.fallback()
+  })
+  await page.goto('/family-beta-preview.html?grade=grade2')
+  await page.locator('summary').filter({ hasText: 'Parent controls' }).click()
+  await expect(page.getByRole('button', { name: 'Manage profiles', exact: true })).toBeDisabled()
+  release()
+  await expect(page.getByRole('button', { name: 'Manage profiles', exact: true })).toBeEnabled()
+})
