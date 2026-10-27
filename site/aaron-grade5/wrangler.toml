@@ -1,0 +1,14 @@
+name = "meghangames-aarongrade5"
+account_id = "4c11957e0121dba35fe2f16be80526f8"
+compatibility_date = "2026-10-04"
+workers_dev = false
+preview_urls = false
+
+[[routes]]
+pattern = "aarongrade5.meghangames.com"
+custom_domain = true
+
+[assets]
+directory = "../../family-beta-artifacts/personal-grade5-2026-10-27/aaron"
+html_handling = "none"
+not_found_handling = "none"
