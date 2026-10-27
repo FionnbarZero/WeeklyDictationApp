@@ -342,6 +342,58 @@ try {
   }
   checks.push('PASS: Grade 5 current 50-word review reading checkpoint transfers to fresh browser')
   record()
+  await returnToMenu(first.page)
+  await f(first.page)
+    .getByRole('button', { name: /Final Boss/ })
+    .click()
+  await f(first.page).getByRole('button', { name: 'Boss Test', exact: true }).click()
+  await f(first.page).getByRole('button', { name: 'Reading Test', exact: true }).click()
+  await expect(f(first.page).locator('.deferred-reading-collector')).toBeVisible()
+  let answers = 0
+  while (await f(first.page).locator('.deferred-reading-collector').count()) {
+    await f(first.page).getByRole('button', { name: 'Record my reading', exact: true }).click()
+    await f(first.page).getByRole('button', { name: 'Continue without a recording', exact: true }).click()
+    answers++
+    assert.ok(answers <= 50)
+  }
+  assert.equal(answers, 50)
+  const rows = f(first.page).locator('.deferred-review-row')
+  await expect(rows).toHaveCount(50)
+  for (let i = 0; i < 50; i++) await rows.nth(i).getByRole('button', { name: 'Yes', exact: true }).click()
+  await f(first.page).getByRole('button', { name: 'Submit final review', exact: true }).click()
+  await confirmed(first.page)
+  const child = await first.page.getByLabel('Child profile').inputValue()
+  const resultsUrl = scope.url(`${scope.family}/children/${child}/betaResults`)
+  const scores = async () => {
+    const response = await request(`${resultsUrl}?pageSize=100`)
+    assert.ok(response.ok)
+    const body = await response.json()
+    assert.ok(!body.nextPageToken)
+    return (body.documents || []).filter(
+      (d: { fields: { activity: { stringValue: string } } }) =>
+        d.fields.activity.stringValue === 'Final Boss Reading Test',
+    )
+  }
+  await expect.poll(async () => (await scores()).length, { timeout: 60000 }).toBe(1)
+  const score = (await scores())[0]
+  assert.equal(score.fields.correct.integerValue, '50')
+  assert.equal(score.fields.attempted.integerValue, '50')
+  assert.ok(!/blob:|data:audio|"idToken"|"refreshToken"/.test(JSON.stringify(score)))
+  const fourth = await newPage()
+  try {
+    await login(fourth.page, 'grade5', 'Grade 5')
+    await expect(f(fourth.page).getByRole('region', { name: 'Saved Ninja Record' })).toContainText('50/50')
+    assert.equal((await scores()).length, 1)
+  } finally {
+    await fourth.context.close()
+  }
+  const anonymous = await fetch(resultsUrl, { signal: AbortSignal.timeout(20000) })
+  assert.ok([401, 403].includes(anonymous.status))
+  checks.push(
+    'PASS: all 50 Grade 5 responses save exactly once on the real service and recover on a fresh browser; anonymous reads denied',
+  )
+  record()
+
   assert.ok(checks.every((c) => c.startsWith('PASS:')))
   acceptancePassed = true
   record()

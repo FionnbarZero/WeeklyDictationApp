@@ -14,7 +14,7 @@ export function isDeviceTestIdentity(token: string, user: { uid: string; email: 
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return false
-    const claims = JSON.parse(atob(parts[1].replaceAll('-', '+').replaceAll('_', '/')))
+    const claims = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     return (
       claims.sub === user.uid &&
       claims.email === user.email &&
