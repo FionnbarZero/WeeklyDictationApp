@@ -42,10 +42,22 @@ test.afterEach(async ({ page }) => {
 })
 async function open(page: Page, grade: string, section: RegExp) {
   await page.goto(`./family-beta-preview.html?grade=${grade}`)
+  // The current reading-only assessment has its own verified test adapter.
+  // Select the retained weekly route to audit the original native handoff.
+  await frame(page)
+    .getByRole('button', { name: /Enter the Dojo/ })
+    .waitFor({ state: 'visible', timeout: 30000 })
+  await page.locator('summary').filter({ hasText: 'Parent controls' }).click()
+  await page.getByRole('combobox', { name: 'Practice week', exact: true }).selectOption('2026-10-13')
+  await expect(page.locator('iframe:visible')).toHaveAttribute('data-family-week', '2026-10-13')
+  await page.locator('summary').filter({ hasText: 'Parent controls' }).click()
   await frame(page).getByRole('button', { name: section }).first().click({ timeout: 30000 })
   return frame(page)
 }
-test('Grade 5 Ninja Skills reading test retains review and retries a failed save', async ({ page, context }) => {
+test('Grade 5 retained-week Ninja Skills reading test retains review and retries a failed save', async ({
+  page,
+  context,
+}) => {
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
@@ -76,6 +88,14 @@ test('Grade 5 Ninja Skills reading test retains review and retries a failed save
   }
   const rows = f.locator('.deferred-review-row')
   await expect(rows).toHaveCount(count)
+  await test.info().attach('retained-review-layout.json', {
+    contentType: 'application/json',
+    body: JSON.stringify({
+      viewport: page.viewportSize(),
+      width: (await rows.first().boundingBox())?.width,
+      collected: count,
+    }),
+  })
   for (let i = 0; i < count; i++)
     await rows
       .nth(i)

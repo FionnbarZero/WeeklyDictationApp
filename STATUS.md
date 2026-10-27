@@ -1,5 +1,11 @@
 # Weekly Dictation status
 
+## Latest audit — combined preview reverified; two retained Grade 5 issues open, October 26
+
+The current **b36e898 / Grade 5 recognition review 1** combined preview has completed a fresh audit: **1,303 unit passes, 228 local browser passes, 30 hosted current-review passes**, type/style/build gates and all **1,420 public files / 8,520 headers** verified. **Two retained Grade 5 native reading-save cases fail locally and hosted; three unsupported WebKit gesture cases are skipped.** The two product findings remain failed-save retry and desktop review width (176 px). They affect the older weekly Ninja Skills Reading Test; the current 50-word review uses the safe adapter and passes both test-entry save/retry checks. No additional application regression was reproduced within the recorded scope. [Full cause analysis, suite accounting, evidence and limitations](./docs/combined-regression-audit-2026-10-26.md).
+
+**No application code or website changed.** Previous previews, canonical, shared curriculum and the frozen fifth-grade presentation remain unchanged. All three current combined links below remain **b36e898**, expiring **November 9 at 4:05 PM Pacific**. Bounded current-review/device checks are useful, with the two older native-route defects disclosed; general promotion still needs those repairs and the separate physical/cloud acceptance gates. **All three links resent: Gmail confirmed SENT `1a17ba7c35cd3333`.** The receipt is in the audit record.
+
 ## Current handoff — Grade 5 reading-only recognition review, October 26
 
 **Grade 5 recognition review 1 / `b36e8982ffd9d26845bfc8e5fabc28747f58a5c4`** is published and verified on a [new Grade 5 preview](https://weekly-dictation-staging--grade5-recognition-nov6-v1-yvx9mrv0.web.app/family-beta-preview.html?grade=grade5), expiring **November 9 at 4:05 PM Pacific**. All **50 owner-reviewed PDF words** are reading targets in Enter the Dojo, Practice Your Ninja Skills and Final Boss. Writing says Coming soon and is disabled; Spirit Realm keeps its original mastered pool, including overlap with the review. Preparation is available now for the confirmed **November 2–6 recognition assessment**. No writing or sentence cohort is invented.

@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Latest audit — retained Grade 5 repair boundary remains, October 26
+
+Fresh audit of the combined **b36e898** preview: **1,303 unit passes, 228 local browser passes, 30 hosted current-review passes**; **two native Grade 5 save-retry failures** reproduce locally and hosted, with the same 176 px desktop review defect. Three unsupported WebKit gesture cases are explicitly skipped. New manual-review source-refresh/checkpoint tests pass; no further regression was reproduced within scope. [Exact analysis, suite counts and caveats](./docs/combined-regression-audit-2026-10-26.md).
+
+**Next:** the bounded native Grade 5 confirmed-save/retry and review-width repair already queued below, using a separate working prototype and existing Astra · Extra High routing. The current 50-word review's safe adapter does not repair the old route. This audit makes tests/documentation changes only, resends the current verified links and leaves all hosting static. Physical iPad/iMac audio/input and authenticated/offline/cross-device acceptance, main reconciliation and English Niamh remain separate. No canonical or frozen-standalone release is authorized by the audit.
+
 ## Current handoff — Grade 5 November 2–6 recognition review
 
 The owner clarified the assessment dates/type and requested all 50 supplied PDF words as **reading only** in Dojo, Ninja Skills and Final Boss, writing disabled as Coming soon, and unchanged prior mastered words in Spirit Realm. Delivered in the separate **Grade 5 recognition review 1 / `b36e898`** candidate, verified and emailed. [Exact link, expiry, source/prototype boundaries and acceptance checklist](./docs/grade5-recognition-review-2026-10-26.md). All three reading games use bounded rotating rounds; both full 50-word tests use the shared confirmed-save/retry adapter. No sentence or writing targets were invented. The approved standing model confirmations applied; no model switch or independent-agent review is claimed.
