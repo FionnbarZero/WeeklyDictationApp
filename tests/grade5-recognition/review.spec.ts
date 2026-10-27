@@ -69,6 +69,9 @@ test('all three menus use exactly the 50 PDF reading words and disable writing',
   const f = await open(page, /Enter the Dojo/)
   for (const section of ['dojo', 'ninja', 'boss']) {
     await expect(f.locator('.learning-hub-word-list span')).toHaveText(words)
+    const groups = await f.locator('.learning-hub-word-groups').boundingBox()
+    const readingGroup = await f.locator('.learning-hub-word-group').boundingBox()
+    expect(readingGroup!.width / groups!.width).toBeGreaterThan(0.95)
     await expect(f.getByRole('button', { name: 'Writing Test', exact: true })).toHaveCount(0)
     if (section === 'ninja') await f.getByRole('button', { name: 'More activities', exact: true }).click()
     if (section === 'boss') await f.getByRole('button', { name: 'Boss Test', exact: true }).click()

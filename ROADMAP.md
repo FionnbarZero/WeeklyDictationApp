@@ -1,5 +1,11 @@
 # Weekly Dictation roadmap
 
+## Current handoff — Grade 5 November 2–6 recognition review
+
+The owner clarified the assessment dates/type and requested all 50 supplied PDF words as **reading only** in Dojo, Ninja Skills and Final Boss, writing disabled as Coming soon, and unchanged prior mastered words in Spirit Realm. Delivered in the separate **Grade 5 recognition review 1 / `b36e898`** candidate, verified and emailed. [Exact link, expiry, source/prototype boundaries and acceptance checklist](./docs/grade5-recognition-review-2026-10-26.md). All three reading games use bounded rotating rounds; both full 50-word tests use the shared confirmed-save/retry adapter. No sentence or writing targets were invented. The approved standing model confirmations applied; no model switch or independent-agent review is claimed.
+
+**Next:** bounded owner iPad acceptance of this interaction; preserve the reviewed list and checkpoint identity. All 30 hosted browser cases pass. Existing preview links, canonical, shared curriculum and the frozen fifth-grade website remain static. General Grade 5 native-test retry/layout repairs below are still queued; the manual review's safe route does not establish their global repair. Account/offline/cross-device acceptance and canonical integration remain separate.
+
 ## Completed side request — Grade 2 Wetland book, October 26
 
 The owner withdrew the additional Grade 2 target-routing request after confirming the newest fix already has the desired words. The remaining request, linking the book placeholder in Enter the Dojo, is delivered in **Wetland book 1 / `05aec36`** on a separate verified preview and emailed. [Exact link, expiry, evidence and bounded iPad check](./docs/grade2-wetland-book-2026-10-26.md). Both earlier preview links remain static. No cohort/teaching/saving changes or canonical promotion. Existing confirmed model routing applied. The two Grade 5 audit follow-ups below remain the next repair work; the book update does not close them.

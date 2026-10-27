@@ -1,0 +1,35 @@
+# Grade 5 cumulative recognition review — November 2–6
+
+The owner clarified that the supplied PDF is for the **November 2–6 vocabulary recognition assessment**, then requested manual reading targets, disabled writing marked **Coming soon**, the same list in Enter the Dojo / Practice Your Ninja Skills / Final Boss, and preservation of previously mastered words in Spirit Realm.
+
+## Reviewed source and implementation
+
+All three pages were downloaded through the authenticated Drive connector, extracted as table cells and visually inspected. The exact **50 distinct ordered words, Pinyin and English meanings** are retained in `src/grade5RecognitionReview/source.json`. Drive file `1TFZKSM5B8zJsO470_acttS1OrnHftpoS`; PDF SHA-256 `b930ab1d5c59a720cab844b5de6db9bfc4698bfc9b3dc0099c53c4ce92fc0eb6`. The original PDF remains local evidence, not a public hosting asset. The source contains no reference sentences. No replacement sentences or writing cohort were invented.
+
+A separately identified owner-reviewed **reading-only** candidate is added locally to the validated Grade 5 baseline in the opted-in prototype. It is not passed off as an ordinary weekly writing import: the general canonical importer retains its existing Tier 1 requirement and projection. No shared service, teacher document, original payload or existing teacher dataset is modified. This review starts preparation on October 26 while displaying its original November 2–6 assessment dates. Its stable identity is `grade-5__2026-27__recognition-2026-11-06-v1`. Freeze this source/version for saved lessons; a changed list requires a new identity.
+
+All three requested menus expose the same 50 Tier 2 occurrences. Writing is disabled. Dojo uses the grade-owned reading acquisition engine and its existing two familiar diagnostic trials, introductions, correction and scoring rules; familiar diagnostics are not extra assessment targets. The reading checkpoint reopens at its saved prompt. Ninja Skills and Final Boss use the same collect-first reading-test adapter, with full-set review, confirmed save, retry and one stable result ID. The 50-word summary uses the available width.
+
+Reading games are **Shuriken Match, Shadow Strike Dojo and Memory Lanterns**, with normal bounded rounds and completed-visit rotation over the 50-word pool. Matching has a narrowly scoped exception for this exact reading-only review; ordinary mixed-tier matching rules remain intact. Sentence games and Pinyin dictation are not added to this reading-only menu. Spirit Realm resolves its original baseline mastery pool; the review is excluded from the active-word subtraction so overlapping previously mastered words remain available. It does not promote all review words to mastery.
+
+The feature is compiled only into the new isolated preview. Current-week selection prefers it through November 6, while an explicitly selected historical week or saved lesson retains its own source. Ordinary releases, other grades and the frozen standalone remain outside this opt-in. Every one of the 50 words already has Kore audio; all 1,258 previous audio files are byte-identical in the package.
+
+## Verification and failed-run accounting
+
+All **1,303 unit tests** pass after adding the deliberate new reading integration surface to the architecture allowlist; **18 focused source/profile/boundary tests** also pass after profile reuse. Type checks, scoped formatting/lint and production build pass. The unchanged budgets are **549,992 / 550,000 initial JavaScript bytes** and **46,342 / 60,000 CSS bytes**. Intermediate builds exceeded the JS limit by 297 bytes because a second grade-profile import split shared chunks; reusing the existing profile owner fixed this. No budget was raised.
+
+All **30 distinct local browser cases have passing executions** across laptop Chromium and landscape/portrait WebKit. The latest full-width candidate additionally passes **12 focused checks**. Coverage includes exact 50-word menus, disabled writing, original mastered-pool equality, reading Report/Exit/reload, Shuriken wrong-answer correction/completion/next-board rotation, completed Shadow and Lantern rounds, complete 50-word tests with failed final save/retry from both Ninja Skills and Final Boss, readable final-review widths, and unchanged Kindergarten/Grade 2 activities. Each browser decodes all 50 Kore recordings; a native-media check completes the two diagnostics and the first reviewed word's automatic teaching audio before recording unlocks.
+
+This was **not a clean first-pass test run**. Initial drivers used the wrong collector class, expected Continue on an assessed diagnostic, and retried the already-selected Shuriken word instead of its correct meaning. Those expectations were corrected without changing the reading/correction rules. The first extended release matrix had 28 passes and two wrong Kindergarten button-name expectations; all three corrected cross-grade cases pass. Initial type errors concerned the validated reading target type and backend include list, and were resolved before release. Logs and traces are retained.
+
+## Published candidate and remaining boundary
+
+**Combined Dojo / Grade 5 recognition review 1**, source `b36e8982ffd9d26845bfc8e5fabc28747f58a5c4`:
+
+[Grade 5 reading review preview](https://weekly-dictation-staging--grade5-recognition-nov6-v1-yvx9mrv0.web.app/family-beta-preview.html?grade=grade5)
+
+Separate browser-only test website; **expires November 9, 2026 at 4:05 PM Pacific**. Firebase version `91c38f0b34ec8daf`; tree `d3e72931af01de6d675177a9daa048002b43c0b2ca9682f63762a37c6381a8e8`. All **212 selected public files / 1,272 security headers** match, covering every non-audio public file, the release marker and all 50 review word recordings. The previous three preview manifests, canonical, frozen fifth grade, shared Grade 2/Grade 5 curriculum hashes, and every pre-existing release identity/expiry are verified unchanged. No main merge, live release, family-record reset, credential change or new voice generation.
+
+**All 30 hosted browser cases pass on the published final build**, including the unmocked-source native audio probes and both tablet layouts. **Email confirmed SENT `1a17ab0915d63b75`** to the owner's confirmed address. Ready for a bounded owner iPad check: about 3–5 minutes for menus, Hear/record one reading response, Exit/reopen, a wrong Shuriken match, and opening Final Boss; completing all 50 spoken test responses takes longer. Physical speaker/microphone acceptance, authenticated/cross-device saving and canonical integration remain separate. The old native Grade 5 test retry/layout findings are not claimed fixed globally; this review routes its tests through the verified shared adapter. Existing model confirmations applied; no model switch or independent-agent review is claimed.
+
+Evidence: `family-beta-artifacts/grade5-cumulative-2026-10-26/`, including PDF/page renderings, transcribed rows, immutable final package, local/hosted traces, audio-preservation receipt and protected-release verification.
