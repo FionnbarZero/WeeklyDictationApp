@@ -161,6 +161,8 @@ async function returnToMenu(page: Page) {
   if (await teacher.isVisible()) await f(page).getByRole('button', { name: 'Exit game', exact: true }).click()
   const reading = f(page).getByRole('button', { name: 'Exit reading', exact: true })
   if (await reading.isVisible()) await reading.click()
+  const back = f(page).getByRole('button', { name: /Back to all challenges/ })
+  if (await back.isVisible()) await back.click()
 }
 async function choose(page: Page, grade: string) {
   await returnToMenu(page)

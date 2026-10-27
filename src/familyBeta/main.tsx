@@ -625,18 +625,6 @@ function FamilyPreview() {
       if (event.data?.type === 'family-beta-activity-paused') {
         const key = `${slot.workspace}:${slot.kind === 'game' ? 'games' : 'activities'}`
         setSelectedSlots((current) => ({ ...current, [key]: undefined }))
-        if (deviceAcceptancePreview && slot.kind === 'activities') {
-          // Compact menus do not expose the legacy hidden-frame resume list.
-          // Exit retains durable checkpoints, releases this frame and reconciles
-          // before mounting a new menu. Report pause never sends this message.
-          if (familyId)
-            setReadyChildren((current) => {
-              const next = new Set(current)
-              next.delete(slot.profile.id)
-              return next
-            })
-          setSlots((current) => current.filter((item) => item.id !== slot.id))
-        }
       }
       if (event.data?.type === 'family-beta-game-completed' && slot.game?.attemptId === event.data.attemptId) {
         const resultId = event.data.resultId || slot.game?.attemptId

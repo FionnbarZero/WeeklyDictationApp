@@ -52,15 +52,11 @@ test('profile setup waits for the private family connection', async ({ page }) =
 test('changing only the displayed email cannot open a real parent token', async ({ page }) => {
   await installFamilyFixtures(page, new Map(), 'ninja-device-fixture@example.invalid')
   await page.addInitScript(() => {
-    const original = Storage.prototype.setItem
-    Storage.prototype.setItem = function (key, value) {
-      if (key === 'weekly-dictation-auth-v1') {
-        const state = JSON.parse(value)
-        state.idToken = `synthetic.${btoa(JSON.stringify({ sub: 'synthetic-parent', email: 'parent@example.com', aud: 'weeklydictationapp', iss: 'https://securetoken.google.com/weeklydictationapp' }))}.intercepted-only`
-        value = JSON.stringify(state)
-      }
-      return original.call(this, key, value)
-    }
+    sessionStorage.setItem('synthetic-auth-initialized','true')
+    localStorage.setItem('weekly-dictation-auth-v1',JSON.stringify({
+      idToken: `synthetic.${btoa(JSON.stringify({sub:'synthetic-parent',email:'parent@example.com',aud:'weeklydictationapp',iss:'https://securetoken.google.com/weeklydictationapp'}))}.intercepted-only`,
+      expiresAt:Date.now()+3600000,user:{uid:'synthetic-parent',email:'ninja-device-fixture@example.invalid'}
+    }))
   })
   await page.goto('/family-beta-preview.html?grade=grade2')
   await expect(page.getByRole('heading', { name: 'Test accounts only' })).toBeVisible()
