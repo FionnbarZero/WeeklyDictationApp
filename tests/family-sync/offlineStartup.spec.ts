@@ -1,6 +1,17 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { grades, installFamilyFixtures, readGrade2Workspace } from './fixtures.ts'
 import { finishEnabledTeacher } from './writingTeacherDriver.ts'
+
+// The reviewed audio library is part of the hash-verified offline package.
+// Installation downloads more than 1,300 files, so ordinary five-second UI
+// expectations cannot gate its completion. Keep a bounded installation wait;
+// every subsequent offline/access/preservation assertion remains unchanged.
+test.describe.configure({ timeout: 240_000 })
+async function waitForOfflineShell(page: Page) {
+  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready', {
+    timeout: 180_000,
+  })
+}
 
 for (const [slug, , id] of grades)
   for (const channel of ['writing', 'reading'] as const) {
@@ -44,7 +55,7 @@ for (const [slug, , id] of grades)
                 .find((r) => r.envelope.childId === id).envelope
             }, id)
       const before = await checkpoint()
-      await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
+      await waitForOfflineShell(page)
       // A true network cut (not just a curriculum HTTP error) plus a fresh page.
       await context.setOffline(true)
       await page.evaluate(() => {
@@ -89,7 +100,7 @@ test('sign-out removes offline bootstrap access without erasing reviewed practic
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
   await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
-  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
+  await waitForOfflineShell(page)
   await page.getByRole('button', { name: 'Parent controls', exact: true }).click()
   page.on('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Sign out parent', exact: true }).click()
@@ -104,7 +115,7 @@ test('a confirmed family access denial cannot be bypassed by going offline', asy
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
   await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
-  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
+  await waitForOfflineShell(page)
   await page.route('**/children/synthetic-g5/betaPractice?*', (route) => route.fulfill({ status: 403, body: '{}' }))
   await page.evaluate(() => dispatchEvent(new Event('online')))
   await expect(page.getByText(/Family access needs confirmation/)).toBeVisible()
@@ -119,7 +130,7 @@ test('offline bootstrap does not invent access for a different signed-in parent'
   await installFamilyFixtures(page)
   await page.goto('/?grade=grade5')
   await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
-  await expect(page.locator('[data-offline-shell-status]')).toContainText('Offline app ready')
+  await waitForOfflineShell(page)
   await context.setOffline(true)
   await page.evaluate(() => {
     const auth = JSON.parse(localStorage.getItem('weekly-dictation-auth-v1')!)
