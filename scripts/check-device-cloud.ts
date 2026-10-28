@@ -14,9 +14,11 @@ import { getStrokeLayout } from '../src/strokeTeacherPrototype/original/strokeLa
 import { cleanSyntheticWritingFamily, syntheticWritingScope } from './syntheticWritingScope.ts'
 
 assert.equal(process.env.DEVICE_CLOUD_ACCEPTANCE, '1', 'Explicit synthetic cloud opt-in required')
+const academyAcceptance = process.env.ACADEMY_CLOUD_ACCEPTANCE === '1'
 const base = process.env.DEVICE_CLOUD_ORIGIN || 'http://127.0.0.1:5193'
 assert.ok(
   base === 'http://127.0.0.1:5193' ||
+    (academyAcceptance && base === 'https://ninjadojo.meghangames.com') ||
     /^https:\/\/weekly-dictation-staging--(?:device-sync-oct27-v1|academy-integrated-oct27-v1)-[a-z0-9]+\.web\.app$/.test(
       base,
     ),
@@ -25,10 +27,16 @@ const revision = process.env.DEVICE_CLOUD_REVISION,
   tree = process.env.DEVICE_CLOUD_TREE
 assert.match(revision || '', /^[a-f0-9]{40}$/)
 assert.match(tree || '', /^[a-f0-9]{64}$/)
-const manifest = await fetch(`${base}/device-acceptance-manifest.json`).then((r) => r.json())
+const manifest = await fetch(`${base}/${academyAcceptance ? 'family-beta' : 'device-acceptance'}-manifest.json`).then(
+  (r) => r.json(),
+)
 assert.equal(manifest.sourceRevision, revision)
 assert.equal(manifest.fileTreeSha256, tree)
-assert.equal(manifest.testAccountsOnly, true)
+if (academyAcceptance) {
+  assert.equal(manifest.grade, 'Family')
+  assert.equal(manifest.canonicalOrigin, 'https://ninjadojo.meghangames.com')
+  assert.equal(manifest.entry, 'family-beta-preview.html')
+} else assert.equal(manifest.testAccountsOnly, true)
 assert.equal(manifest.firebaseProject, 'weeklydictationapp')
 assert.ok(manifest.files.length < 2000)
 for (let i = 0; i < manifest.files.length; i += 16)
@@ -64,7 +72,9 @@ const preflight = await request(
   `https://firestore.googleapis.com/v1/projects/weeklydictationapp/databases/(default)/documents/users/ninja-writing-preflight-${randomUUID()}`,
 )
 assert.equal(preflight.status, 404, 'No test account created without confirmed cleanup access')
-console.log(`Exact device prototype verified (${manifest.files.length} listed files); cleanup access confirmed.`)
+console.log(
+  `Exact ${academyAcceptance ? 'family release' : 'device prototype'} verified (${manifest.files.length} listed files); cleanup access confirmed.`,
+)
 const email = `ninja-writing-${randomUUID()}@example.invalid`,
   password = `T7!${randomUUID()}zQ`
 let scope: ReturnType<typeof syntheticWritingScope> | undefined,
@@ -197,10 +207,11 @@ async function confirmed(page: Page) {
   await returnToMenu(page)
   await panel(page, true)
   await page.getByRole('button', { name: 'Check syncing', exact: true }).click()
-  await expect(page.getByRole('region', { name: 'Device and syncing check' }).getByRole('status')).toContainText(
-    'confirmed in your private family account',
-    { timeout: 60000 },
-  )
+  await expect(
+    page
+      .getByRole('region', { name: academyAcceptance ? 'Family syncing' : 'Device and syncing check' })
+      .getByRole('status'),
+  ).toContainText('confirmed in your private family account', { timeout: 60000 })
   await panel(page, false)
   if (writing) await openWriting(page, grade!)
 }

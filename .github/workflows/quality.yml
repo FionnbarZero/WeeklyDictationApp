@@ -134,6 +134,8 @@ jobs:
         run: npx playwright test --config playwright.family-sync.config.ts --workers=3 --grep-invert 'Context (confirmation|stage|restores|keeps|Gap Dash)|Shadow Strike report pause holds'
       - name: Current enabled writing package and saving safeguards
         run: npx playwright test --config playwright.current-writing.config.ts
+      - name: Approved Mandarin Ninja Academy family release and saved progress
+        run: npx playwright test --config playwright.academy-ci.config.ts --project=desktop
       - name: Test the deployed family policy with synthetic emulator records
         env:
           FAMILY_SYNC_RULES_FILE: deployment/firestore-family-sync.rules
