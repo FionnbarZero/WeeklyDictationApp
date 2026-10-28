@@ -1,4 +1,8 @@
 import { defineConfig } from '@playwright/test'
+// This suite always targets the integrated package, which includes the reviewed
+// Wetland slide recovery. Keep fixture hashes aligned without a shell-only flag.
+process.env.REPORT_REPAIRS_AUDIT = '1'
+
 export default defineConfig({
   testDir: './tests/integrated-regression',
   outputDir: process.env.INTEGRATED_RESULTS || 'test-results/integrated-regression',

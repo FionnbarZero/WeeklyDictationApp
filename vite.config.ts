@@ -155,15 +155,11 @@ export default defineConfig(({ command, mode }) => {
             ? {
                 codeSplitting: {
                   groups: [
-                    ...(academyRelease
-                      ? [
-                          {
-                            name: 'shared-family-support',
-                            test: /src[\\/](?:familyBeta[\\/][^\\/]+|ninjaSkills[\\/](?:progress|progressStore)|warmup[\\/]visits[\\/]nativeVisit)\.ts$/,
-                            minShareCount: 1,
-                          },
-                        ]
-                      : []),
+                    {
+                      name: 'shared-family-support',
+                      test: /src[\\/](?:familyBeta[\\/][^\\/]+|ninjaSkills[\\/](?:progress|progressStore)|warmup[\\/]visits[\\/]nativeVisit)\.ts$/,
+                      minShareCount: 1,
+                    },
                     { name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 },
                     // Pure labels/model helpers otherwise form several tiny
                     // files. Keep exact cache rules and all lazy activity entry
