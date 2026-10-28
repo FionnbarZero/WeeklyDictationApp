@@ -12,9 +12,25 @@ test('only family-sync consolidates shared helpers while preserving lazy applica
   assert.ok(output && !Array.isArray(output))
   if (!output || Array.isArray(output)) throw new Error('Expected one output configuration')
   const groups = output.codeSplitting?.groups
-  assert.equal(groups?.length, 2)
-  assert.deepEqual(groups?.[0], { name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 })
-  const helpers = groups?.[1]
+  assert.equal(groups?.length, 3)
+  const familySupport = groups?.[0]
+  assert.equal(familySupport?.name, 'shared-family-support')
+  assert.equal(familySupport?.minShareCount, 1)
+  assert.ok(familySupport?.test instanceof RegExp)
+  for (const path of [
+    'src/familyBeta/deviceSync.ts',
+    'src/ninjaSkills/progressStore.ts',
+    'src/warmup/visits/nativeVisit.ts',
+  ])
+    assert.ok(familySupport.test.test(path))
+  for (const path of [
+    'src/familyBeta/main.tsx',
+    'src/writingAcquisition/Grade2WritingPractice.tsx',
+    'src/learningModules/memory-lanterns/Game.tsx',
+  ])
+    assert.equal(familySupport.test.test(path), false)
+  assert.deepEqual(groups?.[1], { name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 })
+  const helpers = groups?.[2]
   assert.equal(helpers?.name, 'shared-activity-models')
   assert.equal(helpers?.minShareCount, 2)
   assert.ok(helpers?.test instanceof RegExp)
