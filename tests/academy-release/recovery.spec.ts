@@ -20,6 +20,31 @@ function savedPractice() {
   )
 }
 
+function expectReopenedPracticePreserved(before: Record<string, string>, after: Record<string, string>) {
+  const normalized = { ...after }
+  for (const [key, raw] of Object.entries(before)) {
+    if (!key.endsWith(':lesson-workspace-v1')) continue
+    const oldWorkspace = JSON.parse(raw)
+    const nextWorkspace = JSON.parse(after[key])
+    const checkpointKey = 'weekly-dictation-checkpoint-v1'
+    const oldCheckpoint = JSON.parse(oldWorkspace.records[checkpointKey])
+    const nextCheckpoint = JSON.parse(nextWorkspace.records[checkpointKey])
+    // Reopening explicitly starts another optional Warmup visit. Prior visits
+    // and receipts must remain byte-equivalent and ordered; all other saved
+    // fields, including writing progress, must remain exactly unchanged.
+    for (const field of ['warmupVisitsV1', 'warmupTransitionReceiptsV1']) {
+      const previous = oldCheckpoint.values[field] || []
+      const next = nextCheckpoint.values[field] || []
+      expect(next.slice(0, previous.length)).toEqual(previous)
+      expect(next.length).toBeGreaterThanOrEqual(previous.length)
+      nextCheckpoint.values[field] = oldCheckpoint.values[field]
+    }
+    nextWorkspace.records[checkpointKey] = JSON.stringify(nextCheckpoint)
+    normalized[key] = JSON.stringify(nextWorkspace)
+  }
+  expect(normalized).toEqual(before)
+}
+
 for (const [slug, grade] of grades) {
   test(`${grade}: the actual predecessor upgrades a confirmed lesson and guarded recovery preserves new work`, async ({
     page,
@@ -93,6 +118,10 @@ for (const [slug, grade] of grades) {
     }
     await frame.getByRole('button', { name: 'Next step', exact: true }).click()
     await expect(teacher).toHaveAttribute('data-step', '2')
+    // The predecessor hides its parent status while a child is writing.
+    // Return through the real activity control before checking confirmation.
+    await frame.getByRole('button', { name: /^(Exit game|Pause and return)$/ }).click()
+    await parentPanel(page, true)
     await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
     const previous = await page.evaluate(savedPractice)
     expect(Object.keys(previous).length).toBeGreaterThan(0)
@@ -106,6 +135,6 @@ for (const [slug, grade] of grades) {
     expect(await page.evaluate(savedPractice)).toEqual(upgraded)
     await select('candidate')
     await expect(await launch()).toHaveAttribute('data-step', '2')
-    expect(await page.evaluate(savedPractice)).toEqual(upgraded)
+    expectReopenedPracticePreserved(upgraded, await page.evaluate(savedPractice))
   })
 }

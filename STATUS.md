@@ -1,5 +1,17 @@
 # Weekly Dictation status
 
+## Release in progress — accepted integrated Academy build, October 27
+
+The owner accepted Integrated fixes 1 and explicitly requested deployment to the existing website. This supersedes the earlier test-links-only scope for the canonical family app at https://ninjadojo.meghangames.com. Publication is **not complete**: the served predecessor remains `9d06a02`, provider version `ad3b2e96-0436-40a6-990d-6b0f49862ead`. No production upload or activation has occurred.
+
+Draft [PR #76](https://github.com/FionnbarZero/WeeklyDictationApp/pull/76) integrates the accepted preview with normal parent-account access, the profile-connection/save guards, accurate Family app labels, and the accepted features enabled explicitly by `scripts/package-academy-family.ts`. Main `5727d74` is included without conflicts. Candidate application `499a516` uses patched Vite 8.3.5 and compatible development dependency updates; runtime dependency versions, authentication rules and the existing bounded tooling exception are unchanged. Exact cache rules remain within the provider limit, with no global-header policy change.
+
+Initial canonical `bafe826`: six account checks and 34 device checks pass (four unsupported skips); 100/102 integrated cases initially pass. Both Grade 2 failures were fixture hashes expecting unrecovered Wetland data; the config now explicitly selects the accepted recovery contract and both pass on unchanged `bafe826`. Five real-service acceptance checks pass, including current writing/reading recovery and all 50 Grade 5 results; the disposable account and its 18 documents were cleaned up. All earlier failure evidence is retained. [Current release preparation and remaining gates](./docs/academy-canonical-release-2026-10-27.md).
+
+**Updated package:** 1,305 units and all 12 actual-provider header/upgrade/recovery cases pass, with recovery-driver corrections retained in the release record. Device/regression and real-service checks are running on `499a516`.
+
+**Next:** finish updated-package device/regression checks, protected CI and the required independent release review, then merge and publish through the guarded controller. A separate Astra · Extra High reviewer was requested from the owner; authorization has not yet been received. Existing Sol · High publication and Astra · Extra High behavior routing applies; no model switch is claimed. Canonical smoke testing is premature until the exact served release is verified. Earlier previews, named/frozen Grade 5 sites, homepage, real families and curriculum service remain unchanged.
+
 ## Current handoff — integrated Mandarin Ninja Academy test links and regression audit, October 27
 
 **Mandarin Ninja Academy / Integrated fixes 1 / application `1d7694f`** is published on a new isolated test-account website: [Kindergarten](https://weekly-dictation-staging--academy-integrated-oct27-v1-7fdzala9.web.app/family-beta-preview.html?grade=kindergarten) · [Grade 2](https://weekly-dictation-staging--academy-integrated-oct27-v1-7fdzala9.web.app/family-beta-preview.html?grade=grade2) · [Grade 5](https://weekly-dictation-staging--academy-integrated-oct27-v1-7fdzala9.web.app/family-beta-preview.html?grade=grade5). **Expires November 10 at 2:42 PM Pacific**, Hosting **d7f93d841b2541d8**. All **1,409 public files / 8,454 headers** match; canonical, homepage, frozen/named Grade 5 sites and previous previews remain unchanged. No main merge, production publication, security change or real-family migration.
