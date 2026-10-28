@@ -57,6 +57,7 @@ export async function installFamilyFixtures(
   const fixtureOrigin = process.env.FAMILY_FIXTURE_ORIGIN || 'http://127.0.0.1:5193'
   if (
     fixtureOrigin !== 'http://127.0.0.1:5193' &&
+    fixtureOrigin !== 'https://ninjadojo.meghangames.com' &&
     !/^https:\/\/weekly-dictation-staging--(?:device-sync-oct27-v1|academy-integrated-oct27-v1)-[a-z0-9]+\.web\.app$/.test(
       fixtureOrigin,
     )

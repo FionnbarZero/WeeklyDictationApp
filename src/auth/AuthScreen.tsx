@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { accountSignupEnabled } from '../config.ts'
 import { authErrorMessage, sendPasswordResetEmail, signIn, signUp } from '../firebaseClient.ts'
+import { academyRelease } from '../familyBeta/academyRelease.ts'
 
 export function AuthScreen({ validateEmail }: { validateEmail?: (email: string) => string | null } = {}) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'reset'>('sign-in')
@@ -50,7 +51,13 @@ export function AuthScreen({ validateEmail }: { validateEmail?: (email: string) 
             <Sparkles size={17} />
           </span>
           <span>
-            weekly<span className="brand-accent">dictation</span>
+            {academyRelease ? (
+              'Mandarin Ninja Academy'
+            ) : (
+              <>
+                weekly<span className="brand-accent">dictation</span>
+              </>
+            )}
           </span>
         </div>
         <p className="eyebrow">Private family practice</p>

@@ -1,0 +1,19 @@
+/** Same feature set as owner-accepted Integrated fixes 1, with ordinary family access. */
+export const academyReleaseEnvironment = {
+  MANDARIN_ACADEMY_RELEASE: 'true',
+  DEVICE_ACCEPTANCE_PREVIEW: 'false',
+  GRADE5_READING_REVIEW_PREVIEW: 'true',
+  VITE_REGRESSION_REPAIR_PREVIEW: 'true',
+  VITE_GRADE5_REPAIR_PREVIEW: 'true',
+  VITE_COMPACT_PARENT_PREVIEW: 'true',
+  VITE_RETIRE_STANDALONE_GAMES: 'true',
+  VITE_WRITING_CORRECTION_PREVIEW: 'true',
+  VITE_W1_CURRICULUM_PREVIEW: 'true',
+  VITE_W2_RECOVERY_PREVIEW: 'true',
+  VITE_GAME_CONTENT_PREVIEW: 'true',
+  VITE_AUTOMATIC_CURRICULUM_PREVIEW: 'true',
+  VITE_KORE_VOICE_PREVIEW: 'true',
+  VITE_INTEGRATED_WARMUP_PREVIEW: 'true',
+  VITE_GRADE2_WETLAND_REVIEW_PREVIEW: 'true',
+  VITE_OCT26_REPORTS_PREVIEW: 'true',
+} as const

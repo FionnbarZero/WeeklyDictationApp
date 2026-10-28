@@ -1,4 +1,4 @@
-import { deviceAcceptancePreview } from '../deviceAcceptance/policy.ts'
+import { connectedFamilyFixes } from './academyRelease.ts'
 import { scopedActivityStorage } from '../activity/scopedStorage.ts'
 import type { FamilyWorkspaceWindow } from './workspaceOwner.ts'
 import { BETA_GRADES, makeResult, type BetaProfile, type BetaResult, type ResultInput } from './model.ts'
@@ -88,4 +88,4 @@ export function activityStorage(): Storage {
 
 if (familyPreview && import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true') document.documentElement.classList.add('report-repairs')
 
-if (deviceAcceptancePreview) document.documentElement.classList.add('device-acceptance')
+if (connectedFamilyFixes) document.documentElement.classList.add('device-acceptance')

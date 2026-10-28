@@ -4,6 +4,7 @@ import { grade5PresentationPreview, grade5Standalone } from '../grade5Presentati
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { writingCorrectionPreview } from '../writingAcquisition/correctionStrategy.ts'
 import { automaticCurriculumPreview } from './automaticCurriculum.ts'
+import { academyRelease } from './academyRelease.ts'
 
 /** The isolated preview keeps adult setup available without surrounding the
  * child's activity with testing controls. Closing this never unmounts a lesson. */
@@ -17,41 +18,50 @@ export function PreviewParentTools({ grade, page, children }: { grade?: string; 
         <summary>Parent controls</summary>
         <div className="beta-parent-tools-panel">
           <p className="beta-preview-details" role="note">
-            {deviceAcceptancePreview
-              ? 'Mandarin Ninja Academy'
-              : automaticCurriculumPreview
-                ? 'Automatic curriculum updates'
-                : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
-                  ? 'W-roadmap combined repairs'
-                  : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
-                    ? 'W1 curriculum and activity entry'
-                    : writingCorrectionPreview
-                      ? 'W0 integrated writing'
-                      : grade5Standalone
-                        ? '5th grade Dojo'
-                        : grade5PresentationPreview
-                          ? '10/19 – Fifth Grade Mandarin Ninja Academy'
-                          : standaloneGamesRetired
-                            ? 'Streamlined Dojo'
-                            : 'Compact parent toolbar'}{' '}
-            ·{' '}
-            {deviceAcceptancePreview
-              ? 'Integrated fixes 1'
-              : automaticCurriculumPreview
-                ? 'Prototype 1'
-                : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
-                  ? 'Prototype 6 — compact games'
-                  : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
-                    ? 'Prototype 4'
-                    : grade5Standalone
-                      ? 'Standalone 1'
-                      : writingCorrectionPreview
-                        ? 'Prototype 2'
-                        : 'Prototype 1'}{' '}
-            · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only.{' '}
-            {deviceAcceptancePreview
-              ? 'Use the same test parent account and learner on both devices. Recordings remain temporary.'
-              : 'Progress saves in this browser; no account, cloud sync or offline installation.'}
+            {academyRelease ? (
+              <>
+                Mandarin Ninja Academy · Family app · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Saved
+                lessons and scores sync with your parent account. Recordings remain temporary.
+              </>
+            ) : (
+              <>
+                {deviceAcceptancePreview
+                  ? 'Mandarin Ninja Academy'
+                  : automaticCurriculumPreview
+                    ? 'Automatic curriculum updates'
+                    : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
+                      ? 'W-roadmap combined repairs'
+                      : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+                        ? 'W1 curriculum and activity entry'
+                        : writingCorrectionPreview
+                          ? 'W0 integrated writing'
+                          : grade5Standalone
+                            ? '5th grade Dojo'
+                            : grade5PresentationPreview
+                              ? '10/19 – Fifth Grade Mandarin Ninja Academy'
+                              : standaloneGamesRetired
+                                ? 'Streamlined Dojo'
+                                : 'Compact parent toolbar'}{' '}
+                ·{' '}
+                {deviceAcceptancePreview
+                  ? 'Integrated fixes 1'
+                  : automaticCurriculumPreview
+                    ? 'Prototype 1'
+                    : import.meta.env.VITE_W2_RECOVERY_PREVIEW === 'true'
+                      ? 'Prototype 6 — compact games'
+                      : import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+                        ? 'Prototype 4'
+                        : grade5Standalone
+                          ? 'Standalone 1'
+                          : writingCorrectionPreview
+                            ? 'Prototype 2'
+                            : 'Prototype 1'}{' '}
+                · {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}. Test learners only.{' '}
+                {deviceAcceptancePreview
+                  ? 'Use the same test parent account and learner on both devices. Recordings remain temporary.'
+                  : 'Progress saves in this browser; no account, cloud sync or offline installation.'}
+              </>
+            )}
           </p>
           {children}
           <div id="compact-parent-report-controls" />

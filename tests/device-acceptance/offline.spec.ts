@@ -83,5 +83,5 @@ test('an already confirmed test family can reopen its exact shell offline withou
     timeout: 30000,
   })
   await page.locator('summary').filter({ hasText: 'Parent controls' }).click()
-  await expect(page.getByRole('region', { name: 'Device and syncing check' })).toContainText('Offline')
+  await expect(page.getByRole('region', { name: /^(?:Device and syncing check|Family syncing)$/ })).toContainText('Offline')
 })

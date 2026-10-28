@@ -11,6 +11,7 @@ import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
 import { AudioCheck } from './AudioCheck.tsx'
+import { academyRelease, connectedFamilyFixes } from './academyRelease.ts'
 import { activityWorkspace, type FamilyActivitySlot } from './activitySlots.ts'
 import { familyResultRepository } from './cloud.ts'
 import { fetchCurriculum, gradeSlugs } from './curriculum.ts'
@@ -998,7 +999,7 @@ function FamilyPreview() {
             <button onClick={() => setTab('activities')}>Back to activities</button>
           )}
           <button
-            disabled={deviceAcceptancePreview && firebaseConfigReady && !familyId}
+            disabled={connectedFamilyFixes && firebaseConfigReady && !familyId}
             onClick={() => setTab('parent')}
           >
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
@@ -1008,6 +1009,12 @@ function FamilyPreview() {
             <Suspense fallback={<p>Loading device check…</p>}>
               <DeviceSyncCheck status={status} refresh={() => void refreshProgress()} />
             </Suspense>
+          )}
+          {academyRelease && (
+            <section className="beta-panel" aria-label="Family syncing">
+              <p role="status">{status}</p>
+              <button type="button" onClick={() => void refreshProgress()}>Check syncing</button>
+            </section>
           )}
           {automaticCurriculumPreview && (
             <section aria-label="Automatic curriculum updates" className="beta-panel">
@@ -1038,7 +1045,7 @@ function FamilyPreview() {
             W2 saved-game recovery example · test learners only. Ordinary games keep their existing play rules.
           </p>
         )}
-        {gameRecoveryPreview && !savedGameRecoveryExample && (
+        {!academyRelease && gameRecoveryPreview && !savedGameRecoveryExample && (
           <a href={`?grade=${gradeSlugs[currentGrade]}&example=game-recovery`}>Saved-game recovery example</a>
         )}
         {!regressionPreview && (
@@ -1425,8 +1432,8 @@ function FamilyPreview() {
                   if (!name.trim()) return
                   setBusy(true)
                   try {
-                    if (deviceAcceptancePreview && firebaseConfigReady && !familyId)
-                      throw new Error('Wait for the family connection before adding a test learner.')
+                    if (connectedFamilyFixes && firebaseConfigReady && !familyId)
+                      throw new Error('Wait for the family connection before adding a learner.')
                     const p = familyId
                       ? await createChild(familyId, { nickname: name.trim(), grade, schoolYear: DEFAULT_SCHOOL_YEAR })
                       : { id: crypto.randomUUID(), nickname: name.trim(), grade, active: true }

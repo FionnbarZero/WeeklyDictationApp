@@ -65,7 +65,7 @@ test('all 50 reading answers reach the second device exactly once after an inter
   await expect
     .poll(() => [...documents.keys()].filter((k) => k.includes('/betaResults/')).length, { timeout: 30000 })
     .toBe(1)
-  await expect(page.getByRole('region', { name: 'Device and syncing check' })).toContainText('confirmed')
+  await expect(page.getByRole('region', { name: /^(?:Device and syncing check|Family syncing)$/ })).toContainText('confirmed')
   const context = await browser.newContext()
   try {
     const other = await context.newPage()
