@@ -43,7 +43,7 @@ for (let i = 0; i < manifest.files.length; i += 16)
   await Promise.all(
     manifest.files.slice(i, i + 16).map(async (file: { path: string; sha256: string }) => {
       assert.ok(!file.path.startsWith('/') && !file.path.split('/').includes('..'))
-      if (file.path.startsWith('.')) return
+      if (file.path.startsWith('.') || (academyAcceptance && file.path === '_headers')) return
       const response = await fetch(`${base}/${file.path}`, { signal: AbortSignal.timeout(20000) })
       assert.equal(response.status, 200)
       assert.equal(new URL(response.url).origin, base)

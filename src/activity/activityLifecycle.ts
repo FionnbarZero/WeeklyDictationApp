@@ -1,6 +1,6 @@
-import { ActivityClock } from './ActivityClock.ts'
-import { regressionPreview } from '../regressionPreview/policy.ts'
 import { installGesturePlayback } from '../audio/gesturePlayback.ts'
+import { regressionPreview } from '../regressionPreview/policy.ts'
+import { ActivityClock } from './ActivityClock.ts'
 
 export const activityClock = new ActivityClock()
 let reportId = 0

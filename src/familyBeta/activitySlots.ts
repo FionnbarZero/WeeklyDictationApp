@@ -1,7 +1,7 @@
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
 import type { CurriculumSnapshot } from './curriculum.ts'
 import type { BetaProfile } from './model.ts'
-import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
 
 /** In-session ownership. Reviewed durable checkpoints remain owned by the grade engines. */
 export type FamilyActivitySlot = {
