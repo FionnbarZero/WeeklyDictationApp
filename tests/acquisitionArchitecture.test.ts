@@ -125,6 +125,9 @@ test('Acquisition persistence activation is limited to the approved application 
     'src/familyBeta/acquisitionRetirement.ts',
     'src/familyBeta/acquisitionRuntime.ts',
     'src/familyBeta/acquisitionStore.ts',
+    // Explicit label-only repair validates stored checkpoints and adds a
+    // retirement marker; it never rewrites acquisition facts or policy.
+    'src/familyBeta/correctedWritingAttempt.ts',
     'src/familyBeta/grade2LessonSelection.ts',
     'src/familyBeta/lessonLaunch.ts',
     'src/familyBeta/lessonLaunchRuntime.ts',

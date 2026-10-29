@@ -4,9 +4,19 @@ import { grade5AcquisitionStrategy } from '../acquisition/strategies/grade5.ts'
 import { kindergartenAcquisitionStrategy } from '../acquisition/strategies/kindergarten.ts'
 import { schoolYearToken } from '../curriculum/identity.ts'
 import type { Dataset } from '../domain/contracts.ts'
+import { automaticCurriculumStrokeMedians } from '../learningGames/strokeOrder/automaticCurriculumStrokeAssets.ts'
 import { grade2StrokeMedians } from '../learningGames/strokeOrder/grade2StrokeAssets.ts'
 import { buildStrokeOrderRounds, strokeAssetIsAvailable } from '../learningGames/strokeOrder/rounds.ts'
+import { wetlandStrokeMedians } from '../learningGames/strokeOrder/wetlandStrokeAssets.ts'
 import { GAME_POLICIES } from '../ninjaSkills/policy.ts'
+import { automaticCurriculumPreview } from './automaticCurriculum.ts'
+import { grade2WetlandReviewPreview } from './grade2WetlandReview.ts'
+
+const teacherMedians = {
+  ...grade2StrokeMedians,
+  ...(automaticCurriculumPreview ? automaticCurriculumStrokeMedians : {}),
+  ...(grade2WetlandReviewPreview ? wetlandStrokeMedians : {}),
+}
 
 export const STROKE_ORDER_MODULE = 'stroke-order-slay'
 export const STROKE_ORDER_TITLE = 'Stroke Order Slay'
@@ -16,14 +26,14 @@ const strategies: Record<string, AcquisitionStrategy> = {
   'Grade 5': grade5AcquisitionStrategy,
 }
 export function strokeOrderGuide(target: Pick<AcquisitionTarget, 'id' | 'text'>) {
-  const guide = supported(target.text) ? buildStrokeOrderRounds([target], grade2StrokeMedians).rounds[0] : undefined
+  const guide = supported(target.text) ? buildStrokeOrderRounds([target], teacherMedians).rounds[0] : undefined
   if (!guide) throw new Error('This saved target has no validated stroke guide. Your progress is preserved.')
   return guide
 }
 
 function supported(text: string) {
   // The shared writing pad has six lanes. Never silently crop a longer source.
-  return [...text].length <= 6 && strokeAssetIsAvailable(text, grade2StrokeMedians)
+  return [...text].length <= 6 && strokeAssetIsAvailable(text, teacherMedians)
 }
 
 /** Current writing cohort only. Every eligible supported target is included in
@@ -49,7 +59,9 @@ export function strokeOrderLesson(datasets: readonly Dataset[]) {
     throw new Error('This cohort has no validated Tier 1 writing targets for Stroke Order Slay.')
   const targets = words.filter((word) => supported(word.text))
   if (!targets.length || strategy.familiarDtTargets.some((word) => !supported(word.text)))
-    throw new Error('Stroke guides are not ready for this cohort. Please report this problem; your progress is preserved.')
+    throw new Error(
+      'Stroke guides are not ready for this cohort. Please report this problem; your progress is preserved.',
+    )
   return {
     strategy,
     targetSet: { id: dataset.id, targets },

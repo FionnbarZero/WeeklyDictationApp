@@ -60,8 +60,8 @@ export function openAcquisitionStore<T extends AcquisitionTarget, R extends stri
       ('writerId' in saved && !validWriter(saved.writerId)) ||
       !Array.isArray(saved.assessments) ||
       !Array.isArray(saved.reviewedTrials) ||
-      saved.assessments.length > MAX_REVIEWED_TRIALS ||
-      saved.reviewedTrials.length > MAX_REVIEWED_TRIALS ||
+      saved.assessments.length > (saved.schema === 2 ? saved.envelope?.revision : MAX_REVIEWED_TRIALS) ||
+      saved.reviewedTrials.length > (saved.schema === 2 ? saved.envelope?.revision : MAX_REVIEWED_TRIALS) ||
       !validateAcquisitionProgressEnvelope(saved.envelope, validationContext).valid ||
       saved.assessments.some(
         (a) =>

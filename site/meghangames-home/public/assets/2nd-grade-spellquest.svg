@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 606" role="img" aria-labelledby="title desc">
+  <title id="title">2nd Grade SpellQuest</title>
+  <desc id="desc">A magical notebook pairs red letter tiles with sentence practice and a golden pencil, surrounded by stars.</desc>
+  <defs>
+    <linearGradient id="sky" x2="1" y2="1">
+      <stop stop-color="#302257"/><stop offset="1" stop-color="#173b4b"/>
+    </linearGradient>
+    <linearGradient id="paper" x2="0" y2="1">
+      <stop stop-color="#fff8de"/><stop offset="1" stop-color="#f5e0ad"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h1000v606H0z"/>
+  <circle cx="790" cy="126" r="81" fill="#a99be0" opacity=".1"/>
+  <circle cx="175" cy="348" r="119" fill="#8ce2d7" opacity=".07"/>
+  <g fill="#f4ca68">
+    <path d="m164 143 8 21 22 8-22 8-8 22-8-22-22-8 22-8z"/>
+    <path d="m831 271 6 15 16 6-16 6-6 16-6-16-16-6 16-6z"/>
+    <circle cx="734" cy="68" r="4"/><circle cx="902" cy="202" r="3"/>
+    <circle cx="91" cy="281" r="3"/><circle cx="857" cy="470" r="4"/>
+  </g>
+  <g fill="#8ce2d7">
+    <circle cx="271" cy="102" r="4"/><circle cx="906" cy="373" r="4"/>
+    <path d="m116 433 5 13 14 5-14 5-5 14-5-14-14-5 14-5z"/>
+  </g>
+  <ellipse cx="500" cy="488" rx="324" ry="35" fill="#0c1a2a" opacity=".45"/>
+  <rect x="233" y="122" width="524" height="352" rx="24" fill="#6c579f" stroke="#b6a5f3" stroke-width="6" transform="rotate(-4 495 298)"/>
+  <rect x="254" y="113" width="491" height="350" rx="18" fill="url(#paper)"/>
+  <path d="M309 114v347" stroke="#dc818c" stroke-width="3" opacity=".6"/>
+  <g fill="none" stroke="#70628d" stroke-width="7" stroke-linecap="round">
+    <path d="M243 156h27M243 211h27M243 266h27M243 321h27M243 376h27M243 431h27"/>
+  </g>
+  <g fill="#bd5069" stroke="#923c55" stroke-width="4">
+    <rect x="351" y="173" width="98" height="104" rx="16"/>
+    <rect x="464" y="173" width="98" height="104" rx="16"/>
+    <rect x="577" y="173" width="98" height="104" rx="16"/>
+  </g>
+  <g fill="#fff8e4" font-family="Arial, sans-serif" font-size="61" font-weight="700" text-anchor="middle">
+    <text x="400" y="247">A</text><text x="513" y="247">I</text><text x="626" y="247">R</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M349 328h319M349 365h319M349 402h220" stroke="#aeb9b5" stroke-width="4"/>
+    <path d="M350 315h83m18 0h109m19 0h70" stroke="#557b7b" stroke-width="8"/>
+  </g>
+  <g transform="rotate(28 718 363)">
+    <path d="M698 269h40v179l-20 38-20-38z" fill="#f4ca68" stroke="#bd8e37" stroke-width="4"/>
+    <path d="M706 447h24l-12 26z" fill="#fff0ca"/>
+    <path d="m712 466 6 12 6-12z" fill="#302257"/>
+    <path d="M700 291h36" stroke="#fff0ca" stroke-width="12"/>
+    <path d="M718 308v130" stroke="#fff0ca" stroke-width="5"/>
+    <path d="M698 269v-14a20 20 0 0 1 40 0v14z" fill="#dc818c"/>
+  </g>
+  <circle cx="789" cy="146" r="48" fill="#f4ca68" stroke="#fff0ca" stroke-width="5"/>
+  <text x="789" y="164" text-anchor="middle" fill="#302257" font-family="Arial, sans-serif" font-size="49" font-weight="700">2</text>
+  <text x="500" y="560" text-anchor="middle" fill="#fff8de" font-family="Georgia, serif" font-size="37" font-weight="700">2ND GRADE SPELLQUEST</text>
+</svg>

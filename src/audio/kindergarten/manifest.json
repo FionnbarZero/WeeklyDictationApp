@@ -21,6 +21,26 @@
   },
   "contexts": {},
   "assets": {
+    "虫": {
+      "generatedAt": "2026-10-19T07:01:58Z",
+      "storagePath": "audio/kindergarten/u866b.wav",
+      "sourceUnitIds": ["Week 10 10/19"]
+    },
+    "你": {
+      "generatedAt": "2026-10-19T07:01:58Z",
+      "storagePath": "audio/kindergarten/u4f60.wav",
+      "sourceUnitIds": ["Week 10 10/19"]
+    },
+    "家": {
+      "generatedAt": "2026-10-19T07:01:58Z",
+      "storagePath": "audio/kindergarten/u5bb6.wav",
+      "sourceUnitIds": ["Week 10 10/19"]
+    },
+    "森林": {
+      "generatedAt": "2026-10-19T07:01:58Z",
+      "storagePath": "audio/kindergarten/u68ee-u6797.wav",
+      "sourceUnitIds": ["Week 10 10/19"]
+    },
     "土": {
       "generatedAt": "2026-10-16T11:33:42.585Z",
       "storagePath": "audio/kindergarten/u571f.wav",

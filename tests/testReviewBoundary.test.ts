@@ -162,9 +162,11 @@ test('shared deferred review is activated through writing practice and the Kinde
     .map((file) => relative(repositoryRoot, file).split(sep).join('/'))
   assert.deepEqual(consumers, [
     'src/grade5LearningHubHarness.tsx',
+    'src/grade5Oct23Prototype/App.tsx',
     'src/kindergartenLearningLabHarness.tsx',
     'src/practice/PracticeView.tsx',
     'src/readingPractice/Tier2ReadingPractice.tsx',
+    'src/reportRepairs/FinalBossTest.tsx',
     'src/testReviewPrototype/TestReviewPrototype.tsx',
   ])
 

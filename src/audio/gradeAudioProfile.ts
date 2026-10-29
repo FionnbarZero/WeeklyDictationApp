@@ -37,5 +37,7 @@ const profiles: Readonly<Record<GradeAudioProfile['grade'], GradeAudioProfile>> 
 export function gradeAudioProfileFor(grade: string): GradeAudioProfile {
   const profile = profiles[grade as GradeAudioProfile['grade']]
   if (!profile) throw new Error(`Audio behavior is not configured for ${grade}.`)
+  if (import.meta.env?.VITE_KORE_VOICE_PREVIEW === 'true')
+    return { ...profile, dictationRate: 0.65, readingRate: 0.65, masteryRate: 0.65 }
   return profile
 }

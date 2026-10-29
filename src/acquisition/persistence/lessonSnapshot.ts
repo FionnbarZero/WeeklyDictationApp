@@ -1,4 +1,4 @@
-import type { AcquisitionTarget } from '../contracts.ts'
+import type { AcquisitionTarget, AcquisitionCorrectionPolicy } from '../contracts.ts'
 import type {
   AcquisitionLessonSnapshot,
   AcquisitionPersistenceContext,
@@ -9,6 +9,9 @@ import { validateAcquisitionProgressEnvelope } from './validation.ts'
 
 const MAX_SNAPSHOT_BYTES = 250_000
 const failure = 'The original lesson could not be safely restored. Nothing was erased. Please report this problem.'
+// Earlier readers must refuse, not silently reinterpret, the new retry rule.
+const engineContract = (strategy: { correctionPolicy?: unknown }) =>
+  `acquisition-engine-v${(strategy.correctionPolicy as AcquisitionCorrectionPolicy | undefined)?.repeatUntilCorrect ? 2 : 1}`
 const timerKeys = [
   'familiarDtSeconds',
   'earnedDtSeconds',
@@ -47,13 +50,13 @@ function validateSnapshot(value: unknown): asserts value is AcquisitionLessonSna
   if (
     !record(value) ||
     value.schema !== 1 ||
-    value.engineContract !== 'acquisition-engine-v1' ||
     typeof value.applicationVersion !== 'string' ||
     !value.applicationVersion ||
     !record(value.targetSet) ||
     typeof value.targetSet.id !== 'string' ||
     !targets(value.targetSet.targets) ||
     !record(value.strategy) ||
+    value.engineContract !== engineContract(value.strategy) ||
     !record(value.strategy.timers) ||
     !targets(value.strategy.familiarDtTargets) ||
     !['collect', 'discard'].includes(String(value.strategy.dtObservationMode))
@@ -116,7 +119,7 @@ export function pinAcquisitionLesson<T extends AcquisitionTarget>(
   const payload = JSON.parse(
     JSON.stringify({
       schema: 1,
-      engineContract: 'acquisition-engine-v1',
+      engineContract: engineContract(context.strategy),
       applicationVersion: envelope.applicationVersion,
       targetSet: context.targetSet,
       strategy: context.strategy,

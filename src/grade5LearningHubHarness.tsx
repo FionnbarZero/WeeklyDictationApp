@@ -1,3 +1,8 @@
+import { connectedFamilyFixes } from './familyBeta/academyRelease.ts'
+import { activityStorage, previewProfile } from './familyBeta/runtime.ts'
+import { withScrollsWrite } from './familyBeta/scrollsCompletion.ts'
+import { activityClock } from './activity/activityLifecycle.ts'
+import { answerNativeWarmup, nativeVisitWords, newNativeWarmupVisit, readNativeWarmupVisit, writeNativeWarmup, type NativeWarmupVisit } from './warmupDesign/nativeVisit.ts'
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
 import { familyAcquisitionStore, familyWritingStore } from './familyBeta/acquisitionRuntime.ts'
@@ -6,6 +11,7 @@ import NativeWritingPractice from './writingAcquisition/NativeWritingPractice.ts
 import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
 import type { AcquisitionTarget } from './acquisition/contracts.ts'
 import { fetchCurriculum } from './familyBeta/curriculum.ts'
+import { automaticCurriculumPreview } from './familyBeta/automaticCurriculum.ts'
 import { writingSessionAnswers } from './application/testReview.ts'
 import { extractGrade5Presentation, type Grade5SourceExtraction } from './curriculum/adapters/grade5GoogleSlides.ts'
 import type { SlidesPresentationPayload, WeeklyDatasetCandidate } from './curriculum/model.ts'
@@ -42,6 +48,11 @@ import { Tier2ReadingPractice } from './readingPractice/Tier2ReadingPractice.tsx
 import { DeferredTestReview } from './testReview/DeferredTestReview.tsx'
 import { tier2ReadingPathwayTargets } from './tier2/pathway.ts'
 import { grade5Tier2ReadingProfile } from './tier2/profiles/grade5.ts'
+import { grade5PresentationPreview } from './grade5PresentationPreview/policy.ts'
+import { extractGrade5Assessment } from './grade5PresentationPreview/assessmentSource.ts'
+import { Grade5PresentationReading } from './grade5PresentationPreview/ReadingPractice.tsx'
+
+const ReadingPractice = grade5PresentationPreview ? Grade5PresentationReading : Tier2ReadingPractice
 
 const fixtureUrl = new URL('../tests/fixtures/grade5-presentation.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
@@ -70,6 +81,12 @@ const practiceRootElement = requiredElement<HTMLElement>('grade5-practice-root')
 const practiceSummary = requiredElement<HTMLElement>('practice-summary')
 const hubRoot = createRoot(hubRootElement)
 const practiceRoot = createRoot(practiceRootElement)
+// The family preview hides lab details. Launch failures still need a visible,
+// accessible retry explanation, separate from routine developer status.
+if (automaticCurriculumPreview) {
+  hubRootElement.before(statusElement)
+  statusElement.hidden = true
+}
 
 let sourceExtraction: Grade5SourceExtraction | null = null
 let learningHubModel: Grade5LearningHubModel | null = null
@@ -91,6 +108,11 @@ function createElement<K extends keyof HTMLElementTagNameMap>(tag: K, className?
 function setStatus(message: string, error = false) {
   statusElement.textContent = message
   statusElement.classList.toggle('error', error)
+  if (automaticCurriculumPreview) {
+    statusElement.hidden = !error
+    statusElement.setAttribute('role', error ? 'alert' : 'status')
+    if (error) statusElement.scrollIntoView({ block: 'nearest' })
+  }
   if (error) labDetails.open = true
 }
 
@@ -166,6 +188,45 @@ function renderAssessmentSummary() {
   practiceSummary.innerHTML = `<strong>Lab observations:</strong> Test Review ${correct}/${activeSession.primaryAnswers.length} correct · Warmup ${activeSession.warmupAnswers.length}/${activeSession.warmupQueue.length} reviewed. Nothing from this lab run is saved.`
 }
 
+let nativeWarmup: NativeWarmupVisit | null = null
+let nativeWarmupRaw: string | null = null
+let nativeWarmupKey = ''
+let nativeWarmupOwner: string | undefined
+
+async function saveGuidedWarmup(answer: Extract<PracticeAnswer, { kind: 'guided-warmup-answer' }>) {
+  const current = activeSession
+  if (!current || current.segment !== 'warmup' || current.id !== answer.sessionId || current.index !== answer.position || current.queue[current.index]?.id !== answer.wordId)
+    throw new Error('This Warmup answer is no longer current. Reopen the activity.')
+  if (!nativeWarmup) throw new Error('Warmup’s saved visit is unavailable. Reopen the activity.')
+  const nextVisit = await withScrollsWrite(nativeWarmupKey, () => {
+    if (activeSession !== current || activityClock.paused || previewProfile()?.id !== nativeWarmupOwner)
+      throw new Error('Warmup changed while saving. Reopen the activity to continue.')
+    let next = answerNativeWarmup(nativeWarmup!, current.index, answer.correct)
+    if (next.answers.length === next.words.length) next = { ...next, closed: true }
+    nativeWarmupRaw = writeNativeWarmup(activityStorage(), nativeWarmupKey, nativeWarmupRaw, next)
+    return next
+  })
+  nativeWarmup = nextVisit
+  const answers = [...current.warmupAnswers, { word: current.queue[current.index], correct: answer.correct, revealMethod: 'timer' as const }]
+  activeSession = nextVisit.closed ? primaryStartState({ ...current, warmupAnswers: answers })
+    : { ...current, warmupAnswers: answers, index: nextVisit.answers.length, stage: 'interstitial' }
+  renderPracticeView()
+}
+
+async function closeGuidedWarmup() {
+  const current = activeSession
+  if (!current || !nativeWarmup) throw new Error('Warmup is not ready. Reopen the activity.')
+  await withScrollsWrite(nativeWarmupKey, () => {
+    if (activeSession !== current || activityClock.paused || previewProfile()?.id !== nativeWarmupOwner)
+      throw new Error('Warmup changed. Reopen the activity to continue.')
+    const next = { ...nativeWarmup!, closed: true }
+    nativeWarmupRaw = writeNativeWarmup(activityStorage(), nativeWarmupKey, nativeWarmupRaw, next)
+    nativeWarmup = next
+  })
+  activeSession = primaryStartState(current)
+  renderPracticeView()
+}
+
 function initialPracticeSession(
   request: Grade5ActivityLaunchRequest,
   dataset: Dataset,
@@ -205,7 +266,7 @@ function primaryStartState(session: PracticeSession): PracticeSession {
 function beginWarmup() {
   if (!activeSession || activeSession.stage !== 'warmup-intro') return
   activeSession = activeSession.queue.length > 0
-    ? { ...activeSession, stage: 'interstitial', index: 0 }
+    ? { ...activeSession, stage: 'interstitial', index: import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? activeSession.warmupAnswers.length : 0 }
     : primaryStartState(activeSession)
   renderPracticeView()
 }
@@ -263,7 +324,8 @@ function recordWritingResult(correct: number, attempted: number) {
   try {
     if (activeSession.primaryPhase === 'acquisition' && acquisitionStore)
       activeSession = { ...activeSession, id: acquisitionStore.prepareResult().sessionId }
-    savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
+    const saved = savePreviewResult({ id: activeSession.id, activity: activeSession.primaryPhase === 'acquisition' ? 'Writing Dojo' : 'Writing Test Review', channel: 'writing', datasetIds: [activeDataset.id], correct, attempted })
+    if ((grade5PresentationPreview || connectedFamilyFixes) && attempted > 0 && !saved) throw new Error('The writing result could not be saved.')
     return true
   } catch {
     window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
@@ -339,12 +401,21 @@ function answerCurrentPrompt(correct: boolean) {
 }
 
 function handlePracticeAnswer(answer: PracticeAnswer) {
+  if (import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true') {
+    if (typeof answer === 'object' && answer.kind === 'guided-warmup-answer') return saveGuidedWarmup(answer)
+    if ((answer === 'skip-warmup' || answer === 'continue-primary') && activeSession?.segment === 'warmup') {
+      return closeGuidedWarmup().catch(error => { practiceSummary.textContent = error instanceof Error ? error.message : 'Warmup could not save.' })
+    }
+  }
   if (typeof answer === 'object') {
     if (!activeSession || answer.kind !== 'deferred-writing-test-review') return
     const primaryAnswers = writingSessionAnswers(answer.completion)
     activeSession = { ...activeSession, stage: 'complete', primaryAnswers }
     const correct = primaryAnswers.filter((item) => item.correct).length
-    if (!recordWritingResult(correct, primaryAnswers.length)) return
+    if (!recordWritingResult(correct, primaryAnswers.length)) {
+      if (grade5PresentationPreview || connectedFamilyFixes) throw new Error('The writing result could not be saved. Please retry.')
+      return
+    }
     leavePractice(`Test Review complete: ${correct}/${primaryAnswers.length} correct. This lab result was not saved.`)
   }
   else if (typeof answer === 'boolean') answerCurrentPrompt(answer)
@@ -393,6 +464,7 @@ function renderPracticeView() {
       onSpeakWord={speakWord}
       onSpeakReviewInstruction={() => undefined}
       reviewInstruction={REVIEW_INSTRUCTION}
+      retryTestSaveFailures={grade5PresentationPreview || connectedFamilyFixes}
     />,
   )
 }
@@ -422,12 +494,37 @@ async function startWritingPractice(request: Grade5ActivityLaunchRequest, label:
       flow: acquisitionStore.current.envelope.flow, assessments: acquisitionStore.current.assessments }
     if (acquisitionStore) activeDataset = { ...activeDataset, words: [...acquisitionStore.context.targetSet.targets] }
     activeSession = initialPracticeSession(request, activeDataset, warmup.words, activePractice)
+    if (import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' && request.activityKind === 'test-review') activeSession = primaryStartState(activeSession)
     strokeWarmupReady = ready || null
     if (ready) activeSession = { ...activeSession, primaryQueue: [] }
     if (acquisitionStore) {
       activeSession = { ...activeSession, id: acquisitionStore.current.sessionId }
       if (acquisitionStore.current.envelope.revision > 0 || (acquisitionStore.current.writing?.revision || 0) > 0)
         activeSession = primaryStartState(activeSession)
+    }
+    nativeWarmup = null
+    if (import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && familyPreview && activeSession.segment === 'warmup' && warmup.words.length) {
+      const current = activeSession
+      nativeWarmupOwner = previewProfile()?.id
+      // Scope to the native lesson and activity; current selection is used only
+      // for a fresh visit. Unfinished visits retain their original word order.
+      nativeWarmupKey = `native-writing-warmup-visit-v1:grade5:${current.primaryPhase}:${activeDataset.id}:${activeDataset.words.map(w => `${w.id}:${w.text}`).join('|')}`
+      const pool = [...activeDatasets.flatMap(d => d.words), ...warmup.words]
+      const saved = await withScrollsWrite(nativeWarmupKey, () => {
+        if (writingLaunch !== launch || previewProfile()?.id !== nativeWarmupOwner) throw new Error('Writing launch changed.')
+        const storage = activityStorage()
+        nativeWarmupRaw = storage.getItem(nativeWarmupKey)
+        let visit = readNativeWarmupVisit(nativeWarmupRaw, pool)
+        if (!visit || (visit.closed && current.primaryPhase === 'test-review')) visit = newNativeWarmupVisit(warmup.words, crypto.randomUUID())
+        nativeWarmupRaw = writeNativeWarmup(storage, nativeWarmupKey, nativeWarmupRaw, visit)
+        return visit
+      })
+      if (writingLaunch !== launch) return
+      nativeWarmup = saved
+      const words = nativeVisitWords(saved, pool)
+      const warmupAnswers = saved.answers.map((correct, index) => ({ word: words[index], correct, revealMethod: 'timer' as const }))
+      activeSession = { ...current, adaptiveWarmupVisitId: saved.id, queue: words, warmupQueue: words, warmupAnswers, index: saved.answers.length }
+      if (saved.closed) activeSession = primaryStartState(activeSession)
     }
     currentRevealMethod = 'timer'
     requestPanel.hidden = true
@@ -452,8 +549,15 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
     const pathway = grade5LabReadingPathway(sourceExtraction, request)
     const readingSessionId = crypto.randomUUID()
     const finishReading = (correct: number, attempted: number, savedSessionId?: string) => {
-      try { savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted }) }
-      catch { window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin); return }
+      try {
+        const saved = savePreviewResult({ id: savedSessionId || readingSessionId, activity: label, channel: 'reading', datasetIds: pathway.cohorts.map(c => c.datasetId), correct, attempted })
+        if ((grade5PresentationPreview || connectedFamilyFixes) && attempted > 0 && !saved) throw new Error('The reading result could not be saved. Please retry.')
+      }
+      catch (error) {
+        window.parent.postMessage({ type: 'family-beta-save-error' }, window.location.origin)
+        if (grade5PresentationPreview || connectedFamilyFixes) throw error
+        return
+      }
       leavePractice(`Reading complete: ${correct}/${attempted}. ${familyPreview ? 'See family progress for saving status.' : 'This lab result was not saved.'}`)
     }
     activePractice = null
@@ -472,6 +576,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       practiceRoot.render(<DeferredTestReview
         key={`grade5-reading-review-${request.stage}-${request.cohortId}`}
         mode="reading"
+        retrySaveFailures={grade5PresentationPreview || connectedFamilyFixes}
         targets={targets}
         activityLabel={pathway.cycle ? `Reading Test Review ${pathway.cycle}` : 'Reading Test Review'}
         onPlayReference={speakReadingReference}
@@ -483,7 +588,7 @@ function startReadingPractice(request: Grade5ActivityLaunchRequest, label: strin
       return
     }
     practiceSummary.textContent = 'Tier 2 reading uses prompt-local microphone audio and session-only scoring. Nothing from this lab run is saved.'
-    practiceRoot.render(<Tier2ReadingPractice
+    practiceRoot.render(<ReadingPractice
       key={`${request.stage}-${request.activityKind}-${request.cohortId || request.eligibleCohortIds.join('-')}`}
       profile={grade5Tier2ReadingProfile}
       pathway={pathway}
@@ -506,15 +611,14 @@ function connectedRequest(request: Grade5ActivityLaunchRequest) {
 
 function startConnectedRequest(request: Grade5ActivityLaunchRequest, label: string) {
   if (grade5LabReadingRequestIsConnected(request)) startReadingPractice(request, label)
-  else startWritingPractice(request, label)
+  else return startWritingPractice(request, label)
 }
 
 function launchFromLearningHub(launch: Grade5HubLaunch) {
   writingLaunch++
   const connected = launch.requests.filter(connectedRequest)
   if (connected.length === 1) {
-    startConnectedRequest(connected[0], launch.label)
-    return
+    return startConnectedRequest(connected[0], launch.label)
   }
   showLaunchRequest(launch.label, launch.requests)
 }
@@ -557,7 +661,10 @@ async function loadHub() {
   try {
     const response = familyPreview ? new Response(JSON.stringify((await fetchCurriculum('Grade 5')).snapshot.payload)) : await fetch(fixtureUrl, { cache: 'no-store' })
     if (!response.ok) throw new Error(`Fixture request failed with HTTP ${response.status}.`)
-    sourceExtraction = extractGrade5Presentation(normalizePayload(await response.json()))
+    const payload = await response.json()
+    sourceExtraction = grade5PresentationPreview && payload.sourceType === 'owner-assessment'
+      ? extractGrade5Assessment(payload)
+      : extractGrade5Presentation(normalizePayload(payload))
     const date = familyPreview ? new URLSearchParams(window.location.search).get('week') || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) : undefined
     learningHubModel = buildGrade5LearningHub(sourceExtraction, date)
   hubRoot.render(<LearningHub model={grade5LearningHubView(learningHubModel)} onLaunch={launchFromLearningHub} hideUnavailable={familyPreview}

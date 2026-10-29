@@ -1,0 +1,34 @@
+# Approved Warmup consolidation — October 26, 2026
+
+The owner approved the working redesigned Warmup, requested it in all three grades, retired the separate Grade 5 eight-word assessment and older test links, and explicitly excluded live publication. The current Kore preview origin is retained to avoid moving its browser-local test progress. Canonical Ninja Dojo and the frozen standalone fifth-grade presentation remain excluded.
+
+## Integrated interaction
+
+- Normal Kindergarten/Grade 2 Spirit Realm writing review uses the approved large Slay writing boxes and native adaptive mastered words. Grade 2 and Grade 5 pre-writing Warmup uses the grade-owned selected queue. The Kindergarten legacy native entry also uses the shared design. Existing reading paths and the Grade 5 direct mastered-games menu remain intact.
+- Hear the whole word, ten seconds **after complete prompt audio**, optional Skip Timer, then comparison. A wrong whole-word response leads to one guided trace per character, in order, then whole-word memory retry until correct. Numbered stroke direction/order feedback is immediate. This is not the five-step acquisition teacher.
+- First independent answers remain immutable through correction. Only that original answer is passed to native mastery/scoring. Completed correction characters and word position survive Exit/reopen/reload. Unfinished ink is deliberately not persisted; reopening an unscored comparison repeats memory writing.
+- Correction checkpoints are child/grade/visit/position scoped and fenced with Web Locks plus compare-and-set. Storage failure leaves the current comparison in place. Native mastery facts use stable event IDs so retrying between fact persistence and visit advance does not add credit twice. Corrupt or conflicting records are preserved with an error, never reset.
+- Grade 2’s previous presentation reshuffled an already-durable adaptive queue. The approved integration now presents the durable queue in its actual order and restores its reviewed answers, preventing a shown word from diverging from the graded word. Ordinary production mode retains its prior behavior until a separately authorized release.
+- Grade 5 unfinished Warmup visits pin the selected native words. Existing acquisition progress still resumes acquisition without inventing another Warmup. Completing Warmup hands back to the existing teacher/acquisition sequence.
+
+## Publication scope
+
+`--integrated-warmup` opts the combined preview into the approved behavior while retaining W repairs, automatic curriculum updates and Kore. It excludes `grade5-oct23-preview.html` and `warmup-design-preview.html`; parent controls no longer advertise the retired assessment. The accepted isolated reference remains in local immutable evidence/Git history. Its demonstration target list is never imported into native Warmup.
+
+No live deployment, Git main merge, teacher record edit, authentication change, new voice generation or child-data reset is part of this work. Historical source and evidence required to reproduce the frozen standalone are retained.
+
+## Verification and limitations
+
+Final exact-build results, hosting retirement receipts and email receipt are recorded in STATUS and `family-beta-artifacts/native-warmup-2026-10-26/`. Development failures remain in the evidence: the first connection missed the preview's separate Spirit Realm adapter; Grade 2 initially rejected a new key in its legacy storage adapter; its preexisting queue shuffle broke correction resume. Each was repaired before publication. An additional Grade 2 Spirit Realm trace check caught its outer legacy heading consuming the activity viewport; the native Warmup now hides that redundant heading while keeping the outer Report control. A subsequent portrait check also caught a width-sized SVG clipped by a shorter grid row. Tablet tracing now derives its square from the available height above the feedback/tools row. The full drawing surface is checked in laptop and both tablet layouts. The intermediate 41/42 result is retained. The development server's SPA fallback returned 200 for removed pages; the final static-server and hosted checks require actual 404 responses.
+
+Browser-only preview learners; correction drafts are not authenticated cloud/cross-device checkpoints. Physical iPad speaker/Pencil acceptance remains a device check, not an automated-browser claim. English Niamh and recordings for unseen future teacher text remain separate work. Old preview browser data is not erased when its hosting channel is retired, but the retired URLs are no longer usable test entries.
+
+## Release verification record
+
+Application source **ab76131f538b60b143cded3d596bc061e679f50e**, package tree **9f52d114e9ae560eecd01f60d7efdc6b753d160c84a5b8c7401aa6624282f8cd**, Firebase version **4f187d835667da7b**. One deployment updates the existing Kore preview; its expiry is **November 2, 2026, 9:45 AM Pacific**. All **1,122 public files / 6,732 response headers** match the immutable package. Canonical manifest and frozen Grade 5 manifest plus 182 public assets remain unchanged. Both retired demonstration routes return 404.
+
+The final package passes **42/42 local native Warmup browser checks**, including all three grades, laptop and both tablet layouts, complete visits, repeated correction, first-attempt scoring, storage failure/retry, Exit/reopen/reload, real Kore completion before the timer and Report pause. The preceding behavior revision bcfef1a passes **1,284 units**, **75 game/reading/writing Kore cases**, **20 audio-recovery/timing cases**, and **9 actual-teacher launch cases**; the only later application changes are Warmup viewport CSS. Typecheck, lint and production build/size gates pass (549,959 JS / 46,342 CSS bytes).
+
+Hosted actual-teacher launches were **8/9 initially**: the Grade 2 laptop check reached its five-second menu expectation while the teacher-service request was still pending, before an activity launched. Its trace contains no application exception; three unchanged focused reruns pass. Retain the initial failure, rather than claiming the first matrix was clean. This does not establish physical-device or authenticated cross-device acceptance. Final hosted Warmup result, channel retirement and email receipts are in STATUS and the evidence directory.
+
+Final hosted native Warmup: **42/42 pass**. **18/18 obsolete channels deleted**, every old URL returns 404; retained preview/live release IDs, configuration, timestamps and expiry are unchanged by deletion. Firebase asynchronously populated file-count/byte metadata after publication, which stopped the first strict object comparison; a read-only verifier normalized only those two fields and checked all remaining metadata plus current/canonical/frozen manifests. No deletion was repeated. Email **1a179559f0ffbcb5** is verified SENT to the confirmed owner address.

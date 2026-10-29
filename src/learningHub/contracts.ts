@@ -43,8 +43,18 @@ export type LearningHubSection<Launch> = {
   cohortPickerLabel?: string
   defaultCohortId?: string
   cohortSummaryLabel?: string
+  wordGroupsLayout?: 'single-column'
   cohorts: LearningHubCohort[]
   activities: LearningHubActivity<Launch>[]
+  showUngroupedActivities?: boolean
+  activityGroupLabel?: string
+  activityGroups?: {
+    id: string
+    title: string
+    description: string
+    icon: string
+    activityIds: string[]
+  }[]
 }
 
 export type LearningHubLaunchContext = {

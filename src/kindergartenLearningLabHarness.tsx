@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { familyPreview, savePreviewResult } from './familyBeta/runtime.ts'
 import { familyAcquisitionStore, familyWritingStore } from './familyBeta/acquisitionRuntime.ts'
@@ -66,6 +66,8 @@ import {
 } from './audio/promptAudio.ts'
 import { kindergartenInstructionAudio, withKindergartenAudio } from './audio/kindergartenAudio.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
+
+const NativeMasteryWarmup = import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? lazy(() => import('./warmupDesign/NativeMasteryWarmup.tsx')) : null
 
 const fixtureUrl = new URL('../tests/fixtures/kindergarten-workbook.json', import.meta.url).href
 const publicPreviewEnabled = import.meta.env.VITE_PUBLIC_PREVIEW === 'true'
@@ -428,7 +430,7 @@ function KindergartenLearningLab() {
     if (typeof answer === 'object') {
       if (answer.kind !== 'deferred-writing-test-review') return
       const correct = answer.completion.assessments.filter((item) => item.correct).length
-      if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })) return
+      if (!recordScore({ label: 'Final Boss Test', kind: 'Final Boss', correct, total: answer.completion.total })) throw new Error('Final Boss score could not be saved. Retry your final review.')
       leavePractice(`Final Boss complete: ${correct}/${answer.completion.total}. The score is shown in the Ninja Record.`)
       return
     }
@@ -473,9 +475,9 @@ function KindergartenLearningLab() {
     setStatus('The Spirit Realm selected six adaptive mastery words. Missed words receive priority in a later visit.')
   }
 
-  function recordMasteryAnswer(word: Word, correct: boolean) {
-    setMasteryResults((current) => [...current, {
-      id: `kindergarten-mastery-result-${Date.now()}-${current.length + 1}`,
+  function recordMasteryAnswer(word: Word, correct: boolean, eventId?: string) {
+    setMasteryResults((current) => eventId && current.some(result => result.id === eventId) ? current : [...current, {
+      id: eventId || `kindergarten-mastery-result-${Date.now()}-${current.length + 1}`,
       childId: 'kindergarten-lab-child',
       wordId: word.id,
       completedAt: new Date().toISOString(),
@@ -486,7 +488,7 @@ function KindergartenLearningLab() {
   function launchFromHub(launch: KindergartenHubLaunch, context: LearningHubLaunchContext) {
     writingLaunch.current++
     attemptId.current = crypto.randomUUID()
-    if (launch.kind === 'dojo-writing') { startWriting(); return }
+    if (launch.kind === 'dojo-writing') return startWriting()
     if (launch.kind === 'dojo-stroke-order') {
       if (selectedCandidate && kindergartenCandidateIsUsableInLab(selectedCandidate)) {
         setActiveActivity(launch.kind)
@@ -672,6 +674,14 @@ function KindergartenLearningLab() {
     onComplete={({ correct, total }) => completeStandalone({ label: 'Sky Writing', kind: 'Ninja game', correct, total })}
     speak={speak}
   />
+  if (activeActivity === 'spirit-realm' && NativeMasteryWarmup && masteryDataset) return <Suspense fallback={<p>Opening Warmup…</p>}><NativeMasteryWarmup
+    words={masteryWords} pool={masteryDataset.words} scope={masteryDataset.id} onExit={returnToHub}
+    onAnswer={recordMasteryAnswer} playWord={playMasteryWord}
+    onComplete={(id, correct, total) => {
+      attemptId.current = id
+      return recordScore({ label: 'Mastery warmup', kind: 'Spirit Realm', correct, total })
+    }}
+  /></Suspense>
   if (activeActivity === 'spirit-realm') return <MasteryWarmup words={masteryWords} onExit={returnToHub} onAnswer={recordMasteryAnswer} onComplete={completeStandalone} playWord={playMasteryWord} />
 
   if (!selectedCandidate) return <main className="k-lab-shell"><div className="k-loading">{status}</div></main>
@@ -690,7 +700,7 @@ function KindergartenLearningLab() {
     </details>}
     {error && <p className="k-status error" role="alert">{status}</p>}
     <LearningHub model={hubModel} onLaunch={launchFromHub} hideUnavailable={familyPreview} />
-    <NinjaRecord scores={scores} persistent={familyPreview} />
+    {!(familyPreview && import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true') && <NinjaRecord scores={scores} persistent={familyPreview} />}
     {!error && <p className="k-status" role="status" aria-live="polite">{status}</p>}
   </main>
 }

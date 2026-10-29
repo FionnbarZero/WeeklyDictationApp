@@ -2,6 +2,7 @@ import type { StrokeOrderRound, StrokePoint } from './contracts.ts'
 import { grade5StrokeMedians } from './grade5StrokeAssets.ts'
 import { strokeMedians } from './strokeAssets.ts'
 import { octoberStrokeMedians } from './octoberStrokeAssets.ts'
+import { grade5October23StrokeMedians } from './grade5October23StrokeAssets.ts'
 
 type StrokeTarget = {
   readonly id: string
@@ -16,7 +17,7 @@ const cellSize = 100
 const characterScale = 0.09
 const characterInset = 5
 const hanziBaseline = 900
-const mediansByCharacter = { ...strokeMedians, ...grade5StrokeMedians, ...octoberStrokeMedians } as Record<string, CharacterMedians | undefined>
+const mediansByCharacter = { ...strokeMedians, ...grade5StrokeMedians, ...octoberStrokeMedians, ...grade5October23StrokeMedians } as Record<string, CharacterMedians | undefined>
 
 function mapMedian(points: readonly (readonly number[])[], characterIndex: number): readonly StrokePoint[] {
   return points.map(

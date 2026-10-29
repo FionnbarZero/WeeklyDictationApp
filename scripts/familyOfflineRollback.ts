@@ -24,8 +24,8 @@ export const rollbackGuard = `
   window.__dojoRollbackPreserve = newer;
   if (!newer) return;
   document.addEventListener('DOMContentLoaded', () => {
-    document.title = 'Ninja Dojo — progress preserved';
-    document.body.innerHTML = '<main><h1>Your saved work is preserved</h1><p>Ninja Dojo is temporarily using a recovery version. Lessons saved by the newer app cannot be opened by this older version.</p><p>Please keep this browser’s data. Do not clear it or restart your lessons.</p><p>When the updated app is available, close all Ninja Dojo tabs on this device and reopen your usual link. Reloading alone may keep this recovery version open.</p><button onclick="location.reload()">Check for an update</button></main>';
+    document.title = 'Mandarin Ninja Academy — progress preserved';
+    document.body.innerHTML = '<main><h1>Your saved work is preserved</h1><p>Mandarin Ninja Academy is temporarily using a recovery version. Lessons saved by the newer app cannot be opened by this older version.</p><p>Please keep this browser’s data. Do not clear it or restart your lessons.</p><p>When the updated app is available, close all Mandarin Ninja Academy tabs on this device and reopen your usual link. Reloading alone may keep this recovery version open.</p><button onclick="location.reload()">Check for an update</button></main>';
   }, { once: true });
 })();
 `

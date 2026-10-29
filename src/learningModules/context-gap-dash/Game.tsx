@@ -1,3 +1,4 @@
+import { playGappedContext } from '../../reportRepairs/contextAudio.ts'
 import { activityClock } from '../../activity/activityLifecycle.ts'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Flag, Volume2 } from 'lucide-react'
@@ -744,6 +745,10 @@ export function ContextGapDash({
   const retrySaveRef = useRef<(() => void) | null>(null)
   const [saveError, setSaveError] = useState('')
   const lastChoicePreviewRef = useRef({ label: '', time: 0 })
+  const speechRequest = useRef(0)
+  const automaticReplayTimer = useRef<number | undefined>(undefined)
+  const explicitReplayRound = useRef<string | undefined>(undefined)
+  const [audioError, setAudioError] = useState(false)
   const [completed, setCompleted] = useState(initialResults.length)
   const [correct, setCorrect] = useState(initialResults.filter(Boolean).length)
   const [streak, setStreak] = useState(0)
@@ -763,11 +768,17 @@ export function ContextGapDash({
   }, [playAudio])
 
   const playLearningText = useCallback((text: string, language: string, playbackRate = 1) => {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
     if (!text || !playAudioRef.current) return
+    const request = ++speechRequest.current
+    setAudioError(false)
     try {
-      void Promise.resolve(playAudioRef.current(text, language, playbackRate)).catch(() => undefined)
+      void Promise.resolve(playAudioRef.current(text, language, playbackRate)).catch(() => {
+        if (request === speechRequest.current) setAudioError(true)
+      })
     } catch {
       // Audio is enrichment; a playback failure should never stop the race.
+      if (request === speechRequest.current) setAudioError(true)
     }
   }, [])
 
@@ -779,15 +790,48 @@ export function ContextGapDash({
     playLearningText(choiceLabel, 'zh-CN')
   }, [playLearningText])
 
-  const replayContext = useCallback(() => {
-    playLearningText(contextAudioText, 'zh-CN', 0.75)
-  }, [contextAudioText, playLearningText])
+  const readContext = useCallback((rate: number) => {
+    if (import.meta.env?.VITE_OCT26_REPORTS_PREVIEW !== 'true') { playLearningText(contextAudioText, 'zh-CN', rate); return }
+    if (!currentRound || !playAudioRef.current || activityClock.paused) return
+    const request = ++speechRequest.current
+    setAudioError(false)
+    void playGappedContext(currentRound, playAudioRef.current,
+      ms => new Promise<void>(resolve => activityClock.setTimeout(resolve, ms)),
+      () => speechRequest.current === request, rate).catch(() => {
+        if (speechRequest.current === request) setAudioError(true)
+      })
+  }, [currentRound, contextAudioText, playLearningText])
+  useEffect(() => () => { speechRequest.current++ }, [currentRound?.id])
+
+  const replayContext = useCallback((rate = import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : 0.75) => {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') {
+      if (activityClock.paused) return
+      // An explicit replay owns this prompt's narration. It also wins if the
+      // first effect has not installed its timer yet, or a parent rerenders.
+      explicitReplayRound.current = currentRound?.id
+      if (automaticReplayTimer.current !== undefined) {
+        activityClock.clearTimeout(automaticReplayTimer.current)
+        automaticReplayTimer.current = undefined
+      }
+    }
+    readContext(rate)
+  }, [contextAudioText, currentRound?.id, readContext])
 
   useEffect(() => {
     if (!contextAudioText || !playAudio || finished) return
-    const timer = activityClock.setTimeout(() => playLearningText(contextAudioText, 'zh-CN', 0.75), 350)
-    return () => activityClock.clearTimeout(timer)
-  }, [contextAudioText, finished, playAudio, playLearningText])
+    const explicitlyRequested = () => import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true'
+      && explicitReplayRound.current === currentRound?.id
+    if (explicitlyRequested()) return
+    const timer = activityClock.setTimeout(() => {
+      if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
+      if (!explicitlyRequested()) readContext(import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : 0.75)
+    }, 350)
+    automaticReplayTimer.current = timer
+    return () => {
+      activityClock.clearTimeout(timer)
+      if (automaticReplayTimer.current === timer) automaticReplayTimer.current = undefined
+    }
+  }, [contextAudioText, currentRound?.id, finished, playAudio, readContext])
 
   const handleAttempt = useCallback(async (index: number, choiceId: string, wasCorrect: boolean) => {
     const round = playableRounds[index]
@@ -824,6 +868,9 @@ export function ContextGapDash({
     const game = new Phaser.Game({
       type: Phaser.AUTO, width: GAME_WIDTH, height: GAME_HEIGHT, parent: hostRef.current,
       backgroundColor: '#081923', transparent: false, render: { antialias: true, roundPixels: true },
+      // Narration and effects already own their audio. Phaser's unused context
+      // can resume after Exit closes it, especially after Report returns focus.
+      audio: { noAudio: import.meta.env?.VITE_KORE_VOICE_PREVIEW === 'true' },
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: [scene],
     })
     const pauseScene = (paused: boolean) => {
@@ -862,10 +909,12 @@ export function ContextGapDash({
       <div className="lg-dash-context-clue">
         <span><Volume2 size={18} aria-hidden="true" /> Chinese sentence</span>
         <strong>{currentRound?.cueText}</strong>
-        <button type="button" onClick={replayContext} disabled={finished || !contextAudioText || !playAudio}>
+        <button type="button" onClick={() => replayContext()} disabled={finished || !contextAudioText || !playAudio}>
           <Volume2 size={16} aria-hidden="true" /> Replay sentence
         </button>
+        {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={finished || !contextAudioText || !playAudio} onClick={() => replayContext(0.5)}>Hear slowly</button>}
       </div>
+      {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioError && <p role="alert">The sound could not play. Tap Replay sentence or Hear slowly to retry.</p>}
       <div className="lg-phaser-stage-wrap lg-dash-stage-wrap">
         <div ref={hostRef} className="lg-phaser-stage" />
       </div>

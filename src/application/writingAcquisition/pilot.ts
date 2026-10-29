@@ -6,6 +6,11 @@ import type {
 import { acquisitionDigest, acquisitionProgressionId } from '../../acquisition/persistence/identity.ts'
 import type { AppState, Dataset, PracticeSession, Word } from '../../domain.ts'
 import { writingRefinementStrategy } from '../../writingAcquisition/refinementStrategy.ts'
+import {
+  COPY_MEMORY_WRITING_POLICY,
+  writingCorrectionPreview,
+  writingCorrectionStrategy,
+} from '../../writingAcquisition/correctionStrategy.ts'
 import { createWritingLesson, FIVE_STEP_WRITING_POLICY, TRACE_INDEPENDENT_PREVIEW_POLICY } from './lesson.ts'
 
 export { withScrollsWrite } from '../../familyBeta/scrollsCompletion.ts'
@@ -28,6 +33,7 @@ const unavailable = 'This lesson needs the approved writing pilot. Your saved wo
 export function prepareContext(
   state: AppState,
   context: AcquisitionPersistenceContext<Word>,
+  correctionEnabled = writingCorrectionPreview,
 ): AcquisitionPersistenceContext<Word> {
   const identity = context.identity
   if (identity.grade !== 'Grade 2' || identity.tier !== 'tier-1') return context
@@ -43,7 +49,13 @@ export function prepareContext(
   const hasLegacy =
     identity.activityModule === 'mandarin-tier1-writing' &&
     state.acquisitionProgressions.some((e) => e.childId === identity.childId && e.datasetId === identity.datasetId)
-  return hasEnvelope || hasLegacy ? context : { ...context, strategy: writingRefinementStrategy, strategyUpgrades: [] }
+  return hasEnvelope || hasLegacy
+    ? context
+    : {
+        ...context,
+        strategy: correctionEnabled ? writingCorrectionStrategy : writingRefinementStrategy,
+        strategyUpgrades: [],
+      }
 }
 
 export function progressFor(state: AppState, progressionId?: string) {
@@ -88,9 +100,11 @@ export function prepare(input: {
   if (!envelope.lessonSnapshot) throw new Error('The original writing lesson is unavailable. Nothing was changed.')
   const lesson = createWritingLesson(
     { ...input.dataset, words: [...envelope.lessonSnapshot.targetSet.targets] },
-    envelope.lessonSnapshot.strategy.id === writingRefinementStrategy.id
-      ? TRACE_INDEPENDENT_PREVIEW_POLICY
-      : FIVE_STEP_WRITING_POLICY,
+    envelope.lessonSnapshot.strategy.id === writingCorrectionStrategy.id
+      ? COPY_MEMORY_WRITING_POLICY
+      : envelope.lessonSnapshot.strategy.id === writingRefinementStrategy.id
+        ? TRACE_INDEPENDENT_PREVIEW_POLICY
+        : FIVE_STEP_WRITING_POLICY,
   )
   const progress = createWritingProgress(
     lesson,

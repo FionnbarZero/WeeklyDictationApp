@@ -208,10 +208,37 @@ export function persistMasteryAssessment(
   targetId: string,
   correct: boolean,
   eventId: string,
+  pinnedTarget = false,
 ) {
   const current = readMasteryRecord(storage, prepared.record.childId, prepared.record.grade, prepared.record.channel)
   if (current.applied.includes(eventId)) return current
   const refreshed = prepareMastery(current, prepared.datasets, prepared.mastered, prepared.date)
+  // An unfinished native Warmup pins its original selection. A fresh random
+  // selection after reload must not exclude that already-selected eligible word.
+  if (pinnedTarget && !prepared.selection.entries.some((e) => e.occurrenceIds.includes(targetId))) {
+    const eligible = prepared.mastered.some((d) =>
+      channelWords(d, prepared.record.channel).some((w) => w.id === targetId),
+    )
+    const term = refreshed.terms.find((t) => t.occurrences.some((o) => o.wordId === targetId))
+    if (!eligible || !term) throw new Error('The saved target is no longer eligible for mastery review.')
+    const record = {
+      ...refreshed.record,
+      cycle: Math.max(current.cycle, prepared.record.cycle),
+      applied: [...current.applied, eventId],
+      states: refreshed.record.states.map((state) =>
+        state.masteryTermId === term.id
+          ? applyAdaptiveWarmupAssessment(
+              state,
+              { outcome: correct ? 'correct' : 'incorrect', reviewedAt: new Date().toISOString() },
+              Math.max(current.cycle, prepared.record.cycle),
+              prepared.profile,
+            )
+          : state,
+      ),
+    }
+    writeMasteryRecord(storage, record)
+    return record
+  }
   const record = assessMastery(
     { ...prepared, record: { ...refreshed.record, cycle: Math.max(current.cycle, prepared.record.cycle) } },
     targetId,

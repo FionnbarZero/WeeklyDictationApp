@@ -1,3 +1,4 @@
+@import "../regressionPreview/styles.css";
 .beta-workspace {
   max-width: 1280px;
   margin: auto;
@@ -233,4 +234,107 @@ dialog > .beta-report-launcher-group {
 }
 .beta-attempt-series li {
   overflow-wrap: anywhere;
+}
+
+/* A quiet, single-row shell for the isolated parent-toolbar prototype. */
+.beta-workspace--compact {
+  max-width: none;
+  padding: 0 8px 8px;
+}
+.beta-preview-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 44px;
+}
+.beta-preview-child-label {
+  max-width: calc(100% - 264px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    600 13px system-ui,
+    sans-serif;
+  color: #526268;
+}
+.beta-parent-tools > summary {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #c7d1d2;
+  border-radius: 8px;
+  background: #fff;
+  font:
+    600 13px system-ui,
+    sans-serif;
+  cursor: pointer;
+  list-style: none;
+}
+.beta-parent-tools > summary::-webkit-details-marker {
+  display: none;
+}
+.beta-parent-tools > summary:focus-visible {
+  outline: 3px solid #177ab3;
+  outline-offset: 2px;
+}
+.beta-parent-tools-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 50;
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 16px));
+  max-height: calc(100dvh - 60px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #c7d1d2;
+  border-radius: 12px;
+  background: #f7f7f3;
+  box-shadow: 0 6px 24px #172b3526;
+}
+.beta-preview-details {
+  margin: 0 0 12px;
+  font:
+    13px / 1.45 system-ui,
+    sans-serif;
+  color: #526268;
+}
+.beta-workspace--compact .beta-grade-frame {
+  height: calc(100dvh - 52px);
+  min-height: 0;
+}
+.beta-workspace--compact .beta-grade-frame[data-writing-stage="true"]:not([hidden]) {
+  height: calc(100dvh - 56px);
+}
+.beta-workspace--compact:has(> .beta-grade-frame[data-writing-stage="true"]:not([hidden])) > .beta-preview-strip {
+  display: none;
+}
+body:has(.beta-workspace--compact) #problem-reporter-controls {
+  position: absolute;
+  top: 0;
+  right: 140px;
+  z-index: 40;
+  padding: 4px 0;
+  background: transparent;
+}
+.beta-report-launcher-group--compact .beta-report-launcher {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #c7d1d2;
+  border-radius: 8px;
+  background: #fff;
+  color: #36535b;
+  box-shadow: none;
+  font-size: 13px;
+}
+#compact-parent-report-controls .beta-report-finish {
+  min-height: 44px;
+  margin-top: 8px;
+}
+.beta-frame-loading {
+  padding: 16px;
 }

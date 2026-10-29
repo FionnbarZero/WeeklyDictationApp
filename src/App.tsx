@@ -61,6 +61,7 @@ import { tier2ReadingProfileForScope } from './tier2/registry'
 import { playAudioPlan, playCachedWordAudio, stopActiveAudio } from './audio/lazyPromptAudio.ts'
 import { gradeAudioProfileFor } from './audio/gradeAudioProfile.ts'
 import { enablePreviewSpeechFromTap } from './writingAcquisition/previewSpeech.ts'
+import { regressionPreview } from './regressionPreview/policy.ts'
 import type { ProfileChild } from './profiles/ProfileModal.tsx'
 
 const Tier2ReadingPractice = lazy(() =>
@@ -74,6 +75,8 @@ const PracticeView = lazy(() =>
 )
 const Grade2StrokeOrderExperience = lazy(() => import('./learningGames/strokeOrder/Grade2StrokeOrderExperience.tsx'))
 const Grade2WritingPractice = lazy(() => import('./writingAcquisition/Grade2WritingPractice.tsx'))
+const CorrectedWritingNotice = import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true'
+  ? lazy(() => import('./familyBeta/CorrectedWritingNotice.tsx')) : null
 const HistoryView = lazy(() => import('./progress/HistoryView.tsx'))
 const LocalBackupTools = lazy(() =>
   import('./backup/LocalBackupTools.tsx').then((module) => ({ default: module.LocalBackupTools })),
@@ -529,7 +532,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         setGrade2SourceDatasets(source.datasets)
         setGrade2CurriculumTools(curriculum)
         setLessonRetirement(retirement)
-        setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets automatically from Google Slides.`)
+        setCurriculumSourceMessage(`Loaded ${datasetCount} weekly datasets.`)
       })
       .catch((error) => {
         if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
@@ -644,7 +647,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
   }
   const startPractice = useCallback(
     async (target: PracticeTarget | null, externalPrimary = false) => {
-      if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) return
+      if (!selectedChild || !lifecycleResolution || practiceStartInFlight || (familyPreview && !lessonRetirement)) {
+        if (import.meta.env.VITE_W1_CURRICULUM_PREVIEW === 'true' && selectedChild && lifecycleResolution &&
+          !practiceStartInFlight && familyPreview && !lessonRetirement)
+          setCloudError('Your lesson is still loading. Please try Learn to Write again in a moment. Your saved work has not changed.')
+        return
+      }
       setPracticeStartInFlight(true)
       setShowChildMenu(false)
       const id = createSessionId()
@@ -679,6 +687,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
           child: selectedChild,
           target,
           externalPrimary,
+          ...(import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? { guidedWarmup: true } : {}),
           primaryDatasets,
           lifecycleResolution,
           sessionId: id,
@@ -710,6 +719,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         const key = JSON.stringify([selectedChild.id, target!.dataset.id, requestedWritingLesson?.progressionId || 'current'])
         return writingLaunch.current.start(key, input, (before, next) =>
           pilot.withScrollsWrite(`writing:${selectedChild.id}`, () => sharedWorkspace.save(before, next, false)),
+          regressionPreview,
         )
       }).catch((error) => ({ status: 'blocked' as const, message: authErrorMessage(error), state: undefined })).finally(() => setPracticeStartInFlight(false))
       if (result.status !== 'started' && externalPrimary) {
@@ -767,7 +777,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const result = leavePracticeOperation({
       state,
-      session: current,
+      session: import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && current?.segment === 'warmup' && !auth.user ? null : current,
       occurredAt: now(),
       persistence: practiceTransitionPersistence,
       cloudSession: cloud,
@@ -1091,6 +1101,12 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     }
   }
   const answer = (correct: PracticeAnswer) => {
+    const guided = import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' && typeof correct === 'object' && correct.kind === 'guided-warmup-answer' ? correct : null
+    if (guided) {
+      if (!session || session.segment !== 'warmup' || session.id !== guided.sessionId || session.index !== guided.position || session.queue[session.index]?.id !== guided.wordId)
+        throw new Error('This Warmup answer is no longer current. Reopen the activity to continue.')
+      correct = guided.correct
+    }
     if (!acquisitionIsActive(session)) return
     if ((writingBusy.current || writingCommit.current?.pending) && typeof correct !== 'boolean') {
       setCloudError('Please retry the unsaved writing answer before finishing. Keep this page open.')
@@ -1116,7 +1132,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
       void finishAcquisitionForToday()
       return
     }
-    const current = session
+    const current = guided && session ? { ...session, stage: 'review' as const } : session
     const cloud = current?.cloudSessionId ? cloudSessionsRef.current.get(current.cloudSessionId) : undefined
     const cloudEnabled = Boolean(auth.user && cloudScope)
     const recordAnswer = () => recordPracticeAnswerOperation({
@@ -1170,6 +1186,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
     if (result.status === 'ignored' || result.status === 'writing-ready') return
     if (result.status === 'error') {
       setCloudError(result.message)
+      if (guided) throw new Error(result.message)
       return
     }
     if (result.state) setState(result.state)
@@ -1370,6 +1387,9 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         </div>
       </header>
       <main className="main-content">
+        {CorrectedWritingNotice && familyPreview && view === 'home' && !requestedWritingLesson && grade2SourceDatasets && selectedChild?.grade === 'Grade 2' && (
+          <Suspense fallback={null}><CorrectedWritingNotice state={state} incoming={grade2SourceDatasets} childId={selectedChild.id} dateKey={currentDateKey} /></Suspense>
+        )}
         {curriculumSourceMessage && (
           <p className="curriculum-source-status" role="status">
             {curriculumSourceMessage}
@@ -1442,7 +1462,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               completedSummary={completedSummary}
               currentDate={currentDate}
               lifecycleResolution={lifecycleResolution}
-              onStart={(target) => void startPractice(target)}
+              onStart={startPractice}
               onStartStrokeOrder={(target) => { if (!writingLaunchNeedsRetry()) setActiveExperience({ kind: 'stroke-order', target }) }}
               onStrokeOrderWarmup={(dataset, ready) => {
                 if (writingLaunchNeedsRetry()) return
@@ -1451,7 +1471,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
                 setStrokeWarmupOpen(true)
                 void startPractice({ dataset, phase: 'acquisition' }, true)
               }}
-              onStartWarmup={() => void startPractice(null)}
+              onStartWarmup={() => startPractice(null)}
               onStartReading={startReading}
               onHistory={() => setView('history')}
               onProfiles={() => setShowProfiles(true)}
@@ -1464,7 +1484,7 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
               datasets={primaryDatasets}
               warmupWords={warmupWordCount}
               localMode={!firebaseConfigReady}
-              onStartWarmup={() => void startPractice(null)}
+              onStartWarmup={() => startPractice(null)}
               onHistory={() => setView('history')}
               onProfiles={() => setShowProfiles(true)}
             />

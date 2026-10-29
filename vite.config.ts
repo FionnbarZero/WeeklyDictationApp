@@ -70,6 +70,7 @@ function releaseIdentityHtml(fileName: string, gitRevision: string, familySync =
 }
 
 export default defineConfig(({ command, mode }) => {
+  const academyRelease = mode === 'family-sync' && process.env.MANDARIN_ACADEMY_RELEASE === 'true'
   const strokeTeacherPreview = mode === 'stroke-teacher-preview'
   const writingIpadPreview = mode === 'writing-ipad-preview'
   const writingRefinementPreview = mode === 'writing-refinement-preview' || writingIpadPreview
@@ -91,7 +92,17 @@ export default defineConfig(({ command, mode }) => {
   })
 
   return {
-    define: mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {},
+    define: {
+      __MANDARIN_ACADEMY_RELEASE__: String(academyRelease),
+      __DEVICE_ACCEPTANCE_PREVIEW__: String(mode === 'family-sync' && process.env.DEVICE_ACCEPTANCE_PREVIEW === 'true'),
+      ...(mode === 'writing-pilot' ? { 'import.meta.env.VITE_GIT_REVISION': JSON.stringify(gitRevision) } : {}),
+      __GRADE5_READING_REVIEW_PREVIEW__: String(
+        (mode === 'writing-pilot' ||
+          academyRelease ||
+          (mode === 'family-sync' && process.env.DEVICE_ACCEPTANCE_PREVIEW === 'true')) &&
+          process.env.GRADE5_READING_REVIEW_PREVIEW === 'true',
+      ),
+    },
     publicDir: isolatedWritingPreview ? false : 'public',
     base: mode === 'public-preview' ? '/WeeklyDictationApp/' : mode === 'family-beta' ? './' : '/',
     plugins: [
@@ -99,6 +110,8 @@ export default defineConfig(({ command, mode }) => {
       {
         name: 'release-identity',
         transformIndexHtml(html, context) {
+          if (academyRelease && basename(context.filename) === 'family-beta-preview.html')
+            html = html.replace('Mandarin Ninja Academy · Test preview', 'Mandarin Ninja Academy · Family app')
           if (isolatedWritingPreview) {
             return html.replace('</head>', `<meta name="build-revision" content="${escapeHtml(gitRevision)}">\n</head>`)
           }
@@ -141,7 +154,22 @@ export default defineConfig(({ command, mode }) => {
           mode === 'family-sync'
             ? {
                 codeSplitting: {
-                  groups: [{ name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 }],
+                  groups: [
+                    {
+                      name: 'shared-family-support',
+                      test: /src[\\/](?:familyBeta[\\/][^\\/]+|ninjaSkills[\\/](?:progress|progressStore)|warmup[\\/]visits[\\/]nativeVisit)\.ts$/,
+                      minShareCount: 1,
+                    },
+                    { name: 'shared-icons', test: /node_modules[\\/]lucide-react[\\/]/, minShareCount: 2 },
+                    // Pure labels/model helpers otherwise form several tiny
+                    // files. Keep exact cache rules and all lazy activity entry
+                    // points; do not loosen the host's rule limit or CSP.
+                    {
+                      name: 'shared-activity-models',
+                      test: /src[\\/](?:releaseMetadata|accessibility[\\/]useDialogFocus|learningHub[\\/](?:activityNames|standaloneGameRetirement)|grade5PresentationPreview[\\/]sourceIdentity|tier2[\\/]pathway|learningModules[\\/][^\\/]+[\\/]runtime[\\/]model)\.ts$/,
+                      minShareCount: 2,
+                    },
+                  ],
                 },
               }
             : undefined,

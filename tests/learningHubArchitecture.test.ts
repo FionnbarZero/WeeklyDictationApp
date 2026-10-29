@@ -19,22 +19,27 @@ function sideEffectImportsFrom(fileSource: string) {
 }
 
 function typeScriptFiles(directory = hubDirectory): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name)
-    if (entry.isDirectory()) return typeScriptFiles(path)
-    if (!entry.isFile() || !/\.(?:ts|tsx|mts|cts)$/.test(entry.name)) return []
-    return [relative(hubDirectory, path).split(sep).join('/')]
-  }).sort()
+  return readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) return typeScriptFiles(path)
+      if (!entry.isFile() || !/\.(?:ts|tsx|mts|cts)$/.test(entry.name)) return []
+      return [relative(hubDirectory, path).split(sep).join('/')]
+    })
+    .sort()
 }
 
 test('the shared Learning Hub remains a grade-neutral presentation boundary', () => {
   const approvedImports: Record<string, string[]> = {
-    'LearningHub.tsx': ['react', './contracts.ts'],
+    'LearningHub.tsx': ['react', '../regressionPreview/policy.ts', './contracts.ts', './standaloneGameRetirement.ts'],
     'activityNames.ts': [],
     'contracts.ts': [],
+    'standaloneGameRetirement.ts': [],
   }
   assert.deepEqual(typeScriptFiles(), Object.keys(approvedImports).sort())
-  const combined = typeScriptFiles().map((file) => source(`../src/learningHub/${file}`)).join('\n')
+  const combined = typeScriptFiles()
+    .map((file) => source(`../src/learningHub/${file}`))
+    .join('\n')
 
   for (const [file, imports] of Object.entries(approvedImports)) {
     const fileSource = source(`../src/learningHub/${file}`)
@@ -43,9 +48,15 @@ test('the shared Learning Hub remains a grade-neutral presentation boundary', ()
   }
 
   assert.doesNotMatch(combined, /grade\s*[25]|kindergarten/i)
-  assert.doesNotMatch(combined, /curriculum|lifecycle|acquisition|warmup|firestore|firebase|localStorage|App\.tsx|domain(?:\.ts)?/i)
+  assert.doesNotMatch(
+    combined,
+    /curriculum|lifecycle|acquisition|warmup|firestore|firebase|localStorage|App\.tsx|domain(?:\.ts)?/i,
+  )
   assert.doesNotMatch(combined, /\brequire\s*\(|\bimport\s*\(|^\s*\/\/\/\s*<reference\b/m)
-  assert.match(source('../src/learningHub/LearningHub.tsx'), /onLaunch: \(launch: Launch, context: LearningHubLaunchContext\) => void/)
+  assert.match(
+    source('../src/learningHub/LearningHub.tsx'),
+    /onLaunch: \(launch: Launch, context: LearningHubLaunchContext\) => void/,
+  )
   assert.match(source('../src/learningHub/contracts.ts'), /LearningHubViewModel<Launch>/)
 })
 

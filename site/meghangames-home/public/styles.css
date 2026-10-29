@@ -522,8 +522,8 @@ h1 em::after {
   transform: translateY(-7px) rotate(-0.25deg);
 }
 
-.project-card:nth-child(2):hover,
-.project-card:nth-child(2):focus-visible {
+.project-card:nth-child(even):hover,
+.project-card:nth-child(even):focus-visible {
   transform: translateY(-7px) rotate(0.25deg);
 }
 
@@ -590,37 +590,6 @@ h1 em::after {
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.65;
-}
-
-.grade-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: auto;
-}
-
-.grade-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0.65rem 1rem;
-  border: 2px solid var(--green);
-  border-radius: 999px;
-  color: white;
-  background: var(--green);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.grade-links a:hover,
-.grade-links a:focus-visible {
-  background: var(--green-dark);
-}
-
-.project-copy > .grade-note {
-  margin: 1rem 0 0;
-  font-size: 0.8rem;
 }
 
 .text-link {

@@ -20,18 +20,20 @@ export type ProblemReport = {
 
 // Explicit diagnostic attributes only: never scrape page text, inputs, answers, or storage.
 export function captureScreenContext(doc: Document): ReportContext {
-  const context: ReportContext = { route: doc.location.pathname }
+  const context: ReportContext = { route: doc.location.pathname, origin: doc.location.origin }
   const workspace = doc.querySelector('[data-report-grade]')
-  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision']) {
+  for (const key of ['grade', 'screen', 'week', 'curriculum', 'game', 'mode', 'revision', 'section', 'module']) {
     const value = workspace?.getAttribute(`data-report-${key}`)
     if (value) context[key] = value.slice(0, 300)
   }
   let surface = doc
+  context.viewport = `${doc.defaultView?.innerWidth || 0} × ${doc.defaultView?.innerHeight || 0}`
   const frame = doc.querySelector<HTMLIFrameElement>('.beta-grade-frame:not([hidden])')
   try {
     if (frame?.contentDocument) {
       surface = frame.contentDocument
       context.route = new URL(frame.src).pathname
+      context.activityViewport = `${surface.defaultView?.innerWidth || 0} × ${surface.defaultView?.innerHeight || 0}`
       for (const key of ['week', 'curriculum', 'revision']) {
         const value = frame.getAttribute(`data-family-${key}`)
         if (value) context[key] = value.slice(0, 300)
@@ -40,18 +42,41 @@ export function captureScreenContext(doc: Document): ReportContext {
   } catch {
     context.activity = 'Activity details unavailable'
   }
+  const visible = (element: Element) => element.getClientRects().length && !element.closest('[hidden]')
   const modal = doc.querySelector<HTMLDialogElement>('dialog[open][data-report-activity]')
-  const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(
-    (element) => element.getClientRects().length && !element.closest('[hidden]'),
-  )
-  const marker = modal || markers[markers.length - 1]
-  for (const key of ['activity', 'phase', 'target', 'position', 'audio']) {
-    const value = marker?.getAttribute(`data-report-${key}`)
-    if (value) context[key] = value.slice(0, 300)
+  const outerErrors = [...doc.querySelectorAll('[role="alert"]')].filter(visible)
+  const outerError = outerErrors[outerErrors.length - 1]
+  const activityAlerts = [...surface.querySelectorAll('[role="alert"]')].filter(visible)
+  const alert = outerError || activityAlerts[activityAlerts.length - 1]
+  const markers = [...surface.querySelectorAll<HTMLElement>('[data-report-activity]')].filter(visible)
+  const marker = modal || alert || markers[markers.length - 1]
+  // The innermost game shell often supplies just a title. Inherit explicit
+  // diagnostics from its ancestors rather than losing the host module/phase.
+  const ancestors: Element[] = []
+  for (let element: Element | null = marker || null; element; element = element.parentElement)
+    ancestors.unshift(element)
+  if (marker?.ownerDocument !== surface) ancestors.unshift(surface.documentElement)
+  for (const element of ancestors) {
+    for (const key of ['activity', 'phase', 'target', 'position', 'audio', 'game', 'module', 'section']) {
+      const value = element.getAttribute(`data-report-${key}`)
+      if (value) context[key] = value.slice(0, 300)
+    }
+  }
+  if (marker === alert && alert) {
+    context.alert = 'visible'
+    context.activity ||= 'Activity needs attention'
+    context.phase ||= 'activity-alert'
+    if (context.phase === 'activity-launch') context.phase = 'launch-alert'
+  }
+  // Some menus stay mounted but hidden while a game runs. Once visible again,
+  // their explicit menu phase must not inherit the previous game's details.
+  if (context.phase === 'activity-menu') {
+    for (const key of ['module', 'game', 'target', 'position', 'audio']) delete context[key]
   }
   if (!marker && frame) {
     context.activity ||= 'Activity loading or unavailable'
   }
+  context.activityPaused = surface.documentElement.dataset.activityPaused || 'false'
   context.screen ||= doc.querySelector('[role="alert"]') ? 'Preview error' : 'Loading or parent sign-in'
   return context
 }

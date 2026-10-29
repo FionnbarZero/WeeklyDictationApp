@@ -12,6 +12,7 @@ import { assertScrollsAnswerOpen, withScrollsWrite } from '../familyBeta/scrolls
 import { PracticeView, type PracticeViewProps } from '../practice/PracticeView.tsx'
 import Grade2WritingPractice from './Grade2WritingPractice.tsx'
 import './nativeWritingIntegration.css'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 
 type NativeStore = {
   key: string
@@ -81,7 +82,7 @@ export default function NativeWritingPractice({ store, ...props }: PracticeViewP
     props.onExit()
   }
 
-  if (props.session.segment !== 'primary') return <PracticeView {...props} onExit={exit} />
+  if (props.session.segment !== 'primary' && !regressionPreview) return <PracticeView {...props} onExit={exit} />
   return (
     <div className="native-writing-integration">
       {error && (
@@ -109,8 +110,7 @@ export default function NativeWritingPractice({ store, ...props }: PracticeViewP
           // Warmup/test controls keep their native paths; only acquisition writes
           // share the same completion lock as the guided teacher.
           if (props.session.segment !== 'primary') {
-            props.onAnswer(answer)
-            return
+            return props.onAnswer(answer)
           }
           void transact(() => props.onAnswer(answer), answer === 'done').catch(() => undefined)
         }}

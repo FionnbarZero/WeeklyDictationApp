@@ -70,12 +70,10 @@ const hub = grade2LearningHubView({
 })
 
 test('Grade 2 uses the same four child-facing path names as Kindergarten and Grade 5', () => {
-  assert.deepEqual(hub.sections.map((section) => section.title), [
-    'Enter the Dojo',
-    'Practice your Ninja Skills',
-    'The Final Boss Test',
-    'Enter the Spirit Realm',
-  ])
+  assert.deepEqual(
+    hub.sections.map((section) => section.title),
+    ['Enter the Dojo', 'Practice your Ninja Skills', 'The Final Boss Test', 'Enter the Spirit Realm'],
+  )
 })
 
 test('the shared names preserve the Grade 2 lifecycle mapping', () => {
@@ -92,9 +90,11 @@ test('the shared names preserve the Grade 2 lifecycle mapping', () => {
   if (dojo.activities[1].action.kind === 'launch') assert.equal(dojo.activities[1].action.launch.kind, 'stroke-order')
   if (finalBoss.activities[0].action.kind === 'launch') {
     assert.equal(finalBoss.activities[0].action.launch.kind, 'writing')
-    if (finalBoss.activities[0].action.launch.kind === 'writing') assert.equal(finalBoss.activities[0].action.launch.target.phase, 'test-review')
+    if (finalBoss.activities[0].action.launch.kind === 'writing')
+      assert.equal(finalBoss.activities[0].action.launch.target.phase, 'test-review')
   }
-  if (spiritRealm.activities[0].action.kind === 'launch') assert.equal(spiritRealm.activities[0].action.launch.kind, 'warmup')
+  if (spiritRealm.activities[0].action.kind === 'launch')
+    assert.equal(spiritRealm.activities[0].action.launch.kind, 'warmup')
 })
 
 test('the Grade 2 production home uses the shared Learning Hub without replacing its practice engines', () => {
@@ -104,10 +104,10 @@ test('the Grade 2 production home uses the shared Learning Hub without replacing
   ].join('\n')
   const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
   assert.match(app, /grade2LearningHubView/)
-  assert.match(app, /<LearningHub model=\{model\} onLaunch=\{launch\} showTopbar=\{false\}/)
-  assert.match(app, /if \(request\.kind === 'writing'\) onStart\(request\.target\)/)
+  assert.match(app, /<LearningHub\s+model=\{model\}\s+onLaunch=\{launch\}\s+showTopbar=\{false\}/)
+  assert.match(app, /if \(request\.kind === 'writing'\) return onStart\(request\.target\)/)
   assert.match(app, /else if \(request\.kind === 'stroke-order'\) onStartStrokeOrder\(request\.target\)/)
   assert.match(app, /else if \(request\.kind === 'reading'\) onStartReading\(request\.pathway\)/)
-  assert.match(app, /else onStartWarmup\(\)/)
+  assert.match(app, /else return onStartWarmup\(\)/)
   assert.match(main, /learningHub\/learningHub\.css/)
 })

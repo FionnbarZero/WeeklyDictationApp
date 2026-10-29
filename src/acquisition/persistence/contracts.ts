@@ -27,7 +27,7 @@ export type AcquisitionProgressStatus = 'in-progress' | 'teaching-complete'
 /** Data only: the compatible engine remains shipped, reviewed application code. */
 export type AcquisitionLessonSnapshot<TTarget extends AcquisitionTarget = AcquisitionTarget> = {
   readonly schema: 1
-  readonly engineContract: 'acquisition-engine-v1'
+  readonly engineContract: 'acquisition-engine-v1' | 'acquisition-engine-v2'
   readonly applicationVersion: string
   readonly targetSet: AcquisitionTargetSet<TTarget>
   readonly strategy: AcquisitionStrategy<TTarget>

@@ -1,0 +1,234 @@
+.warmup-design button,
+.warmup-design select {
+  touch-action: manipulation;
+}
+.warmup-menu {
+  max-width: 760px;
+  margin: 36px auto;
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+.warmup-menu h1 {
+  color: #fff;
+}
+.warmup-menu p {
+  line-height: 1.6;
+}
+.warmup-menu select {
+  min-height: 48px;
+  margin-left: 12px;
+  padding: 8px;
+  font: inherit;
+}
+.warmup-menu a {
+  color: #b7d8ff;
+}
+.warmup-scope {
+  color: #b8bfd4;
+  font-size: 14px;
+}
+#slay-acquisition-root.warmup-design .slay-comparison-banner {
+  min-height: 48px;
+}
+#slay-acquisition-root.warmup-design .lg-shell {
+  min-height: 500px;
+  height: calc(100dvh - 56px);
+}
+.warmup-design .prompt-meta {
+  color: #f6f7ff;
+  font-size: 18px;
+}
+.warmup-design [role="timer"] {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 24px;
+}
+#slay-acquisition-root.warmup-design .tier1-writing-instructions > div:first-child {
+  display: flex;
+}
+#slay-acquisition-root.warmup-design .tier1-review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+.warmup-design .warmup-trace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  justify-content: stretch;
+  min-height: 0;
+  padding: 10px;
+  animation: none;
+}
+.warmup-trace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.warmup-trace-heading strong {
+  font-size: 22px;
+}
+.warmup-design .warmup-guide {
+  min-height: 0;
+  height: 100%;
+}
+.warmup-design .warmup-guide .lg-stroke-pad {
+  max-height: 100%;
+}
+/* WebKit resolves a percentage SVG height against the bordered square rather
+   than its content box. Keep the entire drawing surface square and unclipped. */
+#slay-acquisition-root.warmup-design .skywriting-scroll-cell svg,
+.warmup-design .lg-stroke-pad svg {
+  width: calc(100% - 2px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 1px;
+}
+.warmup-design .lg-stroke-status {
+  gap: 8px;
+}
+.warmup-design .warmup-complete {
+  align-self: center;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  padding: 32px;
+}
+.warmup-design .warmup-complete h2 {
+  font-size: 34px;
+}
+.warmup-audio {
+  position: fixed;
+  bottom: 4px;
+  left: 8px;
+  z-index: 3;
+  max-width: calc(100% - 16px);
+  font-size: 12px;
+  margin: 0;
+  padding: 3px 8px;
+  background: #11182b;
+  border-radius: 8px;
+  color: #d8dded;
+}
+.warmup-audio.is-error {
+  color: #ffdddd;
+}
+.warmup-error {
+  position: fixed;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  top: 108px;
+  padding: 12px;
+  background: #482731;
+  border: 2px solid #f09393;
+  border-radius: 10px;
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  /* Reserve feedback space so a correction message cannot move the drawing
+     surface between pen strokes. */
+  .warmup-design .warmup-guide {
+    container-type: size;
+    grid-template-rows: minmax(0, 1fr) 136px;
+  }
+  .warmup-design .warmup-guide > .lg-stroke-pad {
+    /* Keep a square inside the space above the fixed feedback/tools row.
+       A max-height alone clips the bottom of a width-sized SVG. */
+    width: min(100%, calc(100cqh - 148px));
+    height: auto;
+    max-height: none;
+  }
+  .warmup-design .warmup-guide .lg-stroke-actions {
+    display: grid;
+    height: 136px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: 60px 64px;
+    align-items: stretch;
+  }
+  .warmup-design .warmup-guide .lg-stroke-status {
+    grid-column: 1 / -1;
+    margin: 0;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .warmup-design .warmup-guide .lg-stroke-tools {
+    display: flex;
+  }
+  .warmup-design .warmup-guide .lg-stroke-tools button {
+    flex: 1;
+    padding: 8px;
+  }
+}
+@media (orientation: portrait) and (min-width: 600px) {
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace:not(.is-review)
+    .skywriting-grand-scroll-grid[data-character-count="4"]
+    .skywriting-scroll-cell {
+    width: min(100%, calc((100cqh - 12px) / 2));
+  }
+  #slay-acquisition-root.warmup-design
+    .skywriting-workspace.is-review
+    .skywriting-grand-scroll-grid[data-character-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #slay-acquisition-root.warmup-design .skywriting-reveal-word[data-character-count="4"] {
+    width: 2em;
+    padding: 0;
+    justify-self: center;
+    font-size: min(35cqh, 40cqw);
+    line-height: 1.2;
+    text-align: center;
+    word-break: break-all;
+  }
+}
+@media (max-width: 599px) {
+  #slay-acquisition-root.warmup-design .lg-shell {
+    height: auto;
+    min-height: calc(100dvh - 56px);
+  }
+  .warmup-menu {
+    margin: 0 auto;
+  }
+  #slay-acquisition-root.warmup-design .practice-page {
+    min-height: 600px;
+  }
+  .warmup-design .warmup-trace {
+    min-height: 580px;
+  }
+}
+/* Native activities already have an outer report toolbar. */
+.app-shell:has(.native-warmup) > .topbar,
+.main-content:has(.native-warmup) > .curriculum-source-status {
+  display: none;
+}
+.app-shell:has(.native-warmup) > .main-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+#slay-acquisition-root.warmup-design.native-warmup {
+  min-height: 0;
+}
+#slay-acquisition-root.warmup-design.native-warmup .lg-shell {
+  height: calc(100dvh - 80px);
+  margin: 0 auto;
+}
+.warmup-continue {
+  position: relative;
+  margin: 4px 12px;
+}

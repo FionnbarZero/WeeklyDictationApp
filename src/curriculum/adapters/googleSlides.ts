@@ -71,10 +71,9 @@ function mandarinText(text: string) {
 }
 
 function cleanVocabularyValues(values: string, profile: SlidesParserProfile) {
-  return values.split(profile.termSeparators)
-    // A resource label in the live Tier 1 section is not a teacher vocabulary
-    // target. Remove only this exact label, never arbitrary unfamiliar text.
-    .filter((value) => !/^\s*stroke\s*order\s*[:：]?\s*$/i.test(value))
+  // Slides can split a heading into separate text runs/lines. Recognize the
+  // complete known phrase before splitting vocabulary; never drop STROKE alone.
+  return values.replace(/(^|[\r\n,，、;；])\s*stroke\s*order\s*[:：]?(?=$|[\r\n,，、;；])/gi, '$1').split(profile.termSeparators)
     .map((value) => value.replace(/[“”".。:：]/g, '').replace(/\s+/g, '').trim())
     .filter(Boolean)
 }

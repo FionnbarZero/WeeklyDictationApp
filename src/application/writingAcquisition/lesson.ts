@@ -4,6 +4,9 @@ import { strokeOrderGuide } from '../../familyBeta/strokeOrderSlay.ts'
 import { learningModuleCohortFromDatasets } from '../../ninjaSkills/content.ts'
 import { withDictationContent } from '../../ninjaSkills/dictationContent.ts'
 import { withSupplementalContent } from '../../ninjaSkills/supplemental.ts'
+import { COPY_MEMORY_WRITING_POLICY } from '../../writingAcquisition/correctionStrategy.ts'
+
+export { COPY_MEMORY_WRITING_POLICY }
 
 export const WRITING_TEACHER_POLICY = 'grade2-six-step-v4' as const
 // Keep the approved preview's exact pinned identity when integrating its sequence.
@@ -19,17 +22,23 @@ export type { WritingLesson } from './contracts.ts'
 export function writingPolicyGrade(policy: WritingLesson['policy']) {
   if (policy === KINDERGARTEN_WRITING_POLICY) return 'Kindergarten'
   if (policy === GRADE5_WRITING_POLICY) return 'Grade 5'
-  if ([WRITING_TEACHER_POLICY, FIVE_STEP_WRITING_POLICY, TRACE_INDEPENDENT_PREVIEW_POLICY].some((p) => p === policy))
+  if (
+    [
+      WRITING_TEACHER_POLICY,
+      FIVE_STEP_WRITING_POLICY,
+      TRACE_INDEPENDENT_PREVIEW_POLICY,
+      COPY_MEMORY_WRITING_POLICY,
+    ].some((p) => p === policy)
+  )
     return 'Grade 2'
   throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
 }
 
 /** Existing saved lessons retain their pinned sequence; new pilot lessons opt into five steps. */
 export function writingTeacherStepCount(lesson: Pick<WritingLesson, 'policy'>) {
-  if (lesson.policy === KINDERGARTEN_WRITING_POLICY || lesson.policy === GRADE5_WRITING_POLICY) return 5
-  if (lesson.policy === FIVE_STEP_WRITING_POLICY || lesson.policy === TRACE_INDEPENDENT_PREVIEW_POLICY) return 5
   if (lesson.policy === WRITING_TEACHER_POLICY) return 6
-  throw new Error('The writing teaching policy is unsupported. Your progress was preserved.')
+  writingPolicyGrade(lesson.policy)
+  return 5
 }
 
 export function writingCharacterGuides(text: string) {

@@ -43,3 +43,6 @@ body.practice-active .grade5-practice-stage:has(.has-skywriting-response) { over
   body.practice-active .lab-shell { width: calc(100% - 34px); padding-top: 26px; }
   body.practice-active .grade5-practice-stage { padding: 22px 17px 48px; }
 }
+
+/* Isolated device/sync prototype: the family frame already constrains width. */
+html.device-acceptance.family-beta-frame body.practice-active .grade5-practice-stage:not(:has(.has-skywriting-response)) { padding-inline: 22px; width: 100%; box-sizing: border-box; }

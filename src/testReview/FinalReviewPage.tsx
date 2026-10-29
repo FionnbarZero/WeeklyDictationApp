@@ -79,7 +79,7 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
       <p className="eyebrow">All responses are now complete</p>
       <h1>Review everything<br /><em>on one final page.</em></h1>
       <p>{mode === 'writing'
-        ? 'Compare every revealed word with the child’s paper, then mark each response.'
+        ? 'Compare every revealed word with the saved on-screen writing, then mark each response.'
         : 'Play the child’s recording and the model pronunciation for each word, then mark each response.'}</p>
     </header>
     <section className="deferred-review-list" aria-label="Final response review">
@@ -100,6 +100,7 @@ export function FinalReviewPage<TTarget extends TestReviewTarget>({
                   word={target.text}
                   phase="review"
                   traceTarget={false}
+                  presentation={import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 'grand-scroll' : 'standard'}
                   padState={writingByTargetId[target.id] || emptyWritingPadState}
                 />
               </>

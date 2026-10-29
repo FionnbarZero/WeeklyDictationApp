@@ -3,21 +3,32 @@ import { candidateContentFingerprint, canonicalDatasetId, targetOccurrenceIdFor 
 import type { VocabularyOccurrenceCandidate, VocabularyTier, WeeklyDatasetCandidate } from './model.ts'
 import type { Dataset, DatasetVocabulary, Word } from '../domain/contracts.ts'
 import { applyApprovedDictationContexts, type DictationContextCatalog } from './contextCatalog.ts'
+import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 
 function activityTypeFor(tier: VocabularyTier): NonNullable<Word['activityType']> {
   return tier === 'tier-1' ? 'dictation' : 'reading'
 }
 
 function projectTier(candidate: WeeklyDatasetCandidate, tier: VocabularyTier, values: VocabularyOccurrenceCandidate[]) {
+  // Keep this opt-in projection self-contained: importing preview identity
+  // helpers here hoists their shared chunk into the ordinary startup bundle.
+  const assessment = grade5PresentationPreview && candidate.grade === 'Grade 5'
+    && candidate.source.sourceType === 'owner-assessment'
+    && candidate.source.sourceDocumentId === '1Nw8bUxSQzyQt7QFj7d-zj_0ngh2Yzi3i'
+    && candidate.source.sourceUnitId === 'page-2'
+    && candidate.source.adapterId === 'grade5-approved-pdf-page2-v1'
+    && candidate.assignedWeek?.startDate === '2026-10-19' && candidate.assignedWeek.endDate === '2026-10-23'
   return values.map((value): Word => ({
     id: value.targetOccurrenceId!,
     text: value.text,
-    sentence: '',
+    sentence: assessment ? value.learningModule?.context?.sentence || '' : '',
     datasetId: candidate.datasetId!,
     grade: candidate.grade,
     language: 'mandarin',
     tier,
     activityType: activityTypeFor(tier),
+    ...(assessment && value.learningModule
+      ? { learningModule: structuredClone(value.learningModule) } : {}),
   }))
 }
 

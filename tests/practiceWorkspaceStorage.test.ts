@@ -195,7 +195,7 @@ test('an unreadable existing partition cannot be overwritten with an empty fallb
   assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
 })
 
-test('oversized embedded state fails closed without rewriting the prior workspace', () => {
+test('reviewed result history may pass 500 entries without losing facts or raising byte limits', () => {
   const { storage } = fixture()
   const app = practiceWorkspaceStorage(storage, 'child')
   const state = createInitialState()
@@ -215,8 +215,11 @@ test('oversized embedded state fails closed without rewriting the prior workspac
     scored: true,
     completeSourceDatasetReviewed: true,
   }))
+  app.setItem('weekly-dictation-state-v2', JSON.stringify(state))
+  assert.deepEqual(JSON.parse(app.getItem('weekly-dictation-state-v2')!), state)
   const before = storage.getItem(practiceWorkspaceKey('child'))
-  assert.throws(() => app.setItem('weekly-dictation-state-v2', JSON.stringify(state)), /preserved/)
+  state.results[0].datasetDateRange = 'x'.repeat(700_000)
+  assert.throws(() => app.setItem('weekly-dictation-state-v2', JSON.stringify(state)), /safe syncing limit/)
   assert.equal(storage.getItem(practiceWorkspaceKey('child')), before)
 })
 

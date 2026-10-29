@@ -329,14 +329,15 @@ export function answerAcquisition<TTarget extends AcquisitionTarget>(flow: Engin
     ? flow.consecutiveErrors
     : errorsAfter(flow, prompt.word.id, correct)
   const updated = { ...flow, consecutiveErrors }
+  const restartAfterErrors = !strategy.correctionPolicy?.repeatUntilCorrect
 
   if (prompt.kind === 'earned-dt') {
     if (correct) return flow.mode === 'dt-practice' ? coreAcquisitionPrompt({ ...updated, prompt: null }, strategy, random) : resumeInterruptedTarget(updated, strategy, random)
-    if (consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, 'earned-dt', strategy, random)
+    if (restartAfterErrors && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, 'earned-dt', strategy, random)
     return enterCorrection(updated, prompt.word, 'earned-dt', flow.resumePosition, strategy, random)
   }
 
-  if (!correct && !correctionIsFeedbackOnly && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', strategy, random)
+  if (!correct && !correctionIsFeedbackOnly && restartAfterErrors && consecutiveErrors[prompt.word.id] >= 3) return restartIntroduction(updated, prompt.word, flow.correctionRole === 'earned-dt' ? 'earned-dt' : 'current-target', strategy, random)
 
   if (flow.phase === 'introduction') {
     if (correct) return coreAcquisitionPrompt({ ...updated, phase: 'expanded-trials', step: 0, expandedTargetAttempts: 0, prompt: null }, strategy, random)

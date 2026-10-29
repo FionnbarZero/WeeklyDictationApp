@@ -204,7 +204,7 @@ export function StrokeTeacher({
       >
         <div className="lg-stroke-roundbar">
           <p className="lg-round-label">
-            Character {characterIndex + 1} / {[...word].length} · Step {step + 1} of {sequence.length}
+            Character {characterIndex + 1} / {[...word].length} · Step {step + 1} of {sequence.length}{import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true' ? ` · ${strokes.length} strokes` : ''}
           </p>
           <div className="lg-phase-steps" aria-label={`Current step: ${TEACHER_STEPS[stage]}`}>
             {['Trace', 'Write', 'Compare'].map((label, index) => (

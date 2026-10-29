@@ -1,3 +1,5 @@
+import { installGesturePlayback } from '../audio/gesturePlayback.ts'
+import { regressionPreview } from '../regressionPreview/policy.ts'
 import { ActivityClock } from './ActivityClock.ts'
 
 export const activityClock = new ActivityClock()
@@ -6,6 +8,8 @@ let reportId = 0
 /** Each kept-alive activity owns a document, clock and fixed child/week scope. */
 function installDocumentBoundary() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return
+  if (regressionPreview) document.documentElement.dataset.regressionPreview = 'true'
+  if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true') document.documentElement.dataset.wRoadmapPreview = 'true'
   let owner: Element | null = null
   try {
     if (window.parent !== window && window.parent.document.body.dataset.familyContext === 'family')
@@ -66,6 +70,7 @@ function installDocumentBoundary() {
 }
 
 installDocumentBoundary()
+installGesturePlayback()
 
 export function pauseForReport() {
   const reason = `report-${++reportId}`
@@ -86,6 +91,9 @@ export function hasFamilyActivityOwner() {
 }
 
 export function pauseToFamilyHub() {
+  // In the isolated prototype, native exits unmount the temporary activity and
+  // return to its originating menu. Acquisition already saves reviewed steps.
+  if (regressionPreview) return false
   try {
     if (!hasFamilyActivityOwner()) return false
     activityClock.setPaused('navigation', true)

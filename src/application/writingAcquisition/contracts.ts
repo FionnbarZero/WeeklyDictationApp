@@ -8,6 +8,7 @@ export type WritingLesson = {
     | 'grade2-six-step-v4'
     | 'grade2-five-step-preview-v6'
     | 'grade2-trace-independent-preview-v7'
+    | 'grade2-copy-memory-preview-v8'
     | 'kindergarten-five-step-preview-v1'
     | 'grade5-five-step-preview-v1'
   dataset: Dataset

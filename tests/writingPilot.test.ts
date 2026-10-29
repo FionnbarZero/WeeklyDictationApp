@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { writeFileSync } from 'node:fs'
 import test from 'node:test'
 import { createSharedWorkspace } from '../src/activity/sharedWorkspace.ts'
 import { acquisitionPersistenceContext } from '../src/application/acquisitionPersistence.ts'
 import { recordPracticeAnswer } from '../src/application/practice/recordPracticeAnswer.ts'
 import { startPractice } from '../src/application/practice/startPractice.ts'
-import { primaryStartState } from '../src/application/practice/warmupTransitions.ts'
+import { primaryStartState, skipWarmup } from '../src/application/practice/warmupTransitions.ts'
 import {
   createWritingLesson,
   FIVE_STEP_WRITING_POLICY,
@@ -24,6 +25,7 @@ import { chooseWritingPayload } from '../src/familyBeta/writingCheckpoint.ts'
 import { documentValue, plainValue } from '../src/firestoreClient.ts'
 import { writingPreviewLesson } from '../src/writingAcquisition/previewLesson.ts'
 import { writingRefinementStrategy } from '../src/writingAcquisition/refinementStrategy.ts'
+import { COPY_MEMORY_WRITING_POLICY } from '../src/writingAcquisition/correctionStrategy.ts'
 
 const dataset = writingPreviewLesson().dataset
 const date = new Date('2026-10-01T16:00:00.000Z')
@@ -71,6 +73,51 @@ function launchInput(state = fresh(), enabled = true): Parameters<typeof startPr
 async function launch(state = fresh(), enabled = true) {
   return startPractice(launchInput(state, enabled))
 }
+
+test('v8 actual launch and answer coordinator pin and resume the copy/memory policy without duplicate scoring', async () => {
+  const correctionPilot = {
+    ...pilot,
+    prepareContext: (state: AppState, context: Parameters<typeof pilot.prepareContext>[1]) =>
+      pilot.prepareContext(state, context, true),
+  }
+  const opened = await startPractice({ ...launchInput(), writingPilot: correctionPilot })
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  let state = opened.state
+  let session = primaryStartState(opened.session)
+  assert.equal(state.writingAcquisitionProgress![0].lesson.policy, COPY_MEMORY_WRITING_POLICY)
+  while (teachingPosition(state.writingAcquisitionProgress![0])) {
+    const position = teachingPosition(state.writingAcquisitionProgress![0])!
+    state = pilot.completeStep(state, session, position.step, date.toISOString())
+  }
+  // Trace, incorrect independent response, three failed copy/memory pairs, success.
+  for (const correct of [true, false, true, false, true, false, true, false, true, true]) {
+    const result = recordPracticeAnswer({
+      state,
+      session: { ...session, stage: 'review', acquisition: revealAcquisitionPrompt(session.acquisition!) },
+      correct,
+      occurredAt: date,
+      persistence,
+      writingPilot: correctionPilot,
+    })
+    assert.equal(result.status, 'writing-ready', result.status === 'error' ? result.message : '')
+    if (result.status !== 'writing-ready') return
+    state = result.state
+    session = result.session
+    pilot.assertWritingMatches(state, state.writingAcquisitionProgress![0])
+  }
+  const progress = state.writingAcquisitionProgress![0]
+  assert.equal(progress.acquisition.flow.phase, 'expanded-trials')
+  assert.equal(progress.acquisition.flow.step, 0)
+  assert.equal(progress.assessments.filter((a) => a.kind === 'target' && !a.correct).length, 4)
+  const saved = JSON.stringify(state)
+  const reopened = await startPractice({ ...launchInput(JSON.parse(saved)), writingPilot: correctionPilot })
+  if (reopened.status !== 'started') throw new Error('Reopen failed')
+  assert.equal(
+    JSON.stringify(reopened.state.writingAcquisitionProgress),
+    JSON.stringify(state.writingAcquisitionProgress),
+  )
+  assert.deepEqual(reopened.state.results, state.results)
+})
 function memory() {
   const records = new Map<string, string>()
   return {
@@ -89,6 +136,80 @@ function memory() {
   }
 }
 
+test('long writing preserves every result through the real atomic workspace beyond 500 assessments', async () => {
+  const correctionPilot = {
+    ...pilot,
+    prepareContext: (state: AppState, context: Parameters<typeof pilot.prepareContext>[1]) =>
+      pilot.prepareContext(state, context, true),
+  }
+  const opened = await startPractice({ ...launchInput(), writingPilot: correctionPilot })
+  if (opened.status !== 'started') throw new Error('Fixture failed')
+  let state = opened.state
+  let session = primaryStartState(opened.session)
+  while (teachingPosition(state.writingAcquisitionProgress![0])) {
+    state = pilot.completeStep(
+      state,
+      session,
+      teachingPosition(state.writingAcquisitionProgress![0])!.step,
+      date.toISOString(),
+    )
+  }
+  const disk = memory()
+  const storage = practiceWorkspaceStorage(disk, session.childId)
+  const key = 'weekly-dictation-state-v2'
+  storage.setItem(key, JSON.stringify(state))
+  while (state.writingAcquisitionProgress![0].assessments.length < 501) {
+    const result = recordPracticeAnswer({
+      state,
+      session: { ...session, stage: 'review', acquisition: revealAcquisitionPrompt(session.acquisition!) },
+      correct: false,
+      occurredAt: date,
+      persistence,
+      writingPilot: correctionPilot,
+    })
+    if (result.status !== 'writing-ready') throw new Error(result.status === 'error' ? result.message : result.status)
+    // Exercise real checkpoints throughout the run and every transition at the
+    // boundary; avoid making the full suite compress 1,000 nearly equal copies.
+    if (
+      result.state.writingAcquisitionProgress![0].assessments.length >= 498 ||
+      result.state.writingAcquisitionProgress![0].acquisition.revision % 200 === 0
+    )
+      storage.setItem(key, JSON.stringify(result.state))
+    state = result.state
+    session = result.session
+  }
+  assert.equal(state.results.length, 501)
+  assert.equal(state.writingAcquisitionProgress![0].assessments.length, 501)
+  const bytes = disk.getItem(practiceWorkspaceKey(session.childId))!
+  if (process.env.LONG_WRITING_EVIDENCE) writeFileSync(process.env.LONG_WRITING_EVIDENCE, bytes)
+  assert.equal(JSON.parse(bytes).codec, 'writing-lzw-utf8-v1')
+  assert.ok(new TextEncoder().encode(bytes).length <= 700_000)
+  const restored = JSON.parse(practiceWorkspaceStorage(disk, session.childId).getItem(key)!) as AppState
+  assert.deepEqual(restored, JSON.parse(JSON.stringify(state)))
+  const resumed = await startPractice({ ...launchInput(restored), writingPilot: correctionPilot })
+  if (resumed.status !== 'started') throw new Error('Resume failed')
+  assert.equal(
+    JSON.stringify(resumed.state.writingAcquisitionProgress),
+    JSON.stringify(state.writingAcquisitionProgress),
+  )
+  assert.deepEqual(resumed.state.results, state.results)
+  const receiverDisk = memory()
+  practiceWorkspaceStorage(receiverDisk, session.childId)
+  const sender = practiceWorkspaceSyncAdapter(disk, session.childId)!
+  const receiver = practiceWorkspaceSyncAdapter(receiverDisk, session.childId)!
+  for (const name of sender.keys()) receiver.stage(name, sender.read(name)!)
+  receiver.commit()
+  assert.equal(practiceWorkspaceStorage(receiverDisk, session.childId).getItem(key), JSON.stringify(restored))
+  const beforeCorruption = disk.getItem(practiceWorkspaceKey(session.childId))!
+  disk.setItem(
+    practiceWorkspaceKey(session.childId),
+    JSON.stringify({ schema: 2, childId: session.childId, codec: 'writing-lzw-utf8-v1', payload: '!' }),
+  )
+  assert.throws(() => practiceWorkspaceStorage(disk, session.childId))
+  assert.equal(JSON.parse(disk.getItem(practiceWorkspaceKey(session.childId))!).payload, '!')
+  disk.setItem(practiceWorkspaceKey(session.childId), beforeCorruption)
+})
+
 test('actual launch inserts teaching after optional Warmup, and disabled build cannot bypass a saved pilot', async () => {
   const opened = await launch()
   assert.equal(opened.status, 'started')
@@ -100,6 +221,85 @@ test('actual launch inserts teaching after optional Warmup, and disabled build c
   assert.equal(rejected.status, 'blocked')
   assert.deepEqual(opened.state.results, [])
 })
+
+for (const partialWarmup of [false, true]) {
+  test(`reviewed prototype resumes a confirmed writing step atomically with ${partialWarmup ? 'partial legacy' : 'empty'} Warmup`, async () => {
+    const mastered = {
+      ...dataset,
+      id: 'mastered-week',
+      startDate: '2026-09-01',
+      endDate: '2026-09-04',
+      words: ['天', '月', '日'].map((text, index) => ({
+        ...dataset.words[0],
+        id: `mastered-${index}`,
+        datasetId: 'mastered-week',
+        text,
+      })),
+    }
+    const input = {
+      ...launchInput({ ...fresh(), datasets: [mastered, dataset] }),
+      primaryDatasets: [mastered, dataset],
+      lifecycleResolution: {
+        ...resolveDatasetLifecycles([mastered, dataset], date),
+        mastered: [mastered],
+        lifecycleByDatasetId: { [mastered.id]: 'mastered' as const, [dataset.id]: 'acquisition' as const },
+      },
+    }
+    const first = await pilot.createConfirmedWritingLaunch().start('first', input, () => true, true)
+    if (first.status !== 'started') throw new Error('Fixture failed')
+    assert.equal(first.session.stage, 'warmup-intro', 'a genuinely new lesson keeps its optional Warmup')
+    const skipped = skipWarmup({ state: first.state, session: first.session, occurredAt: date, persistence })
+    if (skipped.status !== 'applied') throw new Error('Fixture skip failed')
+    let before = pilot.completeStep(skipped.state, skipped.session, 0, date.toISOString())
+    const legacy = await startPractice({ ...input, state: before, sessionId: 'legacy-reopen' })
+    if (legacy.status !== 'started') throw new Error('Fixture reopen failed')
+    assert.equal(legacy.session.stage, 'warmup-intro', 'ordinary unflagged behavior is unchanged')
+    before = legacy.state
+    if (partialWarmup) {
+      const answered = recordPracticeAnswer({
+        state: before,
+        session: { ...legacy.session, stage: 'review' },
+        correct: true,
+        occurredAt: date,
+        persistence,
+        writingPilot: pilot,
+      })
+      if (answered.status !== 'advanced') throw new Error('Fixture answer failed')
+      before = answered.state
+    }
+    const original = structuredClone(before)
+    const launcher = pilot.createConfirmedWritingLaunch()
+    const retryInput = {
+      ...input,
+      state: before,
+      sessionId: 'reviewed-reopen',
+      persistence: {
+        ...persistence,
+        saveLocalState: () => assert.fail('No intermediate write'),
+        journalWarmup: () => assert.fail('No intermediate journal'),
+        acknowledgeWarmup: () => assert.fail('No intermediate acknowledgement'),
+      },
+    }
+    const candidates: AppState[] = []
+    const save = (_before: AppState, next: AppState) => {
+      candidates.push(next)
+      return candidates.length > 1
+    }
+    assert.equal((await launcher.start('resume', retryInput, save, true)).status, 'blocked')
+    assert.deepEqual(before, original, 'failed confirmation cannot mutate existing progress')
+    const resumed = await launcher.start('resume', retryInput, save, true)
+    if (resumed.status !== 'started') throw new Error(resumed.message)
+    assert.equal(candidates[0], candidates[1], 'retry retains the exact candidate')
+    assert.equal(resumed.session.segment, 'primary')
+    assert.notEqual(resumed.session.stage, 'warmup-intro')
+    assert.deepEqual(resumed.state.writingAcquisitionProgress, before.writingAcquisitionProgress)
+    assert.deepEqual(resumed.state.warmupAttemptsV1, before.warmupAttemptsV1)
+    assert.deepEqual(resumed.state.results, before.results)
+    const visit = resumed.state.warmupVisitsV1!.find((v) => v.id === legacy.session.adaptiveWarmupVisitId)!
+    assert.equal(visit.status, partialWarmup ? 'partial' : 'skipped')
+    assert.equal(visit.attemptedCount, partialWarmup ? 1 : 0)
+  })
+}
 
 test('real application completes all characters and all targets with the normal scoring checkpoint exactly once', async () => {
   const opened = await launch()

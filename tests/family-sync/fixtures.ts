@@ -49,12 +49,25 @@ export type SyntheticFamilyDocuments = Map<
   { name: string; fields: Record<string, unknown>; updateTime?: string }
 >
 
-export async function installFamilyFixtures(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
+export async function installFamilyFixtures(
+  page: Page,
+  documents: SyntheticFamilyDocuments = new Map(),
+  testEmail = 'synthetic@example.invalid',
+) {
+  const fixtureOrigin = process.env.FAMILY_FIXTURE_ORIGIN || 'http://127.0.0.1:5193'
+  if (
+    fixtureOrigin !== 'http://127.0.0.1:5193' &&
+    fixtureOrigin !== 'https://ninjadojo.meghangames.com' &&
+    !/^https:\/\/weekly-dictation-staging--(?:device-sync-oct27-v1|academy-integrated-oct27-v1)-[a-z0-9]+\.web\.app$/.test(
+      fixtureOrigin,
+    )
+  )
+    throw new Error('Unsupported synthetic fixture origin.')
   // This is the production-configured artifact. All external requests are
   // intercepted: synthetic account/storage fixtures never reach production.
   await page.context().route('**/*', async (route) => {
     const url = new URL(route.request().url())
-    if (url.origin === 'http://127.0.0.1:5193') return route.continue()
+    if (url.origin === fixtureOrigin) return route.continue()
     const curriculum = url.pathname.match(/\/curriculum\/beta\/(kindergarten|grade2|grade5)\.json$/)
     if (curriculum)
       return route.fulfill({
@@ -162,14 +175,16 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
     if (documents.has(name)) return respond(documents.get(name))
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
   })
-  await page.addInitScript(() => {
+  await page.addInitScript((email) => {
     if (!sessionStorage.getItem('synthetic-auth-initialized'))
       localStorage.setItem(
         'weekly-dictation-auth-v1',
         JSON.stringify({
-          idToken: 'synthetic-intercepted-token',
+          idToken: email.startsWith('ninja-')
+            ? `synthetic.${btoa(JSON.stringify({ sub: 'synthetic-parent', email, aud: 'weeklydictationapp', iss: 'https://securetoken.google.com/weeklydictationapp' }))}.intercepted-only`
+            : 'synthetic-intercepted-token',
           expiresAt: Date.now() + 3600_000,
-          user: { uid: 'synthetic-parent', email: 'synthetic@example.invalid' },
+          user: { uid: 'synthetic-parent', email },
         }),
       )
     sessionStorage.setItem('synthetic-auth-initialized', 'true')
@@ -197,5 +212,5 @@ export async function installFamilyFixtures(page: Page, documents: SyntheticFami
         },
       },
     })
-  })
+  }, testEmail)
 }

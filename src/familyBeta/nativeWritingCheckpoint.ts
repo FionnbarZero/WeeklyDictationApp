@@ -136,8 +136,8 @@ export function nativeWritingPayload(raw: string, childId: string): WritingProgr
     ) ||
     !Array.isArray(saved.assessments) ||
     !Array.isArray(saved.reviewedTrials) ||
-    saved.assessments.length > 500 ||
-    saved.reviewedTrials.length > 500 ||
+    saved.assessments.length > saved.reviewedTrials.length ||
+    saved.reviewedTrials.length > saved.envelope.revision ||
     !saved.assessments.every(validAssessment) ||
     saved.reviewedTrials.some(
       (trial: { sessionId: string; reviewedAt: string; assessment: WritingProgress['assessments'][number] }) =>

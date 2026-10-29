@@ -1,5 +1,5 @@
 import { pauseToFamilyHub } from '../activity/activityLifecycle.ts'
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import type { Dataset } from '../domain/contracts.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { learningModuleCapabilities } from '../ninjaSkills/content.ts'
@@ -15,6 +15,11 @@ import { ReadingResponsePanel } from '../readingPractice/ReadingResponsePanel.ts
 import { playAudioPlan, promptAudioCompleted, stopActiveAudio } from '../audio/promptAudio.ts'
 import { kindergartenAudioForText } from '../audio/kindergartenAudio.ts'
 import './previewActivities.css'
+
+const NativeMasteryWarmup =
+  import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true'
+    ? lazy(() => import('../warmupDesign/NativeMasteryWarmup.tsx'))
+    : null
 
 const ModuleHost = lazy(() =>
   import('../ninjaSkills/LearningModuleHost.tsx').then((m) => ({ default: m.LearningModuleHost })),
@@ -113,6 +118,7 @@ export function SpiritRealmPractice({
     }
   }
   const words = prepared.current?.words || []
+  const nativePool = useMemo(() => mastered.flatMap((d) => channelWords(d, 'writing')), [mastered])
   const selected = new Set(words.map((w) => w.id))
   const scoped = mastered.map((d) => ({
     ...d,
@@ -144,7 +150,12 @@ export function SpiritRealmPractice({
         {!game && (
           <>
             <div className="lg-topbar">
-              <button className="lg-exit" onClick={() => { if (!pauseToFamilyHub()) onExit() }}>
+              <button
+                className="lg-exit"
+                onClick={() => {
+                  if (!pauseToFamilyHub()) onExit()
+                }}
+              >
                 Back to Spirit Realm
               </button>
             </div>
@@ -164,7 +175,9 @@ export function SpiritRealmPractice({
                   const entry = learningModuleCatalogEntry(
                     capability.status === 'ready' ? capability.pack.moduleId : capability.moduleId,
                   )
-                  const needsWarmupAdapter = ['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(entry.id)
+                  const needsWarmupAdapter = ['context-gap-dash', 'sentence-scramble', 'target-blast'].includes(
+                    entry.id,
+                  )
                   return (
                     <article className="lg-card" key={entry.id}>
                       <h2>{entry.title}</h2>
@@ -174,7 +187,13 @@ export function SpiritRealmPractice({
                         </button>
                       ) : (
                         <>
-                          <p>{needsWarmupAdapter ? 'Coming soon: this game’s full warmup repetitions and correction flow are still being connected.' : capability.status === 'unavailable' ? capability.reason : ''}</p>
+                          <p>
+                            {needsWarmupAdapter
+                              ? 'Coming soon: this game’s full warmup repetitions and correction flow are still being connected.'
+                              : capability.status === 'unavailable'
+                                ? capability.reason
+                                : ''}
+                          </p>
                           <button className="lg-primary" disabled>
                             Coming soon
                           </button>
@@ -189,7 +208,56 @@ export function SpiritRealmPractice({
             )}
           </>
         )}
-        {game === 'writing' && (
+        {game === 'writing' && NativeMasteryWarmup && words.length > 0 && (
+          <Suspense fallback={<p>Opening Warmup…</p>}>
+            <NativeMasteryWarmup
+              grade={child.grade}
+              words={words}
+              pool={nativePool}
+              scope={`spirit:${[...mastered.map((d) => d.id)].sort().join('|')}`}
+              onExit={onExit}
+              playWord={(word) =>
+                playAudioPlan([
+                  {
+                    text: word.text,
+                    language: 'zh-CN',
+                    rate: 0.65,
+                    storagePath: kindergartenAudioForText(word.text)?.storagePath,
+                  },
+                ])
+              }
+              onAnswer={async (word, correct, id) => {
+                if (!navigator.locks || !prepared.current)
+                  throw new Error('Mastery saving is unavailable. Reopen the activity.')
+                await navigator.locks.request(masteryStorageKey(child.id, child.grade, channel), () => {
+                  if (previewProfile()?.id !== child.id)
+                    throw new Error('The active child changed. Reopen the activity.')
+                  prepared.current!.record = persistMasteryAssessment(
+                    localStorage,
+                    prepared.current!,
+                    word.id,
+                    correct,
+                    id,
+                    true,
+                  )
+                })
+              }}
+              onComplete={(id, correct, attempted) => {
+                const saved = savePreviewResult({
+                  id,
+                  activity: 'Spirit Realm · writing · warmup',
+                  channel: 'writing',
+                  datasetIds: [...new Set(nativePool.map((w) => w.datasetId))],
+                  schoolYear: datasets[0].schoolYear,
+                  correct,
+                  attempted,
+                })
+                return Boolean(saved)
+              }}
+            />
+          </Suspense>
+        )}
+        {game === 'writing' && !NativeMasteryWarmup && (
           <SkyWriting
             words={words.map((w) => w.text)}
             maxRounds={words.length}

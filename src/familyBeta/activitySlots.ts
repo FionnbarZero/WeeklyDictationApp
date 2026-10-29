@@ -1,4 +1,5 @@
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
+import type { GameCheckpoint } from '../ninjaSkills/progress.ts'
 import type { CurriculumSnapshot } from './curriculum.ts'
 import type { BetaProfile } from './model.ts'
 
@@ -16,7 +17,7 @@ export type FamilyActivitySlot = {
   teachingVersion: string
   kind: 'activities' | 'game'
   src: string
-  game?: { attemptId: string; pack: LearningModulePack }
+  game?: { attemptId: string; pack: LearningModulePack; recoveryCheckpoint?: GameCheckpoint | null }
 }
 
 export function activityWorkspace(profile: BetaProfile, week: string) {

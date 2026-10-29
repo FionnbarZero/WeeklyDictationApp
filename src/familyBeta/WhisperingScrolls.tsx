@@ -29,6 +29,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
   const [reviewPending, setReviewPending] = useState(false)
   const [closedElsewhere, setClosedElsewhere] = useState(false)
   const saving = useRef(false)
+  const activeVisit = useRef(true)
   const [savingScore, setSavingScore] = useState(false)
   // A queued completion is already an immutable score intent. Reopening may
   // retry its confirmation, but must not append answers to the same attempt.
@@ -43,9 +44,23 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
   const audio = gradeAudioProfileFor(current.envelope.grade)
   const audioTarget = (target: Tier2ReadingTarget) =>
     current.envelope.grade === 'Kindergarten' ? withKindergartenAudio(target) : target
-  useEffect(() => () => stopActiveAudio(), [])
+  useEffect(() => {
+    activeVisit.current = true
+    return () => {
+      activeVisit.current = false
+      stopActiveAudio()
+    }
+  }, [])
+
+  function exit() {
+    // Invalidate synchronously, before React unmounts or a queued lock resolves.
+    activeVisit.current = false
+    stopActiveAudio()
+    onExit()
+  }
 
   function assertWritable() {
+    if (!activeVisit.current) throw new Error('This visit has ended. Reviewed saved work is preserved.')
     if (activityClock.paused) throw new Error('Close the report or return to this activity before saving.')
     const profile = previewProfile()
     if (profile?.id !== store.current.envelope.childId || profile.grade !== store.current.envelope.grade)
@@ -60,15 +75,16 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
         assertScrollsAnswerOpen(localStorage, store.current.sessionId)
         return store.answer(correct, 'recording-comparison')
       })
+      if (!activeVisit.current) return
       setCurrent(saved)
       setError('')
     } catch (failure) {
-      if (failure instanceof ScrollsAttemptClosedError) setClosedElsewhere(true)
+      if (activeVisit.current && failure instanceof ScrollsAttemptClosedError) setClosedElsewhere(true)
       throw failure
     }
   }
   async function finish() {
-    if (activityClock.paused || reviewPending || saving.current) return
+    if (!activeVisit.current || activityClock.paused || reviewPending || saving.current) return
     saving.current = true
     setSavingScore(true)
     if (scored.length) setFinishing(true)
@@ -90,13 +106,13 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
           if (!result) throw new Error('The Whispering Scrolls score could not be confirmed.')
         }
       })
-      stopActiveAudio()
-      onExit()
+      if (activeVisit.current) exit()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'The score could not be saved. Please retry.')
+      if (activeVisit.current)
+        setError(failure instanceof Error ? failure.message : 'The score could not be saved. Please retry.')
     } finally {
       saving.current = false
-      setSavingScore(false)
+      if (activeVisit.current) setSavingScore(false)
     }
   }
 
@@ -113,7 +129,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
           className="back-button"
           type="button"
           onClick={() => {
-            if (!pauseToFamilyHub()) onExit()
+            if (!pauseToFamilyHub()) exit()
           }}
         >
           Pause and return
@@ -132,14 +148,7 @@ export function WhisperingScrolls({ datasets, onExit }: { datasets: Dataset[]; o
             Your earlier score and teaching progress are safe. Return to the Dojo and reopen Scrolls to repeat only this
             unfinished response in a new visit. The temporary recording will be released when you leave.
           </p>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              stopActiveAudio()
-              onExit()
-            }}
-          >
+          <button type="button" className="primary-button" onClick={exit}>
             Return to Dojo
           </button>
         </section>

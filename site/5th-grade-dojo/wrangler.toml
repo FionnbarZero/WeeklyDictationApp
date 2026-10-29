@@ -1,0 +1,14 @@
+name = "meghangames-5thgradedojo"
+account_id = "4c11957e0121dba35fe2f16be80526f8"
+compatibility_date = "2026-10-04"
+workers_dev = false
+preview_urls = false
+
+[[routes]]
+pattern = "5thgradedojo.meghangames.com"
+custom_domain = true
+
+[assets]
+directory = "../../grade5-standalone-dist"
+html_handling = "none"
+not_found_handling = "none"

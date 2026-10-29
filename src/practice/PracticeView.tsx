@@ -1,5 +1,5 @@
 import { activityClock } from '../activity/activityLifecycle.ts'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Clock3, Headphones, RotateCcw, Sparkles, Volume2, X } from 'lucide-react'
 import {
   activePracticeWord,
@@ -22,6 +22,8 @@ import {
   type PromptAudioAttempt,
 } from '../audio/promptAudio.ts'
 
+const NativeWarmupTrial = import.meta.env.VITE_INTEGRATED_WARMUP_PREVIEW === 'true' ? lazy(() => import('../warmupDesign/NativeWarmupTrial.tsx')) : null
+
 export type PracticeViewProps = {
   session: PracticeSession
   datasets: Dataset[]
@@ -31,15 +33,17 @@ export type PracticeViewProps = {
   onInterstitialComplete: () => void
   onDictationComplete: (method?: 'timer' | 'skip_timer') => void
   onStartReview: () => void
-  onAnswer: (answer: PracticeAnswer) => void
+  onAnswer: (answer: PracticeAnswer) => void | Promise<void>
   onSpeakWord: (word: Word, warmup: boolean) => PromptAudioAttempt
   onSpeakReviewInstruction: () => PromptAudioAttempt
   reviewInstruction: string
   warmupRequired?: boolean
+  retryTestSaveFailures?: boolean
 }
 
 export type PracticeAnswer =
   | boolean
+  | { readonly kind: 'guided-warmup-answer'; readonly sessionId: string; readonly position: number; readonly wordId: string; readonly correct: boolean }
   | 'skip-warmup'
   | 'continue-primary'
   | 'skip-test-review'
@@ -214,6 +218,17 @@ function SequentialPracticeView({
 
 export function PracticeView(props: PracticeViewProps) {
   const { session } = props
+  if (NativeWarmupTrial && session.segment === 'warmup' && session.stage !== 'warmup-intro' && session.queue[session.index]) {
+    const word = session.queue[session.index]
+    const visit = session.adaptiveWarmupVisitId || session.id
+    return <Suspense fallback={<p role="status">Opening Warmup…</p>}><NativeWarmupTrial
+      key={`${visit}:${session.index}:${word.id}`} word={word} grade={session.grade} visitId={visit}
+      position={session.index} total={session.queue.length} onExit={props.onExit}
+      onSpeakWord={(target) => props.onSpeakWord(target, true)}
+      onContinue={!props.warmupRequired && !session.warmupOnly && session.warmupAnswers.length > 0 ? () => props.onAnswer('continue-primary') : undefined}
+      onComplete={(correct) => props.onAnswer({ kind: 'guided-warmup-answer', sessionId: session.id, position: session.index, wordId: word.id, correct })}
+    /></Suspense>
+  }
   if (session.segment === 'primary' && session.primaryPhase === 'test-review') {
     return <DeferredTestReview
       key={session.id}
@@ -221,6 +236,7 @@ export function PracticeView(props: PracticeViewProps) {
       targets={session.primaryQueue}
       activityLabel="Writing Test Review"
       writingTimerSeconds={TARGET_WRITING_RESPONSE_SECONDS}
+      retrySaveFailures={props.retryTestSaveFailures ?? (import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true')}
       onPlayReference={async (word) => { await promptAudioStarted(props.onSpeakWord(word, false)) }}
       onPlayWritingPrompt={(word) => props.onSpeakWord(word, false)}
       onDiscard={() => props.onAnswer('skip-test-review')}

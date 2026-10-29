@@ -84,7 +84,7 @@ test('Kindergarten current-week reading does not depend on writing audio or stro
 })
 
 test('only the exact stroke-order resource label is excluded; word order and unknown text are preserved', () => {
-  for (const label of ['stroke order', 'Stroke Order:', 'strokeorder'])
+  for (const label of ['stroke order', 'Stroke Order:', 'strokeorder', 'STROKE\nORDER:', 'Stroke\r\nOrder'])
     assert.deepEqual(
       extractTier1(`Mandarin\nTier 1:\n${label}\n走，最，哪里，家,住\nTier 2: 雨林`, grade2DeckProfile),
       expected.grade2.words,
@@ -95,6 +95,7 @@ test('only the exact stroke-order resource label is excluded; word order and unk
     '走',
   ])
   assert.throws(() => writingCharacterGuides('unknownlabel'), /Chinese characters/)
+  assert.deepEqual(extractTier1('Mandarin\nTier 1: STROKE,走', grade2DeckProfile), ['STROKE', '走'])
 })
 
 test('the new guide supplement never changes previously supported guide fingerprints', () => {
@@ -102,7 +103,7 @@ test('the new guide supplement never changes previously supported guide fingerpr
   for (const character of Object.keys(octoberStrokeMedians)) assert.equal(character in prior, false)
   assert.deepEqual(
     Object.values(octoberStrokeMedians).map((strokes) => strokes.length),
-    [3, 7, 7, 12, 9, 10, 7, 7],
+    [3, 7, 7, 12, 9, 10, 7, 7, 6],
   )
 })
 

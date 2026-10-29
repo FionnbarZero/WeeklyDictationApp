@@ -24,8 +24,16 @@ import { tier2ReadingPathwayTargets } from '../tier2/pathway.ts'
 // Keep each import in its own lazy callback so the built preview preloads the
 // correct CSS dependency set as well as JavaScript for the selected branch.
 const LearningHub = familyPreview
-  ? lazy(() => import('../familyBeta/PreviewLearningHub.tsx').then(module => ({ default: module.PreviewLearningHub<Grade2LearningHubLaunch> })))
-  : lazy(() => import('../learningHub/LearningHub.tsx').then(module => ({ default: module.LearningHub<Grade2LearningHubLaunch> })))
+  ? lazy(() =>
+      import('../familyBeta/PreviewLearningHub.tsx').then((module) => ({
+        default: module.PreviewLearningHub<Grade2LearningHubLaunch>,
+      })),
+    )
+  : lazy(() =>
+      import('../learningHub/LearningHub.tsx').then((module) => ({
+        default: module.LearningHub<Grade2LearningHubLaunch>,
+      })),
+    )
 
 function lifecycleLabel(lifecycle: DatasetLifecycle) {
   return lifecycle === 'acquisition'
@@ -80,10 +88,10 @@ export function HomeView({
   completedSummary: string | null
   currentDate: Date
   lifecycleResolution: ReturnType<typeof resolveDatasetLifecycles>
-  onStart: (target: PracticeTarget) => void
+  onStart: (target: PracticeTarget) => void | Promise<void>
   onStartStrokeOrder: (target: PracticeTarget) => void
   onStrokeOrderWarmup?: StrokeWarmupLauncher
-  onStartWarmup: () => void
+  onStartWarmup: () => void | Promise<void>
   onStartReading: (pathway: Tier2ReadingPathway) => void
   onHistory: () => void
   onProfiles: () => void
@@ -108,10 +116,10 @@ export function HomeView({
       warmupWordCount: warmupWords,
     })
     const launch = (request: Grade2LearningHubLaunch) => {
-      if (request.kind === 'writing') onStart(request.target)
+      if (request.kind === 'writing') return onStart(request.target)
       else if (request.kind === 'stroke-order') onStartStrokeOrder(request.target)
       else if (request.kind === 'reading') onStartReading(request.pathway)
-      else onStartWarmup()
+      else return onStartWarmup()
     }
     return (
       <div className="page grade2-learning-hub">
@@ -123,17 +131,27 @@ export function HomeView({
             </div>
           }
         >
-          <LearningHub model={model} onLaunch={launch} showTopbar={false} hideUnavailable={familyPreview} onStrokeOrderWarmup={onStrokeOrderWarmup} />
+          <LearningHub
+            model={model}
+            onLaunch={launch}
+            showTopbar={false}
+            hideUnavailable={familyPreview}
+            onStrokeOrderWarmup={onStrokeOrderWarmup}
+          />
         </Suspense>
-        <DatasetRecord
-          datasets={orderedDatasets}
-          scores={scores}
-          child={child}
-          lifecycleResolution={lifecycleResolution}
-          onHistory={onHistory}
-          grade2
-        />
-        <TodayStrip count={today} grade2 />
+        {!(familyPreview && import.meta.env.VITE_OCT26_REPORTS_PREVIEW === 'true') && (
+          <>
+            <DatasetRecord
+              datasets={orderedDatasets}
+              scores={scores}
+              child={child}
+              lifecycleResolution={lifecycleResolution}
+              onHistory={onHistory}
+              grade2
+            />
+            <TodayStrip count={today} grade2 />
+          </>
+        )}
       </div>
     )
   }
@@ -290,7 +308,7 @@ function PracticeLaneCard({
 }: {
   target: PracticeTarget
   profile: WritingPracticeProfile
-  onStart: (target: PracticeTarget) => void
+  onStart: (target: PracticeTarget) => void | Promise<void>
   resumeAcquisitionTarget?: PracticeTarget | null
 }) {
   const groupedDatasets = target.reviewDatasets || [target.dataset]
@@ -425,7 +443,7 @@ export function NoDatasetView({
   datasets: Dataset[]
   warmupWords: number
   localMode: boolean
-  onStartWarmup: () => void
+  onStartWarmup: () => void | Promise<void>
   onHistory: () => void
   onProfiles: () => void
 }) {

@@ -1,0 +1,75 @@
+export const SOURCE = {
+  url: 'https://drive.google.com/file/d/1Nw8bUxSQzyQt7QFj7d-zj_0ngh2Yzi3i/view',
+  page: 2,
+  heading: '10/23 Chinese Dictation to Review',
+  testDate: '2026-10-23',
+} as const
+
+// One teacher-authored assessment list. Reading/writing are response modes,
+// not two different vocabulary cohorts. Preserve the supplied sentences verbatim.
+export const TARGETS = [
+  {
+    key: 'or',
+    text: '或者',
+    pinyin: 'huò zhě',
+    meaning: 'or',
+    sentence: '你可以画画，或者看书。',
+    tokens: ['你', '可以', '画画，', '或者', '看书。'],
+  },
+  {
+    key: 'understand',
+    text: '了解',
+    pinyin: 'liǎo jiě',
+    meaning: 'understand / learn about',
+    sentence: '我想了解大象是怎么生活的。',
+    tokens: ['我', '想', '了解', '大象', '是', '怎么', '生活', '的。'],
+  },
+  {
+    key: 'finish',
+    text: '完',
+    pinyin: 'wán',
+    meaning: 'finish',
+    sentence: '我已经看完这本书了。',
+    tokens: ['我', '已经', '看', '完', '这', '本', '书', '了。'],
+  },
+  {
+    key: 'excited',
+    text: '兴奋的',
+    pinyin: 'xīng fèn de',
+    meaning: 'excited',
+    sentence: '听到这个好消息，他是很兴奋的。',
+    tokens: ['听到', '这个', '好消息，', '他', '是', '很', '兴奋的。'],
+  },
+  {
+    key: 'tell',
+    text: '告诉',
+    pinyin: 'gào su',
+    meaning: 'tell',
+    sentence: '老师告诉我们一个有趣的故事。',
+    tokens: ['老师', '告诉', '我们', '一个', '有趣的', '故事。'],
+  },
+  {
+    key: 'communicate',
+    text: '沟通',
+    pinyin: 'gōu tōng',
+    meaning: 'communicate',
+    sentence: '大象会用声音互相沟通。',
+    tokens: ['大象', '会', '用', '声音', '互相', '沟通。'],
+  },
+  {
+    key: 'quickly',
+    text: '快速地',
+    pinyin: 'kuài sù de',
+    meaning: 'quickly',
+    sentence: '大象快速地跑向前方。',
+    tokens: ['大象', '快速地', '跑', '向', '前方。'],
+  },
+  {
+    key: 'interesting',
+    text: '有意思',
+    pinyin: 'yǒu yì si',
+    meaning: 'interesting',
+    sentence: '大象的沟通方式很有意思。',
+    tokens: ['大象', '的', '沟通', '方式', '很', '有意思。'],
+  },
+] as const

@@ -1,0 +1,185 @@
+/* Bounded report-repair preview; active only when its parent class is present. */
+.report-score-record {
+  margin: 20px auto;
+  padding: 18px;
+  border: 1px solid #bcb9ce;
+  border-radius: 14px;
+  background: #fff;
+  color: #222436;
+}
+.report-score-record h2 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+.report-score-record p {
+  font-size: 14px;
+}
+.report-score-record li {
+  padding: 6px 0;
+}
+body:has(.report-final-writing) {
+  background: #090d20;
+}
+main:has(> .report-final-writing),
+.main-content:has(.report-final-writing) {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+}
+#slay-acquisition-root.report-final-writing {
+  width: 100%;
+  max-width: none;
+  padding: 8px;
+  background: #090d20;
+  color: #f6f7ff;
+}
+#slay-acquisition-root.report-final-writing .practice-top {
+  display: flex;
+  margin: 0;
+  min-height: 44px;
+}
+#slay-acquisition-root.report-final-writing .back-button {
+  color: #fff;
+  background: #333954;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+#slay-acquisition-root.report-final-writing .prompt-card {
+  padding: 8px;
+  border: 1px solid #58313d;
+  background: linear-gradient(155deg, #21141d, #0c1020 78%);
+  border-radius: 18px;
+  max-width: none;
+}
+.report-final-writing .prompt-meta {
+  margin: 0;
+  padding: 0;
+}
+.report-final-writing .report-writing-collector {
+  display: flex;
+  flex-direction: column;
+  height: max(450px, calc(100dvh - 140px));
+  min-height: 0;
+}
+.report-writing-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: white;
+}
+.report-writing-controls .writing-hear-button {
+  position: static;
+}
+.report-writing-controls .report-skip-timer {
+  min-height: 50px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 2px solid #ed6970;
+  color: white;
+  background: #bc3541;
+  font-weight: 800;
+}
+.report-writing-collector > .skywriting-workspace {
+  flex: 1;
+  min-height: 0;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-pad-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+  position: static;
+  width: 100%;
+  height: 52px;
+  grid-row: 2;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-pad-toolbar {
+  position: static;
+  grid-row: 2;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-grand-scroll-grid {
+  padding-bottom: 8px;
+}
+.report-final-writing .deferred-review-header {
+  color: white;
+  padding: 14px;
+}
+.report-final-writing .deferred-review-header h1 {
+  font-size: 28px;
+}
+.report-final-writing .deferred-review-row {
+  color: #222436;
+}
+.report-final-writing .deferred-writing-review-row .skywriting-workspace {
+  height: 260px;
+}
+.report-final-writing .practice-footnote {
+  display: none;
+}
+html.report-repairs .skywriting-scroll-cell .skywriting-stroke {
+  stroke-width: 7;
+}
+html.report-repairs .lg-lantern-card .lg-card-face b {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+html.report-repairs .learning-hub-group-grid > article:has(button:is([data-reentry])) {
+  min-height: 0;
+}
+@media (max-width: 599px) {
+  .report-writing-collector {
+    min-height: 540px;
+  }
+}
+
+html.report-repairs .app-shell:has(.report-final-writing) > .topbar,
+html.report-repairs .main-content:has(.report-final-writing) > .curriculum-source-status {
+  display: none;
+}
+html.report-repairs main:has(.report-final-writing) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+#slay-acquisition-root.report-final-writing .report-writing-collector {
+  height: max(380px, calc(100dvh - 120px));
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-pad-shell {
+  grid-template-columns: minmax(0, 1fr) 70px;
+}
+#slay-acquisition-root.report-final-writing .skywriting-grand-scroll-grid {
+  grid-column: 1 / -1;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-keyboard-alternative {
+  grid-column: 1;
+}
+#slay-acquisition-root.report-final-writing .skywriting-workspace:not(.is-review) .skywriting-pad-toolbar {
+  grid-column: 2;
+}
+html.report-repairs .learning-hub-activity:has(button[data-reentry]) {
+  padding: 14px;
+}
+
+#slay-acquisition-root.report-final-writing .skywriting-scroll-cell {
+  width: min(100%, 100cqh);
+}
+
+html.report-repairs .app-shell:has(.report-reentry) > .topbar,
+html.report-repairs .main-content:has(.report-reentry) > .curriculum-source-status {
+  display: none;
+}
+html.report-repairs main:has(.report-reentry) {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+}

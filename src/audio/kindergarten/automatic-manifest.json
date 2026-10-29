@@ -1,0 +1,22 @@
+{
+  "马": {
+    "storagePath": "audio/kindergarten/automatic/u9a6c.wav",
+    "sourceUnitIds": ["Week 11 10/26"],
+    "generatedAt": "2026-10-25T23:27:24.619643+00:00"
+  },
+  "绿色": {
+    "storagePath": "audio/kindergarten/automatic/u7eff-u8272.wav",
+    "sourceUnitIds": ["Week 11 10/26"],
+    "generatedAt": "2026-10-25T23:27:24.619643+00:00"
+  },
+  "黄色": {
+    "storagePath": "audio/kindergarten/automatic/u9ec4-u8272.wav",
+    "sourceUnitIds": ["Week 11 10/26"],
+    "generatedAt": "2026-10-25T23:27:24.619643+00:00"
+  },
+  "吃": {
+    "storagePath": "audio/kindergarten/automatic/u5403.wav",
+    "sourceUnitIds": ["Week 11 10/26"],
+    "generatedAt": "2026-10-25T23:27:24.619643+00:00"
+  }
+}

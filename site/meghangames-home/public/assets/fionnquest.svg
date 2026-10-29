@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 606" role="img" aria-labelledby="title desc">
+  <title id="title">FionnQuest</title>
+  <desc id="desc">A cheerful weekly homework quest map with a winding path connecting books, writing, music, and a treasure star.</desc>
+  <defs>
+    <linearGradient id="sky" x2="1" y2="1">
+      <stop stop-color="#264c58"/><stop offset="1" stop-color="#183c34"/>
+    </linearGradient>
+    <linearGradient id="map" x2="0" y2="1">
+      <stop stop-color="#fff5cf"/><stop offset="1" stop-color="#edd7a0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#102b26" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h1000v606H0z"/>
+  <circle cx="150" cy="118" r="110" fill="#8ed8c1" opacity=".08"/>
+  <circle cx="866" cy="420" r="150" fill="#f6cb69" opacity=".08"/>
+  <g fill="#f5cf6c">
+    <path d="m134 108 7 18 19 7-19 7-7 19-7-19-19-7 19-7z"/>
+    <path d="m864 102 5 13 14 5-14 5-5 14-5-14-13-5 13-5z"/>
+    <circle cx="218" cy="76" r="4"/><circle cx="904" cy="256" r="4"/><circle cx="91" cy="408" r="3"/>
+  </g>
+  <g filter="url(#shadow)" transform="rotate(-2 500 306)">
+    <path d="M177 95c100 17 181 6 269-17 93-25 186-18 300 15 43 13 70 49 68 93l-10 265c-2 49-44 85-92 79-102-13-190-9-275 15-91 25-179 20-277-10-42-13-68-51-64-95l21-264c4-52 54-91 100-81z" fill="url(#map)" stroke="#c59855" stroke-width="8"/>
+    <path d="M211 146c87 16 164 4 239-16 84-22 166-18 268 11" fill="none" stroke="#d9b779" stroke-width="4" stroke-dasharray="12 13"/>
+    <path d="M190 470c86 23 168 25 250 2 92-26 184-30 283-14" fill="none" stroke="#d9b779" stroke-width="4" stroke-dasharray="12 13"/>
+  </g>
+  <path d="M249 399c23-78 95-68 105-132 8-48-40-83-8-118 34-37 92 6 139 14 57 10 80-42 132-19 45 20 15 75 58 105 37 26 94 14 106 69 12 53-41 75-85 91" fill="none" stroke="#4b9277" stroke-width="13" stroke-linecap="round" stroke-dasharray="5 27"/>
+  <g stroke="#254438" stroke-width="5">
+    <circle cx="249" cy="399" r="31" fill="#f27b68"/>
+    <circle cx="356" cy="267" r="31" fill="#6ea2d9"/>
+    <circle cx="485" cy="163" r="31" fill="#f1c55d"/>
+    <circle cx="675" cy="249" r="31" fill="#ce8bc7"/>
+    <circle cx="696" cy="409" r="36" fill="#f1c55d"/>
+  </g>
+  <g fill="#fffdf4" font-family="Arial, sans-serif" font-size="27" font-weight="700" text-anchor="middle">
+    <text x="249" y="408">M</text><text x="356" y="276">T</text><text x="485" y="172">W</text><text x="675" y="258">T</text><text x="696" y="418">F</text>
+  </g>
+  <g transform="translate(154 203)">
+    <path d="M0 12h72v82H0z" fill="#fffdf4" stroke="#315c51" stroke-width="5"/>
+    <path d="M36 13v80M8 27c11-4 20-2 28 4 9-6 19-8 28-4" fill="none" stroke="#315c51" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(708 130) rotate(12)">
+    <path d="M17 0h27v95H17z" fill="#efc65d" stroke="#315c51" stroke-width="5"/>
+    <path d="m17 95 13.5 25L44 95" fill="#f4ddb5" stroke="#315c51" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M17 17h27" stroke="#f27b68" stroke-width="12"/>
+  </g>
+  <g transform="translate(282 430)" fill="none" stroke="#315c51" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 45V11l30-7v33"/><circle cx="3" cy="47" r="10" fill="#8ed8c1"/><circle cx="33" cy="39" r="10" fill="#8ed8c1"/>
+  </g>
+  <path d="m696 362 14 29 32 5-23 22 5 32-28-15-29 15 6-32-24-22 32-5z" fill="#fff3a7" stroke="#315c51" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M792 390c22-11 38-7 50 10l-14 55c-12 13-29 15-50 7z" fill="#d57960" stroke="#315c51" stroke-width="5"/>
+  <path d="M792 397h50M810 389v68" fill="none" stroke="#f6d76e" stroke-width="7"/>
+  <text x="500" y="565" text-anchor="middle" fill="#fff8de" font-family="Georgia, serif" font-size="40" font-weight="700">FIONNQUEST</text>
+</svg>

@@ -10,6 +10,7 @@ export default defineConfig({
     'writingRefinement.spec.ts',
     'writingIpad.spec.ts',
     'crossGradeWriting.spec.ts',
+    'grade5October23Prototype.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

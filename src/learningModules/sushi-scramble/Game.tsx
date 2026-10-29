@@ -75,6 +75,7 @@ export function SentenceScramble({
   const [awaitingSave, setAwaitingSave] = useState(false)
   const [carryingId, setCarryingId] = useState<string | null>(null)
   const [promptPlaying, setPromptPlaying] = useState(false)
+  const [audioError, setAudioError] = useState(false)
   const playAudioRef = useRef(playAudio)
   const narrationRequestRef = useRef(0)
   const pickupTimerRef = useRef<number | undefined>(undefined)
@@ -94,16 +95,20 @@ export function SentenceScramble({
     playAudioRef.current = playAudio
   }, [playAudio])
 
-  const readSentence = useCallback(() => {
+  const readSentence = useCallback((rate?: number) => {
+    if (import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && activityClock.paused) return
     if (!sentenceAudioText || !playAudioRef.current) return
     const requestId = ++narrationRequestRef.current
     setPromptPlaying(true)
+    setAudioError(false)
     try {
-      void Promise.resolve(playAudioRef.current(sentenceAudioText, 'zh-CN')).catch(() => undefined).finally(() => {
+      void Promise.resolve(playAudioRef.current(sentenceAudioText, 'zh-CN', rate)).catch(() => {
+        if (narrationRequestRef.current === requestId) setAudioError(true)
+      }).finally(() => {
         if (narrationRequestRef.current === requestId) setPromptPlaying(false)
       })
     } catch {
-      if (narrationRequestRef.current === requestId) setPromptPlaying(false)
+      if (narrationRequestRef.current === requestId) { setPromptPlaying(false); setAudioError(true) }
     }
   }, [sentenceAudioText])
 
@@ -206,11 +211,13 @@ export function SentenceScramble({
           <strong>{round.cueText || 'Build the Mandarin sentence you hear'}</strong>
           <small>{promptPlaying ? 'The chef is reading the full sentence…' : 'Now place the sushi words in the same order.'}</small>
         </div>
-        <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={readSentence}>
+        <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={() => readSentence(import.meta.env?.VITE_OCT26_REPORTS_PREVIEW === 'true' ? 0.5 : undefined)}>
           <Volume2 size={17} aria-hidden="true" /> Hear sentence again
         </button>
+        {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && <button type="button" disabled={promptPlaying || !playAudio || !sentenceAudioText} onClick={() => readSentence(0.5)}>Hear slowly</button>}
       </div>
 
+      {import.meta.env?.VITE_W2_RECOVERY_PREVIEW === 'true' && audioError && <p role="alert">The sentence could not play. Tap Hear sentence again or Hear slowly to retry.</p>}
       <div className={`lg-sushi-counter${checked ? correct ? ' is-complete' : ' is-jammed' : ''}`}>
         <div className="lg-sushi-awning" aria-hidden="true" />
         <div className="lg-sushi-lantern is-left" aria-hidden="true"><i /></div>
