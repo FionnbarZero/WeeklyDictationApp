@@ -91,6 +91,10 @@
   "overrides": {
     "@firebase/firestore": {
       "@grpc/grpc-js": "1.13.6"
+    },
+    "re2js": "2.8.7",
+    "firebase-tools": {
+      "glob": "14.0.2"
     }
   }
 }
