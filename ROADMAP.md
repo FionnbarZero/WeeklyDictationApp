@@ -1,5 +1,17 @@
 # Weekly Dictation roadmap
 
+## Owner priority — ordinary activity entry resumes automatically, November 4
+
+The owner deferred the November 4 curriculum findings and selected navigation cleanup at **ninjadojo.meghangames.com** next: eliminate the extra Activities / Ninja Skills / Progress navigation and the separate Saved lessons route. The child should open the normal activity and continue at the saved position. Preserve source-pinned unfinished lessons across weekly updates, completed scores, child isolation and existing save confirmation; do not erase checkpoints to simplify the interface.
+
+Inspect and reuse the existing lesson-launch index and grade engines' continuation behavior. Verify ordinary-button entry after exit/reload, changed weekly source, two children, finished versus unfinished lessons, unavailable/corrupt saved source, and parent-settings return on desktop/iPad. Reuse confirmed saves; do not promise durable unfinished ink or recordings. Initial UI model selection is confirmed as Sol · Medium; the owner also confirmed Astra · Extra High for the expanded behavior stage. Local implementation is in progress; publication remains pending verification and release gates. The earlier curriculum repair recommendation is deferred, not completed.
+
+## Audit follow-up — November 4 weekly curriculum
+
+The owner's all-week check found two current-week defects in published `185605b`: Grade 2's November 2 vocabulary is replaced by tier-legend English, and Kindergarten's November 2 project-only week is rejected, leaving October 26 labeled current. All earlier enumerated lists match after the existing reviewed Wetland recovery. [Full source comparison and evidence](./docs/weekly-target-audit-2026-11-04.md).
+
+Recommended next curriculum work: extract Grade 2 vocabulary independently of the explanatory legend and observed heading punctuation; recognize Kindergarten's dated project-only week without inventing targets or an assessment policy. Verify all retained weeks, new-target resource availability and current-week behavior before a new smoke-test handoff. Preserve teacher documents, family histories and unrelated releases. This audit implements no repair and grants no new publication approval. Existing **GPT-6 Astra · Extra High** curriculum routing and release gates apply; routine documentation uses **GPT-6 Luna · Medium**. No model switch or independent-agent review is claimed.
+
 ## Published — Mandarin Ninja Academy on MeghanGames, November 4
 
 The owner approved the displayed integrated app again and requested publication on **[meghangames.com](https://meghangames.com/)**. The accepted app was already live as `185605b`; the homepage still displayed the old Ninja Dojo name. The existing merged homepage source is now published with **Mandarin Ninja Academy** on the card, its accessible label and the SVG title. These three text substitutions are the complete change; all ten card destinations, other content and the eight other assets remain byte-identical. No application redeployment or real-family operation was needed.

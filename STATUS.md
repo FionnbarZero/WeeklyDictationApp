@@ -1,5 +1,17 @@
 # Weekly Dictation status
 
+## Owner direction — simplify navigation and automatic continuation, November 4
+
+The owner accepts the weekly curriculum discrepancies **for now** and moved the next task to the family app at **ninjadojo.meghangames.com**. Remove the extra Activities / Ninja Skills / Progress bar and the separate Saved lessons option. Opening the ordinary activity should restore that child's saved lesson position automatically; preserve the existing checkpoint, account isolation, source pinning and temporary-recording policies. The main challenges and access to parent settings/scores must remain available.
+
+The owner confirmed GPT-6.1 Sol · Medium for the initial bounded UI change. The owner also confirmed Astra · Extra High for the expanded automatic-continuation stage. Implementation and local verification are in progress; no deployment or owner smoke-test handoff has been made for this request. The canonical release already hides the three-tab bar in its normal integrated path; verify the older/alternate entry path rather than assuming a superficial removal changes the owner's displayed version. The separate saved-lesson recovery menu remains in current source.
+
+## Curriculum audit — current-week mismatches, November 4
+
+**Not fully aligned with the latest Weekly Focus.** Checked all 12 Kindergarten tabs and all 10 Grade 2 slides against fresh live curriculum and published app `185605b`. Grade 2's November 2 lesson incorrectly imports the explanatory English tier legend instead of its 6 writing, 8 reading and 7 listening/speaking targets. Kindergarten's November 2 Unit 2 project-only week is excluded as malformed, leaving October 26 labeled current. Both behaviors were reproduced with published assets and synthetic intercepted family storage; no real-family access was used.
+
+All eight earlier Kindergarten vocabulary lists and all eight earlier Grade 2 vocabulary lists match, including the deployed reviewed Wetland recovery. Project/testing weeks and the shared service's retained truncation limitation are qualified in the [complete audit](./docs/weekly-target-audit-2026-11-04.md). **No correction or deployment was made by this audit.** New smoke testing is premature until a reviewed correction is available. Astra · Extra High is the recommended curriculum routing; Luna · Medium for the audit record. No model switch or independent-agent review is claimed. Publication records below remain accurate about deployed versions, but do not establish correctness of these newly changed teacher weeks.
+
 ## Published — Mandarin Ninja Academy on MeghanGames, November 4
 
 The owner approved the displayed integrated app again and requested publication on **[meghangames.com](https://meghangames.com/)**. The accepted app was already live as `185605b`; the homepage still displayed the old Ninja Dojo name. The existing merged homepage source is now published with **Mandarin Ninja Academy** on the card, its accessible label and the SVG title. These three text substitutions are the complete change; all ten card destinations, other content and the eight other assets remain byte-identical. No application redeployment or real-family operation was needed.
