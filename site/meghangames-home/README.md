@@ -1,5 +1,9 @@
 # Meghan Games homepage
 
+## November 4 Academy branding publication
+
+The existing Mandarin card is now published as **Mandarin Ninja Academy**, leading to the approved canonical family app. Homepage version `a1731526-7ea1-4627-a89f-9247bb9e2109`; all ten homepage files and three desktop/iPad layouts verified. Only the card heading, accessible link label and SVG title changed. The ten cards, Saoirse button and all destinations remain intact. [Exact release and handoff](../../docs/academy-homepage-2026-11-04.md). Historical records below describe earlier site states; the current Academy card opens the shared parent account entry.
+
 ## October 21 standalone Grade 5 update
 
 The source below was reconciled with the actual ten published assets from homepage Worker version `9bb835ab-c243-435a-8989-3dcfac46d725`, which has seven game cards plus the separate Saoirse Quest button. Preserve that newer live content, not the historical three-card source. The new **5th grade Dojo** eighth card points to its independent `5thgradedojo.meghangames.com` site and accurately identifies browser/device-only saving. All other links, art, CSS and scripts remain as published. See the standalone deployment record and STATUS for completed publication/verification; the historical notes below do not describe the current full project catalog.
