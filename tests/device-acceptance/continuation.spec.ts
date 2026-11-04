@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
 import { strokeOrderGuide } from '../../src/familyBeta/strokeOrderSlay.ts'
 import { getStrokeLayout } from '../../src/strokeTeacherPrototype/original/strokeLayout.ts'
-import { installFamilyFixtures } from '../family-sync/fixtures.ts'
+import { installFamilyFixtures, type SyntheticFamilyDocuments } from '../family-sync/fixtures.ts'
 
 const grades = [
   { slug: 'kindergarten', child: 'synthetic-k', button: 'Writing characters', character: '土', week: '2026-10-12' },
@@ -11,8 +11,8 @@ const grades = [
 ]
 const frame = (page: Page) => page.frameLocator('iframe:visible')
 
-async function setup(page: Page) {
-  await installFamilyFixtures(page, new Map(), 'ninja-device-continuation@example.invalid')
+async function setup(page: Page, documents: SyntheticFamilyDocuments = new Map()) {
+  await installFamilyFixtures(page, documents, 'ninja-device-continuation@example.invalid')
   await page.clock.setFixedTime(new Date('2026-10-16T19:00:00Z'))
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = function () {
@@ -201,4 +201,33 @@ test('parent settings and scores have a return path without the extra tab bar or
   await controls.click()
   await page.getByRole('button', { name: 'Back to activities', exact: true }).click()
   await expect(frame(page).getByRole('button', { name: /Enter the Dojo/ })).toBeVisible()
+})
+
+test('Grade 2 confirmed teaching starts cloud saving without waiting for the periodic check', async ({ page }) => {
+  const documents: SyntheticFamilyDocuments = new Map()
+  await setup(page, documents)
+  await page.addInitScript(() => {
+    // A throttled background timer must not be the trigger for a child's save.
+    // Keep normal intervals in the activity; suppress only the parent's fallback.
+    const interval = window.setInterval.bind(window)
+    window.setInterval = (handler, delay, ...args) =>
+      interval(window === window.top && delay === 15_000 ? () => {} : handler, delay, ...args)
+  })
+  const remoteRevision = () => {
+    const revisions = [...documents.values()].flatMap((document) => {
+      if (!document.name.includes('/children/synthetic-g2/betaPractice/')) return []
+      const raw = (document.fields.payload as { stringValue?: string } | undefined)?.stringValue
+      if (!raw) return []
+      const progress = JSON.parse(raw).values?.writingAcquisitionProgress || []
+      return progress.map((item: { revision: number }) => item.revision)
+    })
+    return revisions.length ? Math.max(...revisions) : -1
+  }
+  await page.goto('/family-beta-preview.html?grade=grade2')
+  await enter(page, 'Learn to Write')
+  await teacher(page)
+  await expect.poll(remoteRevision).toBe(0)
+  await page.waitForLoadState('networkidle')
+  await advance(page, '走')
+  await expect.poll(remoteRevision, { timeout: 5000 }).toBe(1)
 })

@@ -44,6 +44,7 @@ import {
   DEFAULT_SCHOOL_YEAR,
   productionSourceIsActive,
 } from './config'
+import { connectedFamilyFixes } from './familyBeta/academyRelease.ts'
 import { activityStorage, familyPreview, previewProfile, savePreviewResult } from './familyBeta/runtime.ts'
 import { useWorkspaceState } from './familyBeta/useWorkspaceState.ts'
 import type { CloudSession, FamilyRecord } from './persistence/cloudRecords.ts'
@@ -1213,6 +1214,8 @@ function AuthenticatedApp({ auth, now }: { auth: AuthState; now: AppClock }) {
         setState(next)
         setCloudError(null)
       })
+      if (connectedFamilyFixes && familyPreview)
+        window.parent.postMessage({ type: 'family-beta-result-ready' }, window.location.origin)
     } finally { writingBusy.current = false }
   }
   const navigate = (nextView: BaseView) => {
