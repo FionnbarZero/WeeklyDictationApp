@@ -2,6 +2,7 @@ import type { AcquisitionProgressEnvelope } from '../acquisition/persistence/con
 import { resolveAcquisitionLesson } from '../acquisition/persistence/lessonSnapshot.ts'
 import { envelopeIdentity, isAcquisitionRetired, retireAcquisition } from './acquisitionRetirement.ts'
 import { type CurriculumSnapshot, inspectSnapshot, validateCurriculum } from './curriculum.ts'
+import { unfinishedGrade2Writing } from './grade2LessonSelection.ts'
 import type { BetaProfile } from './model.ts'
 import { readPracticeWorkspaceState } from './practiceWorkspaceStorage.ts'
 
@@ -17,7 +18,10 @@ export type LessonLaunch = {
   week: string
   channel: 'writing' | 'reading'
 }
-export type SavedLessonLaunch = LessonLaunch & { source: CurriculumSnapshot; experience?: 'whispering-scrolls' | 'stroke-order-slay' }
+export type SavedLessonLaunch = LessonLaunch & {
+  source: CurriculumSnapshot
+  experience?: 'whispering-scrolls' | 'stroke-order-slay'
+}
 const prefix = (childId: string) => `family-beta-activity:${childId}:lesson-launch-v1:`
 const sourceKey = (childId: string, hash: string) => `family-beta-activity:${childId}:lesson-source-v1:${hash}`
 const launchKey = (launch: LessonLaunch) =>
@@ -84,14 +88,18 @@ function sourceMatches(envelope: AcquisitionProgressEnvelope, source: Curriculum
   )
   const words = envelope.tier === 'tier-1' ? candidate?.tier1 : candidate?.tier2
   const targets = envelope.lessonSnapshot!.targetSet.targets
-  if (envelope.datasetId.includes('__rev_') && envelope.datasetId !== `${id}__rev_${candidate?.contentFingerprint.slice(-16)}`) return false
+  if (
+    envelope.datasetId.includes('__rev_') &&
+    envelope.datasetId !== `${id}__rev_${candidate?.contentFingerprint.slice(-16)}`
+  )
+    return false
   if (envelope.activityModule.split(':restart-')[0] === 'stroke-order-slay') {
     // Only this separately identified writing experience permits a validated
     // subset. Require an exact, nonempty ordered subsequence of teacher Tier 1.
     if (envelope.tier !== 'tier-1' || !words || !targets.length) return false
     let cursor = -1
-    return targets.every(target => {
-      const index = words.findIndex(word => word.targetOccurrenceId === target.id && word.text === target.text)
+    return targets.every((target) => {
+      const index = words.findIndex((word) => word.targetOccurrenceId === target.id && word.text === target.text)
       if (index <= cursor) return false
       cursor = index
       return true
@@ -101,7 +109,8 @@ function sourceMatches(envelope: AcquisitionProgressEnvelope, source: Curriculum
     words?.length === targets.length &&
     words.every(
       (word, index) =>
-        word.targetOccurrenceId === targets[index].id.replace(/^__kindergarten-lab__/, '').replace(/__rev_[a-f0-9]{16}(?=-)/, '') &&
+        word.targetOccurrenceId ===
+          targets[index].id.replace(/^__kindergarten-lab__/, '').replace(/__rev_[a-f0-9]{16}(?=-)/, '') &&
         word.text === targets[index].text,
     )
   )
@@ -120,9 +129,8 @@ export function rememberLessonLaunch(
   // A calendar week can repeat an earlier cohort (notably Grade 5). Route by
   // the checkpoint's actual curriculum identity, not the wrapper's date label.
   const actualWeek =
-    inspectSnapshot(source).candidates.find(
-      (c) => c.datasetId === sourceDatasetId(envelope),
-    )?.normalizedStartDate || week
+    inspectSnapshot(source).candidates.find((c) => c.datasetId === sourceDatasetId(envelope))?.normalizedStartDate ||
+    week
   const launch: LessonLaunch = {
     schema: 1,
     childId: profile.id,
@@ -161,11 +169,7 @@ function currentEnvelope(storage: Store, launch: LessonLaunch): AcquisitionProgr
   return matches[0]
 }
 
-export async function readSavedLesson(
-  storage: Store,
-  profile: BetaProfile,
-  launch: LessonLaunch,
-): Promise<SavedLessonLaunch | null> {
+function verifyLaunch(launch: LessonLaunch, profile: BetaProfile) {
   if (
     !launch ||
     launch.schema !== 1 ||
@@ -181,6 +185,14 @@ export async function readSavedLesson(
     !['writing', 'reading'].includes(launch.channel)
   )
     throw new Error(failure)
+}
+
+export async function readSavedLesson(
+  storage: Store,
+  profile: BetaProfile,
+  launch: LessonLaunch,
+): Promise<SavedLessonLaunch | null> {
+  verifyLaunch(launch, profile)
   const envelope = currentEnvelope(storage, launch)
   if (!envelope) return null
   verifyEnvelope(envelope, profile)
@@ -209,12 +221,24 @@ export async function readSavedLesson(
   // Derive the experience from the validated checkpoint, not mutable route
   // metadata. Older routes without this field continue to open ordinary Dojo.
   const module = current.activityModule.split(':restart-')[0]
-  return { ...launch, source: snapshot,
-    experience: module === 'whispering-scrolls' || module === 'stroke-order-slay' ? module : undefined }
+  return {
+    ...launch,
+    source: snapshot,
+    experience: module === 'whispering-scrolls' || module === 'stroke-order-slay' ? module : undefined,
+  }
 }
 
-export function discardSavedLesson(storage: Store, profile: BetaProfile, lesson: { progressionId: string; fingerprint: string }) {
-  const launch = { progressionId: lesson.progressionId, childId: profile.id, grade: profile.grade, channel: 'writing' } as LessonLaunch
+export function discardSavedLesson(
+  storage: Store,
+  profile: BetaProfile,
+  lesson: { progressionId: string; fingerprint: string },
+) {
+  const launch = {
+    progressionId: lesson.progressionId,
+    childId: profile.id,
+    grade: profile.grade,
+    channel: 'writing',
+  } as LessonLaunch
   const envelope = currentEnvelope(storage, launch)
   if (!envelope) throw new Error('The lesson checkpoint is unavailable. No saved work was discarded.')
   verifyEnvelope(envelope, profile)
@@ -241,4 +265,79 @@ export async function listSavedLessons(storage: Store, profile: BetaProfile) {
     }
   }
   return { lessons: lessons.sort((a, b) => b.week.localeCompare(a.week)), warnings: [...new Set(warnings)] }
+}
+
+/** Read-only selection. The grade's existing checkpoint remains the save authority. */
+export async function unfinishedFamilyLesson(
+  storage: Store,
+  profile: BetaProfile,
+  channel: LessonLaunch['channel'],
+  completedResultIds: ReadonlySet<string>,
+  selectedWeek?: string,
+) {
+  const candidates: { lesson: SavedLessonLaunch; workedAt: number }[] = []
+  const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
+    (key): key is string => !!key?.startsWith(prefix(profile.id)),
+  )
+  function position(launch: LessonLaunch) {
+    const envelope = currentEnvelope(storage, launch)
+    if (!envelope) return null
+    verifyEnvelope(envelope, profile)
+    if (envelope.id !== launch.progressionId || launch.channel !== (envelope.tier === 'tier-1' ? 'writing' : 'reading'))
+      throw new Error(failure)
+    if (
+      envelope.lessonSnapshot!.fingerprint !== launch.lessonFingerprint ||
+      isAcquisitionRetired(storage, envelopeIdentity(envelope))
+    )
+      return null
+    if (launch.channel !== channel || (selectedWeek && launch.week !== selectedWeek)) return null
+    const module = envelope.activityModule.split(':restart-')[0]
+    if (module === 'whispering-scrolls' || module === 'stroke-order-slay') return null
+    const raw = storage.getItem(`family-beta-acquisition-v1:${launch.progressionId}`)
+    let unfinished: boolean
+    let workedAt = Date.parse(envelope.updatedAt)
+    if (raw) {
+      const record = JSON.parse(raw)
+      if (!Array.isArray(record.assessments) || typeof record.sessionId !== 'string') throw new Error(failure)
+      unfinished =
+        !envelope.flow.teachingComplete || (record.assessments.length > 0 && !completedResultIds.has(record.sessionId))
+      if (record.writing) workedAt = Math.max(workedAt, Date.parse(record.writing.updatedAt))
+    } else {
+      const workspace = readPracticeWorkspaceState(storage, profile.id)
+      if (!workspace) throw new Error(failure)
+      const state = JSON.parse(workspace)
+      unfinished = unfinishedGrade2Writing(state, envelope)
+      const writing = state.writingAcquisitionProgress?.find(
+        (item: { acquisition: { id: string } }) => item.acquisition.id === envelope.id,
+      )
+      if (writing) workedAt = Math.max(workedAt, Date.parse(writing.updatedAt))
+    }
+    if (!Number.isFinite(workedAt)) throw new Error(failure)
+    return unfinished ? workedAt : null
+  }
+  for (const key of keys) {
+    const launch = JSON.parse(storage.getItem(key) || 'null') as LessonLaunch
+    verifyLaunch(launch, profile)
+    if (key !== launchKey(launch)) throw new Error(failure)
+    // A finished or unrelated lesson needs no source read. Its archived source
+    // cannot prevent an ordinary entry into a different unfinished activity.
+    if (position(launch) === null) continue
+    let lesson: SavedLessonLaunch | null
+    try {
+      lesson = await readSavedLesson(storage, profile, launch)
+    } catch {
+      throw new Error(failure)
+    }
+    const workedAt = position(launch)
+    if (lesson && workedAt !== null) candidates.push({ lesson, workedAt })
+  }
+  // Across separate lessons, prefer the last practiced one. Within a lesson the
+  // validated revision and normal save coordinator still resolve continuation.
+  candidates.sort(
+    (a, b) =>
+      b.workedAt - a.workedAt ||
+      b.lesson.week.localeCompare(a.lesson.week) ||
+      a.lesson.progressionId.localeCompare(b.lesson.progressionId),
+  )
+  return candidates[0]?.lesson || null
 }

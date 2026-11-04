@@ -12,6 +12,7 @@ export type FamilyActivitySlot = {
   curriculumVersion: string
   source?: CurriculumSnapshot
   resumeChannel?: 'writing' | 'reading'
+  automaticLaunch?: string
   resumeExperience?: 'whispering-scrolls' | 'stroke-order-slay'
   savedLesson?: { progressionId: string; fingerprint: string }
   teachingVersion: string
