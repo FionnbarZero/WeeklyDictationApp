@@ -34,4 +34,10 @@ Two real-account runs verified authentication/three disposable profiles and Kind
 
 ## Publication status
 
+November 5 follow-up: the owner created PR 77. Exact candidate `061f397` passed all 20 continuation cases and 12 provider/recovery cases. The combined continuation/writing matrix had 25 passes and one Grade 5 iPad cumulative 180-second timeout before its final first-device restoration assertions. An unchanged isolated repeat also timed out; the foreground diagnostic failed during a much longer host-time interval, which does not establish a cause. A fresh unchanged November 5 repeat passed in 21.7 seconds with the same assertions and time limit. Original failures remain in `family-beta-artifacts/releases/academy-061f397/evidence/` and are not relabeled as passes.
+
+Real-service acceptance passed all five checks, with complete deletion of the disposable account and 18 documents. Grade 2 uses its parent-selected October 19 Wetland source week; the attempted October 26 selection failed because that source slide is empty and excluded. That failed run's account and 12 documents were removed and its evidence retained. Neither result claims the deferred November 2 curriculum is correct.
+
+The old development-tool audit exception expired and correctly failed PR 77 CI. Three scoped transitive patches now produce zero findings without changing production package versions or extending an exception; the new gate requires a successful complete audit with no findings. Final compatibility review, source checks and normal integration remain required before the canonical release. See [development tooling security](./development-tooling-security.md).
+
 Implementation is local and not yet published. Exact-package provider/recovery checks, protected CI/source integration and final release review remain required. The canonical app still serves **185605b**. Do not describe that live build as containing these changes or ask the owner to smoke-test unpublished work. Physical iPad/iMac audio, touch and continuation observation will be requested after a verified release.

@@ -2,6 +2,8 @@
 
 ## Owner priority — ordinary activity entry resumes automatically, November 4
 
+November 5 release continuation: PR 77 is open. Complete the scoped development-tool compatibility review and strict zero-findings audit, final-source CI and normal source integration, then package and publish through the existing canonical release controller. Preserve the recorded iPad timing qualifications and deferred current-week curriculum findings; request physical-device smoke testing only after verifying the published build. Existing confirmed Astra · Extra High stage authorization continues.
+
 The owner deferred the November 4 curriculum findings and selected navigation cleanup at **ninjadojo.meghangames.com** next: eliminate the extra Activities / Ninja Skills / Progress navigation and the separate Saved lessons route. The child should open the normal activity and continue at the saved position. Preserve source-pinned unfinished lessons across weekly updates, completed scores, child isolation and existing save confirmation; do not erase checkpoints to simplify the interface.
 
 Inspect and reuse the existing lesson-launch index and grade engines' continuation behavior. Verify ordinary-button entry after exit/reload, changed weekly source, two children, finished versus unfinished lessons, unavailable/corrupt saved source, and parent-settings return on desktop/iPad. Reuse confirmed saves; do not promise durable unfinished ink or recordings. Initial UI model selection is confirmed as Sol · Medium; the owner also confirmed Astra · Extra High for the expanded behavior stage. Local implementation is in progress; publication remains pending verification and release gates. The earlier curriculum repair recommendation is deferred, not completed.
