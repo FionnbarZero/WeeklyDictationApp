@@ -60,7 +60,7 @@ for (const [slug, grade, id] of grades) {
     }
     await openPanel()
     await expect(page.getByText(/Scores, saved practice, and game detail confirmed/)).toBeVisible()
-    await expect(page.getByText(`Beta build ${process.env.FAMILY_SECURITY_REVISION!.slice(0, 7)}`)).toBeVisible()
+    await expect(page.getByText(`Version ${process.env.FAMILY_SECURITY_REVISION!.slice(0, 7)}`)).toBeVisible()
     page.on('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Manage profiles', exact: true }).click()
     await page.getByRole('button', { name: 'Sign out parent', exact: true }).click()

@@ -10,6 +10,7 @@ import {
   listSavedLessons,
   readSavedLesson,
   rememberLessonLaunch,
+  unfinishedFamilyLesson,
 } from '../src/familyBeta/lessonLaunch.ts'
 import type { BetaProfile } from '../src/familyBeta/model.ts'
 
@@ -27,14 +28,19 @@ function memory() {
     },
   }
 }
-function fixture(slug = 'grade5', channel: 'writing' | 'reading' = 'writing') {
+function fixture(
+  slug = 'grade5',
+  channel: 'writing' | 'reading' = 'writing',
+  candidateIndex = 0,
+  at = '2026-10-20T12:00:00.000Z',
+) {
   const source = JSON.parse(
     readFileSync(new URL(`../public/curriculum/beta/${slug}.json`, import.meta.url), 'utf8'),
   ) as CurriculumSnapshot
   const profile: BetaProfile = { id: 'child-test', grade: source.grade, nickname: 'Test learner', active: true }
-  const candidate = inspectSnapshot(source).candidates.find(
+  const candidate = inspectSnapshot(source).candidates.filter(
     (c) => c.status === 'valid' && (channel === 'writing' ? c.tier1 : c.tier2).length,
-  )!
+  )[candidateIndex]!
   const tier = channel === 'writing' ? 'tier-1' : 'tier-2'
   const context: AcquisitionPersistenceContext = {
     identity: {
@@ -62,7 +68,7 @@ function fixture(slug = 'grade5', channel: 'writing' | 'reading' = 'writing') {
     applicationVersion: 'test',
   }
   const storage = memory()
-  const store = openAcquisitionStore(storage, context)
+  const store = openAcquisitionStore(storage, context, { now: () => at })
   const week = candidate.normalizedStartDate!
   rememberLessonLaunch(storage, profile, store.current.envelope, source, week)
   return { storage, store, source, profile, week }
@@ -167,4 +173,84 @@ test('Grade 2 local workspace checkpoints are indexed without rewriting the work
   assert.equal(listed.lessons.length, 1)
   assert.deepEqual(listed.warnings, [])
   assert.equal(storage.getItem(key), raw)
+})
+
+for (const grade of ['kindergarten', 'grade2', 'grade5'])
+  for (const channel of ['writing', 'reading'] as const) {
+    test(`${grade} ${channel}: ordinary entry selects the child's unfinished position without writing records`, async () => {
+      const { storage, store, profile, week } = fixture(grade, channel)
+      store.answer(false, 'test')
+      const before = JSON.stringify([...storage.data])
+      const selected = await unfinishedFamilyLesson(storage, profile, channel, new Set())
+      assert.equal(selected?.progressionId, store.current.envelope.id)
+      assert.equal(selected?.week, week)
+      assert.equal(await unfinishedFamilyLesson(storage, { ...profile, id: 'another-child' }, channel, new Set()), null)
+      assert.equal(
+        await unfinishedFamilyLesson(storage, profile, channel === 'writing' ? 'reading' : 'writing', new Set()),
+        null,
+      )
+      assert.equal(await unfinishedFamilyLesson(storage, profile, channel, new Set(), '2026-12-21'), null)
+      assert.equal(JSON.stringify([...storage.data]), before)
+    })
+  }
+
+test('automatic continuation follows the last practiced lesson, not simply the latest curriculum week', async () => {
+  const latest = fixture('kindergarten', 'writing', 0, '2026-10-20T12:00:00.000Z')
+  const older = fixture('kindergarten', 'writing', 1, '2026-10-21T12:00:00.000Z')
+  for (const [key, value] of older.storage.data) latest.storage.setItem(key, value)
+  assert.notEqual(latest.week, older.week)
+  assert.equal((await unfinishedFamilyLesson(latest.storage, latest.profile, 'writing', new Set()))?.week, older.week)
+  assert.equal(
+    (await unfinishedFamilyLesson(latest.storage, latest.profile, 'writing', new Set(), latest.week))?.week,
+    latest.week,
+  )
+})
+
+test('completed teaching with an unsubmitted visit resumes; a confirmed finished visit does not replace current lessons', async () => {
+  const { storage, profile, store } = fixture()
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 1000) store.answer(true, 'test')
+  assert.equal(store.current.envelope.flow.teachingComplete, true)
+  assert.ok(await unfinishedFamilyLesson(storage, profile, 'writing', new Set()))
+  assert.equal(await unfinishedFamilyLesson(storage, profile, 'writing', new Set([store.current.sessionId])), null)
+  store.finishSession()
+  assert.equal(await unfinishedFamilyLesson(storage, profile, 'writing', new Set()), null)
+})
+
+test('unreadable saved source blocks automatic replacement without erasing progress', async () => {
+  const { storage, profile } = fixture()
+  const key = [...storage.data.keys()].find((value) => value.includes(':lesson-source-v1:'))!
+  storage.setItem(key, '{}')
+  const before = JSON.stringify([...storage.data])
+  await assert.rejects(unfinishedFamilyLesson(storage, profile, 'writing', new Set()), /not been erased/)
+  assert.equal(JSON.stringify([...storage.data]), before)
+})
+
+test('an unrelated channel with a corrupt source does not block ordinary writing', async () => {
+  const writing = fixture('kindergarten', 'writing')
+  const reading = fixture('kindergarten', 'reading')
+  for (const [key, raw] of reading.storage.data) {
+    if (key.includes(':lesson-launch-v1:')) {
+      const launch = JSON.parse(raw)
+      launch.sourceHash = 'f'.repeat(64)
+      writing.storage.setItem(key, JSON.stringify(launch))
+      writing.storage.setItem(`family-beta-activity:${writing.profile.id}:lesson-source-v1:${launch.sourceHash}`, '{}')
+    } else writing.storage.setItem(key, raw)
+  }
+  assert.equal(
+    (await unfinishedFamilyLesson(writing.storage, writing.profile, 'writing', new Set()))?.channel,
+    'writing',
+  )
+  await assert.rejects(unfinishedFamilyLesson(writing.storage, writing.profile, 'reading', new Set()))
+})
+
+test('a finished visit does not require its old source to open current activities', async () => {
+  const { storage, profile, store } = fixture()
+  let guard = 0
+  while (!store.current.envelope.flow.complete && guard++ < 1000) store.answer(true, 'test')
+  assert.equal(store.current.envelope.flow.teachingComplete, true)
+  store.finishSession()
+  const key = [...storage.data.keys()].find((value) => value.includes(':lesson-source-v1:'))!
+  storage.setItem(key, '{}')
+  assert.equal(await unfinishedFamilyLesson(storage, profile, 'writing', new Set()), null)
 })

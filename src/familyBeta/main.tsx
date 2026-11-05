@@ -20,12 +20,14 @@ import { familyDeviceSyncRepository, PracticeSyncConflictError } from './deviceS
 import { deviceWriter } from './deviceWriter.ts'
 import type { FamilyGameWindow } from './gameOwner.ts'
 import { latestEarlierTargets, reinforcementGames, resumableGameCheckpoints } from './gamePools.ts'
+import type { FamilyContinuationWindow, LessonChannel } from './lessonContinuationRuntime.ts'
 import {
   cacheLessonSource,
   discardSavedLesson,
   listSavedLessons,
   readSavedLesson,
   type SavedLessonLaunch,
+  unfinishedFamilyLesson,
 } from './lessonLaunch.ts'
 import { BETA_GRADES, type BetaGrade, type BetaProfile, type BetaResult } from './model.ts'
 import {
@@ -160,12 +162,23 @@ function FamilyPreview() {
     { owner: '', lessons: [], warnings: [] },
   )
   const [resumeRefresh, setResumeRefresh] = useState(0)
+  const [continuable, setContinuable] = useState<{ owner: string; channels: string[] }>({ owner: '', channels: [] })
   const [savedGames, setSavedGames] = useState<{
     owner: string
     checkpoints: GameCheckpoint[]
     warning: string
   }>({ owner: '', checkpoints: [], warning: '' })
   const resumeInFlight = useRef(false)
+  const continueLessonRef = useRef<(source: Window, channel: LessonChannel) => Promise<boolean>>(async () => false)
+  useEffect(() => {
+    if (!connectedFamilyFixes) return
+    const owner = window as FamilyContinuationWindow
+    const continueLesson = (source: Window, channel: LessonChannel) => continueLessonRef.current(source, channel)
+    owner.familyContinueLesson = continueLesson
+    return () => {
+      if (owner.familyContinueLesson === continueLesson) delete owner.familyContinueLesson
+    }
+  }, [])
   const slotsRef = useRef(slots)
   slotsRef.current = slots
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string | undefined>>({})
@@ -340,7 +353,30 @@ function FamilyPreview() {
     if (!child || !practiceReady) return
     let cancelled = false
     void listSavedLessons(localStorage, child)
-      .then((value) => {
+      .then(async (value) => {
+        if (connectedFamilyFixes) {
+          const completed = new Set(
+            previewResults()
+              .filter((result) => result.childId === child.id)
+              .map((result) => result.id),
+          )
+          const matches = await Promise.allSettled(
+            (['writing', 'reading'] as const).map(async (channel) =>
+              (await unfinishedFamilyLesson(localStorage, child, channel, completed, week || undefined))
+                ? channel
+                : null,
+            ),
+          )
+          const rejected = matches.find((result) => result.status === 'rejected')
+          if (!cancelled && rejected?.status === 'rejected') setActivityError(message(rejected.reason))
+          if (!cancelled)
+            setContinuable({
+              owner: child.id,
+              channels: matches.flatMap((result) =>
+                result.status === 'fulfilled' && result.value ? [result.value] : [],
+              ),
+            })
+        }
         if (!cancelled)
           setSavedLessons({
             owner: child.id,
@@ -356,7 +392,7 @@ function FamilyPreview() {
     return () => {
       cancelled = true
     }
-  }, [child?.id, child?.grade, practiceReady, resumeRefresh])
+  }, [child?.id, child?.grade, practiceReady, resumeRefresh, week])
 
   useEffect(() => {
     if (!child || !practiceReady) {
@@ -823,8 +859,11 @@ function FamilyPreview() {
       newSlot('activities')
   }, [tab, child, curriculum, practiceReady, workspace, slots, resumingId])
 
-  async function resumeSavedLesson(lesson: SavedLessonLaunch) {
-    if (!child || !practiceReady || resumeInFlight.current) return
+  async function resumeSavedLesson(lesson: SavedLessonLaunch, automatic = false, isCurrent = () => true) {
+    if (!child || !practiceReady || resumeInFlight.current) {
+      if (automatic) throw new Error('Your lesson is still connecting. Please try again.')
+      return false
+    }
     resumeInFlight.current = true
     try {
       if (standaloneGamesRetired && retiredStandaloneExperience(lesson.experience))
@@ -832,17 +871,28 @@ function FamilyPreview() {
           'This standalone game has been removed. Open Writing or Reading in Enter the Dojo. Saved records are retained.',
         )
       const saved = await readSavedLesson(localStorage, child, lesson)
-      if (scopeRef.current !== scope || childRef.current !== child.id) return
+      if (scopeRef.current !== scope || childRef.current !== child.id || !isCurrent())
+        throw new Error('The selected child changed. Open the activity again.')
       if (!saved) throw new Error('This lesson has already finished or changed. Refresh the saved lesson list.')
       const existing = slotsRef.current.find(
         (slot) =>
           slot.profile.id === child.id &&
           slot.kind === 'activities' &&
           slot.savedLesson?.progressionId === saved.progressionId &&
-          slot.savedLesson.fingerprint === saved.lessonFingerprint,
+          slot.savedLesson.fingerprint === saved.lessonFingerprint &&
+          (!automatic || (slot.resumeChannel === saved.channel && slot.curriculumVersion === saved.sourceHash)),
       )
       const id = existing?.id || crypto.randomUUID()
       const savedWorkspace = existing?.workspace || `${activityWorkspace(child, saved.week)}:saved:${id}`
+      const existingFrame =
+        existing &&
+        [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
+          (frame) => frame.dataset.familySlot === existing.id,
+        )
+      const automaticLaunch =
+        automatic && (!existingFrame || curriculumMenuReady(existingFrame, true)) ? crypto.randomUUID() : undefined
+      if (existing && automaticLaunch)
+        setSlots((current) => current.map((slot) => (slot.id === existing.id ? { ...slot, automaticLaunch } : slot)))
       if (!existing)
         setSlots((current) => [
           ...current,
@@ -854,6 +904,7 @@ function FamilyPreview() {
             curriculumVersion: saved.sourceHash,
             source: saved.source,
             resumeChannel: saved.channel,
+            automaticLaunch,
             resumeExperience: saved.experience,
             savedLesson: { progressionId: saved.progressionId, fingerprint: saved.lessonFingerprint },
             teachingVersion: import.meta.env.VITE_GIT_REVISION || 'local',
@@ -866,11 +917,55 @@ function FamilyPreview() {
       setTab('activities')
       setSelectedSlots((current) => ({ ...current, [`${savedWorkspace}:activities`]: id }))
       setActivityError('')
+      return true
     } catch (e) {
       setActivityError(message(e))
+      if (automatic) throw e
+      return false
     } finally {
       resumeInFlight.current = false
     }
+  }
+
+  continueLessonRef.current = async (source, channel) => {
+    if (
+      !connectedFamilyFixes ||
+      !child ||
+      !practiceReady ||
+      activityClock.paused ||
+      !['writing', 'reading'].includes(channel)
+    )
+      throw new Error('Choose a child and wait for the lesson to connect.')
+    const frame = [...document.querySelectorAll<HTMLIFrameElement>('iframe[data-family-slot]')].find(
+      (item) => item.contentWindow === source && item.dataset.familyActive === 'true',
+    )
+    const slot = slotsRef.current.find((item) => item.id === frame?.dataset.familySlot)
+    if (!frame || !slot || slot.profile.id !== child.id || slot.kind !== 'activities')
+      throw new Error('The activity changed. Open it again from this child’s challenges.')
+    if (slot.resumeChannel) return false
+    const saved = await unfinishedFamilyLesson(
+      localStorage,
+      child,
+      channel,
+      new Set(
+        previewResults()
+          .filter((result) => result.childId === child.id)
+          .map((result) => result.id),
+      ),
+      week || undefined,
+    )
+    const isCurrent = () =>
+      scopeRef.current === scope &&
+      childRef.current === child.id &&
+      frame.isConnected &&
+      frame.dataset.familyActive === 'true' &&
+      !activityClock.paused
+    if (!isCurrent()) throw new Error('The activity changed. Open it again from this child’s challenges.')
+    if (!saved) return false
+    // The native entry already restores the same cohort. Only retained sources
+    // need the existing source-pinned frame route; no save format is changed.
+    if (saved.week === slot.week && saved.sourceHash === slot.curriculumVersion) return false
+    return resumeSavedLesson(saved, true, isCurrent)
   }
 
   async function discardSlot(slot: FamilyActivitySlot) {
@@ -972,9 +1067,13 @@ function FamilyPreview() {
                 ? grade5RepairPreview
                   ? 'Grade 5 repair prototype'
                   : 'Grade 2 writing pilot · Unpublished'
-                : 'Mandarin Ninja Academy · Family beta'}
+                : academyRelease
+                  ? 'Mandarin Ninja Academy'
+                  : 'Mandarin Ninja Academy · Family beta'}
           </strong>
-          <small>Beta build {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}</small>
+          <small>
+            {academyRelease ? 'Version' : 'Beta build'} {import.meta.env.VITE_GIT_REVISION?.slice(0, 7) || 'local'}
+          </small>
           <label>
             Practicing as{' '}
             <select
@@ -995,13 +1094,10 @@ function FamilyPreview() {
                 ))}
             </select>
           </label>
-          {regressionPreview && tab !== 'activities' && (
+          {(regressionPreview || connectedFamilyFixes) && tab !== 'activities' && (
             <button onClick={() => setTab('activities')}>Back to activities</button>
           )}
-          <button
-            disabled={connectedFamilyFixes && firebaseConfigReady && !familyId}
-            onClick={() => setTab('parent')}
-          >
+          <button disabled={connectedFamilyFixes && firebaseConfigReady && !familyId} onClick={() => setTab('parent')}>
             {compactParentPreview ? 'Manage profiles' : 'Parent controls'}
           </button>
           <AudioCheck />
@@ -1013,7 +1109,9 @@ function FamilyPreview() {
           {academyRelease && (
             <section className="beta-panel" aria-label="Family syncing">
               <p role="status">{status}</p>
-              <button type="button" onClick={() => void refreshProgress()}>Check syncing</button>
+              <button type="button" onClick={() => void refreshProgress()}>
+                Check syncing
+              </button>
             </section>
           )}
           {automaticCurriculumPreview && (
@@ -1073,7 +1171,7 @@ function FamilyPreview() {
             {curriculumError} <button onClick={() => setCurriculumRetry((value) => value + 1)}>Retry lessons</button>
           </div>
         )}
-        {(!regressionPreview || savedGameRecoveryExample) && (
+        {!connectedFamilyFixes && (!regressionPreview || savedGameRecoveryExample) && (
           <nav className="beta-tabs" aria-label="Family preview navigation">
             {(['activities', 'games', 'progress'] as const).map((t) => (
               <button
@@ -1125,7 +1223,7 @@ function FamilyPreview() {
             </select>
           </label>
         )}
-        {child && practiceReady && tab === 'activities' && (
+        {!connectedFamilyFixes && child && practiceReady && tab === 'activities' && (
           <details
             className="beta-panel"
             open={savedLessonsOpen}
@@ -1190,9 +1288,15 @@ function FamilyPreview() {
       )}
       {resumeSlot && (
         <section className="beta-panel" role="status">
-          Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the
-          current teacher curriculum.
-          <button onClick={() => setResumingId(null)}>Return to current teacher lessons</button>
+          {!connectedFamilyFixes && (
+            <>
+              Original saved {resumeSlot.resumeChannel || ''} lesson · {resumeSlot.week}. New activities still use the
+              current teacher curriculum.
+            </>
+          )}
+          <button onClick={() => setResumingId(null)}>
+            {connectedFamilyFixes ? 'Back to all challenges' : 'Return to current teacher lessons'}
+          </button>
         </section>
       )}
       {!child && <p>Add a child in Parent controls to begin.</p>}
@@ -1218,6 +1322,10 @@ function FamilyPreview() {
             data-family-revision={slot.teachingVersion}
             data-family-source={slot.source ? JSON.stringify(slot.source) : undefined}
             data-family-resume-channel={slot.resumeChannel}
+            data-family-auto-launch={slot.automaticLaunch}
+            data-family-continuable={
+              connectedFamilyFixes && continuable.owner === slot.profile.id ? continuable.channels.join(',') : ''
+            }
             data-family-resume-experience={slot.resumeExperience}
             data-family-resume-lesson={
               slot.resumeChannel && slot.savedLesson ? JSON.stringify(slot.savedLesson) : undefined
@@ -1322,7 +1430,7 @@ function FamilyPreview() {
       {tab === 'parent' && (
         <section className="beta-panel">
           <h1>Parent controls</h1>
-          {regressionPreview && (
+          {(regressionPreview || connectedFamilyFixes) && (
             <button
               onClick={() => {
                 setTab('progress')

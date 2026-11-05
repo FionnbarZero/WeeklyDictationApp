@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: './tests',
   testMatch: [
     'academy-family/*.spec.ts',
+    'device-acceptance/continuation.spec.ts',
     'device-acceptance/assessment.spec.ts',
     'device-acceptance/media.spec.ts',
     'device-acceptance/offline.spec.ts',

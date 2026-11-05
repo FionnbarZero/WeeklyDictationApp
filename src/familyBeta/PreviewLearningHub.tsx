@@ -13,13 +13,15 @@ import { masteredDatasetsForGrade, masteredGamesForGrade } from '../grade5Presen
 import { grade5PresentationPreview } from '../grade5PresentationPreview/policy.ts'
 import { recognitionReviewSection } from '../grade5RecognitionReview/menus.ts'
 import { grade5ReadingReviewPreview, isGrade5ReadingReview } from '../grade5RecognitionReview/source.ts'
-import type { LearningHubActivity, LearningHubViewModel } from '../learningHub/contracts.ts'
+import type { LearningHubActivity, LearningHubLaunchContext, LearningHubViewModel } from '../learningHub/contracts.ts'
 import { LearningHub, type LearningHubProps } from '../learningHub/LearningHub.tsx'
 import { standaloneGamesRetired } from '../learningHub/standaloneGameRetirement.ts'
 import { learningModuleCatalogEntry } from '../ninjaSkills/catalog.ts'
 import type { LearningModulePack } from '../ninjaSkills/contracts.ts'
 import { assertGamePack, reviewGameSummary } from '../ninjaSkills/review.ts'
 import { SkyWriting } from '../skywriting/SkyWriting.tsx'
+import { AutomaticLessonEntry } from './AutomaticLessonEntry.tsx'
+import { connectedFamilyFixes } from './academyRelease.ts'
 import { automaticCurriculumPreview } from './automaticCurriculum.ts'
 import { fetchCurriculum } from './curriculum.ts'
 import {
@@ -31,6 +33,7 @@ import {
 } from './gamePools.ts'
 import { gameRecoveryPreview } from './gameRecoveryPreview.ts'
 import wetlandSource from './grade2WetlandSource.json'
+import { continueFamilyLesson } from './lessonContinuationRuntime.ts'
 import type { BetaGrade, BetaResult } from './model.ts'
 import { ReentryPractice, readingProfileFor } from './ReentryPractice.tsx'
 import { familyPreview, previewProfile, previewResults, savePreviewResult } from './runtime.ts'
@@ -69,7 +72,7 @@ export type ExtraLaunch =
       boss?: boolean
     }
   | {
-      previewAction: 'reenter' | 'stroke' | 'sky' | 'lily' | 'test' | 'recognition-reading'
+      previewAction: 'continue-lesson' | 'reenter' | 'stroke' | 'sky' | 'lily' | 'test' | 'recognition-reading'
       channel: PracticeChannel
       datasets: Dataset[]
     }
@@ -94,6 +97,17 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
   const [retry, setRetry] = useState(0)
   const [sessionId, setSessionId] = useState('')
   const [, refreshHistory] = useState(0)
+  const [continuable, setContinuable] = useState<string[]>([])
+  useEffect(() => {
+    if (!connectedFamilyFixes) return
+    const frame = window.frameElement as HTMLIFrameElement | null
+    if (!frame) return
+    const read = () => setContinuable((frame.dataset.familyContinuable || '').split(','))
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(frame, { attributes: true, attributeFilter: ['data-family-continuable'] })
+    return () => observer.disconnect()
+  }, [])
   useEffect(() => {
     if (active) window.scrollTo(0, 0)
   }, [active])
@@ -538,6 +552,31 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       }
     }),
   }
+  if (connectedFamilyFixes) {
+    model.sections = model.sections.map((section) => ({
+      ...section,
+      activities: section.activities.map((activity) => {
+        const channel = activity.id.match(/^(?:dojo|acquisition)-(writing|reading)$/)?.[1]
+        if (
+          (channel !== 'writing' && channel !== 'reading') ||
+          !continuable.includes(channel) ||
+          activity.action.kind !== 'disabled'
+        )
+          return activity
+        return {
+          ...activity,
+          title: channel === 'writing' ? 'Learn to Write' : 'Read the Words',
+          description: 'Pick up where you left off.',
+          note: undefined,
+          action: {
+            kind: 'launch' as const,
+            label: channel === 'writing' ? 'Learn to Write' : 'Read the Words',
+            launch: { previewAction: 'continue-lesson' as const, channel, datasets: [] },
+          },
+        }
+      }),
+    }))
+  }
   const resumeChannel = (window.frameElement as HTMLIFrameElement | null)?.dataset.familyResumeChannel
   const resumeExperience = (window.frameElement as HTMLIFrameElement | null)?.dataset.familyResumeExperience
   if (resumeChannel === 'writing' || resumeChannel === 'reading') {
@@ -556,8 +595,65 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
       }))
       .filter((section) => section.activities.length > 0)
   }
+
+  async function launchActivity(launch: Launch | ExtraLaunch, context: LearningHubLaunchContext) {
+    const selected = model.sections
+      .find((section) => section.id === context.sectionId)
+      ?.activities.find((activity) => activity.action.kind === 'launch' && activity.action.launch === launch)
+    const channel = selected?.id.match(/^(?:dojo|acquisition)-(writing|reading)$/)?.[1]
+    if (
+      connectedFamilyFixes &&
+      (channel === 'writing' || channel === 'reading') &&
+      (await continueFamilyLesson(channel))
+    )
+      return
+    if (launch && typeof launch === 'object' && 'previewAction' in launch && launch.previewAction === 'continue-lesson')
+      throw new Error('This lesson has finished or changed. Return to the challenges and open the activity again.')
+
+    if (launch && typeof launch === 'object' && 'previewAction' in launch) {
+      if (standaloneGamesRetired && ['stroke', 'scrolls'].includes((launch as ExtraLaunch).previewAction)) {
+        setError('This standalone game has been removed. Choose Writing or Reading in Enter the Dojo.')
+        return
+      }
+      if ((launch as ExtraLaunch).previewAction === 'game') {
+        try {
+          // History can change after the menu renders (for example in
+          // another tab). Check again before starting an unsaved round.
+          previewResults()
+          assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack)
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'This game is not ready.')
+          return
+        }
+      }
+      setSessionId(crypto.randomUUID())
+      let next = launch as ExtraLaunch
+      try {
+        if (reportRepairsPreview && next.previewAction === 'game' && next.mastered)
+          next = {
+            ...next,
+            pack: reserveMaintenanceGame(localStorage, previewProfile()?.id || '', grade, next.pack),
+          }
+        if (reportRepairsPreview && next.previewAction === 'reenter' && next.channel === 'writing')
+          next.datasets
+            .flatMap((dataset) => channelWords(dataset, 'writing'))
+            .forEach((word) => writingCharacterGuides(word.text))
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'The activity could not open.')
+        return
+      }
+      if (next.previewAction === 'stroke' && grade !== 'Kindergarten') {
+        if (!props.onStrokeOrderWarmup) {
+          setError('The grade’s Warmup could not be opened. No teaching progress has changed.')
+          return
+        }
+        props.onStrokeOrderWarmup(next.datasets[0], () => setActive(next))
+      } else setActive(next)
+    } else return props.onLaunch(launch as Launch, context)
+  }
   return (
     <>
+      {connectedFamilyFixes && <AutomaticLessonEntry model={model} onLaunch={launchActivity} />}
       {error && <p role="alert">{error}</p>}
       {completedGames === null && (
         <div role="alert">
@@ -578,48 +674,7 @@ function EnhancedHub<Launch>(props: PreviewHubProps<Launch>) {
           model={model}
           protectPendingLaunch={automaticCurriculumPreview}
           hideUnavailable={false}
-          onLaunch={(launch, context) => {
-            if (launch && typeof launch === 'object' && 'previewAction' in launch) {
-              if (standaloneGamesRetired && ['stroke', 'scrolls'].includes((launch as ExtraLaunch).previewAction)) {
-                setError('This standalone game has been removed. Choose Writing or Reading in Enter the Dojo.')
-                return
-              }
-              if ((launch as ExtraLaunch).previewAction === 'game') {
-                try {
-                  // History can change after the menu renders (for example in
-                  // another tab). Check again before starting an unsaved round.
-                  previewResults()
-                  assertGamePack((launch as Extract<ExtraLaunch, { previewAction: 'game' }>).pack)
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : 'This game is not ready.')
-                  return
-                }
-              }
-              setSessionId(crypto.randomUUID())
-              let next = launch as ExtraLaunch
-              try {
-                if (reportRepairsPreview && next.previewAction === 'game' && next.mastered)
-                  next = {
-                    ...next,
-                    pack: reserveMaintenanceGame(localStorage, previewProfile()?.id || '', grade, next.pack),
-                  }
-                if (reportRepairsPreview && next.previewAction === 'reenter' && next.channel === 'writing')
-                  next.datasets
-                    .flatMap((dataset) => channelWords(dataset, 'writing'))
-                    .forEach((word) => writingCharacterGuides(word.text))
-              } catch (failure) {
-                setError(failure instanceof Error ? failure.message : 'The activity could not open.')
-                return
-              }
-              if (next.previewAction === 'stroke' && grade !== 'Kindergarten') {
-                if (!props.onStrokeOrderWarmup) {
-                  setError('The grade’s Warmup could not be opened. No teaching progress has changed.')
-                  return
-                }
-                props.onStrokeOrderWarmup(next.datasets[0], () => setActive(next))
-              } else setActive(next)
-            } else return props.onLaunch(launch as Launch, context)
-          }}
+          onLaunch={launchActivity}
         />
       </div>
       {!active && reportRepairsPreview && <PreviewScoreRecord />}
